@@ -6,12 +6,15 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
 
-	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/handler"
+	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/admin"
+	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/auth"
+	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/health"
 )
 
 func NewRouter(
-	healthHandler *handler.HealthHandler,
-	authHandler *handler.AuthHandler,
+	healthHandler *health.Handler,
+	authHandler *auth.Handler,
+	adminHandler *admin.Handler,
 	frontendURL string,
 ) http.Handler {
 	r := chi.NewRouter()
@@ -30,6 +33,13 @@ func NewRouter(
 		r.Route("/auth", func(r chi.Router) {
 			r.Post("/register", authHandler.Register)
 			r.Post("/login", authHandler.Login)
+			r.Get("/me", authHandler.Me)
+		})
+
+		r.Route("/admin", func(r chi.Router) {
+			r.Get("/registrations", adminHandler.ListRegistrations)
+			r.Patch("/registrations/{userID}/approve", adminHandler.ApproveRegistration)
+			r.Patch("/registrations/{userID}/reject", adminHandler.RejectRegistration)
 		})
 	})
 

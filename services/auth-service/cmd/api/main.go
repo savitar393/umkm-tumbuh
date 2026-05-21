@@ -6,12 +6,13 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/admin"
+	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/auth"
 	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/config"
 	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/database"
-	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/handler"
-	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/repository"
+	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/health"
 	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/router"
-	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/service"
+	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/users"
 )
 
 func main() {
@@ -25,13 +26,21 @@ func main() {
 	}
 	defer db.Close()
 
-	userRepo := repository.NewUserRepository(db)
-	authService := service.NewAuthService(userRepo, cfg)
+	userRepo := users.NewRepository(db)
 
-	healthHandler := handler.NewHealthHandler(db)
-	authHandler := handler.NewAuthHandler(authService)
+	authService := auth.NewService(userRepo, cfg)
+	adminService := admin.NewService(userRepo)
 
-	appRouter := router.NewRouter(healthHandler, authHandler, cfg.FrontendURL)
+	healthHandler := health.NewHandler(db)
+	authHandler := auth.NewHandler(authService)
+	adminHandler := admin.NewHandler(adminService, authService)
+
+	appRouter := router.NewRouter(
+		healthHandler,
+		authHandler,
+		adminHandler,
+		cfg.FrontendURL,
+	)
 
 	address := fmt.Sprintf("%s:%s", cfg.ServerHost, cfg.ServerPort)
 
