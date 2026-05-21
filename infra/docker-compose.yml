@@ -35,6 +35,25 @@ services:
       - umkm_network
     restart: "no"
 
+  auth-seed-admin:
+    build:
+      context: ../services/auth-service
+      dockerfile: Dockerfile
+    container_name: umkm_auth_seed_admin
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      ADMIN_ID: ${ADMIN_ID}
+      ADMIN_FULL_NAME: ${ADMIN_FULL_NAME}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+    command: ["/app/auth-seed-admin"]
+    depends_on:
+      auth-migrate:
+        condition: service_completed_successfully
+    networks:
+      - umkm_network
+    restart: "no"
+
   auth-service:
     build:
       context: ../services/auth-service
@@ -55,6 +74,8 @@ services:
       postgres:
         condition: service_healthy
       auth-migrate:
+        condition: service_completed_successfully
+      auth-seed-admin:
         condition: service_completed_successfully
     networks:
       - umkm_network
