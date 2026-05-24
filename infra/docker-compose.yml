@@ -1,0 +1,88 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: umkm_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - umkm_network
+
+  auth-migrate:
+    build:
+      context: ../services/auth-service
+      dockerfile: Dockerfile
+    container_name: umkm_auth_migrate
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      MIGRATIONS_DIR: /app/migrations
+    command: ["/app/auth-migrate", "up"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - umkm_network
+    restart: "no"
+
+  auth-seed-admin:
+    build:
+      context: ../services/auth-service
+      dockerfile: Dockerfile
+    container_name: umkm_auth_seed_admin
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      ADMIN_ID: ${ADMIN_ID}
+      ADMIN_FULL_NAME: ${ADMIN_FULL_NAME}
+      ADMIN_EMAIL: ${ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+    command: ["/app/auth-seed-admin"]
+    depends_on:
+      auth-migrate:
+        condition: service_completed_successfully
+    networks:
+      - umkm_network
+    restart: "no"
+
+  auth-service:
+    build:
+      context: ../services/auth-service
+      dockerfile: Dockerfile
+    container_name: umkm_auth_service
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV}
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: 8080
+      FRONTEND_URL: ${FRONTEND_URL}
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES}
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      auth-migrate:
+        condition: service_completed_successfully
+      auth-seed-admin:
+        condition: service_completed_successfully
+    networks:
+      - umkm_network
+
+volumes:
+  postgres_data:
+
+networks:
+  umkm_network:
+    driver: bridge

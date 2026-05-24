@@ -1,122 +1,72 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { Link, Navigate, Route, Routes, useNavigate } from "react-router-dom";
+import LoginPage from "./features/auth/pages/LoginPage";
+import RegisterPage from "./features/auth/pages/RegisterPage";
+import "./App.css";
 
-function App() {
-  const [count, setCount] = useState(0)
+function getCurrentUser() {
+  const rawUser = localStorage.getItem("current_user");
+  if (!rawUser) return null;
 
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+  try {
+    return JSON.parse(rawUser);
+  } catch {
+    return null;
+  }
 }
 
-export default App
+function HomePage() {
+  return (
+    <main className="home-page">
+      <section className="hero-card">
+        <h1>UMKM Tumbuh</h1>
+        <p>Platform pengembangan UMKM berbasis pelatihan, kemitraan, dan monitoring usaha.</p>
+
+        <div className="button-row">
+          <Link className="button" to="/login">Login</Link>
+          <Link className="button secondary" to="/register">Daftar</Link>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function DashboardPage({ title }: { title: string }) {
+  const navigate = useNavigate();
+  const user = getCurrentUser();
+
+  function logout() {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("current_user");
+    navigate("/login");
+  }
+
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return (
+    <main className="dashboard-page">
+      <section className="dashboard-card">
+        <h1>{title}</h1>
+        <p>Login sebagai: {user.full_name}</p>
+        <p>Role: {user.role}</p>
+        <p>Status: {user.status}</p>
+
+        <button onClick={logout}>Logout</button>
+      </section>
+    </main>
+  );
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<HomePage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+      <Route path="/admin" element={<DashboardPage title="Dashboard Admin" />} />
+      <Route path="/umkm" element={<DashboardPage title="Dashboard UMKM" />} />
+      <Route path="/mitra" element={<DashboardPage title="Dashboard Mitra" />} />
+    </Routes>
+  );
+}

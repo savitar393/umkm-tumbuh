@@ -1,36 +1,55 @@
+# =========================
 # Environment variables
+# =========================
 .env
 .env.*
 !.env.example
 
-# Node / React / Vite
-frontend/node_modules/
-frontend/dist/
-frontend/.vite/
+# Service-level env files
+services/*/.env
+services/*/.env.*
+!services/*/.env.example
+
 frontend/.env
 frontend/.env.*
 !frontend/.env.example
+
+# =========================
+# Node / React / Vite
+# =========================
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
 
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Go backend
-backend/tmp/
-backend/bin/
-backend/dist/
-backend/*.exe
-backend/*.test
-backend/*.out
-backend/coverage.out
+# =========================
+# Go services
+# =========================
+services/*/tmp/
+services/*/bin/
+services/*/dist/
+services/*/*.exe
+services/*/*.test
+services/*/*.out
+services/*/coverage.out
 
+# =========================
 # Go workspace files
+# =========================
 go.work
 go.work.sum
 
+# =========================
 # Docker / local volumes / data
+# =========================
 docker-compose.override.yml
+docker-compose.override.yaml
+infra/docker-compose.override.yml
+infra/docker-compose.override.yaml
 
 data/
 volumes/
@@ -38,27 +57,41 @@ postgres_data/
 garage_data/
 minio_data/
 
+infra/data/
+infra/volumes/
+infra/postgres_data/
+infra/garage_data/
+infra/minio_data/
+
 *.sql.gz
 *.dump
 *.backup
 
+# =========================
 # Logs
+# =========================
 logs/
 *.log
 
+# =========================
 # OS files
+# =========================
 .DS_Store
 Thumbs.db
 
+# =========================
 # Editor / IDE
+# =========================
 .vscode/
 .idea/
 
-# Keep shared VS Code recommendations
+# Keep shared VS Code recommendations if needed later
 !.vscode/extensions.json
 !.vscode/settings.json.example
 
+# =========================
 # Temporary files
+# =========================
 *.tmp
 *.temp
 *.swp
