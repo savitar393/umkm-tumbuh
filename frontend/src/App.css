@@ -250,3 +250,53 @@ a {
     font-size: 38px;
   }
 }
+
+.dashboard-card.wide {
+  max-width: 980px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 24px;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+}
+
+th,
+td {
+  padding: 12px;
+  border-bottom: 1px solid #e5eadf;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  font-size: 14px;
+  color: #465246;
+  background: #f6f7f4;
+}
+
+.table-actions {
+  display: flex;
+  gap: 8px;
+}
+
+button.danger {
+  background: #9c1c1c;
+}
+
+.dashboard-card {
+  display: grid;
+  gap: 12px;
+}
