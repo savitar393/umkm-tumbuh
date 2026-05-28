@@ -79,6 +79,45 @@ services:
         condition: service_completed_successfully
     networks:
       - umkm_network
+  
+  user-migrate:
+    build:
+      context: ../services/user-service
+      dockerfile: Dockerfile
+    container_name: umkm_user_migrate
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      MIGRATIONS_DIR: /app/migrations
+    command: ["/app/user-migrate", "up"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - umkm_network
+    restart: "no"
+
+  user-service:
+    build:
+      context: ../services/user-service
+      dockerfile: Dockerfile
+    container_name: umkm_user_service
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV}
+      USER_SERVICE_HOST: 0.0.0.0
+      USER_SERVICE_PORT: 8081
+      FRONTEND_URL: ${FRONTEND_URL}
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET}
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      user-migrate:
+        condition: service_completed_successfully
+    networks:
+      - umkm_network
 
 volumes:
   postgres_data:
