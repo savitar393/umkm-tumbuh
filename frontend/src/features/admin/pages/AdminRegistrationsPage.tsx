@@ -10,29 +10,56 @@ import {
 export default function AdminRegistrationsPage() {
   const [registrations, setRegistrations] = useState<User[]>([]);
   const [status, setStatus] = useState<RegistrationStatusFilter>("PENDING");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [actionLoadingID, setActionLoadingID] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
-  async function loadRegistrations(selectedStatus = status) {
+  useEffect(() => {
+    let ignore = false;
+
+    async function fetchRegistrations() {
+      try {
+        const data = await listRegistrations(status);
+
+        if (!ignore) {
+          setRegistrations(data);
+          setError("");
+        }
+      } catch (err) {
+        if (!ignore) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Gagal mengambil data pendaftaran"
+          );
+          setRegistrations([]);
+        }
+      } finally {
+        if (!ignore) {
+          setLoading(false);
+        }
+      }
+    }
+
+    fetchRegistrations();
+
+    return () => {
+      ignore = true;
+    };
+  }, [status]);
+
+  function handleStatusChange(nextStatus: RegistrationStatusFilter) {
+    setStatus(nextStatus);
     setLoading(true);
     setError("");
     setMessage("");
-
-    try {
-      const data = await listRegistrations(selectedStatus);
-      setRegistrations(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Gagal mengambil data pendaftaran");
-    } finally {
-      setLoading(false);
-    }
   }
 
-  useEffect(() => {
-    loadRegistrations(status);
-  }, [status]);
+  async function refreshRegistrations() {
+    const data = await listRegistrations(status);
+    setRegistrations(data);
+  }
 
   async function handleApprove(userID: string) {
     setActionLoadingID(userID);
@@ -42,7 +69,7 @@ export default function AdminRegistrationsPage() {
     try {
       await approveRegistration(userID);
       setMessage("Pendaftaran berhasil disetujui.");
-      await loadRegistrations(status);
+      await refreshRegistrations();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal menyetujui pendaftaran");
     } finally {
@@ -65,7 +92,7 @@ export default function AdminRegistrationsPage() {
     try {
       await rejectRegistration(userID, reason.trim());
       setMessage("Pendaftaran berhasil ditolak.");
-      await loadRegistrations(status);
+      await refreshRegistrations();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal menolak pendaftaran");
     } finally {
@@ -85,7 +112,7 @@ export default function AdminRegistrationsPage() {
           <select
             value={status}
             onChange={(event) =>
-              setStatus(event.target.value as RegistrationStatusFilter)
+              handleStatusChange(event.target.value as RegistrationStatusFilter)
             }
           >
             <option value="PENDING">Pending</option>
