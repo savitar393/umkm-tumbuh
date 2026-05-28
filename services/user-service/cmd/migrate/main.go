@@ -39,6 +39,13 @@ func main() {
 		log.Fatalf("failed to set dialect: %v", err)
 	}
 
+	migrationTable := os.Getenv("GOOSE_TABLE")
+	if migrationTable == "" {
+		migrationTable = "user_service_goose_db_version"
+	}
+
+	goose.SetTableName(migrationTable)
+
 	if err := goose.Run(command, db, migrationsDir); err != nil {
 		log.Fatalf("failed to run migrations: %v", err)
 	}

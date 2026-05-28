@@ -12,6 +12,7 @@ type Config struct {
 	ServerPort  string
 	FrontendURL string
 	DatabaseURL string
+	JWTSecret   string
 }
 
 func Load() Config {
@@ -23,6 +24,7 @@ func Load() Config {
 		ServerPort:  getEnv("USER_SERVICE_PORT", "8081"),
 		FrontendURL: getEnv("FRONTEND_URL", "http://localhost:5173"),
 		DatabaseURL: getEnv("DATABASE_URL", ""),
+		JWTSecret:   getEnv("JWT_SECRET", ""),
 	}
 }
 

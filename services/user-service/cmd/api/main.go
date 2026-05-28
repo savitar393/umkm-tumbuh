@@ -22,7 +22,7 @@ func main() {
 	}
 	defer db.Close()
 
-	handler := router.New(db, cfg.FrontendURL)
+	handler := router.New(db, cfg.FrontendURL, cfg.JWTSecret)
 
 	server := &http.Server{
 		Addr:         cfg.ServerHost + ":" + cfg.ServerPort,
