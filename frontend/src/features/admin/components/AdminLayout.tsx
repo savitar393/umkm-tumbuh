@@ -1,0 +1,75 @@
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import type { ReactNode } from "react";
+
+function getCurrentUser() {
+  const raw = localStorage.getItem("current_user");
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch { return null; }
+}
+
+const navItems = [
+  { label: "Beranda Nasional", to: "/admin" },
+  { label: "Pelatihan", to: "/admin/training" },
+  { label: "User Management", to: "/admin/users" },
+];
+
+export default function AdminLayout({ children }: { children: ReactNode }) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const user = getCurrentUser();
+
+  function logout() {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("current_user");
+    navigate("/login");
+  }
+
+  return (
+    <div className="admin-layout-v2">
+      {/* NAVBAR ATAS */}
+      <header className="admin-navbar">
+        {/* Kiri: Logo */}
+        <div className="navbar-left">
+          <img src="/tumbuh.png" alt="UMKM Tumbuh" className="navbar-logo" />
+        </div>
+
+        {/* Tengah: Menu navigasi */}
+        <nav className="navbar-menu">
+          {navItems.map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              className={`navbar-link ${location.pathname === item.to ? "active" : ""}`}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+
+        {/* Kanan: User info */}
+        <div className="navbar-right">
+          <span className="navbar-username">Halo, {user?.full_name ?? "Admin"}</span>
+          <div className="navbar-avatar" onClick={logout} title="Logout">
+            {user?.full_name?.[0]?.toUpperCase() ?? "A"}
+          </div>
+        </div>
+      </header>
+
+      {/* KONTEN UTAMA */}
+      <main className="admin-body">
+        {/* Sub-header biru */}
+        <div className="admin-subheader">
+          <div>
+            <div className="subheader-title">Dashboard Strategi Nasional</div>
+            <div className="subheader-sub">Monitoring dan analisis data UMKM di seluruh Indonesia</div>
+          </div>
+        </div>
+
+        {/* Konten halaman */}
+        <div className="admin-content-v2">
+          {children}
+        </div>
+      </main>
+    </div>
+  );
+}
