@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import LoginPage from "./features/auth/pages/LoginPage";
 import RegisterPage from "./features/auth/pages/RegisterPage";
 import AdminRegistrationsPage from "./features/admin/pages/AdminRegistrationsPage";
+import AdminDashboardPage from "./features/admin/pages/AdminDashboardPage";
 import "./App.css";
 
 type CurrentUser = {
@@ -16,7 +17,6 @@ type CurrentUser = {
 function getCurrentUser(): CurrentUser | null {
   const rawUser = localStorage.getItem("current_user");
   if (!rawUser) return null;
-
   try {
     return JSON.parse(rawUser) as CurrentUser;
   } catch {
@@ -28,19 +28,10 @@ function HomePage() {
   return (
     <main className="home-page">
       <section className="hero-card">
-        <h1>UMKM Tumbuh</h1>
-        <p>
-          Platform pengembangan UMKM berbasis pelatihan, kemitraan, dan
-          monitoring usaha.
-        </p>
-
+        <p>Platform pengembangan UMKM berbasis pelatihan, kemitraan, dan monitoring usaha.</p>
         <div className="button-row">
-          <Link className="button" to="/login">
-            Login
-          </Link>
-          <Link className="button secondary" to="/register">
-            Daftar
-          </Link>
+          <Link className="button" to="/login">Login</Link>
+          <Link className="button secondary" to="/register">Daftar</Link>
         </div>
       </section>
     </main>
@@ -80,9 +71,7 @@ function DashboardPage({ title }: { title: string }) {
     navigate("/login");
   }
 
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
+  if (!user) return <Navigate to="/login" replace />;
 
   return (
     <main className="dashboard-page">
@@ -91,13 +80,6 @@ function DashboardPage({ title }: { title: string }) {
         <p>Login sebagai: {user.full_name}</p>
         <p>Role: {user.role}</p>
         <p>Status: {user.status}</p>
-
-        {user.role === "ADMIN" && (
-          <Link className="button" to="/admin/registrations">
-            Review Pendaftaran
-          </Link>
-        )}
-
         <button onClick={logout}>Logout</button>
       </section>
     </main>
@@ -115,7 +97,7 @@ export default function App() {
         path="/admin"
         element={
           <RequireAuth allowedRole="ADMIN">
-            <DashboardPage title="Dashboard Admin" />
+            <AdminDashboardPage />
           </RequireAuth>
         }
       />
