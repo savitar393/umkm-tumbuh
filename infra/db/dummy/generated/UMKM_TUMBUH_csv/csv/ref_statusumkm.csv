@@ -1,0 +1,7 @@
+status_umkm_id,nama_status_umkm
+AKTIF,Aktif
+MENUNGGU_VERIFIKASI,Menunggu Verifikasi
+DITOLAK,Ditolak
+NONAKTIF,Nonaktif
+SUSPEND,Suspend
+ARSIP,Arsip

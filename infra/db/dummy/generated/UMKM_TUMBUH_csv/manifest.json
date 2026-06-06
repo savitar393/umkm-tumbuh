@@ -1,0 +1,238 @@
+{
+  "schema": "SOURCE_POSTGRE_Mandat.sql",
+  "generator_version": "2.2",
+  "seed": 20260602,
+  "generated_at": "2026-06-06 23:09:24",
+  "transaction_rows_per_transaction_table": 25000,
+  "master_rows": {
+    "admin": 250,
+    "umkm": 5000,
+    "mitra": 1000,
+    "lokasi": 6500,
+    "pelatihan": 420,
+    "produkumkm": 19941,
+    "modulpelatihan": 2524,
+    "assignmentpelatihan": 828
+  },
+  "business_rules": [
+    "master_programpelatihan.harga is always 0",
+    "assignments are file-upload/project/report/presentation based only",
+    "status and date fields are lifecycle-aware",
+    "UMKM category influences products, prices, documents, training choices, partnerships, and monitoring trends",
+    "v2.1 adds wider variation in locations, streets, email patterns, phone/NIK/NIB generation, business descriptions, documents, and training text",
+    "v2.2 generates varied per-account plaintext passwords and password_hash values; staging plaintext credentials are written to metadata/generated_credentials.csv unless disabled"
+  ],
+  "password_generation": {
+    "password_mode": "random",
+    "password_hash_algo": "sha256",
+    "credentials_file": "metadata/generated_credentials.csv",
+    "bcrypt_note": "Use --password-hash-algo bcrypt only if your app expects bcrypt and the Python bcrypt package is installed."
+  },
+  "tables": [
+    {
+      "table": "ref_peranpengguna",
+      "rows": 3,
+      "file": "csv/ref_peranpengguna.csv"
+    },
+    {
+      "table": "ref_jenisumkm",
+      "rows": 12,
+      "file": "csv/ref_jenisumkm.csv"
+    },
+    {
+      "table": "ref_skalausaha",
+      "rows": 3,
+      "file": "csv/ref_skalausaha.csv"
+    },
+    {
+      "table": "ref_kategoriusaha",
+      "rows": 12,
+      "file": "csv/ref_kategoriusaha.csv"
+    },
+    {
+      "table": "ref_kategoriproduk",
+      "rows": 16,
+      "file": "csv/ref_kategoriproduk.csv"
+    },
+    {
+      "table": "ref_statusumkm",
+      "rows": 6,
+      "file": "csv/ref_statusumkm.csv"
+    },
+    {
+      "table": "ref_jenismitra",
+      "rows": 12,
+      "file": "csv/ref_jenismitra.csv"
+    },
+    {
+      "table": "ref_statusmitra",
+      "rows": 6,
+      "file": "csv/ref_statusmitra.csv"
+    },
+    {
+      "table": "ref_bidangkemitraan",
+      "rows": 12,
+      "file": "csv/ref_bidangkemitraan.csv"
+    },
+    {
+      "table": "ref_bentukdukungan",
+      "rows": 12,
+      "file": "csv/ref_bentukdukungan.csv"
+    },
+    {
+      "table": "ref_skalakerjasama",
+      "rows": 5,
+      "file": "csv/ref_skalakerjasama.csv"
+    },
+    {
+      "table": "ref_jenispelatihan",
+      "rows": 12,
+      "file": "csv/ref_jenispelatihan.csv"
+    },
+    {
+      "table": "ref_statuspelatihan",
+      "rows": 5,
+      "file": "csv/ref_statuspelatihan.csv"
+    },
+    {
+      "table": "ref_statuspendaftaranpelatihan",
+      "rows": 6,
+      "file": "csv/ref_statuspendaftaranpelatihan.csv"
+    },
+    {
+      "table": "ref_statussubmission",
+      "rows": 6,
+      "file": "csv/ref_statussubmission.csv"
+    },
+    {
+      "table": "ref_statussertifikat",
+      "rows": 5,
+      "file": "csv/ref_statussertifikat.csv"
+    },
+    {
+      "table": "ref_statuspengajuan",
+      "rows": 7,
+      "file": "csv/ref_statuspengajuan.csv"
+    },
+    {
+      "table": "ref_statusperkembangan",
+      "rows": 8,
+      "file": "csv/ref_statusperkembangan.csv"
+    },
+    {
+      "table": "ref_statusverifikasi",
+      "rows": 6,
+      "file": "csv/ref_statusverifikasi.csv"
+    },
+    {
+      "table": "ref_statusdokumen",
+      "rows": 6,
+      "file": "csv/ref_statusdokumen.csv"
+    },
+    {
+      "table": "ref_jenisdokumen",
+      "rows": 12,
+      "file": "csv/ref_jenisdokumen.csv"
+    },
+    {
+      "table": "ref_dimwaktu",
+      "rows": 1096,
+      "file": "csv/ref_dimwaktu.csv"
+    },
+    {
+      "table": "master_akunpengguna",
+      "rows": 6250,
+      "file": "csv/master_akunpengguna.csv"
+    },
+    {
+      "table": "master_lokasi",
+      "rows": 6500,
+      "file": "csv/master_lokasi.csv"
+    },
+    {
+      "table": "master_pelakuumkm",
+      "rows": 5000,
+      "file": "csv/master_pelakuumkm.csv"
+    },
+    {
+      "table": "master_umkm",
+      "rows": 5000,
+      "file": "csv/master_umkm.csv"
+    },
+    {
+      "table": "master_produkumkm",
+      "rows": 19941,
+      "file": "csv/master_produkumkm.csv"
+    },
+    {
+      "table": "master_mitra",
+      "rows": 1000,
+      "file": "csv/master_mitra.csv"
+    },
+    {
+      "table": "master_mitrabidangkemitraan",
+      "rows": 2848,
+      "file": "csv/master_mitrabidangkemitraan.csv"
+    },
+    {
+      "table": "master_mitrabentukdukungan",
+      "rows": 2989,
+      "file": "csv/master_mitrabentukdukungan.csv"
+    },
+    {
+      "table": "master_programpelatihan",
+      "rows": 420,
+      "file": "csv/master_programpelatihan.csv"
+    },
+    {
+      "table": "master_modulpelatihan",
+      "rows": 2524,
+      "file": "csv/master_modulpelatihan.csv"
+    },
+    {
+      "table": "master_assignmentpelatihan",
+      "rows": 828,
+      "file": "csv/master_assignmentpelatihan.csv"
+    },
+    {
+      "table": "master_admin",
+      "rows": 250,
+      "file": "csv/master_admin.csv"
+    },
+    {
+      "table": "transaksi_dokumenterunggah",
+      "rows": 25000,
+      "file": "csv/transaksi_dokumenterunggah.csv"
+    },
+    {
+      "table": "transaksi_registrasipengguna",
+      "rows": 25000,
+      "file": "csv/transaksi_registrasipengguna.csv"
+    },
+    {
+      "table": "transaksi_pendaftaranpelatihan",
+      "rows": 25000,
+      "file": "csv/transaksi_pendaftaranpelatihan.csv"
+    },
+    {
+      "table": "transaksi_submissionassignment",
+      "rows": 25000,
+      "file": "csv/transaksi_submissionassignment.csv"
+    },
+    {
+      "table": "transaksi_sertifikatpelatihan",
+      "rows": 25000,
+      "file": "csv/transaksi_sertifikatpelatihan.csv"
+    },
+    {
+      "table": "transaksi_pengajuankerjasama",
+      "rows": 25000,
+      "file": "csv/transaksi_pengajuankerjasama.csv"
+    },
+    {
+      "table": "transaksi_monitoringperkembangan",
+      "rows": 25000,
+      "file": "csv/transaksi_monitoringperkembangan.csv"
+    }
+  ]
+}

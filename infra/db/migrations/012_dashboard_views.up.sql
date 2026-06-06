@@ -64,21 +64,26 @@ monitoring_total AS (
     FROM dashboard.transaksi_monitoringperkembangan
 )
 SELECT
-    COUNT(DISTINCT u.umkm_id) AS total_umkm,
-    COUNT(DISTINCT u.umkm_id) FILTER (WHERE u.status_umkm_id = 'AKTIF') AS total_umkm_aktif,
-    COUNT(DISTINCT u.umkm_id) FILTER (WHERE lm.status_perkembangan_id IN ('NAIK', 'EKSPANSI')) AS total_umkm_berkembang,
-    COUNT(DISTINCT u.umkm_id) FILTER (WHERE u.status_umkm_id IN ('NONAKTIF', 'SUSPEND', 'ARSIP')) AS total_umkm_tidak_aktif,
+    (SELECT COUNT(*) FROM user_mgmt.master_umkm u WHERE u.is_deleted = FALSE) AS total_umkm,
+    (SELECT COUNT(*) FROM user_mgmt.master_umkm u WHERE u.is_deleted = FALSE AND u.status_umkm_id = 'AKTIF') AS total_umkm_aktif,
+    (
+        SELECT COUNT(*)
+        FROM user_mgmt.master_umkm u
+        JOIN latest_monitoring lm ON lm.umkm_id = u.umkm_id
+        WHERE u.is_deleted = FALSE
+          AND lm.status_perkembangan_id IN ('NAIK', 'EKSPANSI')
+    ) AS total_umkm_berkembang,
+    (
+        SELECT COUNT(*)
+        FROM user_mgmt.master_umkm u
+        WHERE u.is_deleted = FALSE
+          AND u.status_umkm_id IN ('NONAKTIF', 'SUSPEND', 'ARSIP')
+    ) AS total_umkm_tidak_aktif,
     (SELECT total_laba FROM monitoring_total) AS total_laba,
-    COUNT(DISTINCT mt.mitra_id) AS total_mitra,
-    COUNT(DISTINCT p.pelatihan_id) AS total_program_pelatihan,
-    COUNT(DISTINCT k.pengajuan_id) AS total_pengajuan_kemitraan,
-    now() AS generated_at
-FROM user_mgmt.master_umkm u
-LEFT JOIN latest_monitoring lm ON lm.umkm_id = u.umkm_id
-LEFT JOIN user_mgmt.master_mitra mt ON TRUE
-LEFT JOIN training.master_programpelatihan p ON TRUE
-LEFT JOIN partnership.transaksi_pengajuankerjasama k ON TRUE
-WHERE u.is_deleted = FALSE;
+    (SELECT COUNT(*) FROM user_mgmt.master_mitra mt WHERE mt.is_deleted = FALSE) AS total_mitra,
+    (SELECT COUNT(*) FROM training.master_programpelatihan p WHERE p.is_deleted = FALSE) AS total_program_pelatihan,
+    (SELECT COUNT(*) FROM partnership.transaksi_pengajuankerjasama k) AS total_pengajuan_kemitraan,
+    now() AS generated_at;
 
 CREATE OR REPLACE VIEW dashboard.vw_dashboard_nasional_map_data AS
 SELECT

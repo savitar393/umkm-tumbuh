@@ -25,9 +25,8 @@ services:
       dockerfile: migrator/Dockerfile
     container_name: umkm_db_migrate
     environment:
-      GOOSE_DRIVER: postgres
-      GOOSE_DBSTRING: postgres://${POSTGRES_USER:-umkm_user}:${POSTGRES_PASSWORD:-umkm_password}@postgres:5432/${POSTGRES_DB:-umkm_tumbuh}?sslmode=disable
-    command: ["postgres", "postgres://${POSTGRES_USER:-umkm_user}:${POSTGRES_PASSWORD:-umkm_password}@postgres:5432/${POSTGRES_DB:-umkm_tumbuh}?sslmode=disable", "/app/migrations", "up"]
+      DATABASE_URL: postgres://${POSTGRES_USER:-umkm_user}:${POSTGRES_PASSWORD:-umkm_password}@postgres:5432/${POSTGRES_DB:-umkm_tumbuh}?sslmode=disable
+      MIGRATIONS_DIR: /app/migrations
     depends_on:
       postgres:
         condition: service_healthy

@@ -1,0 +1,7 @@
+status_mitra_id,nama_status_mitra
+AKTIF,Aktif
+MENUNGGU_VERIFIKASI,Menunggu Verifikasi
+DITOLAK,Ditolak
+NONAKTIF,Nonaktif
+SUSPEND,Suspend
+ARSIP,Arsip
