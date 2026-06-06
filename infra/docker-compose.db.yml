@@ -1,0 +1,43 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: umkm_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-umkm_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-umkm_password}
+      POSTGRES_DB: ${POSTGRES_DB:-umkm_tumbuh}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - umkm_network
+
+  db-migrate:
+    build:
+      context: ./db
+      dockerfile: migrator/Dockerfile
+    container_name: umkm_db_migrate
+    environment:
+      GOOSE_DRIVER: postgres
+      GOOSE_DBSTRING: postgres://${POSTGRES_USER:-umkm_user}:${POSTGRES_PASSWORD:-umkm_password}@postgres:5432/${POSTGRES_DB:-umkm_tumbuh}?sslmode=disable
+    command: ["postgres", "postgres://${POSTGRES_USER:-umkm_user}:${POSTGRES_PASSWORD:-umkm_password}@postgres:5432/${POSTGRES_DB:-umkm_tumbuh}?sslmode=disable", "/app/migrations", "up"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - umkm_network
+    restart: "no"
+
+volumes:
+  postgres_data:
+
+networks:
+  umkm_network:
+    driver: bridge
