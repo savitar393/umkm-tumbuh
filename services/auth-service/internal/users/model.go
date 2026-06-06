@@ -7,9 +7,9 @@ const (
 	RoleMitra = "MITRA"
 	RoleAdmin = "ADMIN"
 
-	StatusPending  = "PENDING"
-	StatusApproved = "APPROVED"
-	StatusRejected = "REJECTED"
+	StatusPending  = "MENUNGGU"
+	StatusApproved = "DISETUJUI"
+	StatusRejected = "DITOLAK"
 )
 
 type User struct {

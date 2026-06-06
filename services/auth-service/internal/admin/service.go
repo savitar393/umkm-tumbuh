@@ -23,17 +23,12 @@ func NewService(userRepo *users.Repository) *Service {
 }
 
 func (s *Service) ListRegistrations(ctx context.Context, statusFilter string) ([]users.Response, error) {
-	statusFilter = strings.ToUpper(strings.TrimSpace(statusFilter))
+	statusFilter = normalizeRegistrationStatusFilter(statusFilter)
 
-	if statusFilter == "" {
-		statusFilter = users.StatusPending
-	}
-
-	if statusFilter == "ALL" {
-		statusFilter = ""
-	}
-
-	if statusFilter != "" && statusFilter != users.StatusPending && statusFilter != users.StatusApproved && statusFilter != users.StatusRejected {
+	if statusFilter != "" &&
+		statusFilter != users.StatusPending &&
+		statusFilter != users.StatusApproved &&
+		statusFilter != users.StatusRejected {
 		return nil, apperror.New(http.StatusBadRequest, "Status filter tidak valid.")
 	}
 
@@ -94,4 +89,21 @@ func (s *Service) RejectRegistration(
 	response := users.ToResponse(user)
 
 	return &response, nil
+}
+
+func normalizeRegistrationStatusFilter(status string) string {
+	status = strings.ToUpper(strings.TrimSpace(status))
+
+	switch status {
+	case "", "PENDING":
+		return users.StatusPending
+	case "ALL":
+		return ""
+	case "APPROVED":
+		return users.StatusApproved
+	case "REJECTED":
+		return users.StatusRejected
+	default:
+		return status
+	}
 }

@@ -4,7 +4,6 @@
 
 \set ON_ERROR_STOP on
 
-\copy ref.ref_peranpengguna(peran_id, nama_peran) FROM 'csv/ref_peranpengguna.csv' WITH (FORMAT csv, HEADER true, NULL '');
 \copy ref.ref_jenisumkm(jenis_umkm_id, nama_jenis_umkm) FROM 'csv/ref_jenisumkm.csv' WITH (FORMAT csv, HEADER true, NULL '');
 \copy ref.ref_skalausaha(skala_usaha_id, nama_skala_usaha) FROM 'csv/ref_skalausaha.csv' WITH (FORMAT csv, HEADER true, NULL '');
 \copy ref.ref_kategoriusaha(kategori_usaha_id, nama_kategori_usaha) FROM 'csv/ref_kategoriusaha.csv' WITH (FORMAT csv, HEADER true, NULL '');
@@ -22,7 +21,6 @@
 \copy ref.ref_statussertifikat(status_sertifikat_id, nama_status_sertifikat) FROM 'csv/ref_statussertifikat.csv' WITH (FORMAT csv, HEADER true, NULL '');
 \copy ref.ref_statuspengajuan(status_pengajuan_id, nama_status_pengajuan) FROM 'csv/ref_statuspengajuan.csv' WITH (FORMAT csv, HEADER true, NULL '');
 \copy ref.ref_statusperkembangan(status_perkembangan_id, nama_status_perkembangan) FROM 'csv/ref_statusperkembangan.csv' WITH (FORMAT csv, HEADER true, NULL '');
-\copy ref.ref_statusverifikasi(status_verifikasi_id, nama_status_verifikasi) FROM 'csv/ref_statusverifikasi.csv' WITH (FORMAT csv, HEADER true, NULL '');
 \copy ref.ref_statusdokumen(status_dokumen_id, nama_status_dokumen) FROM 'csv/ref_statusdokumen.csv' WITH (FORMAT csv, HEADER true, NULL '');
 \copy ref.ref_jenisdokumen(jenis_dokumen_id, nama_jenis_dokumen, deskripsi, allowed_extensions, max_size_mb, wajib_umkm, wajib_mitra, wajib_pengajuan_kemitraan) FROM 'csv/ref_jenisdokumen.csv' WITH (FORMAT csv, HEADER true, NULL '');
 \copy ref.ref_dimwaktu(tanggal, hari, minggu_ke, minggu_bulan, tanggal_awal_minggu, tanggal_akhir_minggu, bulan, nama_bulan, kuartal, tahun, is_weekend) FROM 'csv/ref_dimwaktu.csv' WITH (FORMAT csv, HEADER true, NULL '');

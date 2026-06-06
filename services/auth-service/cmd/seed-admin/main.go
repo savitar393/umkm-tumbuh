@@ -28,7 +28,7 @@ func main() {
 
 	userRepo := users.NewRepository(db)
 
-	adminID := getEnv("ADMIN_ID", "00000000-0000-0000-0000-000000000001")
+	adminID := getEnv("ADMIN_ID", "AKUNADMIN001")
 	adminFullName := getEnv("ADMIN_FULL_NAME", "Admin Pemerintah")
 	adminEmail := strings.ToLower(strings.TrimSpace(getEnv("ADMIN_EMAIL", "admin@example.com")))
 	adminPassword := getEnv("ADMIN_PASSWORD", "admin12345")
