@@ -1,11 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import type { ReactNode } from "react";
-
-function getCurrentUser() {
-  const raw = localStorage.getItem("current_user");
-  if (!raw) return null;
-  try { return JSON.parse(raw); } catch { return null; }
-}
+import { getCurrentUser, clearAuthStorage } from "../../../shared/auth/currentUser";
 
 const navItems = [
   { label: "Beranda Nasional", to: "/admin" },
@@ -19,8 +14,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const user = getCurrentUser();
 
   function logout() {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("current_user");
+    clearAuthStorage();
     navigate("/login");
   }
 
