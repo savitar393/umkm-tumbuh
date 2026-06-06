@@ -64,6 +64,50 @@ jobs:
       - name: Build auth-service
         run: go build ./...
 
+  user-service:
+    name: User Service / Go
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: services/user-service
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: services/user-service/go.mod
+          cache-dependency-path: services/user-service/go.sum
+
+      - name: Download Go dependencies
+        run: go mod download
+
+      - name: Check Go formatting
+        run: |
+          UNFORMATTED="$(gofmt -l .)"
+          if [ -n "$UNFORMATTED" ]; then
+            echo "These files are not gofmt-formatted:"
+            echo "$UNFORMATTED"
+            exit 1
+          fi
+
+      - name: Check go.mod and go.sum are tidy
+        run: |
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Run Go tests
+        run: go test ./...
+
+      - name: Build user-service
+        run: go build ./...
+
   frontend:
     name: Frontend / React Vite
     runs-on: ubuntu-latest
