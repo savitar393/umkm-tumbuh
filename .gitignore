@@ -96,3 +96,10 @@ Thumbs.db
 *.temp
 *.swp
 *.swo
+
+# =========================
+# Dummy data/credentials
+# =========================
+infra/db/dummy/generated/
+infra/db/dummy/metadata/
+infra/db/dummy/*.csv
