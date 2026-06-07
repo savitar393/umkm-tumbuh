@@ -24,7 +24,7 @@ const routes: RouteObject[] = [
 
   {
     path: "/umkm",
-    element: <RequireAuth allowedRole="UMKM" />,
+    // element: <RequireAuth allowedRole="UMKM" />, //
     children: [
       ...umkmDashboardRoutes,
       ...userRoutes,
