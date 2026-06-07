@@ -1033,13 +1033,10 @@ button.danger {
 }
 
 .umkm-profile-actions {
-  position: sticky;
-  bottom: 0;
   display: flex;
   justify-content: flex-end;
   gap: 16px;
   padding: 22px 0 0;
-  background: linear-gradient(to top, #f6f7fb 80%, transparent);
 }
 
 .umkm-secondary-btn {
