@@ -187,10 +187,13 @@ func (r *Repository) UpdateRegistrationStatus(
 	query := `
 		UPDATE user_mgmt.transaksi_registrasipengguna
 		SET
-			status_verifikasi_id = $2,
+			status_verifikasi_id = $2::varchar(30),
 			tanggal_review = NOW(),
-			tanggal_aktivasi = CASE WHEN $2 = 'APPROVED' THEN NOW() ELSE tanggal_aktivasi END,
-			catatan_validasi = $3
+			tanggal_aktivasi = CASE
+				WHEN $2::varchar(30) = 'DISETUJUI'::varchar(30) THEN NOW()
+				ELSE tanggal_aktivasi
+			END,
+			catatan_validasi = $3::text
 		WHERE akun_id = $1
 		RETURNING akun_id
 	`
