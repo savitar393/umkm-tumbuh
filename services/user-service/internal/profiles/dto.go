@@ -5,6 +5,7 @@ type UpsertProfileRequest struct {
 	BusinessCategory    string `json:"business_category"`
 	BusinessDescription string `json:"business_description"`
 	OwnerName           string `json:"owner_name"`
+	NIK                 string `json:"nik"`
 
 	OrganizationName string `json:"organization_name"`
 	OrganizationType string `json:"organization_type"`
@@ -15,4 +16,7 @@ type UpsertProfileRequest struct {
 	Address     string `json:"address"`
 	City        string `json:"city"`
 	Province    string `json:"province"`
+	District    string `json:"district"`
+	Village     string `json:"village"`
+	PostalCode  string `json:"postal_code"`
 }
