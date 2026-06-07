@@ -1,6 +1,8 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { Building2, CheckCircle2, FileText, ImagePlus, MapPin, Store } from "lucide-react";
 import { getCurrentUser } from "../../../shared/auth/currentUser";
+import UmkmLayout from "../../umkm/components/UmkmLayout";
 import {
   getMyProfile,
   updateMyProfile,
@@ -22,6 +24,23 @@ const emptyForm: UmkmProfilePayload = {
   village: "",
   postal_code: "",
 };
+
+function mapProfileToForm(profile: UmkmProfile): UmkmProfilePayload {
+  return {
+    business_name: profile.business_name ?? "",
+    business_category: profile.business_category ?? "",
+    business_description: profile.business_description ?? "",
+    owner_name: profile.owner_name ?? "",
+    nik: profile.nik ?? "",
+    phone_number: profile.phone_number ?? "",
+    address: profile.address ?? "",
+    city: profile.city ?? "",
+    province: profile.province ?? "",
+    district: profile.district ?? "",
+    village: profile.village ?? "",
+    postal_code: profile.postal_code ?? "",
+  };
+}
 
 export default function ProfilePage() {
   const user = getCurrentUser();
@@ -46,20 +65,7 @@ export default function ProfilePage() {
         if (ignore) return;
 
         setProfile(response.profile);
-        setForm({
-          business_name: response.profile.business_name ?? "",
-          business_category: response.profile.business_category ?? "",
-          business_description: response.profile.business_description ?? "",
-          owner_name: response.profile.owner_name ?? "",
-          nik: response.profile.nik ?? "",
-          phone_number: response.profile.phone_number ?? "",
-          address: response.profile.address ?? "",
-          city: response.profile.city ?? "",
-          province: response.profile.province ?? "",
-          district: response.profile.district ?? "",
-          village: response.profile.village ?? "",
-          postal_code: response.profile.postal_code ?? "",
-        });
+        setForm(mapProfileToForm(response.profile));
       } catch (err) {
         if (ignore) return;
 
@@ -94,6 +100,22 @@ export default function ProfilePage() {
     }));
   }
 
+  function resetForm() {
+    if (profile) {
+      setForm(mapProfileToForm(profile));
+      setMessage("Perubahan dibatalkan.");
+      setError("");
+      return;
+    }
+
+    setForm({
+      ...emptyForm,
+      owner_name: user?.full_name ?? "",
+    });
+    setMessage("Form dikosongkan kembali.");
+    setError("");
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -104,7 +126,8 @@ export default function ProfilePage() {
     try {
       const response = await updateMyProfile(form);
       setProfile(response.profile);
-      setMessage("Profil UMKM berhasil disimpan.");
+      setForm(mapProfileToForm(response.profile));
+      setMessage("Data berhasil diperbarui");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Gagal menyimpan profil.";
       setError(msg);
@@ -138,136 +161,258 @@ export default function ProfilePage() {
   }
 
   return (
-    <main className="dashboard-page">
-      <section className="dashboard-card">
-        <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem" }}>
-          <div>
-            <h1>Profil UMKM</h1>
-            <p>Login sebagai: {user.full_name}</p>
-          </div>
-          <Link to="/umkm">Kembali ke Dashboard</Link>
+    <UmkmLayout>
+      <form className="umkm-profile-page" onSubmit={handleSubmit}>
+        <div className="umkm-profile-header">
+          {message ? (
+            <div className="umkm-save-message">
+              <CheckCircle2 size={18} />
+              <span>{message}</span>
+            </div>
+          ) : null}
+
+          {error ? <div className="error-message">{error}</div> : null}
+
+          <h1>Kelola Informasi UMKM</h1>
+          <p>Perbarui profil bisnis Anda untuk meningkatkan kepercayaan pelanggan dan mitra.</p>
         </div>
 
-        {loading ? <p>Memuat profil...</p> : null}
-        {message ? <p>{message}</p> : null}
-        {error ? <p style={{ color: "crimson" }}>{error}</p> : null}
+        {loading ? (
+          <section className="umkm-form-section">
+            <p>Memuat profil...</p>
+          </section>
+        ) : (
+          <>
+            <section className="umkm-form-section">
+              <h2>
+                <span className="umkm-section-icon">
+                  <Store size={18} />
+                </span>
+                Informasi Dasar
+              </h2>
 
-        {!loading ? (
-          <form onSubmit={handleSubmit} style={{ display: "grid", gap: "0.75rem" }}>
-            <label>
-              Nama Usaha
-              <input
-                value={form.business_name}
-                onChange={(e) => updateField("business_name", e.target.value)}
-                required
-              />
-            </label>
+              <div className="umkm-form-grid">
+                <label>
+                  Nama UMKM
+                  <input
+                    value={form.business_name}
+                    onChange={(e) => updateField("business_name", e.target.value)}
+                    required
+                  />
+                </label>
 
-            <label>
-              Kategori Usaha
-              <input
-                value={form.business_category}
-                onChange={(e) => updateField("business_category", e.target.value)}
-                required
-              />
-            </label>
+                <label>
+                  Nama Pemilik
+                  <input
+                    value={form.owner_name}
+                    onChange={(e) => updateField("owner_name", e.target.value)}
+                    required
+                  />
+                </label>
 
-            <label>
-              Deskripsi Usaha
-              <textarea
-                value={form.business_description}
-                onChange={(e) => updateField("business_description", e.target.value)}
-                rows={3}
-              />
-            </label>
+                <label>
+                  Kategori Usaha
+                  <select
+                    value={form.business_category}
+                    onChange={(e) => updateField("business_category", e.target.value)}
+                    required
+                  >
+                    <option value="">Pilih kategori</option>
+                    <option value="Makanan">Makanan</option>
+                    <option value="Minuman">Minuman</option>
+                    <option value="Kuliner">Kuliner</option>
+                    <option value="Fashion">Fashion</option>
+                    <option value="Kerajinan">Kerajinan</option>
+                    <option value="Jasa">Jasa</option>
+                    <option value="Teknologi">Teknologi</option>
+                    <option value="Lainnya">Lainnya</option>
+                  </select>
+                </label>
 
-            <label>
-              Nama Pemilik
-              <input
-                value={form.owner_name}
-                onChange={(e) => updateField("owner_name", e.target.value)}
-                required
-              />
-            </label>
+                <label>
+                  Tahun Berdiri
+                  <input value="Belum tersedia di API" disabled />
+                </label>
 
-            <label>
-              NIK
-              <input
-                value={form.nik}
-                onChange={(e) => updateField("nik", e.target.value)}
-                required
-                minLength={16}
-                maxLength={16}
-              />
-            </label>
+                <label className="umkm-field-full">
+                  Deskripsi Usaha
+                  <textarea
+                    value={form.business_description}
+                    onChange={(e) => updateField("business_description", e.target.value)}
+                    rows={4}
+                  />
+                </label>
 
-            <label>
-              Nomor Telepon
-              <input
-                value={form.phone_number}
-                onChange={(e) => updateField("phone_number", e.target.value)}
-                required
-              />
-            </label>
+                <label>
+                  NIK Pemilik
+                  <input
+                    value={form.nik}
+                    onChange={(e) => updateField("nik", e.target.value)}
+                    required
+                    minLength={16}
+                    maxLength={16}
+                    inputMode="numeric"
+                  />
+                </label>
 
-            <label>
-              Alamat
-              <textarea
-                value={form.address}
-                onChange={(e) => updateField("address", e.target.value)}
-                required
-                rows={2}
-              />
-            </label>
+                <label>
+                  Status Profil
+                  <input value={profile?.status ?? "Belum dibuat"} disabled />
+                </label>
+              </div>
+            </section>
 
-            <label>
-              Kota
-              <input
-                value={form.city}
-                onChange={(e) => updateField("city", e.target.value)}
-                required
-              />
-            </label>
+            <section className="umkm-form-section">
+              <h2>
+                <span className="umkm-section-icon">
+                  <MapPin size={18} />
+                </span>
+                Kontak & Lokasi
+              </h2>
 
-            <label>
-              Provinsi
-              <input
-                value={form.province}
-                onChange={(e) => updateField("province", e.target.value)}
-                required
-              />
-            </label>
+              <div className="umkm-form-grid">
+                <label>
+                  Nomor WhatsApp
+                  <input
+                    value={form.phone_number}
+                    onChange={(e) => updateField("phone_number", e.target.value)}
+                    required
+                  />
+                </label>
 
-            <label>
-              Kecamatan
-              <input
-                value={form.district}
-                onChange={(e) => updateField("district", e.target.value)}
-              />
-            </label>
+                <label>
+                  Email Bisnis
+                  <input value="Belum tersedia di API" disabled />
+                </label>
 
-            <label>
-              Kelurahan/Desa
-              <input
-                value={form.village}
-                onChange={(e) => updateField("village", e.target.value)}
-              />
-            </label>
+                <label className="umkm-field-full">
+                  Alamat Lengkap
+                  <textarea
+                    value={form.address}
+                    onChange={(e) => updateField("address", e.target.value)}
+                    required
+                    rows={3}
+                  />
+                </label>
 
-            <label>
-              Kode Pos
-              <input
-                value={form.postal_code}
-                onChange={(e) => updateField("postal_code", e.target.value)}
-              />
-            </label>
+                <label>
+                  Kota
+                  <input
+                    value={form.city}
+                    onChange={(e) => updateField("city", e.target.value)}
+                    required
+                  />
+                </label>
 
-            <button type="submit" disabled={saving}>
-              {saving ? "Menyimpan..." : profile ? "Simpan Perubahan" : "Buat Profil"}
-            </button>
-          </form>
-        ) : null}
-      </section>
-    </main>
+                <label>
+                  Provinsi
+                  <input
+                    value={form.province}
+                    onChange={(e) => updateField("province", e.target.value)}
+                    required
+                  />
+                </label>
+
+                <label>
+                  Kecamatan
+                  <input
+                    value={form.district}
+                    onChange={(e) => updateField("district", e.target.value)}
+                  />
+                </label>
+
+                <label>
+                  Kelurahan/Desa
+                  <input
+                    value={form.village}
+                    onChange={(e) => updateField("village", e.target.value)}
+                  />
+                </label>
+
+                <label>
+                  Kode Pos
+                  <input
+                    value={form.postal_code}
+                    onChange={(e) => updateField("postal_code", e.target.value)}
+                  />
+                </label>
+
+                <label>
+                  Jam Operasional
+                  <input value="Belum tersedia di API" disabled />
+                </label>
+
+                <label className="umkm-field-full">
+                  Media Sosial / Marketplace
+                  <input value="Belum tersedia di API" disabled />
+                </label>
+              </div>
+            </section>
+
+            <section className="umkm-form-section">
+              <h2>
+                <span className="umkm-section-icon">
+                  <Building2 size={18} />
+                </span>
+                Legalitas & Visual
+              </h2>
+
+              <div className="umkm-visual-grid">
+                <div>
+                  <label>
+                    Logo Usaha
+                    <div className="umkm-placeholder-image" style={{ maxWidth: 130, height: 130 }}>
+                      <ImagePlus size={28} />
+                    </div>
+                  </label>
+
+                  <label style={{ marginTop: 24 }}>
+                    Foto Utama Usaha
+                    <div className="umkm-placeholder-image">
+                      <span>Upload foto produk/toko belum tersedia</span>
+                    </div>
+                  </label>
+                </div>
+
+                <aside className="umkm-document-card">
+                  <h3>STATUS DOKUMEN</h3>
+
+                  <div className="umkm-doc-row">
+                    <span>NIB / Legalitas Usaha</span>
+                    <span>Placeholder</span>
+                  </div>
+
+                  <div className="umkm-doc-row">
+                    <span>Dokumen Pendukung</span>
+                    <span>Placeholder</span>
+                  </div>
+
+                  <div className="umkm-doc-row pending">
+                    <span>
+                      <FileText size={16} /> Upload dokumen
+                    </span>
+                    <span>Coming soon</span>
+                  </div>
+
+                  <p>
+                    Fitur dokumen dan object storage akan disambungkan melalui document-service/Garage
+                    pada milestone berikutnya.
+                  </p>
+                </aside>
+              </div>
+            </section>
+
+            <div className="umkm-profile-actions">
+              <button className="umkm-secondary-btn" type="button" onClick={resetForm}>
+                Cancel
+              </button>
+              <button type="submit" disabled={saving}>
+                {saving ? "Menyimpan..." : profile ? "Save Changes" : "Buat Profil"}
+              </button>
+            </div>
+          </>
+        )}
+      </form>
+    </UmkmLayout>
   );
 }
