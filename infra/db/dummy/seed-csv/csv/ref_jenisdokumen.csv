@@ -1,0 +1,13 @@
+jenis_dokumen_id,nama_jenis_dokumen,deskripsi,allowed_extensions,max_size_mb,wajib_umkm,wajib_mitra,wajib_pengajuan_kemitraan
+KTP,Kartu Tanda Penduduk,Identitas pemilik UMKM atau PIC mitra,"pdf,jpg,jpeg,png",5,true,true,false
+NIB,Nomor Induk Berusaha,Dokumen legalitas usaha,"pdf,jpg,jpeg,png",5,true,true,false
+NPWP,NPWP,Dokumen wajib pajak,"pdf,jpg,jpeg,png",5,false,true,false
+FOTO_PRODUK,Foto Produk,Dokumentasi produk UMKM,"jpg,jpeg,png,webp",3,false,false,false
+LOGO,Logo Usaha,Logo profil usaha atau mitra,"jpg,jpeg,png,webp",2,false,false,false
+SERTIFIKAT_HALAL,Sertifikat Halal,Legalitas halal produk,"pdf,jpg,jpeg,png",8,false,false,false
+PIRT,Sertifikat PIRT,Izin produksi pangan rumah tangga,"pdf,jpg,jpeg,png",8,false,false,false
+PROPOSAL_KERJASAMA,Proposal Kerja Sama,Proposal awal kemitraan,"pdf,doc,docx",10,false,false,true
+PERJANJIAN_KERJASAMA,Perjanjian Kerja Sama,Dokumen perjanjian bertanda tangan,pdf,15,false,false,true
+TUGAS_PELATIHAN,Tugas Pelatihan,File submission assignment,"pdf,doc,docx,xlsx,pptx",20,false,false,false
+SERTIFIKAT_PELATIHAN,Sertifikat Pelatihan,Sertifikat digital peserta,pdf,10,false,false,false
+DOKUMEN_PENDUKUNG,Dokumen Pendukung,Lampiran tambahan,"pdf,jpg,jpeg,png,doc,docx",10,false,false,false

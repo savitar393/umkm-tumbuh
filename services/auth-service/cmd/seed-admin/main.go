@@ -28,7 +28,12 @@ func main() {
 
 	userRepo := users.NewRepository(db)
 
-	adminID := getEnv("ADMIN_ID", "00000000-0000-0000-0000-000000000001")
+	adminID := getEnv("ADMIN_ID", "AKUNADMIN001")
+
+	if len(adminID) > 30 {
+		log.Fatal("ADMIN_ID must be 30 characters or fewer. Use a production-style ID such as AKUNADMIN001, not a UUID.")
+	}
+
 	adminFullName := getEnv("ADMIN_FULL_NAME", "Admin Pemerintah")
 	adminEmail := strings.ToLower(strings.TrimSpace(getEnv("ADMIN_EMAIL", "admin@example.com")))
 	adminPassword := getEnv("ADMIN_PASSWORD", "admin12345")

@@ -1,0 +1,7 @@
+status_dokumen_id,nama_status_dokumen
+UPLOADED,Terunggah
+VALID,Valid
+INVALID,Tidak Valid
+EXPIRED,Kedaluwarsa
+REPLACED,Diganti
+DELETED,Dihapus

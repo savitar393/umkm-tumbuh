@@ -1,0 +1,6 @@
+dummy/generated/
+dummy/csv/
+dummy/metadata/
+*.dump
+*.backup
+*.sql.gz

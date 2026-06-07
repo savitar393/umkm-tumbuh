@@ -1,0 +1,7 @@
+status_pendaftaran_pelatihan_id,nama_status_pendaftaran
+TERDAFTAR,Terdaftar
+AKTIF,Aktif Mengikuti
+SELESAI,Selesai
+TIDAK_SELESAI,Tidak Selesai
+DIBATALKAN,Dibatalkan
+KADALUARSA,Kedaluwarsa
