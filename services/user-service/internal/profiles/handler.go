@@ -42,9 +42,12 @@ func (h *Handler) GetMe(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"profile": profile})
 
 	case "MITRA":
-		writeJSON(w, http.StatusNotImplemented, map[string]string{
-			"error": "Profil Mitra belum diimplementasikan pada production schema.",
-		})
+		profile, err := h.getMitraProfile(r.Context(), user.ID)
+		if err != nil {
+			handleProfileError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"profile": profile})
 
 	default:
 		writeJSON(w, http.StatusForbidden, map[string]string{
@@ -103,9 +106,34 @@ func (h *Handler) UpsertMe(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"profile": profile})
 
 	case "MITRA":
-		writeJSON(w, http.StatusNotImplemented, map[string]string{
-			"error": "Profil Mitra belum diimplementasikan pada production schema.",
-		})
+		if strings.TrimSpace(req.OrganizationName) == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Nama organisasi wajib diisi."})
+			return
+		}
+
+		if strings.TrimSpace(req.ContactPerson) == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Nama PIC wajib diisi."})
+			return
+		}
+
+		if strings.TrimSpace(req.PhoneNumber) == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Nomor kontak wajib diisi."})
+			return
+		}
+
+		if strings.TrimSpace(req.Address) == "" || strings.TrimSpace(req.City) == "" || strings.TrimSpace(req.Province) == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Alamat, kota/kabupaten, dan provinsi wajib diisi."})
+			return
+		}
+
+		profile, err := h.upsertMitraProfile(r.Context(), user.ID, req)
+		if err != nil {
+			log.Printf("failed to upsert Mitra profile: %v", err)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "Gagal menyimpan profil Mitra."})
+			return
+		}
+
+		writeJSON(w, http.StatusOK, map[string]any{"profile": profile})
 
 	default:
 		writeJSON(w, http.StatusForbidden, map[string]string{
@@ -436,6 +464,355 @@ func scanUMKMProfile(row scanner) (map[string]any, error) {
 		"village":              village,
 		"postal_code":          postalCode,
 		"status":               status,
+		"created_at":           createdAt,
+		"updated_at":           updatedAt,
+	}, nil
+}
+
+func (h *Handler) getMitraProfile(ctx context.Context, accountID string) (map[string]any, error) {
+	row := h.DB.QueryRow(ctx, `
+		SELECT
+			m.mitra_id,
+			m.akun_id,
+			m.nama_mitra,
+			j.nama_jenis_mitra,
+			m.nama_badan_hukum,
+			m.nib,
+			m.npwp,
+			m.deskripsi_dukungan,
+			m.nama_pic,
+			m.jabatan_pic,
+			m.kontak_pic,
+			m.email_pic::text,
+			l.alamat_detail,
+			l.kabupaten_kota,
+			l.provinsi,
+			l.kecamatan,
+			l.kelurahan,
+			l.kode_pos,
+			m.status_mitra_id,
+			m.wilayah_operasional,
+			s.nama_skala_kerjasama,
+			m.created_at,
+			m.updated_at
+		FROM user_mgmt.master_mitra m
+		JOIN user_mgmt.master_lokasi l
+			ON l.lokasi_id = m.lokasi_id
+		JOIN ref.ref_jenismitra j
+			ON j.jenis_mitra_id = m.jenis_mitra_id
+		LEFT JOIN ref.ref_skalakerjasama s
+			ON s.skala_kerjasama_id = m.skala_kerjasama_id
+		WHERE m.akun_id = $1
+		  AND m.is_deleted = FALSE
+		LIMIT 1
+	`, accountID)
+
+	return scanMitraProfile(row)
+}
+
+func (h *Handler) upsertMitraProfile(ctx context.Context, accountID string, req UpsertProfileRequest) (map[string]any, error) {
+	tx, err := h.DB.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	account, err := getAccount(ctx, tx, accountID)
+	if err != nil {
+		return nil, err
+	}
+
+	mitraTypeID, err := ensureMitraType(ctx, tx, req.OrganizationType)
+	if err != nil {
+		return nil, err
+	}
+
+	cooperationScaleID, err := ensureCooperationScale(ctx, tx, req.CooperationScale)
+	if err != nil {
+		return nil, err
+	}
+
+	ids, err := getExistingMitraIDs(ctx, tx, accountID)
+	if err != nil {
+		return nil, err
+	}
+
+	if ids.MitraID == "" {
+		ids.MitraID = newID("MTR")
+	}
+
+	if ids.LokasiID == "" {
+		ids.LokasiID = newID("LOK")
+	}
+
+	address := trim(req.Address)
+	city := trim(req.City)
+	province := trim(req.Province)
+	district := valueOrDefault(req.District, "BELUM DIISI")
+	village := valueOrDefault(req.Village, "BELUM DIISI")
+	postalCode := nullableTrim(req.PostalCode)
+
+	_, err = tx.Exec(ctx, `
+		INSERT INTO user_mgmt.master_lokasi (
+			lokasi_id, provinsi, kabupaten_kota, kecamatan,
+			kelurahan, kode_pos, alamat_detail
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		ON CONFLICT (lokasi_id)
+		DO UPDATE SET
+			provinsi = EXCLUDED.provinsi,
+			kabupaten_kota = EXCLUDED.kabupaten_kota,
+			kecamatan = EXCLUDED.kecamatan,
+			kelurahan = EXCLUDED.kelurahan,
+			kode_pos = EXCLUDED.kode_pos,
+			alamat_detail = EXCLUDED.alamat_detail,
+			updated_at = NOW()
+	`, ids.LokasiID, province, city, district, village, postalCode, address)
+	if err != nil {
+		return nil, err
+	}
+
+	organizationName := trim(req.OrganizationName)
+	contactPerson := trim(req.ContactPerson)
+	phoneNumber := trim(req.PhoneNumber)
+
+	_, err = tx.Exec(ctx, `
+		INSERT INTO user_mgmt.master_mitra (
+			mitra_id, kode_mitra, akun_id, lokasi_id,
+			jenis_mitra_id, status_mitra_id, skala_kerjasama_id,
+			nama_mitra, nama_badan_hukum, nib, npwp,
+			nama_pic, jabatan_pic, kontak_pic, email_pic,
+			alamat_mitra, wilayah_operasional, deskripsi_dukungan
+		)
+		VALUES (
+			$1, $2, $3, $4,
+			$5, 'AKTIF', $6,
+			$7, $8, $9, $10,
+			$11, $12, $13, $14,
+			$15, $16, $17
+		)
+		ON CONFLICT (akun_id)
+		DO UPDATE SET
+			lokasi_id = EXCLUDED.lokasi_id,
+			jenis_mitra_id = EXCLUDED.jenis_mitra_id,
+			skala_kerjasama_id = EXCLUDED.skala_kerjasama_id,
+			nama_mitra = EXCLUDED.nama_mitra,
+			nama_badan_hukum = EXCLUDED.nama_badan_hukum,
+			nib = EXCLUDED.nib,
+			npwp = EXCLUDED.npwp,
+			nama_pic = EXCLUDED.nama_pic,
+			jabatan_pic = EXCLUDED.jabatan_pic,
+			kontak_pic = EXCLUDED.kontak_pic,
+			email_pic = EXCLUDED.email_pic,
+			alamat_mitra = EXCLUDED.alamat_mitra,
+			wilayah_operasional = EXCLUDED.wilayah_operasional,
+			deskripsi_dukungan = EXCLUDED.deskripsi_dukungan,
+			is_deleted = FALSE,
+			deleted_at = NULL,
+			updated_at = NOW()
+	`, ids.MitraID, "KODE-"+ids.MitraID, accountID, ids.LokasiID,
+		mitraTypeID, cooperationScaleID,
+		organizationName, nullableTrim(req.LegalName), nullableTrim(req.NIB), nullableTrim(req.NPWP),
+		contactPerson, nullableTrim(req.ContactPersonTitle), phoneNumber, account.Email,
+		address, nullableTrim(req.OperationalArea), nullableTrim(req.SupportDescription),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = tx.Exec(ctx, `
+		UPDATE user_mgmt.transaksi_registrasipengguna
+		SET
+			mitra_id = $2,
+			umkm_id = NULL,
+			checklist_informasi_lengkap = TRUE
+		WHERE akun_id = $1
+	`, accountID, ids.MitraID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+
+	return h.getMitraProfile(ctx, accountID)
+}
+
+type existingMitraIDs struct {
+	MitraID  string
+	LokasiID string
+}
+
+func getExistingMitraIDs(ctx context.Context, tx pgx.Tx, accountID string) (existingMitraIDs, error) {
+	var ids existingMitraIDs
+
+	err := tx.QueryRow(ctx, `
+		SELECT mitra_id, lokasi_id
+		FROM user_mgmt.master_mitra
+		WHERE akun_id = $1
+		  AND is_deleted = FALSE
+		LIMIT 1
+	`, accountID).Scan(&ids.MitraID, &ids.LokasiID)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return existingMitraIDs{}, nil
+	}
+
+	return ids, err
+}
+
+func ensureMitraType(ctx context.Context, tx pgx.Tx, typeName string) (string, error) {
+	typeName = strings.TrimSpace(typeName)
+	if typeName == "" {
+		typeName = "Lainnya"
+	}
+
+	var existingID string
+	err := tx.QueryRow(ctx, `
+		SELECT jenis_mitra_id
+		FROM ref.ref_jenismitra
+		WHERE lower(nama_jenis_mitra) = lower($1)
+		LIMIT 1
+	`, typeName).Scan(&existingID)
+
+	if err == nil {
+		return existingID, nil
+	}
+
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return "", err
+	}
+
+	typeID := makeCategoryID(typeName)
+
+	_, err = tx.Exec(ctx, `
+		INSERT INTO ref.ref_jenismitra (
+			jenis_mitra_id, nama_jenis_mitra
+		)
+		VALUES ($1, $2)
+		ON CONFLICT (jenis_mitra_id)
+		DO UPDATE SET nama_jenis_mitra = EXCLUDED.nama_jenis_mitra
+	`, typeID, typeName)
+
+	return typeID, err
+}
+
+func ensureCooperationScale(ctx context.Context, tx pgx.Tx, scaleName string) (*string, error) {
+	scaleName = strings.TrimSpace(scaleName)
+	if scaleName == "" {
+		defaultScale := "LOKAL"
+		return &defaultScale, nil
+	}
+
+	var existingID string
+	err := tx.QueryRow(ctx, `
+		SELECT skala_kerjasama_id
+		FROM ref.ref_skalakerjasama
+		WHERE lower(nama_skala_kerjasama) = lower($1)
+		   OR lower(skala_kerjasama_id) = lower($1)
+		LIMIT 1
+	`, scaleName).Scan(&existingID)
+
+	if err == nil {
+		return &existingID, nil
+	}
+
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, err
+	}
+
+	scaleID := makeCategoryID(scaleName)
+
+	_, err = tx.Exec(ctx, `
+		INSERT INTO ref.ref_skalakerjasama (
+			skala_kerjasama_id, nama_skala_kerjasama
+		)
+		VALUES ($1, $2)
+		ON CONFLICT (skala_kerjasama_id)
+		DO UPDATE SET nama_skala_kerjasama = EXCLUDED.nama_skala_kerjasama
+	`, scaleID, scaleName)
+
+	return &scaleID, err
+}
+
+func scanMitraProfile(row scanner) (map[string]any, error) {
+	var (
+		id                 string
+		userID             string
+		name               string
+		organizationType   string
+		legalName          *string
+		nib                *string
+		npwp               *string
+		description        *string
+		contactPerson      string
+		contactPersonTitle *string
+		phone              *string
+		email              *string
+		address            string
+		city               string
+		province           string
+		district           string
+		village            string
+		postalCode         *string
+		status             string
+		operationalArea    *string
+		cooperationScale   *string
+		createdAt          time.Time
+		updatedAt          time.Time
+	)
+
+	if err := row.Scan(
+		&id,
+		&userID,
+		&name,
+		&organizationType,
+		&legalName,
+		&nib,
+		&npwp,
+		&description,
+		&contactPerson,
+		&contactPersonTitle,
+		&phone,
+		&email,
+		&address,
+		&city,
+		&province,
+		&district,
+		&village,
+		&postalCode,
+		&status,
+		&operationalArea,
+		&cooperationScale,
+		&createdAt,
+		&updatedAt,
+	); err != nil {
+		return nil, err
+	}
+
+	return map[string]any{
+		"id":                   id,
+		"user_id":              userID,
+		"organization_name":    name,
+		"organization_type":    organizationType,
+		"legal_name":           legalName,
+		"nib":                  nib,
+		"npwp":                 npwp,
+		"description":          description,
+		"contact_person":       contactPerson,
+		"contact_person_title": contactPersonTitle,
+		"phone_number":         phone,
+		"email":                email,
+		"address":              address,
+		"city":                 city,
+		"province":             province,
+		"district":             district,
+		"village":              village,
+		"postal_code":          postalCode,
+		"status":               status,
+		"operational_area":     operationalArea,
+		"cooperation_scale":    cooperationScale,
 		"created_at":           createdAt,
 		"updated_at":           updatedAt,
 	}, nil
