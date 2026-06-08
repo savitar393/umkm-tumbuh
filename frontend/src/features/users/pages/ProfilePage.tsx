@@ -14,6 +14,10 @@ const emptyForm: UmkmProfilePayload = {
   business_name: "",
   business_category: "",
   business_description: "",
+  established_year: undefined,
+  business_email: "",
+  operating_hours: "",
+  social_media_marketplace: "",
   owner_name: "",
   nik: "",
   phone_number: "",
@@ -30,6 +34,10 @@ function mapProfileToForm(profile: UmkmProfile): UmkmProfilePayload {
     business_name: profile.business_name ?? "",
     business_category: profile.business_category ?? "",
     business_description: profile.business_description ?? "",
+    established_year: profile.established_year ?? undefined,
+    business_email: profile.business_email ?? "",
+    operating_hours: profile.operating_hours ?? "",
+    social_media_marketplace: profile.social_media_marketplace ?? "",
     owner_name: profile.owner_name ?? "",
     nik: profile.nik ?? "",
     phone_number: profile.phone_number ?? "",
@@ -231,7 +239,20 @@ export default function ProfilePage() {
 
                 <label>
                   Tahun Berdiri
-                  <input value="Belum tersedia di API" disabled />
+                  <input
+                    type="number"
+                    min={1900}
+                    max={2100}
+                    value={form.established_year ?? ""}
+                    onChange={(e) =>
+                      setForm((current) => ({
+                        ...current,
+                        established_year: e.target.value
+                          ? Number(e.target.value)
+                          : undefined,
+                      }))
+                    }
+                  />
                 </label>
 
                 <label className="umkm-field-full">
@@ -282,7 +303,11 @@ export default function ProfilePage() {
 
                 <label>
                   Email Bisnis
-                  <input value="Belum tersedia di API" disabled />
+                  <input
+                    type="email"
+                    value={form.business_email}
+                    onChange={(e) => updateField("business_email", e.target.value)}
+                  />
                 </label>
 
                 <label className="umkm-field-full">
@@ -339,12 +364,20 @@ export default function ProfilePage() {
 
                 <label>
                   Jam Operasional
-                  <input value="Belum tersedia di API" disabled />
+                  <input
+                    value={form.operating_hours}
+                    onChange={(e) => updateField("operating_hours", e.target.value)}
+                    placeholder="Contoh: Senin - Sabtu (08.00 - 17.00)"
+                  />
                 </label>
 
                 <label className="umkm-field-full">
                   Media Sosial / Marketplace
-                  <input value="Belum tersedia di API" disabled />
+                  <input
+                    value={form.social_media_marketplace}
+                    onChange={(e) => updateField("social_media_marketplace", e.target.value)}
+                    placeholder="Contoh: Instagram @usahaku | Shopee Usahaku"
+                  />
                 </label>
               </div>
             </section>

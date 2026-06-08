@@ -6,6 +6,10 @@ export type UmkmProfile = {
   business_name: string;
   business_category: string;
   business_description?: string | null;
+  established_year?: number | null;
+  business_email?: string | null;
+  operating_hours?: string | null;
+  social_media_marketplace?: string | null;
   owner_name: string;
   nik: string;
   phone_number: string;
@@ -24,6 +28,10 @@ export type UmkmProfilePayload = {
   business_name: string;
   business_category: string;
   business_description?: string;
+  established_year?: number;
+  business_email?: string;
+  operating_hours?: string;
+  social_media_marketplace?: string;
   owner_name: string;
   nik: string;
   phone_number: string;
