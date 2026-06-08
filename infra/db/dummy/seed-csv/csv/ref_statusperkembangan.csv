@@ -1,0 +1,9 @@
+status_perkembangan_id,nama_status_perkembangan
+NAIK,Naik
+STABIL,Stabil
+TURUN,Turun
+BARU,Baru Mulai
+EKSPANSI,Ekspansi
+RESTRUKTUR,Restrukturisasi
+PASIF,Pasif
+BERISIKO,Berisiko

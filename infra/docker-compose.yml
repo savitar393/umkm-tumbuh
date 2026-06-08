@@ -4,30 +4,29 @@ services:
     container_name: umkm_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:-umkm_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-umkm_password}
+      POSTGRES_DB: ${POSTGRES_DB:-umkm_tumbuh}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 3s
       retries: 10
     networks:
       - umkm_network
 
-  auth-migrate:
+  db-migrate:
     build:
-      context: ../services/auth-service
-      dockerfile: Dockerfile
-    container_name: umkm_auth_migrate
+      context: ./db
+      dockerfile: migrator/Dockerfile
+    container_name: umkm_db_migrate
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      DATABASE_URL: postgres://${POSTGRES_USER:-umkm_user}:${POSTGRES_PASSWORD:-umkm_password}@postgres:5432/${POSTGRES_DB:-umkm_tumbuh}?sslmode=disable
       MIGRATIONS_DIR: /app/migrations
-    command: ["/app/auth-migrate", "up"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -41,14 +40,40 @@ services:
       dockerfile: Dockerfile
     container_name: umkm_auth_seed_admin
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
-      ADMIN_ID: ${ADMIN_ID}
-      ADMIN_FULL_NAME: ${ADMIN_FULL_NAME}
-      ADMIN_EMAIL: ${ADMIN_EMAIL}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      DATABASE_URL: postgres://${POSTGRES_USER:-umkm_user}:${POSTGRES_PASSWORD:-umkm_password}@postgres:5432/${POSTGRES_DB:-umkm_tumbuh}?sslmode=disable
+      ADMIN_ID: ${ADMIN_ID:-AKUNADMIN001}
+      ADMIN_FULL_NAME: ${ADMIN_FULL_NAME:-Admin Pemerintah}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin12345}
     command: ["/app/auth-seed-admin"]
     depends_on:
-      auth-migrate:
+      db-migrate:
+        condition: service_completed_successfully
+    networks:
+      - umkm_network
+    restart: "no"
+
+  db-seed:
+    image: postgres:16-alpine
+    container_name: umkm_db_seed
+    profiles:
+      - seed
+    working_dir: /app/data
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-umkm_user}:${POSTGRES_PASSWORD:-umkm_password}@postgres:5432/${POSTGRES_DB:-umkm_tumbuh}?sslmode=disable
+    volumes:
+      - ./db/loaders:/app/loaders:ro
+      - ./db/dummy/seed-csv:/app/data:ro
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        echo "Loading committed dummy CSV dataset..."
+        psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -f /app/loaders/load_generated_csv.sql
+        echo "Dummy CSV dataset loaded successfully."
+    depends_on:
+      db-migrate:
         condition: service_completed_successfully
     networks:
       - umkm_network
@@ -61,21 +86,38 @@ services:
     container_name: umkm_auth_service
     restart: unless-stopped
     environment:
-      APP_ENV: ${APP_ENV}
+      APP_ENV: ${APP_ENV:-development}
       SERVER_HOST: 0.0.0.0
       SERVER_PORT: 8080
-      FRONTEND_URL: ${FRONTEND_URL}
-      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      DATABASE_URL: postgres://${POSTGRES_USER:-umkm_user}:${POSTGRES_PASSWORD:-umkm_password}@postgres:5432/${POSTGRES_DB:-umkm_tumbuh}?sslmode=disable
       JWT_SECRET: ${JWT_SECRET}
-      JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES}
+      JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-1440}
     ports:
       - "8080:8080"
     depends_on:
-      postgres:
-        condition: service_healthy
-      auth-migrate:
-        condition: service_completed_successfully
       auth-seed-admin:
+        condition: service_completed_successfully
+    networks:
+      - umkm_network
+
+  user-service:
+    build:
+      context: ../services/user-service
+      dockerfile: Dockerfile
+    container_name: umkm_user_service
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      USER_SERVICE_HOST: 0.0.0.0
+      USER_SERVICE_PORT: 8081
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      DATABASE_URL: postgres://${POSTGRES_USER:-umkm_user}:${POSTGRES_PASSWORD:-umkm_password}@postgres:5432/${POSTGRES_DB:-umkm_tumbuh}?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET}
+    ports:
+      - "8081:8081"
+    depends_on:
+      db-migrate:
         condition: service_completed_successfully
     networks:
       - umkm_network

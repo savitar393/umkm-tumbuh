@@ -3,6 +3,7 @@ package auth
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/apperror"
@@ -75,5 +76,6 @@ func handleError(w http.ResponseWriter, err error) {
 		return
 	}
 
+	log.Printf("internal auth error: %v", err)
 	response.Error(w, http.StatusInternalServerError, "Terjadi kesalahan pada server.")
 }

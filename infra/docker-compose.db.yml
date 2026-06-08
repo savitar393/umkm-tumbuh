@@ -1,0 +1,68 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: umkm_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-umkm_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-umkm_password}
+      POSTGRES_DB: ${POSTGRES_DB:-umkm_tumbuh}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - umkm_network
+
+  db-migrate:
+    build:
+      context: ./db
+      dockerfile: migrator/Dockerfile
+    container_name: umkm_db_migrate
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-umkm_user}:${POSTGRES_PASSWORD:-umkm_password}@postgres:5432/${POSTGRES_DB:-umkm_tumbuh}?sslmode=disable
+      MIGRATIONS_DIR: /app/migrations
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - umkm_network
+    restart: "no"
+
+  db-seed:
+    image: postgres:16-alpine
+    container_name: umkm_db_seed
+    profiles:
+      - seed
+    working_dir: /app/data
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-umkm_user}:${POSTGRES_PASSWORD:-umkm_password}@postgres:5432/${POSTGRES_DB:-umkm_tumbuh}?sslmode=disable
+    volumes:
+      - ./db/loaders:/app/loaders:ro
+      - ./db/dummy/seed-csv:/app/data:ro
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        echo "Loading committed dummy CSV dataset..."
+        psql "$$DATABASE_URL" -v ON_ERROR_STOP=1 -f /app/loaders/load_generated_csv.sql
+        echo "Dummy CSV dataset loaded successfully."
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+    networks:
+      - umkm_network
+    restart: "no"
+
+volumes:
+  postgres_data:
+
+networks:
+  umkm_network:
+    driver: bridge

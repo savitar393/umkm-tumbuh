@@ -79,7 +79,7 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (*RegisterR
 	}
 
 	user := &users.User{
-		ID:           uuid.NewString(),
+		ID:           newAccountID(),
 		FullName:     req.FullName,
 		Email:        req.Email,
 		PhoneNumber:  req.PhoneNumber,
@@ -219,6 +219,11 @@ func extractBearerToken(authorizationHeader string) (string, error) {
 	}
 
 	return token, nil
+}
+
+func newAccountID() string {
+	raw := strings.ToUpper(strings.ReplaceAll(uuid.NewString(), "-", ""))
+	return "AKUN" + raw[:16]
 }
 
 func cleanOptionalString(value *string) *string {

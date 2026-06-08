@@ -1,0 +1,7 @@
+status_verifikasi_id,nama_status_verifikasi
+MENUNGGU,Menunggu Review
+DISETUJUI,Disetujui
+DITOLAK,Ditolak
+REVISI,Perlu Revisi
+AKTIF,Aktif
+DINONAKTIFKAN,Dinonaktifkan
