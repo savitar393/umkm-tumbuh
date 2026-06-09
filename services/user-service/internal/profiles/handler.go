@@ -2,6 +2,7 @@ package profiles
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"log"
@@ -150,6 +151,10 @@ func (h *Handler) getUMKMProfile(ctx context.Context, accountID string) (map[str
 			u.nama_umkm,
 			k.nama_kategori_usaha,
 			u.deskripsi_usaha,
+			u.tahun_berdiri,
+			u.email_bisnis::text,
+			u.jam_operasional,
+			u.media_sosial_marketplace,
 			p.nama_pelaku,
 			p.nik,
 			p.no_hp,
@@ -268,18 +273,38 @@ func (h *Handler) upsertUMKMProfile(ctx context.Context, accountID string, req U
 	businessName := trim(req.BusinessName)
 	businessDescription := nullableTrim(req.BusinessDescription)
 
+	businessEmail := nullableTrim(req.BusinessEmail)
+	if businessEmail == nil {
+		businessEmail = nullableTrim(account.Email)
+	}
+
+	var establishedYear any
+	if req.EstablishedYear != nil {
+		if *req.EstablishedYear < 1900 || *req.EstablishedYear > 2100 {
+			return nil, errors.New("tahun berdiri harus berada di antara 1900 dan 2100")
+		}
+		establishedYear = *req.EstablishedYear
+	}
+
+	operatingHours := nullableTrim(req.OperatingHours)
+	socialMediaMarketplace := nullableTrim(req.SocialMediaMarketplace)
+
 	_, err = tx.Exec(ctx, `
 		INSERT INTO user_mgmt.master_umkm (
 			umkm_id, kode_umkm, pelaku_umkm_id, lokasi_id,
 			jenis_umkm_id, skala_usaha_id, kategori_usaha_id,
 			status_umkm_id, nama_umkm, deskripsi_usaha,
-			nomor_whatsapp, email_bisnis, tanggal_terdaftar
+			nomor_whatsapp, email_bisnis, tahun_berdiri,
+			jam_operasional, media_sosial_marketplace,
+			tanggal_terdaftar
 		)
 		VALUES (
 			$1, $2, $3, $4,
 			'UMKM', 'MIKRO', $5,
 			'AKTIF', $6, $7,
-			$8, $9, CURRENT_DATE
+			$8, $9, $10,
+			$11, $12,
+			CURRENT_DATE
 		)
 		ON CONFLICT (umkm_id)
 		DO UPDATE SET
@@ -289,10 +314,13 @@ func (h *Handler) upsertUMKMProfile(ctx context.Context, accountID string, req U
 			deskripsi_usaha = EXCLUDED.deskripsi_usaha,
 			nomor_whatsapp = EXCLUDED.nomor_whatsapp,
 			email_bisnis = EXCLUDED.email_bisnis,
+			tahun_berdiri = EXCLUDED.tahun_berdiri,
+			jam_operasional = EXCLUDED.jam_operasional,
+			media_sosial_marketplace = EXCLUDED.media_sosial_marketplace,
 			is_deleted = FALSE,
 			deleted_at = NULL,
 			updated_at = NOW()
-	`, ids.UMKMID, "KODE-"+ids.UMKMID, ids.PelakuUMKMID, ids.LokasiID, categoryID, businessName, businessDescription, phoneNumber, account.Email)
+	`, ids.UMKMID, "KODE-"+ids.UMKMID, ids.PelakuUMKMID, ids.LokasiID, categoryID, businessName, businessDescription, phoneNumber, businessEmail, establishedYear, operatingHours, socialMediaMarketplace)
 	if err != nil {
 		return nil, err
 	}
@@ -407,23 +435,27 @@ type scanner interface {
 
 func scanUMKMProfile(row scanner) (map[string]any, error) {
 	var (
-		id         string
-		userID     string
-		name       string
-		category   string
-		desc       *string
-		ownerName  string
-		nik        string
-		phone      string
-		address    string
-		city       string
-		province   string
-		district   string
-		village    string
-		postalCode *string
-		status     string
-		createdAt  time.Time
-		updatedAt  time.Time
+		id                     string
+		userID                 string
+		name                   string
+		category               string
+		desc                   sql.NullString
+		establishedYear        sql.NullInt16
+		businessEmail          sql.NullString
+		operatingHours         sql.NullString
+		socialMediaMarketplace sql.NullString
+		ownerName              string
+		nik                    string
+		phone                  string
+		address                string
+		city                   string
+		province               string
+		district               string
+		village                string
+		postalCode             sql.NullString
+		status                 string
+		createdAt              time.Time
+		updatedAt              time.Time
 	)
 
 	if err := row.Scan(
@@ -432,6 +464,10 @@ func scanUMKMProfile(row scanner) (map[string]any, error) {
 		&name,
 		&category,
 		&desc,
+		&establishedYear,
+		&businessEmail,
+		&operatingHours,
+		&socialMediaMarketplace,
 		&ownerName,
 		&nik,
 		&phone,
@@ -448,25 +484,50 @@ func scanUMKMProfile(row scanner) (map[string]any, error) {
 		return nil, err
 	}
 
-	return map[string]any{
-		"id":                   id,
-		"user_id":              userID,
-		"business_name":        name,
-		"business_category":    category,
-		"business_description": desc,
-		"owner_name":           ownerName,
-		"nik":                  nik,
-		"phone_number":         phone,
-		"address":              address,
-		"city":                 city,
-		"province":             province,
-		"district":             district,
-		"village":              village,
-		"postal_code":          postalCode,
-		"status":               status,
-		"created_at":           createdAt,
-		"updated_at":           updatedAt,
-	}, nil
+	profile := map[string]any{
+		"id":                       id,
+		"user_id":                  userID,
+		"business_name":            name,
+		"business_category":        category,
+		"business_description":     nil,
+		"established_year":         nil,
+		"business_email":           nil,
+		"operating_hours":          nil,
+		"social_media_marketplace": nil,
+		"owner_name":               ownerName,
+		"nik":                      nik,
+		"phone_number":             phone,
+		"address":                  address,
+		"city":                     city,
+		"province":                 province,
+		"district":                 district,
+		"village":                  village,
+		"postal_code":              nil,
+		"status":                   status,
+		"created_at":               createdAt,
+		"updated_at":               updatedAt,
+	}
+
+	if desc.Valid {
+		profile["business_description"] = desc.String
+	}
+	if establishedYear.Valid {
+		profile["established_year"] = int(establishedYear.Int16)
+	}
+	if businessEmail.Valid {
+		profile["business_email"] = businessEmail.String
+	}
+	if operatingHours.Valid {
+		profile["operating_hours"] = operatingHours.String
+	}
+	if socialMediaMarketplace.Valid {
+		profile["social_media_marketplace"] = socialMediaMarketplace.String
+	}
+	if postalCode.Valid {
+		profile["postal_code"] = postalCode.String
+	}
+
+	return profile, nil
 }
 
 func (h *Handler) getMitraProfile(ctx context.Context, accountID string) (map[string]any, error) {

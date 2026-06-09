@@ -151,7 +151,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback(r.Context())
 
-	categoryID, err := ensureProductCategory(r.Context(), tx, req.CategoryName)
+	categoryID, err := ensureProductCategory(r.Context(), tx, productCategoryName(req.CategoryName, req.Category))
 	if err != nil {
 		handleError(w, err, "Gagal menyiapkan kategori produk.")
 		return
@@ -160,7 +160,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	productID := newID("PRD")
 	status := normalizeProductStatus(req.Status)
 	description := nullableTrim(req.Description)
-	legalitas := nullableTrim(req.Legalitas)
+	legalitas := nullableTrim(productLegality(req.Legalitas, req.Legality))
 
 	_, err = tx.Exec(r.Context(), `
 		INSERT INTO user_mgmt.master_produkumkm (
@@ -257,7 +257,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback(r.Context())
 
-	categoryID, err := ensureProductCategory(r.Context(), tx, req.CategoryName)
+	categoryID, err := ensureProductCategory(r.Context(), tx, productCategoryName(req.CategoryName, req.Category))
 	if err != nil {
 		handleError(w, err, "Gagal menyiapkan kategori produk.")
 		return
@@ -280,7 +280,8 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		  AND umkm_id = $2
 		  AND is_deleted = FALSE
 	`, productID, umkmID, categoryID, strings.TrimSpace(req.Name),
-		nullableTrim(req.Description), req.Price, status, nullableTrim(req.Legalitas))
+		nullableTrim(req.Description), req.Price, status, nullableTrim(productLegality(req.Legalitas, req.Legality)))
+
 	if err != nil {
 		handleError(w, err, "Gagal memperbarui produk.")
 		return
@@ -567,7 +568,14 @@ func scanProduct(row scanner) (ProductResponse, error) {
 		&p.UpdatedAt,
 	)
 
-	return p, err
+	if err != nil {
+		return p, err
+	}
+
+	p.Category = p.CategoryName
+	p.Legality = p.Legalitas
+
+	return p, nil
 }
 
 func validateCreateRequest(req CreateProductRequest) error {
@@ -643,6 +651,24 @@ func makeIDFromName(value string) string {
 	}
 
 	return result
+}
+
+func productCategoryName(categoryName string, category string) string {
+	categoryName = strings.TrimSpace(categoryName)
+	if categoryName != "" {
+		return categoryName
+	}
+
+	return strings.TrimSpace(category)
+}
+
+func productLegality(legalitas string, legality string) string {
+	legalitas = strings.TrimSpace(legalitas)
+	if legalitas != "" {
+		return legalitas
+	}
+
+	return strings.TrimSpace(legality)
 }
 
 func handleError(w http.ResponseWriter, err error, fallback string) {
