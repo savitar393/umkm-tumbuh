@@ -52,6 +52,9 @@ func New(db *pgxpool.Pool, frontendURL string, jwtSecret string) http.Handler {
 				r.Put("/{id}", productHandler.Update)
 				r.Patch("/{id}/stock", productHandler.UpdateStock)
 				r.Delete("/{id}", productHandler.Delete)
+				r.Get("/{id}/thumbnail", productHandler.GetThumbnail)
+				r.Post("/{id}/thumbnail", productHandler.UploadThumbnail)
+				r.Delete("/{id}/thumbnail", productHandler.DeleteThumbnail)
 			})
 
 			r.Route("/sales", func(r chi.Router) {

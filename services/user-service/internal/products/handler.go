@@ -16,14 +16,24 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/savitar393/umkm-tumbuh/services/user-service/internal/middleware"
+	"github.com/savitar393/umkm-tumbuh/services/user-service/internal/storage"
 )
 
 type Handler struct {
-	DB *pgxpool.Pool
+	DB      *pgxpool.Pool
+	Storage *storage.Client
 }
 
 func NewHandler(db *pgxpool.Pool) *Handler {
-	return &Handler{DB: db}
+	storageClient, err := storage.NewFromEnv(context.Background())
+	if err != nil {
+		log.Printf("object storage disabled: %v", err)
+	}
+
+	return &Handler{
+		DB:      db,
+		Storage: storageClient,
+	}
 }
 
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
