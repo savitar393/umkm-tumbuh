@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ShoppingCart, BarChart2, TrendingUp, TrendingDown } from "lucide-react";
+import { BarChart2, CalendarDays, Handshake, Search, SlidersHorizontal, ShoppingCart, TrendingDown, TrendingUp } from "lucide-react";
 import UserLayout from "../components/UserLayout";
 import {
   getMitraDashboard,
@@ -49,6 +49,8 @@ export default function MitraDashboardPage() {
   const [error, setError] = useState("");
 
   const [selectedUMKM, setSelectedUMKM] = useState<string>("");
+  const [periode, setPeriode] = useState("3");
+  const [tahun, setTahun] = useState(String(new Date().getFullYear()));
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [page, setPage] = useState(0);
   const [trendRange, setTrendRange] = useState<7 | 14 | 30>(7);
@@ -57,12 +59,12 @@ export default function MitraDashboardPage() {
   useEffect(() => {
     async function loadDashboard() {
       setLoading(true);
+      setError("");
       try {
         const d = await getMitraDashboard();
         setData(d);
-        // Set selected ke UMKM pertama kalau ada
         if (d.umkm_list?.length > 0) {
-          setSelectedUMKM(d.dashboard?.umkm_id ?? d.umkm_list[0].umkm_id);
+          setSelectedUMKM(d.umkm_list[0].umkm_id);
         }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Gagal memuat data");
@@ -74,12 +76,16 @@ export default function MitraDashboardPage() {
     void loadDashboard();
   }, []);
 
-  // Saat user ganti UMKM
-  function handleSelectUMKM(umkmId: string) {
-    setSelectedUMKM(umkmId);
+  function handleApplyFilter() {
+    setError("");
+    if (!selectedUMKM) {
+      setError("Pilih UMKM terlebih dahulu.");
+      return;
+    }
+
     setPage(0);
     setLoadingDetail(true);
-    getMitraDashboard(umkmId)
+    getMitraDashboard(selectedUMKM)
       .then((d) => setData(d))
       .catch((e) => setError(e instanceof Error ? e.message : "Gagal memuat data"))
       .finally(() => setLoadingDetail(false));
@@ -99,7 +105,7 @@ export default function MitraDashboardPage() {
   return (
     <UserLayout
       role="MITRA"
-      title="Dashboard Mitra"
+      title="Monitoring Perkembangan Usaha"
       subtitle={
         data
           ? `Selamat datang, ${data.nama_mitra}. Pantau performa UMKM mitra Anda.`
@@ -112,54 +118,94 @@ export default function MitraDashboardPage() {
       {!loading && (
         <>
           {/* ── Filter UMKM ─────────────────────────────────────────── */}
-          <div className="user-filter-bar">
-            <div className="ufb-group" style={{ flex: "2", minWidth: 260 }}>
-              <label className="ufb-label">PILIH UMKM MITRA</label>
-              {umkmList.length === 0 ? (
-                <div className="ufb-empty-hint">
-                  Belum ada UMKM mitra yang disetujui
-                </div>
-              ) : (
+          <div className="mitra-filter-card">
+            <div className="mitra-filter-row">
+              <div className="mitra-filter-item">
+                <label className="mitra-filter-label">Nama UMKM</label>
+                {umkmList.length === 0 ? (
+                  <div className="ufb-empty-hint">Belum ada UMKM mitra yang disetujui</div>
+                ) : (
+                  <select
+                    className="mitra-filter-select"
+                    value={selectedUMKM}
+                    onChange={(e) => setSelectedUMKM(e.target.value)}
+                  >
+                    <option value="" disabled>Pilih UMKM</option>
+                    {umkmList.map((u) => (
+                      <option key={u.umkm_id} value={u.umkm_id}>
+                        {u.nama_umkm}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+              <div className="mitra-filter-item">
+                <label className="mitra-filter-label">Periode</label>
                 <select
-                  className="ufb-select"
-                  value={selectedUMKM}
-                  onChange={(e) => handleSelectUMKM(e.target.value)}
+                  className="mitra-filter-select"
+                  value={periode}
+                  onChange={(e) => setPeriode(e.target.value)}
                 >
-                  {umkmList.map((u) => (
-                    <option key={u.umkm_id} value={u.umkm_id}>
-                      {u.nama_umkm}
-                    </option>
+                  <option value="3">3 Bulan Terakhir</option>
+                  <option value="6">6 Bulan Terakhir</option>
+                  <option value="12">12 Bulan Terakhir</option>
+                </select>
+              </div>
+              <div className="mitra-filter-item">
+                <label className="mitra-filter-label">Tahun</label>
+                <select
+                  className="mitra-filter-select"
+                  value={tahun}
+                  onChange={(e) => setTahun(e.target.value)}
+                >
+                  {Array.from({ length: 4 }, (_, index) => String(new Date().getFullYear() - index)).map((year) => (
+                    <option key={year} value={year}>{year}</option>
                   ))}
                 </select>
-              )}
+              </div>
+              <div className="mitra-filter-item mitra-filter-item--button">
+                <button className="mitra-filter-btn" onClick={handleApplyFilter}>
+                  <Search size={16} style={{ marginRight: 8 }} /> Terapkan Filter
+                </button>
+              </div>
             </div>
-            <div className="ufb-group ufb-group--info">
-              <label className="ufb-label">TOTAL MITRA UMKM</label>
-              <div className="ufb-stat-val">{umkmList.length} UMKM</div>
-            </div>
+            <p className="mitra-filter-note">Gunakan filter di atas untuk memulai pemantauan UMKM mitra.</p>
           </div>
 
           {loadingDetail && <p className="ud-loading">Memuat data UMKM...</p>}
 
           {!loadingDetail && (
             <>
-              {/* ── No data state ─────────────────────────────────── */}
               {umkmList.length === 0 ? (
-                <div className="ud-card ud-empty-state">
-                  <div className="ud-empty-icon">🤝</div>
+                <div className="mitra-empty-board">
+                  <div className="mitra-empty-icon">
+                    <Handshake size={32} />
+                  </div>
                   <h3>Belum Ada Kemitraan Aktif</h3>
                   <p>Dashboard akan menampilkan data performa UMKM setelah ada pengajuan kemitraan yang disetujui.</p>
                 </div>
+              ) : !selectedUMKM ? (
+                <div className="mitra-empty-board">
+                  <div className="mitra-empty-icon">
+                    <Handshake size={32} />
+                  </div>
+                  <h3>Pilih UMKM dan Terapkan Filter</h3>
+                  <p>Masukkan nama UMKM pada filter di atas lalu klik Terapkan Filter untuk memulai.</p>
+                </div>
               ) : !dash ? (
-                <div className="ud-card">
-                  <p className="ud-empty">Pilih UMKM untuk melihat dashboard.</p>
+                <div className="mitra-empty-board">
+                  <div className="mitra-empty-icon">
+                    <Handshake size={32} />
+                  </div>
+                  <h3>Data UMKM tidak ditemukan</h3>
+                  <p>Silakan coba ulang filter atau hubungi dukungan jika masalah berlanjut.</p>
                 </div>
               ) : (
                 <>
                   {/* ── KPI Cards ─────────────────────────────────── */}
                   <div className="ud-kpi-row">
                     {/* Hero omzet */}
-                    <div className="ud-kpi-hero" style={{ background: "linear-gradient(135deg, #0f766e, #14b8a6)" }}>
+                    <div className="ud-kpi-hero" style={{ background: "linear-gradient(135deg, #1f45b6, #4f46e5)" }}>
                       <p className="ud-kpi-hero__label">Total Omset Hari Ini</p>
                       <p className="ud-kpi-hero__label" style={{ fontSize: 13, opacity: 0.8, marginBottom: 4 }}>
                         {dash.nama_umkm}
@@ -175,8 +221,8 @@ export default function MitraDashboardPage() {
 
                     {/* Total Item */}
                     <div className="ud-kpi-card">
-                      <div className="ud-kpi-card__icon" style={{ background: "#f0fdf4" }}>
-                        <ShoppingCart size={22} color="#16a34a" />
+                      <div className="ud-kpi-card__icon" style={{ background: "#eff6ff" }}>
+                        <ShoppingCart size={22} color="#1d4ed8" />
                       </div>
                       <p className="ud-kpi-card__label">Total Item Terjual</p>
                       <p className="ud-kpi-card__value">
@@ -203,13 +249,23 @@ export default function MitraDashboardPage() {
                         Rincian Laba Harian — {dash.nama_umkm}
                       </h3>
                       <div className="ud-card__actions">
-                        <button className="ud-icon-btn" title="Filter">⚙️</button>
-                        <button className="ud-icon-btn" title="Kalender">📅</button>
+                        <button className="ud-icon-btn" title="Filter">
+                          <SlidersHorizontal size={16} />
+                        </button>
+                        <button className="ud-icon-btn" title="Kalender">
+                          <CalendarDays size={16} />
+                        </button>
                       </div>
                     </div>
 
                     {labaHarian.length === 0 ? (
-                      <p className="ud-empty">Belum ada data laba untuk UMKM ini.</p>
+                      <div className="ud-card ud-empty-state">
+                        <div className="ud-empty-icon">
+                          <ShoppingCart size={32} />
+                        </div>
+                        <h3>Data laba belum tersedia</h3>
+                        <p>Silakan pilih UMKM lain atau tunggu sementara laporan harian tersedia.</p>
+                      </div>
                     ) : (
                       <>
                         <table className="ud-table">
@@ -279,14 +335,20 @@ export default function MitraDashboardPage() {
                     </div>
 
                     {trenData.length === 0 ? (
-                      <p className="ud-empty">Belum ada data tren.</p>
+                      <div className="ud-card ud-empty-state">
+                        <div className="ud-empty-icon">
+                          <BarChart2 size={32} />
+                        </div>
+                        <h3>Belum ada tren penjualan</h3>
+                        <p>Data tren akan muncul setelah UMKM mitra mulai mencatat penjualan.</p>
+                      </div>
                     ) : (
                       <ResponsiveContainer width="100%" height={220}>
                         <AreaChart data={trenData} margin={{ top: 4, right: 8, bottom: 0, left: 8 }}>
                           <defs>
                             <linearGradient id="mitraGrad" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#0f766e" stopOpacity={0.25} />
-                              <stop offset="95%" stopColor="#0f766e" stopOpacity={0.02} />
+                              <stop offset="5%" stopColor="#1f45b6" stopOpacity={0.25} />
+                              <stop offset="95%" stopColor="#1f45b6" stopOpacity={0.02} />
                             </linearGradient>
                           </defs>
                           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
@@ -302,7 +364,7 @@ export default function MitraDashboardPage() {
                           <Area
                             type="monotone"
                             dataKey="total_laba"
-                            stroke="#0f766e"
+                            stroke="#1f45b6"
                             strokeWidth={2}
                             fill="url(#mitraGrad)"
                             dot={false}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ShoppingCart, BarChart2, TrendingUp, TrendingDown } from "lucide-react";
+import { BarChart2, CalendarDays, Search, ShoppingCart, SlidersHorizontal, TrendingDown, TrendingUp } from "lucide-react";
 import UserLayout from "../components/UserLayout";
 import {
   getUMKMDashboard,
@@ -136,7 +136,7 @@ export default function UMKMDashboardPage() {
         </div>
         <div className="ufb-group ufb-group--btn">
           <button className="ufb-btn" onClick={fetchDashboard}>
-            🔍 Terapkan
+            <Search size={16} style={{ marginRight: 8 }} /> Terapkan
           </button>
         </div>
       </div>
@@ -191,8 +191,12 @@ export default function UMKMDashboardPage() {
                 Rincian Laba Harian ({MONTHS[bulan]} {tahun})
               </h3>
               <div className="ud-card__actions">
-                <button className="ud-icon-btn" title="Filter">⚙️</button>
-                <button className="ud-icon-btn" title="Kalender">📅</button>
+                <button className="ud-icon-btn" title="Filter">
+                  <SlidersHorizontal size={16} />
+                </button>
+                <button className="ud-icon-btn" title="Kalender">
+                  <CalendarDays size={16} />
+                </button>
               </div>
             </div>
 

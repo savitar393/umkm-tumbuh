@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Store, Handshake, TrendingUp, AlertCircle, Banknote } from "lucide-react";
+import { AlertCircle, Banknote, Handshake, Search, Store, TrendingUp } from "lucide-react";
 import AdminLayout from "../components/AdminLayout";
 import StatCard from "../components/StatCard";
 import IndonesiaMap from "../components/IndoMaps";
@@ -121,7 +121,9 @@ export default function AdminDashboardPage() {
         </div>
         <div className="filter-group filter-group--btn">
           <label className="filter-label">&nbsp;</label>
-          <button className="filter-btn">🔍 Terapkan Filter</button>
+          <button className="filter-btn">
+            <Search size={16} style={{ marginRight: 8 }} /> Terapkan Filter
+          </button>
         </div>
       </div>
 
@@ -157,7 +159,7 @@ export default function AdminDashboardPage() {
       {/* Baris bawah */}
       <div className="charts-row">
         <div className="info-card">
-          <div className="chart-card__title">📊 Tren Pertumbuhan</div>
+          <div className="chart-card__title">Tren Pertumbuhan</div>
           <p>
             {data
               ? `Total ${formatNumber(data.summary.total_umkm)} UMKM terdaftar dengan ${formatNumber(data.summary.total_umkm_aktif)} aktif. Terdapat ${formatNumber(data.summary.total_umkm_berkembang)} UMKM dalam tren berkembang.`
@@ -165,7 +167,7 @@ export default function AdminDashboardPage() {
           </p>
         </div>
         <div className="info-card warning">
-          <div className="chart-card__title">⚠️ Atensi Khusus</div>
+          <div className="chart-card__title">Atensi Khusus</div>
           <p>
             {data?.atensi
               ? `Terdapat ${formatNumber(data.atensi.total_umkm_perlu_atensi)} UMKM perlu perhatian dan ${formatNumber(data.atensi.total_umkm_berisiko)} UMKM berisiko di ${formatNumber(data.atensi.total_provinsi_terdampak)} provinsi.`

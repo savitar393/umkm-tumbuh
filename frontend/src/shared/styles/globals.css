@@ -806,6 +806,13 @@ button.danger {
 .status-tab.active { background: #1f45b6; color: #fff; border-color: #1f45b6; box-shadow: none; }
 
 /* Search */
+.search-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 320px;
+}
+
 .search-input {
   min-height: 38px;
   padding: 8px 14px;
@@ -814,14 +821,19 @@ button.danger {
   background: #f9fafb;
   font-size: 13px;
   color: #374151;
-  width: 300px;
+  width: 100%;
   outline: none;
 }
 
 .search-input:focus {
   border-color: #1f45b6;
   background: #fff;
-  box-shadow: 0 0 0 3px rgba(31,69,182,0.1);
+  box-shadow: 0 0 0 3px rgba(31, 69, 182, 0.1);
+}
+
+.search-input-icon {
+  color: #9ca3af;
+  flex-shrink: 0;
 }
 
 /* Users Table */
@@ -1074,6 +1086,30 @@ button.danger {
   border-radius: 0;
 }
 
+.topbar-mitra-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: 14px;
+  background: #eef2ff;
+}
+
+.topbar-mitra-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.topbar-mitra-chip {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #1d4ed8;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+}
+
 .topbar-right {
   display: flex;
   align-items: center;
@@ -1182,6 +1218,119 @@ button.danger {
   border-radius: 12px;
   box-shadow: 0 1px 6px rgba(0,0,0,0.06);
   flex-wrap: wrap;
+}
+
+.mitra-filter-card {
+  background: #fff;
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
+  margin-bottom: 16px;
+}
+
+.mitra-filter-row {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.6fr) minmax(170px, 1fr) minmax(140px, 0.9fr) max-content;
+  gap: 16px;
+  align-items: end;
+}
+
+.mitra-filter-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mitra-filter-item--button {
+  display: flex;
+  align-items: flex-end;
+}
+
+.mitra-filter-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #6b7280;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mitra-filter-input,
+.mitra-filter-select {
+  min-height: 44px;
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  background: #f8fafc;
+  padding: 12px 14px;
+  color: #111827;
+  font-size: 14px;
+  outline: none;
+}
+
+.mitra-filter-input:focus,
+.mitra-filter-select:focus {
+  border-color: #1f45b6;
+  background: #fff;
+}
+
+.mitra-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 22px;
+  border-radius: 14px;
+  border: none;
+  color: #fff;
+  background: #1f45b6;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.mitra-filter-btn:hover {
+  background: #16358f;
+}
+
+.mitra-filter-note {
+  margin-top: 14px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.mitra-empty-board {
+  background: #fff;
+  border-radius: 24px;
+  padding: 46px 36px;
+  text-align: center;
+  box-shadow: 0 18px 55px rgba(15, 23, 42, 0.06);
+  margin-bottom: 24px;
+}
+
+.mitra-empty-icon {
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #e0f2fe;
+  color: #0f766e;
+  margin-bottom: 18px;
+}
+
+.mitra-empty-board h3 {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 12px;
+  color: #111827;
+}
+
+.mitra-empty-board p {
+  font-size: 14px;
+  color: #6b7280;
+  max-width: 520px;
+  margin: 0 auto;
 }
 
 .ufb-group {

@@ -1,24 +1,23 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import type { ReactNode } from "react";
+import { BookOpen, Bell, Handshake, LayoutDashboard, LogOut, Search, Settings2, User2 } from "lucide-react";
 import { getCurrentUser, clearAuthStorage } from "../../../shared/auth/currentUser";
 import type { UserRole } from "../../../shared/auth/currentUser";
 
-type NavItem = { label: string; to: string; icon: string };
+type NavItem = { label: string; to: string; icon: ReactNode };
 
 const umkmNav: NavItem[] = [
-  { label: "Dashboard", to: "/umkm", icon: "📊" },
-  { label: "Pelatihan Saya", to: "/umkm/trainings", icon: "🎓" },
-  { label: "Kelola Informasi", to: "/umkm/profile", icon: "👤" },
-  { label: "Pengajuan Kemitraan", to: "/umkm/partnerships", icon: "🤝" },
-  { label: "Pengaturan", to: "/umkm/settings", icon: "⚙️" },
+  { label: "Dashboard", to: "/umkm", icon: <LayoutDashboard size={18} /> },
+  { label: "Pelatihan Saya", to: "/umkm/trainings", icon: <BookOpen size={18} /> },
+  { label: "Kelola Informasi", to: "/umkm/profile", icon: <User2 size={18} /> },
+  { label: "Pengajuan Kemitraan", to: "/umkm/partnerships", icon: <Handshake size={18} /> },
+  { label: "Pengaturan", to: "/umkm/settings", icon: <Settings2 size={18} /> },
 ];
 
 const mitraNav: NavItem[] = [
-  { label: "Dashboard", to: "/mitra", icon: "📊" },
-  { label: "Kelola Informasi", to: "/mitra/profile", icon: "👤" },
-  { label: "Kemitraan", to: "/mitra/partnerships", icon: "🤝" },
-  { label: "Notifikasi", to: "/mitra/notifications", icon: "🔔" },
-  { label: "Pengaturan", to: "/mitra/settings", icon: "⚙️" },
+  { label: "Dashboard", to: "/mitra", icon: <LayoutDashboard size={18} /> },
+  { label: "Kemitraan", to: "/mitra/partnerships", icon: <Handshake size={18} /> },
+  { label: "Kelola Informasi", to: "/mitra/profile", icon: <User2 size={18} /> },
 ];
 
 type Props = {
@@ -33,7 +32,7 @@ export default function UserLayout({ children, role, title, subtitle }: Props) {
   const navigate = useNavigate();
   const user = getCurrentUser();
   const navItems = role === "UMKM" ? umkmNav : mitraNav;
-  const brandColor = role === "UMKM" ? "#1f45b6" : "#0f766e";
+  const brandColor = role === "UMKM" ? "#1f45b6" : "#1d4ed8";
 
   function logout() {
     clearAuthStorage();
@@ -69,7 +68,7 @@ export default function UserLayout({ children, role, title, subtitle }: Props) {
         {/* Logout */}
         <div className="sidebar-footer">
           <button className="sidebar-logout" onClick={logout}>
-            🚪 Keluar
+            <LogOut size={16} /> Keluar
           </button>
         </div>
       </aside>
@@ -78,20 +77,25 @@ export default function UserLayout({ children, role, title, subtitle }: Props) {
       <div className="user-main">
         {/* Top bar */}
         <header className="user-topbar">
-          {/* Search */}
-          <div className="topbar-search">
-            <span className="topbar-search-icon">🔍</span>
-            <input
-              type="text"
-              placeholder="Cari laporan atau produk..."
-              className="topbar-search-input"
-            />
-          </div>
+          {role === "MITRA" ? (
+            <div className="topbar-mitra-brand">
+              <div className="topbar-mitra-title">Monitoring Perkembangan Usaha</div>
+            </div>
+          ) : (
+            <div className="topbar-search">
+              <Search size={16} className="topbar-search-icon" />
+              <input
+                type="text"
+                placeholder="Cari laporan atau produk..."
+                className="topbar-search-input"
+              />
+            </div>
+          )}
 
           {/* Right side */}
           <div className="topbar-right">
             <button className="topbar-notif" aria-label="Notifikasi">
-              🔔
+              <Bell size={18} />
             </button>
             <div className="topbar-divider" />
             <div className="topbar-user">

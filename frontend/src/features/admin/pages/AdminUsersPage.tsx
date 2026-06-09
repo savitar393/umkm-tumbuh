@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Search, ClipboardList } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import type { User } from "../../auth/api";
 import {
@@ -36,13 +37,13 @@ export default function AdminUsersPage() {
             className={`users-tab ${activeTab === "registrations" ? "active" : ""}`}
             onClick={() => setTab("registrations")}
           >
-            📋 Pendaftaran
+            <ClipboardList size={14} style={{ marginRight: 6 }} /> Pendaftaran
           </button>
           <button
             className={`users-tab ${activeTab === "all" ? "active" : ""}`}
             onClick={() => setTab("all")}
           >
-            👥 Semua Pengguna
+            <Search size={14} style={{ marginRight: 6 }} /> Semua Pengguna
           </button>
         </div>
 
@@ -127,7 +128,9 @@ function RegistrationsTab() {
               {s === "PENDING" && "⏳ Menunggu"}
               {s === "APPROVED" && "✅ Disetujui"}
               {s === "REJECTED" && "❌ Ditolak"}
-              {s === "ALL" && "📋 Semua"}
+              {s === "ALL" && (
+              <><ClipboardList size={14} style={{ marginRight: 6 }} /> Semua</>
+            )}
             </button>
           ))}
         </div>
@@ -238,13 +241,16 @@ function AllUsersTab() {
   return (
     <div className="tab-content">
       <div className="tab-content__toolbar">
-        <input
-          className="search-input"
-          type="text"
-          placeholder="🔍 Cari nama atau email..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        <div className="search-field">
+          <Search size={16} className="search-input-icon" />
+          <input
+            className="search-input"
+            type="text"
+            placeholder="Cari nama atau email..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
       </div>
 
       {error && <p className="error-message">{error}</p>}
