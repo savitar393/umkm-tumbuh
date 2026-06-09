@@ -1,0 +1,8 @@
+status_pengajuan_id,nama_status_pengajuan
+DIAJUKAN,Diajukan
+DITINJAU,Ditinjau
+DITOLAK,Ditolak
+MENUNGGU_DOKUMEN_TTD,Menunggu Dokumen Ditandatangani
+AKTIF,Aktif
+SELESAI,Selesai
+DIBATALKAN,Dibatalkan

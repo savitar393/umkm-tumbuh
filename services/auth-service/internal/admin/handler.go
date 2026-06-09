@@ -3,6 +3,7 @@ package admin
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -110,5 +111,6 @@ func handleError(w http.ResponseWriter, err error) {
 		return
 	}
 
+	log.Printf("internal admin error: %v", err)
 	response.Error(w, http.StatusInternalServerError, "Terjadi kesalahan pada server.")
 }

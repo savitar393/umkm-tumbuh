@@ -1,27 +1,98 @@
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8080/api/v1";
+import { getAccessToken } from "../auth/currentUser";
 
-export async function http<T>(
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080/api/v1";
+
+export type RequestOptions = RequestInit & {
+  auth?: boolean;
+};
+
+export async function apiRequest<T>(
   path: string,
-  options: RequestInit = {}
+  options: RequestOptions = {},
 ): Promise<T> {
-  const token = localStorage.getItem("access_token");
+  const { auth = true, headers, ...rest } = options;
+
+  const requestHeaders = new Headers(headers);
+
+  if (!requestHeaders.has("Content-Type") && rest.body) {
+    requestHeaders.set("Content-Type", "application/json");
+  }
+
+  if (auth) {
+    const token = getAccessToken();
+
+    if (token) {
+      requestHeaders.set("Authorization", `Bearer ${token}`);
+    }
+  }
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options.headers || {}),
-    },
+    ...rest,
+    headers: requestHeaders,
   });
 
-  const data = await response.json().catch(() => null);
+  const isJson = response.headers
+    .get("content-type")
+    ?.includes("application/json");
+
+  const payload = isJson ? await response.json() : null;
 
   if (!response.ok) {
-    const message = data?.error || data?.message || "Request failed";
+    const message =
+      payload?.error ||
+      payload?.message ||
+      "Terjadi kesalahan pada server.";
+
     throw new Error(message);
   }
 
-  return data as T;
+  return payload as T;
 }
+
+function httpRequest<T>(
+  path: string,
+  options: RequestOptions = {},
+): Promise<T> {
+  return apiRequest<T>(path, options);
+}
+
+export const http = Object.assign(httpRequest, {
+  get<T>(path: string, options?: RequestOptions) {
+    return apiRequest<T>(path, {
+      ...options,
+      method: "GET",
+    });
+  },
+
+  post<T>(path: string, body?: unknown, options?: RequestOptions) {
+    return apiRequest<T>(path, {
+      ...options,
+      method: "POST",
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  },
+
+  put<T>(path: string, body?: unknown, options?: RequestOptions) {
+    return apiRequest<T>(path, {
+      ...options,
+      method: "PUT",
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  },
+
+  patch<T>(path: string, body?: unknown, options?: RequestOptions) {
+    return apiRequest<T>(path, {
+      ...options,
+      method: "PATCH",
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  },
+
+  delete<T>(path: string, options?: RequestOptions) {
+    return apiRequest<T>(path, {
+      ...options,
+      method: "DELETE",
+    });
+  },
+});

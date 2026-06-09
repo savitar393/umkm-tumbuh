@@ -9,6 +9,7 @@ import (
 	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/admin"
 	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/auth"
 	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/config"
+	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/dashboard"
 	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/database"
 	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/health"
 	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/router"
@@ -27,18 +28,22 @@ func main() {
 	defer db.Close()
 
 	userRepo := users.NewRepository(db)
+	dashboardRepo := dashboard.NewRepository(db)
 
 	authService := auth.NewService(userRepo, cfg)
 	adminService := admin.NewService(userRepo)
+	dashboardService := dashboard.NewService(dashboardRepo)
 
 	healthHandler := health.NewHandler(db)
 	authHandler := auth.NewHandler(authService)
 	adminHandler := admin.NewHandler(adminService, authService)
+	dashboardHandler := dashboard.NewHandler(dashboardService, authService)
 
 	appRouter := router.NewRouter(
 		healthHandler,
 		authHandler,
 		adminHandler,
+		dashboardHandler,
 		cfg.FrontendURL,
 	)
 

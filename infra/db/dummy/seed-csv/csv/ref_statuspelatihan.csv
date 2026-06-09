@@ -1,0 +1,6 @@
+status_pelatihan_id,nama_status_pelatihan
+DRAFT,Draft
+PUBLISHED,Dipublikasikan
+ONGOING,Sedang Berjalan
+ARCHIVED,Diarsipkan
+CANCELLED,Dibatalkan

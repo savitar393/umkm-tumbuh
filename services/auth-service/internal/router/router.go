@@ -8,6 +8,7 @@ import (
 
 	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/admin"
 	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/auth"
+	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/dashboard"
 	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/health"
 )
 
@@ -15,6 +16,7 @@ func NewRouter(
 	healthHandler *health.Handler,
 	authHandler *auth.Handler,
 	adminHandler *admin.Handler,
+	dashboardHandler *dashboard.Handler,
 	frontendURL string,
 ) http.Handler {
 	r := chi.NewRouter()
@@ -40,6 +42,8 @@ func NewRouter(
 			r.Get("/registrations", adminHandler.ListRegistrations)
 			r.Patch("/registrations/{userID}/approve", adminHandler.ApproveRegistration)
 			r.Patch("/registrations/{userID}/reject", adminHandler.RejectRegistration)
+
+			r.Get("/dashboard", dashboardHandler.GetDashboard)
 		})
 	})
 
