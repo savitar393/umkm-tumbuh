@@ -10,6 +10,7 @@ import (
 
 	"github.com/savitar393/umkm-tumbuh/services/user-service/internal/health"
 	"github.com/savitar393/umkm-tumbuh/services/user-service/internal/middleware"
+	"github.com/savitar393/umkm-tumbuh/services/user-service/internal/products"
 	"github.com/savitar393/umkm-tumbuh/services/user-service/internal/profiles"
 )
 
@@ -28,6 +29,7 @@ func New(db *pgxpool.Pool, frontendURL string, jwtSecret string) http.Handler {
 
 	healthHandler := health.NewHandler(db)
 	profileHandler := profiles.NewHandler(db)
+	productHandler := products.NewHandler(db)
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/health", healthHandler.ServiceHealth)
@@ -40,7 +42,17 @@ func New(db *pgxpool.Pool, frontendURL string, jwtSecret string) http.Handler {
 				r.Get("/me", profileHandler.GetMe)
 				r.Put("/me", profileHandler.UpsertMe)
 			})
+
+			r.Route("/products", func(r chi.Router) {
+				r.Get("/", productHandler.List)
+				r.Post("/", productHandler.Create)
+				r.Get("/{id}", productHandler.Get)
+				r.Put("/{id}", productHandler.Update)
+				r.Patch("/{id}/stock", productHandler.UpdateStock)
+				r.Delete("/{id}", productHandler.Delete)
+			})
 		})
+
 	})
 
 	return r
