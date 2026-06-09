@@ -114,10 +114,6 @@ function RegistrationsTab() {
     } finally { setActionLoadingID(""); }
   }
 
-  const counts = {
-    PENDING: registrations.length,
-  };
-
   return (
     <div className="tab-content">
       <div className="tab-content__toolbar">

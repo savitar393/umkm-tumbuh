@@ -55,17 +55,23 @@ export default function MitraDashboardPage() {
 
   // Initial load — tanpa filter
   useEffect(() => {
-    setLoading(true);
-    getMitraDashboard()
-      .then((d) => {
+    async function loadDashboard() {
+      setLoading(true);
+      try {
+        const d = await getMitraDashboard();
         setData(d);
         // Set selected ke UMKM pertama kalau ada
         if (d.umkm_list?.length > 0) {
           setSelectedUMKM(d.dashboard?.umkm_id ?? d.umkm_list[0].umkm_id);
         }
-      })
-      .catch((e) => setError(e instanceof Error ? e.message : "Gagal memuat data"))
-      .finally(() => setLoading(false));
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Gagal memuat data");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    void loadDashboard();
   }, []);
 
   // Saat user ganti UMKM

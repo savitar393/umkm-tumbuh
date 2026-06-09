@@ -80,7 +80,23 @@ export default function UMKMDashboardPage() {
   }
 
   useEffect(() => {
-    fetchDashboard();
+    async function loadDashboard() {
+      setLoading(true);
+      setError("");
+      setPage(0);
+      const { from, to } = buildDateRange();
+
+      try {
+        const d = await getUMKMDashboard(from, to);
+        setData(d);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Gagal memuat data");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    void loadDashboard();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Paginasi tabel
