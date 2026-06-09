@@ -281,7 +281,10 @@ export default function UMKMDashboardPage() {
                   <XAxis dataKey="hari" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`} />
                   <Tooltip
-                    formatter={(v: number) => [formatRupiahFull(v), "Laba"]}
+                    formatter={(value) => {
+                      const laba = typeof value === "number" ? value : Number(value ?? 0);
+                      return [formatRupiahFull(laba), "Laba"];
+                    }}
                     contentStyle={{ fontSize: 12, borderRadius: 8 }}
                   />
                   <Area

@@ -135,7 +135,12 @@ export function OmzetTrendChart({ data }: { data: LabaTimeseriesItem[] }) {
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
           <XAxis dataKey="bulan" tick={{ fontSize: 11 }} />
           <YAxis tick={{ fontSize: 12 }} />
-          <Tooltip formatter={(v: number) => [`Rp ${v} Jt`, "Laba"]} />
+          <Tooltip
+            formatter={(value) => {
+              const laba = typeof value === "number" ? value : Number(value ?? 0);
+              return [`Rp ${laba} Jt`, "Laba"];
+            }}
+          />
           <Line type="monotone" dataKey="laba" stroke="#1f45b6" strokeWidth={2} dot={{ r: 4 }} />
         </LineChart>
       </ResponsiveContainer>
@@ -168,7 +173,12 @@ export function RegionBarChart({ data }: { data: TopWilayahItem[] }) {
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
           <XAxis dataKey="wilayah" tick={{ fontSize: 10 }} angle={-20} textAnchor="end" />
           <YAxis tick={{ fontSize: 12 }} />
-          <Tooltip formatter={(v: number) => [`Rp ${v} Jt`, "Laba"]} />
+          <Tooltip
+            formatter={(value) => {
+              const laba = typeof value === "number" ? value : Number(value ?? 0);
+              return [`Rp ${laba} Jt`, "Laba"];
+            }}
+          />
           <Bar dataKey="laba" radius={[6, 6, 0, 0]}>
             {chartData.map((entry, index) => (
               <Cell key={index} fill={entry.rank === 1 ? "#ffc933" : "#1f45b6"} />
