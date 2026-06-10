@@ -8,7 +8,6 @@ import {
   Settings,
   Bell,
   Package,
-  ClipboardList
 } from "lucide-react";
 import { clearAuthStorage, getCurrentUser } from "../../../shared/auth/currentUser";
 
@@ -23,7 +22,6 @@ const navItems = [
   { label: "Pelatihan Saya", to: "/umkm/trainings", icon: BookOpen },
   { label: "Kelola Informasi", to: "/umkm/profile", icon: Building2 },
   { label: "Kelola Produk", to: "/umkm/products", icon: Package },
-  { label: "Catatan Transaksi", to: "/umkm/sales", icon: ClipboardList },
   { label: "Pengajuan Kemitraan", to: "/umkm/partnerships", icon: Handshake },
   { label: "Pengaturan", to: "/umkm/settings", icon: Settings },
 ];
