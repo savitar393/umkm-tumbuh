@@ -1591,3 +1591,517 @@ button.danger {
     text-align: left;
   }
 }
+/* ===================== AUTH MOCKUP ALIGNMENT ===================== */
+
+.auth-split-page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(420px, 0.56fr);
+  background: #f8fafb;
+}
+
+.auth-split-left {
+  display: grid;
+  place-items: center;
+  padding: 48px 24px;
+}
+
+.auth-login-wrap {
+  width: min(520px, 100%);
+  display: grid;
+  gap: 28px;
+  justify-items: center;
+}
+
+.auth-logo-stack {
+  text-align: center;
+}
+
+.auth-logo-stack img {
+  width: 68px;
+  height: 68px;
+  object-fit: contain;
+  border-radius: 18px;
+  margin-bottom: 22px;
+  box-shadow: 0 18px 35px rgba(31, 69, 182, 0.18);
+}
+
+.auth-logo-stack h1 {
+  font-size: 32px;
+  color: #1f45b6;
+  letter-spacing: -0.04em;
+  margin-bottom: 10px;
+}
+
+.auth-logo-stack p {
+  max-width: 420px;
+  color: #5f676b;
+  font-size: 18px;
+  line-height: 1.45;
+}
+
+.auth-glass-card {
+  width: 100%;
+  padding: 44px;
+  border-radius: 28px;
+  background: #ffffff;
+  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.1);
+  margin-top: 8px;
+}
+
+.auth-glass-card form,
+.auth-glass-card {
+  text-align: left;
+}
+
+.auth-input-shell {
+  display: grid;
+  grid-template-columns: 24px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  padding: 0 16px;
+  border-radius: 16px;
+  background: #f1f2f3;
+  color: #a2a8aa;
+}
+
+.auth-input-shell input {
+  min-height: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.auth-input-shell input:focus {
+  box-shadow: none;
+  background: transparent;
+}
+
+.auth-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.auth-label-row a,
+.auth-bottom-link a,
+.register-bottom-link a {
+  color: #1f45b6;
+  text-decoration: none;
+  font-weight: 850;
+}
+
+.auth-icon-toggle {
+  min-height: auto;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #9ca3af;
+}
+
+.auth-checkbox-row {
+  display: flex;
+  grid-template-columns: none;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  font-weight: 500;
+  color: #4b5563;
+}
+
+.auth-checkbox-row input {
+  width: 18px;
+  min-height: 18px;
+  height: 18px;
+  padding: 0;
+}
+
+.auth-glass-card button[type="submit"] {
+  min-height: 64px;
+  border-radius: 18px;
+  font-size: 18px;
+  gap: 10px;
+}
+
+.auth-bottom-link {
+  text-align: center;
+  color: #4b5563;
+  font-size: 18px;
+}
+
+.auth-footer-links {
+  display: flex;
+  gap: 26px;
+  color: #a1a1aa;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.auth-split-right {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255,255,255,0.08), transparent 30%),
+    linear-gradient(145deg, #1f45b6, #1839a3);
+  display: flex;
+  align-items: flex-end;
+  padding: 72px 56px;
+  color: #ffffff;
+}
+
+.auth-split-right::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.12;
+  background-image:
+    radial-gradient(circle at 0 0, transparent 38%, #ffffff 39%, transparent 40%),
+    radial-gradient(circle at 100% 100%, transparent 38%, #ffffff 39%, transparent 40%);
+  background-size: 240px 240px;
+}
+
+.auth-quote {
+  position: relative;
+  z-index: 1;
+  max-width: 500px;
+}
+
+.auth-quote-line {
+  width: 52px;
+  height: 4px;
+  border-radius: 999px;
+  background: #bde6ff;
+  margin-bottom: 28px;
+}
+
+.auth-quote blockquote {
+  margin: 0 0 18px;
+  font-size: 30px;
+  line-height: 1.18;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+
+.auth-quote p {
+  color: rgba(255,255,255,0.72);
+}
+
+/* Register */
+
+.register-page {
+  min-height: 100vh;
+  background: #f8fafb;
+}
+
+.register-navbar {
+  height: 92px;
+  padding: 0 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #1f45b6;
+  color: #ffffff;
+}
+
+.register-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  color: #ffc933;
+  text-decoration: none;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.register-brand img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+}
+
+.register-navbar nav {
+  display: flex;
+  align-items: center;
+  gap: 56px;
+}
+
+.register-navbar nav a {
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 18px;
+}
+
+.register-stage {
+  min-height: calc(100vh - 92px);
+  display: grid;
+  place-items: center;
+  padding: 54px 24px;
+}
+
+.register-role-panel {
+  width: min(620px, 100%);
+  display: grid;
+  gap: 34px;
+}
+
+.register-heading-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.register-heading-row img {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  border-radius: 18px;
+  box-shadow: 0 18px 45px rgba(31, 69, 182, 0.14);
+}
+
+.register-heading-row h1 {
+  font-size: 30px;
+  letter-spacing: -0.04em;
+}
+
+.register-stepper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.register-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: #a8b0b4;
+}
+
+.register-step span {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #eef0f0;
+  color: #a8b0b4;
+  font-weight: 850;
+}
+
+.register-step span.active,
+.register-step span.done {
+  background: #172b68;
+  color: #ffffff;
+}
+
+.register-step strong {
+  font-size: 16px;
+}
+
+.register-step strong.active {
+  color: #111827;
+}
+
+.register-step i {
+  width: 30px;
+  height: 2px;
+  background: #e5e7eb;
+}
+
+.role-card-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.role-card {
+  display: grid;
+  justify-content: initial;
+  align-items: initial;
+  text-align: left;
+  gap: 18px;
+  min-height: 300px;
+  padding: 34px;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #111827;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.16);
+  border: 0;
+}
+
+.role-card:hover {
+  transform: translateY(-2px);
+}
+
+.role-card--active {
+  background: #1f45b6;
+  color: #ffffff;
+}
+
+.role-icon {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.18);
+}
+
+.role-card:not(.role-card--active) .role-icon {
+  background: #eef2f1;
+  color: #4b5563;
+}
+
+.role-card h2 {
+  font-size: 24px;
+}
+
+.role-card ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.role-card li,
+.role-card strong {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.role-card li {
+  color: inherit;
+  opacity: 0.78;
+}
+
+.role-card strong {
+  margin-top: auto;
+  font-size: 16px;
+}
+
+.register-bottom-link {
+  text-align: center;
+  color: #4b5563;
+}
+
+/* Register account form */
+
+.register-account-panel {
+  width: min(540px, 100%);
+  min-height: calc(100vh - 92px);
+  display: grid;
+  align-content: center;
+  gap: 22px;
+  padding: 48px 56px;
+  background: #ffffff;
+}
+
+.register-account-panel h1 {
+  font-size: 40px;
+  letter-spacing: -0.05em;
+}
+
+.register-account-panel > p {
+  font-size: 18px;
+}
+
+.register-account-form {
+  margin-top: 8px;
+}
+
+.register-two-column {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.phone-field {
+  display: grid;
+  grid-template-columns: 62px 1fr;
+  gap: 10px;
+}
+
+.phone-field span {
+  display: grid;
+  place-items: center;
+  min-height: 48px;
+  border-radius: 14px;
+  background: #eef0f0;
+  color: #374151;
+}
+
+.register-terms {
+  align-items: flex-start;
+  line-height: 1.6;
+}
+
+.register-terms a {
+  color: #087060;
+  text-decoration: none;
+}
+
+.register-account-form button[type="submit"] {
+  min-height: 64px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #0d2386, #0b4fb6);
+  font-size: 18px;
+}
+
+.register-back-button {
+  background: transparent;
+  color: #087060;
+  box-shadow: none;
+  min-height: auto;
+}
+
+.register-account-panel footer {
+  margin-top: 64px;
+  color: #8e969a;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+@media (max-width: 960px) {
+  .auth-split-page {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-split-right {
+    display: none;
+  }
+
+  .role-card-grid,
+  .register-two-column {
+    grid-template-columns: 1fr;
+  }
+
+  .register-account-panel {
+    padding: 36px 24px;
+  }
+}
+
+@media (max-width: 640px) {
+  .register-navbar {
+    padding: 0 18px;
+  }
+
+  .register-navbar nav {
+    gap: 18px;
+  }
+
+  .register-navbar nav a {
+    display: none;
+  }
+
+  .auth-glass-card {
+    padding: 28px;
+  }
+}
