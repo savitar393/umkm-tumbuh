@@ -16,10 +16,17 @@ func NewService(repo *Repository) *Service {
 // ─── UMKM Dashboard ──────────────────────────────────────────────────────────
 
 func (s *Service) GetUMKMDashboard(ctx context.Context, accountID, dateFrom, dateTo string) (*UMKMDashboardData, error) {
-	// 1. Resolve umkm_id
+	// 1. Resolve umkm_id — kalau belum punya profil UMKM, return kosong bukan error
 	umkmID, namaUMKM, err := s.Repo.GetUMKMByAccount(ctx, accountID)
 	if err != nil {
-		return nil, err
+		// Akun belum punya profil UMKM — return data kosong, bukan 500
+		return &UMKMDashboardData{
+			NamaUMKM:     "Profil belum dibuat",
+			LabaHarian:   []LabaHarianItem{},
+			TrenMingguan: []TrenMingguan{},
+			DateFrom:     dateFrom,
+			DateTo:       dateTo,
+		}, nil
 	}
 
 	// 2. Resolusi rentang tanggal — selalu gunakan rentang dari data yang ada
@@ -98,10 +105,14 @@ func (s *Service) GetUMKMDashboard(ctx context.Context, accountID, dateFrom, dat
 // ─── Mitra Dashboard ─────────────────────────────────────────────────────────
 
 func (s *Service) GetMitraDashboard(ctx context.Context, accountID, selectedUMKMID string) (*MitraDashboardData, error) {
-	// 1. Resolve mitra_id
+	// 1. Resolve mitra_id — kalau belum punya profil mitra, return kosong
 	mitraID, namaMitra, err := s.Repo.GetMitraByAccount(ctx, accountID)
 	if err != nil {
-		return nil, err
+		return &MitraDashboardData{
+			NamaMitra: "Profil belum dibuat",
+			UMKMList:  []UMKMMitraItem{},
+			Dashboard: nil,
+		}, nil
 	}
 
 	// 2. Daftar UMKM mitra

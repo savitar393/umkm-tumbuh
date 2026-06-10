@@ -2,6 +2,15 @@ package dashboard
 
 import "time"
 
+// DashboardFilter — parameter filter dari query string
+type DashboardFilter struct {
+	Provinsi   string // kosong = semua provinsi
+	Bulan      string // format YYYY-MM, kosong = semua
+	Tahun      string // format YYYY, kosong = semua
+	StatusUMKM string // kosong = semua status
+	Days       string // jumlah hari untuk tren, default "180"
+}
+
 // SummaryResponse — KPI cards utama dashboard nasional
 type SummaryResponse struct {
 	TotalUMKM               int64     `json:"total_umkm"`

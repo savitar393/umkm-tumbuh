@@ -1,0 +1,370 @@
+{
+  "info": {
+    "_postman_id": "041c949c-cfb0-429b-a81b-c6455ba71977",
+    "name": "UMKM Tumbuh Backend - Happy Alternative Sad Path",
+    "description": "Newman automated backend tests: happy path, alternative path, and sad path.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.environment.get('run_id')) {",
+          "  const runId = Date.now().toString();",
+          "  pm.environment.set('run_id', runId);",
+          "  pm.environment.set('umkm_email', `qa.umkm.${runId}@example.com`);",
+          "  pm.environment.set('mitra_email', `qa.mitra.${runId}@example.com`);",
+          "  pm.environment.set('umkm_password', 'password12345');",
+          "  pm.environment.set('mitra_password', 'password12345');",
+          "  pm.environment.set('umkm_phone', `08${runId.slice(-11)}`);",
+          "  pm.environment.set('mitra_phone', `09${runId.slice(-11)}`);",
+          "  pm.environment.set('umkm_nik', `3372${runId.slice(-12).padStart(12, '0')}`);",
+          "  pm.environment.set('mitra_nik', `3373${runId.slice(-12).padStart(12, '0')}`);",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "00 - Health Checks",
+      "item": [
+        {
+          "name": "HP-HEALTH-001 Auth service health",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{auth_base_url}}/api/v1/health", "host": ["{{auth_base_url}}"], "path": ["api","v1","health"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] } }]
+        },
+        {
+          "name": "HP-HEALTH-002 Auth DB health",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{auth_base_url}}/api/v1/health/db", "host": ["{{auth_base_url}}"], "path": ["api","v1","health","db"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] } }]
+        },
+        {
+          "name": "HP-HEALTH-003 User service health",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{user_base_url}}/api/v1/health", "host": ["{{user_base_url}}"], "path": ["api","v1","health"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] } }]
+        },
+        {
+          "name": "HP-HEALTH-004 User DB health",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{user_base_url}}/api/v1/health/db", "host": ["{{user_base_url}}"], "path": ["api","v1","health","db"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] } }]
+        }
+      ]
+    },
+    {
+      "name": "01 - Auth Registration Flow",
+      "item": [
+        {
+          "name": "HP-AUTH-001 Admin login",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Content-Type","value":"application/json"}],
+            "url": { "raw": "{{auth_base_url}}/api/v1/auth/login", "host": ["{{auth_base_url}}"], "path": ["api","v1","auth","login"] },
+            "body": { "mode": "raw", "raw": "{\"email\":\"{{admin_email}}\",\"password\":\"{{admin_password}}\"}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test('Token exists', () => pm.expect(json.access_token).to.be.a('string').and.not.empty);",
+            "pm.environment.set('admin_token', json.access_token);"
+          ] } }]
+        },
+        {
+          "name": "HP-REG-001 Register UMKM",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Content-Type","value":"application/json"}],
+            "url": { "raw": "{{auth_base_url}}/api/v1/auth/register", "host": ["{{auth_base_url}}"], "path": ["api","v1","auth","register"] },
+            "body": { "mode": "raw", "raw": "{\"full_name\":\"QA UMKM {{run_id}}\",\"email\":\"{{umkm_email}}\",\"phone_number\":\"{{umkm_phone}}\",\"nik\":\"{{umkm_nik}}\",\"password\":\"{{umkm_password}}\",\"role\":\"UMKM\"}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 201', () => pm.response.to.have.status(201));",
+            "const json = pm.response.json();",
+            "pm.test('Role is UMKM', () => pm.expect(json.user.role).to.eql('UMKM'));",
+            "pm.environment.set('umkm_user_id', json.user.id);"
+          ] } }]
+        },
+        {
+          "name": "AP-REG-001 Register Mitra",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Content-Type","value":"application/json"}],
+            "url": { "raw": "{{auth_base_url}}/api/v1/auth/register", "host": ["{{auth_base_url}}"], "path": ["api","v1","auth","register"] },
+            "body": { "mode": "raw", "raw": "{\"full_name\":\"QA Mitra {{run_id}}\",\"email\":\"{{mitra_email}}\",\"phone_number\":\"{{mitra_phone}}\",\"nik\":\"{{mitra_nik}}\",\"password\":\"{{mitra_password}}\",\"role\":\"MITRA\"}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 201', () => pm.response.to.have.status(201));",
+            "const json = pm.response.json();",
+            "pm.environment.set('mitra_user_id', json.user.id);"
+          ] } }]
+        },
+        {
+          "name": "SP-REG-001 Duplicate email",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Content-Type","value":"application/json"}],
+            "url": { "raw": "{{auth_base_url}}/api/v1/auth/register", "host": ["{{auth_base_url}}"], "path": ["api","v1","auth","register"] },
+            "body": { "mode": "raw", "raw": "{\"full_name\":\"Duplicate User\",\"email\":\"{{umkm_email}}\",\"phone_number\":\"{{umkm_phone}}\",\"nik\":\"{{umkm_nik}}\",\"password\":\"{{umkm_password}}\",\"role\":\"UMKM\"}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 409 Conflict', () => pm.response.to.have.status(409));"
+          ] } }]
+        },
+        {
+          "name": "SP-REG-002 Invalid email",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Content-Type","value":"application/json"}],
+            "url": { "raw": "{{auth_base_url}}/api/v1/auth/register", "host": ["{{auth_base_url}}"], "path": ["api","v1","auth","register"] },
+            "body": { "mode": "raw", "raw": "{\"full_name\":\"Bad Email\",\"email\":\"not-an-email\",\"phone_number\":\"081111111111\",\"nik\":\"3372000000000000\",\"password\":\"password12345\",\"role\":\"UMKM\"}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 400', () => pm.response.to.have.status(400));"] } }]
+        },
+        {
+          "name": "SP-REG-003 Invalid role (ADMIN)",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Content-Type","value":"application/json"}],
+            "url": { "raw": "{{auth_base_url}}/api/v1/auth/register", "host": ["{{auth_base_url}}"], "path": ["api","v1","auth","register"] },
+            "body": { "mode": "raw", "raw": "{\"full_name\":\"Bad Role\",\"email\":\"bad.role@example.com\",\"phone_number\":\"081111111112\",\"nik\":\"3372000000000001\",\"password\":\"password12345\",\"role\":\"ADMIN\"}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 400', () => pm.response.to.have.status(400));"] } }]
+        }
+      ]
+    },
+    {
+      "name": "02 - Admin Approval",
+      "item": [
+        {
+          "name": "HP-ADMIN-001 Approve UMKM",
+          "request": {
+            "method": "PATCH",
+            "header": [{"key":"Authorization","value":"Bearer {{admin_token}}"}],
+            "url": { "raw": "{{auth_base_url}}/api/v1/admin/registrations/{{umkm_user_id}}/approve", "host": ["{{auth_base_url}}"], "path": ["api","v1","admin","registrations","{{umkm_user_id}}","approve"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Status DISETUJUI', () => pm.expect(pm.response.json().status).to.eql('DISETUJUI'));"
+          ] } }]
+        },
+        {
+          "name": "HP-ADMIN-002 Approve Mitra",
+          "request": {
+            "method": "PATCH",
+            "header": [{"key":"Authorization","value":"Bearer {{admin_token}}"}],
+            "url": { "raw": "{{auth_base_url}}/api/v1/admin/registrations/{{mitra_user_id}}/approve", "host": ["{{auth_base_url}}"], "path": ["api","v1","admin","registrations","{{mitra_user_id}}","approve"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] } }]
+        },
+        {
+          "name": "HP-AUTH-002 UMKM login after approval",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Content-Type","value":"application/json"}],
+            "url": { "raw": "{{auth_base_url}}/api/v1/auth/login", "host": ["{{auth_base_url}}"], "path": ["api","v1","auth","login"] },
+            "body": { "mode": "raw", "raw": "{\"email\":\"{{umkm_email}}\",\"password\":\"{{umkm_password}}\"}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test('Role UMKM', () => pm.expect(json.user.role).to.eql('UMKM'));",
+            "pm.environment.set('umkm_token', json.access_token);"
+          ] } }]
+        },
+        {
+          "name": "HP-AUTH-003 Mitra login after approval",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Content-Type","value":"application/json"}],
+            "url": { "raw": "{{auth_base_url}}/api/v1/auth/login", "host": ["{{auth_base_url}}"], "path": ["api","v1","auth","login"] },
+            "body": { "mode": "raw", "raw": "{\"email\":\"{{mitra_email}}\",\"password\":\"{{mitra_password}}\"}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.environment.set('mitra_token', json.access_token);"
+          ] } }]
+        },
+        {
+          "name": "SP-ADMIN-001 Non-admin cannot approve",
+          "request": {
+            "method": "PATCH",
+            "header": [{"key":"Authorization","value":"Bearer {{umkm_token}}"}],
+            "url": { "raw": "{{auth_base_url}}/api/v1/admin/registrations/{{umkm_user_id}}/approve", "host": ["{{auth_base_url}}"], "path": ["api","v1","admin","registrations","{{umkm_user_id}}","approve"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 403', () => pm.response.to.have.status(403));"] } }]
+        }
+      ]
+    },
+    {
+      "name": "03 - User Profile (User Service)",
+      "item": [
+        {
+          "name": "HP-PROFILE-001 Get UMKM profile",
+          "request": {
+            "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{umkm_token}}"}],
+            "url": { "raw": "{{user_base_url}}/api/v1/profiles/me", "host": ["{{user_base_url}}"], "path": ["api","v1","profiles","me"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200 or 404 (profile may not exist yet)', function() { pm.expect(pm.response.code).to.be.oneOf([200, 404]); });"
+          ] } }]
+        },
+        {
+          "name": "HP-PROFILE-002 Update UMKM profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {"key":"Authorization","value":"Bearer {{umkm_token}}"},
+              {"key":"Content-Type","value":"application/json"}
+            ],
+            "url": { "raw": "{{user_base_url}}/api/v1/profiles/me", "host": ["{{user_base_url}}"], "path": ["api","v1","profiles","me"] },
+            "body": { "mode": "raw", "raw": "{\"business_name\":\"QA UMKM Usaha\",\"business_category\":\"Kuliner\",\"owner_name\":\"QA UMKM Owner\",\"nik\":\"{{umkm_nik}}\",\"phone_number\":\"081234567890\",\"address\":\"Jl. Contoh No. 1\",\"city\":\"Semarang\",\"province\":\"Jawa Tengah\"}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "pm.test('Profile returned', () => pm.expect(pm.response.json().profile).to.be.an('object'));"
+          ] } }]
+        },
+        {
+          "name": "SP-PROFILE-001 No token",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{user_base_url}}/api/v1/profiles/me", "host": ["{{user_base_url}}"], "path": ["api","v1","profiles","me"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 401', () => pm.response.to.have.status(401));",
+            "pm.test('Error message', () => pm.expect(JSON.stringify(pm.response.json())).to.include('Authorization').or.include('Unauthorized'));"
+          ] } }]
+        }
+      ]
+    },
+    {
+      "name": "04 - Dashboard UMKM",
+      "item": [
+        {
+          "name": "HP-DASH-UMKM-001 Valid dates",
+          "request": {
+            "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{umkm_token}}"}],
+            "url": {
+              "raw": "{{user_base_url}}/api/v1/dashboard/umkm?date_from=2026-05-01&date_to=2026-06-02",
+              "host": ["{{user_base_url}}"],
+              "path": ["api","v1","dashboard","umkm"],
+              "query": [{"key":"date_from","value":"2026-05-01"},{"key":"date_to","value":"2026-06-02"}]
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test('Response has nama_umkm', () => pm.expect(json).to.be.an('object').and.have.property('nama_umkm'));",
+            "pm.test('laba_harian is array', () => pm.expect(json.laba_harian).to.be.an('array'));",
+            "pm.test('tren_mingguan is array', () => pm.expect(json.tren_mingguan).to.be.an('array'));"
+          ] } }]
+        },
+        {
+          "name": "SP-DASH-UMKM-001 Missing date_from",
+          "request": {
+            "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{umkm_token}}"}],
+            "url": {
+              "raw": "{{user_base_url}}/api/v1/dashboard/umkm?date_to=2026-06-02",
+              "host": ["{{user_base_url}}"],
+              "path": ["api","v1","dashboard","umkm"],
+              "query": [{"key":"date_to","value":"2026-06-02"}]
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 400', () => pm.response.to.have.status(400));"] } }]
+        },
+        {
+          "name": "SP-DASH-UMKM-002 No token",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{user_base_url}}/api/v1/dashboard/umkm?date_from=2026-05-01&date_to=2026-06-02",
+              "host": ["{{user_base_url}}"],
+              "path": ["api","v1","dashboard","umkm"],
+              "query": [{"key":"date_from","value":"2026-05-01"},{"key":"date_to","value":"2026-06-02"}]
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 401', () => pm.response.to.have.status(401));"] } }]
+        },
+        {
+          "name": "SP-DASH-UMKM-003 Mitra token on UMKM dashboard",
+          "request": {
+            "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{mitra_token}}"}],
+            "url": {
+              "raw": "{{user_base_url}}/api/v1/dashboard/umkm?date_from=2026-05-01&date_to=2026-06-02",
+              "host": ["{{user_base_url}}"],
+              "path": ["api","v1","dashboard","umkm"],
+              "query": [{"key":"date_from","value":"2026-05-01"},{"key":"date_to","value":"2026-06-02"}]
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 403', () => pm.response.to.have.status(403));"] } }]
+        }
+      ]
+    },
+    {
+      "name": "05 - Dashboard Mitra",
+      "item": [
+        {
+          "name": "HP-DASH-MITRA-001 With umkm_id",
+          "request": {
+            "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{mitra_token}}"}],
+            "url": {
+              "raw": "{{user_base_url}}/api/v1/dashboard/mitra?umkm_id={{umkm_user_id}}",
+              "host": ["{{user_base_url}}"],
+              "path": ["api","v1","dashboard","mitra"],
+              "query": [{"key":"umkm_id","value":"{{umkm_user_id}}"}]
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test('Has nama_mitra', () => pm.expect(json).to.have.property('nama_mitra'));",
+            "pm.test('umkm_list is array', () => pm.expect(json.umkm_list).to.be.an('array'));"
+          ] } }]
+        },
+        {
+          "name": "SP-DASH-MITRA-001 Missing umkm_id",
+          "request": {
+            "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{mitra_token}}"}],
+            "url": { "raw": "{{user_base_url}}/api/v1/dashboard/mitra", "host": ["{{user_base_url}}"], "path": ["api","v1","dashboard","mitra"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 400', () => pm.response.to.have.status(400));"] } }]
+        },
+        {
+          "name": "SP-DASH-MITRA-002 Non-mitra token",
+          "request": {
+            "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{umkm_token}}"}],
+            "url": {
+              "raw": "{{user_base_url}}/api/v1/dashboard/mitra?umkm_id={{umkm_user_id}}",
+              "host": ["{{user_base_url}}"],
+              "path": ["api","v1","dashboard","mitra"],
+              "query": [{"key":"umkm_id","value":"{{umkm_user_id}}"}]
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 403', () => pm.response.to.have.status(403));"] } }]
+        }
+      ]
+    }
+  ]
+}

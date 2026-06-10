@@ -6,6 +6,7 @@ import (
 	"github.com/savitar393/umkm-tumbuh/services/user-service/internal/middleware"
 )
 
+
 type Handler struct {
 	Service *Service
 }
@@ -30,6 +31,12 @@ func (h *Handler) GetUMKMDashboard(w http.ResponseWriter, r *http.Request) {
 	dateFrom := r.URL.Query().Get("date_from")
 	dateTo := r.URL.Query().Get("date_to")
 
+	// ✅ TAMBAHKAN VALIDASI INI
+	if dateFrom == "" || dateTo == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "date_from and date_to are required"})
+		return
+	}
+
 	data, err := h.Service.GetUMKMDashboard(r.Context(), user.ID, dateFrom, dateTo)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "Gagal memuat data dashboard: " + err.Error()})
@@ -53,6 +60,12 @@ func (h *Handler) GetMitraDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	umkmID := r.URL.Query().Get("umkm_id")
+
+	// ✅ TAMBAHKAN VALIDASI INI
+	if umkmID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "umkm_id is required"})
+		return
+	}
 
 	data, err := h.Service.GetMitraDashboard(r.Context(), user.ID, umkmID)
 	if err != nil {
