@@ -6,7 +6,7 @@ import { authRoutes } from "../features/auth/routes";
 import { adminRoutes } from "../features/admin/routes";
 import { umkmDashboardRoutes, mitraDashboardRoutes } from "../features/dashboard/routes";
 import { userRoutes } from "../features/users/routes";
-import { umkmPartnershipRoutes, mitraPartnershipRoutes } from "../features/partnerships/routes";
+import { publicPartnershipRoutes, umkmPartnershipRoutes, mitraPartnershipRoutes } from "../features/partnerships/routes";
 import { documentRoutes } from "../features/documents/routes";
 import { trainingRoutes } from "../features/trainings/routes";
 import { certificateRoutes } from "../features/certificates/routes";
@@ -15,6 +15,9 @@ import { notificationRoutes } from "../features/notifications/routes";
 const routes: RouteObject[] = [
   ...publicRoutes,
   ...authRoutes,
+
+  // Public partnerships routes (tanpa login)
+  ...publicPartnershipRoutes,
 
   {
     path: "/admin",

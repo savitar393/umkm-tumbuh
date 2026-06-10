@@ -1,0 +1,91 @@
+package partnerships
+
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
+
+type PartnershipStatus string
+
+const (
+	StatusDraft      PartnershipStatus = "DRAFT"
+	StatusSubmitted  PartnershipStatus = "SUBMITTED"
+	StatusReviewed   PartnershipStatus = "REVIEWED"
+	StatusApproved   PartnershipStatus = "APPROVED"
+	StatusRejected   PartnershipStatus = "REJECTED"
+	StatusActive     PartnershipStatus = "ACTIVE"
+	StatusCompleted  PartnershipStatus = "COMPLETED"
+	StatusCancelled  PartnershipStatus = "CANCELLED"
+	StatusWaitingDoc PartnershipStatus = "WAITING_DOCUMENT"
+)
+
+type UserRole string
+
+const (
+	RoleUMKM  UserRole = "UMKM"
+	RoleMitra UserRole = "MITRA"
+)
+
+type PartnershipRequest struct {
+	ID                   uuid.UUID         `json:"id" db:"id"`
+	RequestCode          string            `json:"request_code" db:"request_code"`
+	RequesterID          uuid.UUID         `json:"requester_id" db:"requester_id"`
+	ReceiverID           uuid.UUID         `json:"receiver_id" db:"receiver_id"`
+	RequesterRole        UserRole          `json:"requester_role" db:"requester_role"`
+	ReceiverRole         UserRole          `json:"receiver_role" db:"receiver_role"`
+	Category             string            `json:"category" db:"category"`
+	ProposalTitle        string            `json:"proposal_title" db:"proposal_title"`
+	ProposalDescription  string            `json:"proposal_description" db:"proposal_description"`
+	BusinessName         string            `json:"business_name" db:"business_name"`
+	ContactPerson        string            `json:"contact_person" db:"contact_person"`
+	ProductDescription   string            `json:"product_description" db:"product_description"`
+	ReasonForPartnership string            `json:"reason_for_partnership" db:"reason_for_partnership"`
+	NIBKTPFile           string            `json:"nib_ktp_file" db:"nib_ktp_file"`
+	ProposalFile         string            `json:"proposal_file" db:"proposal_file"`
+	CertificateFile      *string           `json:"certificate_file" db:"certificate_file"`
+	Status               PartnershipStatus `json:"status" db:"status"`
+	RejectionReason      *string           `json:"rejection_reason" db:"rejection_reason"`
+	ContractDocumentID   *uuid.UUID        `json:"contract_document_id" db:"contract_document_id"`
+	SubmittedAt          *time.Time        `json:"submitted_at" db:"submitted_at"`
+	DecidedAt            *time.Time        `json:"decided_at" db:"decided_at"`
+	ContractSignedAt     *time.Time        `json:"contract_signed_at" db:"contract_signed_at"`
+	PartnershipStart     *time.Time        `json:"partnership_start" db:"partnership_start"`
+	PartnershipEnd       *time.Time        `json:"partnership_end" db:"partnership_end"`
+	CreatedAt            time.Time         `json:"created_at" db:"created_at"`
+	UpdatedAt            time.Time         `json:"updated_at" db:"updated_at"`
+}
+
+type CreatePartnershipRequest struct {
+	ReceiverID          uuid.UUID `json:"receiver_id" validate:"required"`
+	ProposalTitle       string    `json:"proposal_title" validate:"required,min=10,max=200"`
+	ProposalDescription string    `json:"proposal_description" validate:"required,min=30,max=1000"`
+	AttachmentFiles     []string  `json:"attachment_files,omitempty"`
+}
+
+type UpdatePartnershipStatus struct {
+	Status          PartnershipStatus `json:"status" validate:"required,oneof=APPROVED REJECTED"`
+	RejectionReason *string           `json:"rejection_reason,omitempty"`
+}
+
+type SignPartnershipRequest struct {
+	DokumenKontrak string `json:"dokumen_kontrak" validate:"required"`
+}
+
+type PartnershipResponse struct {
+	PartnershipRequest
+	RequesterName string `json:"requester_name"`
+	ReceiverName  string `json:"receiver_name"`
+}
+
+type PartnershipListResponse struct {
+	ID            uuid.UUID         `json:"id"`
+	RequestCode   string            `json:"request_code"`
+	RequesterName string            `json:"requester_name"`
+	ReceiverName  string            `json:"receiver_name"`
+	ProposalTitle string            `json:"proposal_title"`
+	Status        PartnershipStatus `json:"status"`
+	SubmittedAt   *time.Time        `json:"submitted_at"`
+	DecidedAt     *time.Time        `json:"decided_at"`
+	Category      string            `json:"category"`
+}
