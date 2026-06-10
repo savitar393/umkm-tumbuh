@@ -1,14 +1,9 @@
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { CalendarDays, Check, Minus, Plus, Save } from "lucide-react";
 import UmkmLayout from "../../umkm/components/UmkmLayout";
 import { getProducts, type Product } from "../../products/api";
 import { createSale } from "../api";
-
-type SaleFormItem = {
-  product_id: string;
-  quantity: number;
-};
 
 function today() {
   return new Date().toISOString().slice(0, 10);
@@ -22,51 +17,45 @@ function formatRupiah(value: number) {
   }).format(value);
 }
 
+function formatDateLong(value: string) {
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
+
 export default function SalesCreatePage() {
   const navigate = useNavigate();
 
   const [products, setProducts] = useState<Product[]>([]);
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [transactionDate, setTransactionDate] = useState(today());
   const [totalProfit, setTotalProfit] = useState(0);
-  const [note, setNote] = useState("");
-  const [items, setItems] = useState<SaleFormItem[]>([
-    { product_id: "", quantity: 1 },
-  ]);
-
+  const [note, setNote] = useState("Laporan penjualan harian.");
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [successSaleId, setSuccessSaleId] = useState("");
   const [error, setError] = useState("");
 
-  const availableProducts = useMemo(
-    () => products.filter((product) => product.status === "AKTIF" && product.stock > 0),
+  const activeProducts = useMemo(
+    () => products.filter((product) => product.status === "AKTIF"),
     [products],
   );
 
-  const productById = useMemo(() => {
-    const map = new Map<string, Product>();
+  const totalOmzet = useMemo(() => {
+    return activeProducts.reduce((sum, product) => {
+      const quantity = quantities[product.id] ?? 0;
+      return sum + product.price * quantity;
+    }, 0);
+  }, [activeProducts, quantities]);
 
-    for (const product of products) {
-      map.set(product.id, product);
-    }
+  const totalItem = useMemo(() => {
+    return Object.values(quantities).reduce((sum, quantity) => sum + quantity, 0);
+  }, [quantities]);
 
-    return map;
-  }, [products]);
-
-  const computedItems = items.map((item) => {
-    const product = productById.get(item.product_id);
-    const unitPrice = product?.price ?? 0;
-    const subtotal = unitPrice * item.quantity;
-
-    return {
-      ...item,
-      product,
-      unitPrice,
-      subtotal,
-    };
-  });
-
-  const totalOmzet = computedItems.reduce((sum, item) => sum + item.subtotal, 0);
-  const totalQuantity = computedItems.reduce((sum, item) => sum + item.quantity, 0);
+  const averagePerItem = totalItem > 0 ? totalOmzet / totalItem : 0;
 
   async function loadProducts() {
     setLoadingProducts(true);
@@ -86,57 +75,30 @@ export default function SalesCreatePage() {
     loadProducts();
   }, []);
 
-  function updateItem(index: number, patch: Partial<SaleFormItem>) {
-    setItems((current) =>
-      current.map((item, itemIndex) =>
-        itemIndex === index ? { ...item, ...patch } : item,
-      ),
-    );
+  function setQuantity(product: Product, nextQuantity: number) {
+    const safeQuantity = Math.max(0, Math.min(nextQuantity, product.stock));
+
+    setQuantities((current) => ({
+      ...current,
+      [product.id]: safeQuantity,
+    }));
   }
 
-  function addItem() {
-    setItems((current) => [...current, { product_id: "", quantity: 1 }]);
+  function increment(product: Product) {
+    setQuantity(product, (quantities[product.id] ?? 0) + 1);
   }
 
-  function removeItem(index: number) {
-    setItems((current) => current.filter((_, itemIndex) => itemIndex !== index));
+  function decrement(product: Product) {
+    setQuantity(product, (quantities[product.id] ?? 0) - 1);
   }
 
   function validateForm() {
     if (!transactionDate) {
-      return "Tanggal transaksi wajib diisi.";
+      return "Tanggal laporan wajib diisi.";
     }
 
-    if (items.length === 0) {
-      return "Minimal satu produk harus dipilih.";
-    }
-
-    const selected = new Set<string>();
-
-    for (const item of items) {
-      if (!item.product_id) {
-        return "Semua baris produk wajib dipilih.";
-      }
-
-      if (selected.has(item.product_id)) {
-        return "Produk tidak boleh duplikat dalam satu transaksi.";
-      }
-
-      selected.add(item.product_id);
-
-      const product = productById.get(item.product_id);
-
-      if (!product) {
-        return "Produk tidak ditemukan.";
-      }
-
-      if (item.quantity <= 0) {
-        return `Jumlah produk ${product.name} harus lebih dari 0.`;
-      }
-
-      if (item.quantity > product.stock) {
-        return `Stok ${product.name} tidak cukup. Stok tersedia: ${product.stock}.`;
-      }
+    if (totalItem <= 0) {
+      return "Minimal satu produk harus memiliki jumlah terjual.";
     }
 
     if (totalOmzet <= 0) {
@@ -168,185 +130,175 @@ export default function SalesCreatePage() {
     setError("");
 
     try {
+      const payloadItems = activeProducts
+        .map((product) => ({
+          product_id: product.id,
+          quantity: quantities[product.id] ?? 0,
+        }))
+        .filter((item) => item.quantity > 0);
+
       const response = await createSale({
         transaction_date: transactionDate,
         total_profit: Number(totalProfit),
         note,
-        items: items.map((item) => ({
-          product_id: item.product_id,
-          quantity: Number(item.quantity),
-        })),
+        items: payloadItems,
       });
 
-      navigate(`/umkm/sales/${response.sale.id}`);
+      setSuccessSaleId(response.sale.id);
+      window.setTimeout(() => {
+        navigate(`/umkm/sales/${response.sale.id}`);
+      }, 1200);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Gagal menyimpan transaksi.");
+      setError(err instanceof Error ? err.message : "Gagal menyimpan laporan.");
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <UmkmLayout
-      title="Catat Transaksi"
-      subtitle="Pilih produk dari stok tersedia, isi jumlah terjual, lalu simpan sebagai laporan transaksi."
-    >
-      <div className="feature-page">
-        <div className="page-header">
-          <Link className="button secondary" to="/umkm/sales">
-            <ArrowLeft size={18} />
-            Kembali
-          </Link>
-        </div>
+    <UmkmLayout title="" subtitle="">
+      <form className="sales-report-page" onSubmit={handleSubmit}>
+        <header className="sales-report-header">
+          <div>
+            <div className="sales-report-kicker">Operasional UMKM</div>
+            <h1>Laporan Penjualan Harian</h1>
+          </div>
 
-        {error ? <div className="error-message">{error}</div> : null}
-
-        <form className="dashboard-card wide sales-create-form" onSubmit={handleSubmit}>
-          <div className="sales-create-grid">
-            <label>
-              Tanggal Transaksi
+          <div className="sales-report-actions">
+            <label className="sales-date-pill">
+              <CalendarDays size={18} />
               <input
                 type="date"
                 value={transactionDate}
                 onChange={(event) => setTransactionDate(event.target.value)}
-                required
               />
             </label>
 
-            <label>
-              Laba
-              <input
-                type="number"
-                min="0"
-                value={totalProfit}
-                onChange={(event) => setTotalProfit(Number(event.target.value))}
-                required
-              />
-            </label>
+            <button type="submit" disabled={saving || loadingProducts}>
+              <Save size={18} />
+              {saving ? "Menyimpan..." : "Simpan Laporan"}
+            </button>
+          </div>
+        </header>
 
-            <label>
-              Catatan
-              <input
-                value={note}
-                onChange={(event) => setNote(event.target.value)}
-                placeholder="Contoh: Penjualan harian toko"
-              />
-            </label>
+        {error ? <div className="error-message">{error}</div> : null}
+
+        <section className="sales-report-summary">
+          <article className="sales-summary-card sales-summary-card--dark">
+            <span>Total Omzet Hari Ini</span>
+            <strong>{formatRupiah(totalOmzet)}</strong>
+            <small>Total transaksi: {totalItem} item</small>
+            <small>Rata-rata/item: {formatRupiah(averagePerItem)}</small>
+          </article>
+
+          <article className="sales-summary-card sales-summary-card--blue">
+            <span>Total Laba Hari Ini</span>
+            <input
+              type="number"
+              min="0"
+              value={totalProfit}
+              onChange={(event) => setTotalProfit(Number(event.target.value))}
+              placeholder="Input laba hari ini"
+            />
+            <small>Laba harus lebih kecil dari omzet.</small>
+          </article>
+        </section>
+
+        <section className="sales-transaction-panel">
+          <div className="sales-transaction-title">
+            <h2>Transaksi</h2>
+            <p>
+              Pilih jumlah produk yang terjual pada {formatDateLong(transactionDate)}.
+            </p>
           </div>
 
-          <section className="sales-items-section">
-            <div className="page-header">
-              <div>
-                <h2>Produk Terjual</h2>
-                <p>Subtotal dihitung otomatis dari harga produk × jumlah.</p>
+          <label className="sales-note-field">
+            Catatan Laporan
+            <input
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              placeholder="Catatan laporan"
+            />
+          </label>
+
+          {loadingProducts ? (
+            <p>Memuat produk...</p>
+          ) : activeProducts.length === 0 ? (
+            <p>Belum ada produk aktif. Tambahkan produk terlebih dahulu di Kelola Produk.</p>
+          ) : (
+            <div className="sales-product-list">
+              {activeProducts.map((product) => {
+                const quantity = quantities[product.id] ?? 0;
+                const subtotal = product.price * quantity;
+
+                return (
+                  <article className="sales-product-row" key={product.id}>
+                    <div className="sales-product-media">
+                      <img src="/tumbuh.png" alt={product.name} />
+                    </div>
+
+                    <div className="sales-product-info">
+                      <strong>{product.name}</strong>
+                      <span>{formatRupiah(product.price)}</span>
+                      <small>Stok tersedia: {product.stock}</small>
+                    </div>
+
+                    <div className="sales-qty-control">
+                      <button type="button" onClick={() => decrement(product)}>
+                        <Minus size={16} />
+                      </button>
+                      <input
+                        type="number"
+                        min="0"
+                        max={product.stock}
+                        value={quantity}
+                        onChange={(event) =>
+                          setQuantity(product, Number(event.target.value))
+                        }
+                      />
+                      <button type="button" onClick={() => increment(product)}>
+                        <Plus size={16} />
+                      </button>
+                    </div>
+
+                    <div className="sales-subtotal">
+                      <span>Subtotal</span>
+                      <strong>{formatRupiah(subtotal)}</strong>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="sales-report-submit-row">
+            <Link className="button secondary" to="/umkm">
+              Batal
+            </Link>
+
+            <button type="submit" disabled={saving || loadingProducts}>
+              <Save size={18} />
+              Submit
+            </button>
+          </div>
+        </section>
+
+        {successSaleId ? (
+          <div className="sales-success-overlay">
+            <div className="sales-success-modal">
+              <div className="sales-success-icon">
+                <Check size={34} />
               </div>
-
-              <button type="button" className="button secondary" onClick={addItem}>
-                <Plus size={18} />
-                Tambah Produk
-              </button>
+              <h2>Berhasil Simpan Laporan</h2>
+              <p>
+                Laporan Penjualan Harian untuk{" "}
+                <strong>{formatDateLong(transactionDate)}</strong> telah berhasil
+                disimpan dan disinkronkan dengan server pusat.
+              </p>
             </div>
-
-            {loadingProducts ? (
-              <p>Memuat produk...</p>
-            ) : availableProducts.length === 0 ? (
-              <p>Belum ada produk aktif dengan stok tersedia.</p>
-            ) : (
-              <div className="table-wrapper">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Produk</th>
-                      <th>Harga</th>
-                      <th>Stok</th>
-                      <th>Jumlah</th>
-                      <th>Subtotal</th>
-                      <th>Aksi</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {computedItems.map((item, index) => {
-                      const product = item.product;
-
-                      return (
-                        <tr key={`${item.product_id}-${index}`}>
-                          <td>
-                            <select
-                              value={item.product_id}
-                              onChange={(event) =>
-                                updateItem(index, {
-                                  product_id: event.target.value,
-                                  quantity: 1,
-                                })
-                              }
-                              required
-                            >
-                              <option value="">Pilih produk</option>
-                              {availableProducts.map((productOption) => (
-                                <option key={productOption.id} value={productOption.id}>
-                                  {productOption.name}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                          <td>{formatRupiah(item.unitPrice)}</td>
-                          <td>{product?.stock ?? "-"}</td>
-                          <td>
-                            <input
-                              type="number"
-                              min="1"
-                              max={product?.stock ?? undefined}
-                              value={item.quantity}
-                              onChange={(event) =>
-                                updateItem(index, {
-                                  quantity: Number(event.target.value),
-                                })
-                              }
-                              required
-                            />
-                          </td>
-                          <td>{formatRupiah(item.subtotal)}</td>
-                          <td>
-                            <button
-                              type="button"
-                              className="danger"
-                              onClick={() => removeItem(index)}
-                              disabled={items.length === 1}
-                            >
-                              <Trash2 size={15} />
-                              Hapus
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
-
-          <section className="sales-total-card">
-            <div>
-              <span>Total Item</span>
-              <strong>{totalQuantity}</strong>
-            </div>
-            <div>
-              <span>Total Omzet</span>
-              <strong>{formatRupiah(totalOmzet)}</strong>
-            </div>
-            <div>
-              <span>Laba</span>
-              <strong>{formatRupiah(totalProfit)}</strong>
-            </div>
-          </section>
-
-          <button type="submit" disabled={saving || loadingProducts}>
-            {saving ? "Menyimpan..." : "Simpan Transaksi"}
-          </button>
-        </form>
-      </div>
+          </div>
+        ) : null}
+      </form>
     </UmkmLayout>
   );
 }

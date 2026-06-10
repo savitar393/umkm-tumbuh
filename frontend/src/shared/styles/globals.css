@@ -1226,3 +1226,368 @@ button.danger {
     grid-template-columns: 1fr;
   }
 }
+
+/* ===================== UMKM SALES REPORT MOCKUP ===================== */
+
+.sales-report-page,
+.umkm-report-dashboard {
+  display: grid;
+  gap: 24px;
+}
+
+.sales-report-header,
+.report-dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.sales-report-kicker {
+  color: #1f45b6;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+}
+
+.sales-report-header h1,
+.report-dashboard-header h1 {
+  font-size: 34px;
+  letter-spacing: -0.04em;
+}
+
+.sales-report-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.sales-date-pill,
+.sales-date-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid #dbe4ff;
+  background: #f5f8ff;
+  color: #1f45b6;
+  font-weight: 800;
+}
+
+.sales-date-pill input {
+  border: 0;
+  min-height: auto;
+  padding: 0;
+  background: transparent;
+  color: #1f45b6;
+  font-weight: 800;
+  box-shadow: none;
+}
+
+.sales-report-summary,
+.report-summary-grid {
+  display: grid;
+  grid-template-columns: 1.3fr 1.3fr;
+  gap: 20px;
+}
+
+.report-summary-grid {
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+}
+
+.sales-summary-card,
+.report-summary-primary,
+.report-summary-small {
+  border-radius: 18px;
+  padding: 28px;
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.1);
+}
+
+.sales-summary-card span,
+.report-summary-primary span,
+.report-summary-small span {
+  display: block;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+.sales-summary-card strong,
+.report-summary-primary strong,
+.report-summary-small strong {
+  display: block;
+  font-size: 32px;
+  line-height: 1.1;
+  margin-bottom: 10px;
+}
+
+.sales-summary-card small,
+.report-summary-primary small,
+.report-summary-small small {
+  display: block;
+  margin-top: 8px;
+  color: inherit;
+  opacity: 0.72;
+}
+
+.sales-summary-card--dark {
+  background: linear-gradient(135deg, #07111f, #0f2b4b);
+  color: #ffffff;
+}
+
+.sales-summary-card--blue {
+  background: linear-gradient(135deg, #1f45b6, #0b4fb6);
+  color: #ffffff;
+}
+
+.sales-summary-card--blue input {
+  border: 0;
+  min-height: 54px;
+  background: rgba(255,255,255,0.14);
+  color: #ffffff;
+  font-size: 28px;
+  font-weight: 850;
+}
+
+.sales-summary-card--blue input::placeholder {
+  color: rgba(255,255,255,0.75);
+}
+
+.report-summary-primary {
+  background: linear-gradient(135deg, #2e68f2, #1f45b6);
+  color: #ffffff;
+}
+
+.report-summary-small {
+  background: #ffffff;
+  color: #111827;
+}
+
+.report-summary-small svg {
+  color: #1f45b6;
+  margin-bottom: 14px;
+}
+
+.sales-transaction-panel {
+  display: grid;
+  gap: 20px;
+  padding: 24px;
+  background: #ffffff;
+  border: 1px solid #cfe0ff;
+  border-radius: 20px;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
+}
+
+.sales-transaction-title h2 {
+  font-size: 24px;
+  letter-spacing: -0.03em;
+  margin-bottom: 4px;
+}
+
+.sales-note-field {
+  max-width: 520px;
+}
+
+.sales-product-list {
+  display: grid;
+  gap: 14px;
+}
+
+.sales-product-row {
+  display: grid;
+  grid-template-columns: 72px 1fr 150px 160px;
+  gap: 18px;
+  align-items: center;
+  padding: 14px 18px;
+  border: 1px solid #eef2f7;
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.sales-product-media {
+  width: 58px;
+  height: 58px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #e5e7eb;
+  display: grid;
+  place-items: center;
+}
+
+.sales-product-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.sales-product-info {
+  display: grid;
+  gap: 4px;
+}
+
+.sales-product-info strong {
+  color: #111827;
+  font-size: 15px;
+}
+
+.sales-product-info span {
+  color: #1f45b6;
+  font-weight: 800;
+}
+
+.sales-product-info small {
+  color: #94a3b8;
+}
+
+.sales-qty-control {
+  display: grid;
+  grid-template-columns: 40px 1fr 40px;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #dbe4ef;
+  border-radius: 12px;
+  padding: 4px;
+  background: #f8fafc;
+}
+
+.sales-qty-control button {
+  min-height: 34px;
+  padding: 0;
+  border-radius: 8px;
+  box-shadow: none;
+  background: #eff6ff;
+  color: #1f45b6;
+}
+
+.sales-qty-control input {
+  min-height: 34px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: center;
+  font-weight: 850;
+  box-shadow: none;
+}
+
+.sales-subtotal {
+  display: grid;
+  gap: 4px;
+  text-align: right;
+}
+
+.sales-subtotal span {
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.sales-subtotal strong {
+  color: #111827;
+  font-size: 16px;
+}
+
+.sales-report-submit-row {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.sales-success-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display: grid;
+  place-items: center;
+  background: rgba(15, 23, 42, 0.62);
+  backdrop-filter: blur(4px);
+}
+
+.sales-success-modal {
+  width: min(460px, calc(100vw - 32px));
+  padding: 34px;
+  border-radius: 22px;
+  background: #ffffff;
+  text-align: center;
+  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.24);
+  border-top: 7px solid #1f45b6;
+}
+
+.sales-success-icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 18px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  color: #16a34a;
+  background: #dcfce7;
+  border: 2px solid #bbf7d0;
+}
+
+.sales-success-modal h2 {
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
+.profit-pill {
+  display: inline-flex;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #d1fae5;
+  color: #047857;
+  font-weight: 850;
+}
+
+.report-dashboard-action {
+  background: #f59e0b;
+  box-shadow: 0 12px 24px rgba(245, 158, 11, 0.24);
+}
+
+.simple-trend-card {
+  height: 220px;
+  border-radius: 16px;
+  background:
+    linear-gradient(to top, rgba(31, 69, 182, 0.16), rgba(31, 69, 182, 0.03)),
+    #f3f4f6;
+  position: relative;
+  overflow: hidden;
+}
+
+.simple-trend-fill {
+  position: absolute;
+  left: 28px;
+  right: 28px;
+  bottom: 28px;
+  height: 52%;
+  clip-path: polygon(0 80%, 8% 70%, 16% 76%, 24% 56%, 32% 62%, 40% 38%, 48% 48%, 56% 30%, 64% 40%, 72% 28%, 80% 36%, 88% 24%, 100% 12%, 100% 100%, 0 100%);
+  background: rgba(31, 69, 182, 0.5);
+}
+
+@media (max-width: 900px) {
+  .sales-report-summary,
+  .report-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sales-product-row {
+    grid-template-columns: 58px 1fr;
+  }
+
+  .sales-qty-control,
+  .sales-subtotal {
+    grid-column: 1 / -1;
+  }
+
+  .sales-subtotal {
+    text-align: left;
+  }
+}
