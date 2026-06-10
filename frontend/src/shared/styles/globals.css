@@ -1154,3 +1154,23 @@ button.danger {
     grid-column: span 1;
   }
 }
+
+.sales-stat-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.sales-filter-form {
+  margin-top: 0;
+}
+
+.table-link-button {
+  min-height: 36px;
+  padding: 8px 12px;
+  box-shadow: none;
+}
+
+@media (max-width: 900px) {
+  .sales-stat-grid {
+    grid-template-columns: 1fr;
+  }
+}
