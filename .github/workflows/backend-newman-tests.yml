@@ -68,8 +68,8 @@ jobs:
       - name: Run Newman backend tests
         run: |
           mkdir -p tests/postman/reports
-          newman run tests/postman/collections/umkm-tumbuh-backend.postman_collection.json \
-            -e tests/postman/environments/template.postman_environment.json \
+          newman run tests/postman/umkm-tumbuh-backend.postman_collection.json \
+            -e tests/postman/local.postman_environment.json \
             --env-var "admin_email=${ADMIN_EMAIL}" \
             --env-var "admin_password=${ADMIN_PASSWORD}" \
             --env-var "auth_base_url=http://localhost:8080" \

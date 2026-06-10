@@ -6,7 +6,6 @@ import (
 	"github.com/savitar393/umkm-tumbuh/services/user-service/internal/middleware"
 )
 
-
 type Handler struct {
 	Service *Service
 }
