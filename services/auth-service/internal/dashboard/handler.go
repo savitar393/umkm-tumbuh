@@ -30,11 +30,11 @@ func (h *Handler) GetDashboard(w http.ResponseWriter, r *http.Request) {
 
 	// Query params filter — semua opsional
 	filter := DashboardFilter{
-		Provinsi:    r.URL.Query().Get("provinsi"),    // e.g. "Jawa Tengah"
-		Bulan:       r.URL.Query().Get("bulan"),       // e.g. "2026-06"  (YYYY-MM)
-		Tahun:       r.URL.Query().Get("tahun"),       // e.g. "2026"
-		StatusUMKM:  r.URL.Query().Get("status_umkm"), // e.g. "AKTIF"
-		Days:        r.URL.Query().Get("days"),        // e.g. "180" untuk tren
+		Provinsi:   r.URL.Query().Get("provinsi"),    // e.g. "Jawa Tengah"
+		Bulan:      r.URL.Query().Get("bulan"),       // e.g. "2026-06"  (YYYY-MM)
+		Tahun:      r.URL.Query().Get("tahun"),       // e.g. "2026"
+		StatusUMKM: r.URL.Query().Get("status_umkm"), // e.g. "AKTIF"
+		Days:       r.URL.Query().Get("days"),        // e.g. "180" untuk tren
 	}
 
 	data, err := h.DashboardService.GetDashboardWithFilter(r.Context(), filter)
