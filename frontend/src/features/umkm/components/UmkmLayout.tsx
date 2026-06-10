@@ -7,6 +7,7 @@ import {
   LogOut,
   Settings,
   Bell,
+  Package
 } from "lucide-react";
 import { clearAuthStorage, getCurrentUser } from "../../../shared/auth/currentUser";
 
@@ -19,6 +20,7 @@ type UmkmLayoutProps = {
 const navItems = [
   { label: "Pelatihan Saya", to: "/umkm/trainings", icon: BookOpen },
   { label: "Kelola Informasi", to: "/umkm/profile", icon: Building2 },
+  { label: "Kelola Produk", to: "/umkm/products", icon: Package },
   { label: "Dashboard", to: "/umkm", icon: Gauge },
   { label: "Pengajuan Kemitraan", to: "/umkm/partnerships", icon: Handshake },
   { label: "Pengaturan", to: "/umkm/settings", icon: Settings },

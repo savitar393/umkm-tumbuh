@@ -1079,3 +1079,78 @@ button.danger {
     flex-direction: column;
   }
 }
+
+.feature-page {
+  display: grid;
+  gap: 20px;
+}
+
+.product-stat-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.product-form-card form {
+  margin-top: 0;
+}
+
+.product-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.product-form-wide {
+  grid-column: span 2;
+}
+
+.product-form-grid button[type="submit"] {
+  align-self: end;
+}
+
+.stock-update-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.stock-update-row input {
+  min-width: 88px;
+}
+
+.stock-update-row button {
+  min-height: 40px;
+  padding: 8px 12px;
+}
+
+.thumbnail-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: fit-content;
+  min-height: 36px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  color: #1f45b6;
+  background: #eef3ff;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.table-muted {
+  margin-top: 6px;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  .product-stat-grid,
+  .product-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .product-form-wide {
+    grid-column: span 1;
+  }
+}
