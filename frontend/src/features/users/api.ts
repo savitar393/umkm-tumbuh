@@ -1,4 +1,4 @@
-import { http } from "../../shared/api/http";
+import { userHttp as http } from "../../shared/api/userHttp";
 
 export type UmkmProfile = {
   id: string;
