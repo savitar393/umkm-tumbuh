@@ -1,12 +1,15 @@
 import { type FormEvent, useState } from "react";
+import { ArrowRight, Eye, Lock, Mail } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { login } from "../api";
 
 export default function LoginPage() {
   const navigate = useNavigate();
 
-  const [email, setEmail] = useState("admin@example.com");
-  const [password, setPassword] = useState("admin12345");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -20,6 +23,12 @@ export default function LoginPage() {
 
       localStorage.setItem("access_token", result.access_token);
       localStorage.setItem("current_user", JSON.stringify(result.user));
+
+      if (rememberMe) {
+        localStorage.setItem("remember_me", "true");
+      } else {
+        localStorage.removeItem("remember_me");
+      }
 
       if (result.user.role === "ADMIN") {
         navigate("/admin");
@@ -38,38 +47,96 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="auth-page">
-      <section className="auth-card">
-        <h1>Login UMKM Tumbuh</h1>
-        <p>Masuk menggunakan akun yang sudah disetujui admin.</p>
+    <main className="auth-split-page">
+      <section className="auth-split-left">
+        <div className="auth-login-wrap">
+          <div className="auth-logo-stack">
+            <img src="/tumbuh.png" alt="UMKM Tumbuh" />
+            <h1>UMKM Tumbuh</h1>
+            <p>Platform Pengembangan untuk Pertumbuhan UMKM Indonesia</p>
+          </div>
 
-        <form onSubmit={handleSubmit}>
-          <label>Email</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            required
-          />
+          <form className="auth-glass-card" onSubmit={handleSubmit}>
+            <label>
+              Alamat Email
+              <div className="auth-input-shell">
+                <Mail size={20} />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="nama@usaha.com"
+                  required
+                />
+              </div>
+            </label>
 
-          <label>Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            required
-          />
+            <label>
+              <span className="auth-label-row">
+                Kata Sandi
+                <Link to="/forgot-password">Lupa Sandi?</Link>
+              </span>
 
-          {error && <p className="error-message">{error}</p>}
+              <div className="auth-input-shell">
+                <Lock size={20} />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="••••••••"
+                  required
+                />
+                <button
+                  type="button"
+                  className="auth-icon-toggle"
+                  onClick={() => setShowPassword((current) => !current)}
+                  aria-label="Tampilkan kata sandi"
+                >
+                  <Eye size={20} />
+                </button>
+              </div>
+            </label>
 
-          <button type="submit" disabled={loading}>
-            {loading ? "Memproses..." : "Login"}
-          </button>
-        </form>
+            <label className="auth-checkbox-row">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(event) => setRememberMe(event.target.checked)}
+              />
+              <span>Ingat saya</span>
+            </label>
 
-        <p>
-          Belum punya akun? <Link to="/register">Daftar di sini</Link>
-        </p>
+            {error ? <div className="error-message">{error}</div> : null}
+
+            <button type="submit" disabled={loading}>
+              {loading ? "Memproses..." : "Masuk ke Dashboard"}
+              <ArrowRight size={20} />
+            </button>
+          </form>
+
+          <p className="auth-bottom-link">
+            Belum memiliki akun? <Link to="/register">Daftar Sekarang</Link>
+          </p>
+
+          <footer className="auth-footer-links">
+            <span>Bantuan</span>
+            <span>•</span>
+            <span>Privasi</span>
+            <span>•</span>
+            <span>Bahasa Indonesia</span>
+          </footer>
+        </div>
+      </section>
+
+      <section className="auth-split-right">
+        <div className="auth-quote">
+          <div className="auth-quote-line" />
+          <blockquote>
+            "UMKM Tumbuh telah membantu toko kerajinan kami beralih ke digital
+            dengan kemudahan yang luar biasa."
+          </blockquote>
+          <p>— Siti Rahma, Pemilik Galeri Karsa</p>
+        </div>
       </section>
     </main>
   );

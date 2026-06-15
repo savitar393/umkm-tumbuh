@@ -1,0 +1,1060 @@
+{
+  "info": {
+    "_postman_id": "5b7fdb79-umkm-current-progress-try2",
+    "name": "UMKM Tumbuh Backend - Current Progress Try 2",
+    "description": "Newman/Postman collection aligned with feat/frontend-sales-reporting current backend routes: auth, admin registration approval, profile, products, and sales.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.environment.get('run_id')) {",
+          "  const suffix = String(Date.now()).slice(-10);",
+          "  pm.environment.set('run_id', suffix);",
+          "  pm.environment.set('umkm_test_email', `newman.umkm.${suffix}@example.com`);",
+          "  pm.environment.set('umkm_test_phone', `08${suffix}`);",
+          "  pm.environment.set('umkm_test_nik', (`3372${suffix}000000000000`).slice(0, 16));",
+          "}",
+          ""
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "00 - Health Checks",
+      "item": [
+        {
+          "name": "HP-HEALTH-001 Auth service health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{auth_base_url}}/api/v1/health",
+              "host": [
+                "{{auth_base_url}}/api/v1/health"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Response is JSON', function () { pm.response.to.be.json; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HP-HEALTH-002 Auth DB health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{auth_base_url}}/api/v1/health/db",
+              "host": [
+                "{{auth_base_url}}/api/v1/health/db"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Response is JSON', function () { pm.response.to.be.json; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HP-HEALTH-003 User service health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{user_base_url}}/api/v1/health",
+              "host": [
+                "{{user_base_url}}/api/v1/health"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Response is JSON', function () { pm.response.to.be.json; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HP-HEALTH-004 User DB health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{user_base_url}}/api/v1/health/db",
+              "host": [
+                "{{user_base_url}}/api/v1/health/db"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Response is JSON', function () { pm.response.to.be.json; });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "01 - Auth + Admin Approval Flow",
+      "item": [
+        {
+          "name": "HP-AUTH-001 Admin login seeded account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auth_base_url}}/api/v1/auth/login",
+              "host": [
+                "{{auth_base_url}}/api/v1/auth/login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Admin login returns 200', () => pm.response.to.have.status(200));",
+                  "pm.response.to.be.json;",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.access_token, 'access_token').to.be.a('string').and.not.empty;",
+                  "pm.environment.set('admin_access_token', json.access_token);",
+                  "pm.test('Admin role returned', () => pm.expect(json.user.role).to.eql('ADMIN'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HP-AUTH-002 Register UMKM account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auth_base_url}}/api/v1/auth/register",
+              "host": [
+                "{{auth_base_url}}/api/v1/auth/register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": \"Newman UMKM Owner {{run_id}}\",\n  \"email\": \"{{umkm_test_email}}\",\n  \"phone_number\": \"{{umkm_test_phone}}\",\n  \"nik\": \"{{umkm_test_nik}}\",\n  \"password\": \"{{umkm_test_password}}\",\n  \"role\": \"UMKM\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Register returns 201 Created', () => pm.response.to.have.status(201));",
+                  "pm.response.to.be.json;",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.user.id, 'user.id').to.be.a('string').and.not.empty;",
+                  "pm.environment.set('umkm_account_id', json.user.id);",
+                  "pm.test('New account starts as MENUNGGU', () => pm.expect(json.user.status).to.eql('MENUNGGU'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AP-AUTH-003 Duplicate UMKM registration should fail",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auth_base_url}}/api/v1/auth/register",
+              "host": [
+                "{{auth_base_url}}/api/v1/auth/register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": \"Duplicate Newman UMKM Owner\",\n  \"email\": \"{{umkm_test_email}}\",\n  \"phone_number\": \"{{umkm_test_phone}}\",\n  \"nik\": \"{{umkm_test_nik}}\",\n  \"password\": \"{{umkm_test_password}}\",\n  \"role\": \"UMKM\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Duplicate register is rejected', () => pm.expect([400,409]).to.include(pm.response.code));",
+                  "pm.response.to.be.json;"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AP-AUTH-004 UMKM login before approval should fail",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auth_base_url}}/api/v1/auth/login",
+              "host": [
+                "{{auth_base_url}}/api/v1/auth/login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{umkm_test_email}}\",\n  \"password\": \"{{umkm_test_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Pending account cannot login', () => pm.response.to.have.status(403));",
+                  "pm.response.to.be.json;"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HP-ADMIN-001 List pending registrations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{auth_base_url}}/api/v1/admin/registrations?status=PENDING",
+              "host": [
+                "{{auth_base_url}}/api/v1/admin/registrations?status=PENDING"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('List registrations returns 200', () => pm.response.to.have.status(200));",
+                  "pm.response.to.be.json;",
+                  "const list = pm.response.json();",
+                  "pm.test('Response is an array', () => pm.expect(list).to.be.an('array'));",
+                  "const found = list.find(u => u.email === pm.environment.get('umkm_test_email'));",
+                  "pm.expect(found, 'registered UMKM exists in pending list').to.exist;",
+                  "pm.environment.set('umkm_account_id', found.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HP-ADMIN-002 Approve UMKM registration",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{auth_base_url}}/api/v1/admin/registrations/{{umkm_account_id}}/approve",
+              "host": [
+                "{{auth_base_url}}/api/v1/admin/registrations/{{umkm_account_id}}/approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Approve returns 200', () => pm.response.to.have.status(200));",
+                  "pm.response.to.be.json;",
+                  "const json = pm.response.json();",
+                  "pm.test('Status becomes DISETUJUI', () => pm.expect(json.status).to.eql('DISETUJUI'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HP-AUTH-005 Login approved UMKM account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auth_base_url}}/api/v1/auth/login",
+              "host": [
+                "{{auth_base_url}}/api/v1/auth/login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{umkm_test_email}}\",\n  \"password\": \"{{umkm_test_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Approved UMKM login returns 200', () => pm.response.to.have.status(200));",
+                  "pm.response.to.be.json;",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.access_token, 'access_token').to.be.a('string').and.not.empty;",
+                  "pm.environment.set('umkm_access_token', json.access_token);",
+                  "pm.test('UMKM role returned', () => pm.expect(json.user.role).to.eql('UMKM'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HP-AUTH-006 Auth /me with UMKM token",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{umkm_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{auth_base_url}}/api/v1/auth/me",
+              "host": [
+                "{{auth_base_url}}/api/v1/auth/me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Auth me returns 200', () => pm.response.to.have.status(200));",
+                  "pm.response.to.be.json;",
+                  "pm.test('Current user email matches test email', () => pm.expect(pm.response.json().email).to.eql(pm.environment.get('umkm_test_email')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "SP-AUTH-007 Invalid login should fail",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auth_base_url}}/api/v1/auth/login",
+              "host": [
+                "{{auth_base_url}}/api/v1/auth/login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{umkm_test_email}}\",\n  \"password\": \"WrongPassword123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Invalid login rejected', () => pm.expect([400,401,403]).to.include(pm.response.code));",
+                  "pm.response.to.be.json;"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 - User Profile Service",
+      "item": [
+        {
+          "name": "SP-PROFILE-001 Protected profile without token should fail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{user_base_url}}/api/v1/profiles/me",
+              "host": [
+                "{{user_base_url}}/api/v1/profiles/me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Unauthorized without token', () => pm.response.to.have.status(401));",
+                  "pm.response.to.be.json;"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AP-PROFILE-002 Get profile before created",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{umkm_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{user_base_url}}/api/v1/profiles/me",
+              "host": [
+                "{{user_base_url}}/api/v1/profiles/me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Profile not created yet or already exists', () => pm.expect([200,404]).to.include(pm.response.code));",
+                  "pm.response.to.be.json;"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HP-PROFILE-003 Upsert UMKM profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{umkm_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{user_base_url}}/api/v1/profiles/me",
+              "host": [
+                "{{user_base_url}}/api/v1/profiles/me"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"business_name\": \"Newman Snack House {{run_id}}\",\n  \"business_category\": \"Makanan\",\n  \"business_description\": \"UMKM makanan ringan lokal untuk pengujian otomatis Newman.\",\n  \"owner_name\": \"Newman Owner\",\n  \"nik\": \"{{umkm_test_nik}}\",\n  \"established_year\": 2024,\n  \"business_email\": \"{{umkm_test_email}}\",\n  \"operating_hours\": \"08:00-17:00\",\n  \"social_media_marketplace\": \"https://example.com/newman-snack\",\n  \"phone_number\": \"{{umkm_test_phone}}\",\n  \"address\": \"Jl. Newman Test No. 1\",\n  \"city\": \"Surakarta\",\n  \"province\": \"Jawa Tengah\",\n  \"district\": \"Banjarsari\",\n  \"village\": \"Manahan\",\n  \"postal_code\": \"57139\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Profile upsert returns 200', () => pm.response.to.have.status(200));",
+                  "pm.response.to.be.json;",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.profile, 'profile').to.exist;",
+                  "pm.environment.set('umkm_profile_created', 'true');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HP-PROFILE-004 Get profile after update",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{umkm_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{user_base_url}}/api/v1/profiles/me",
+              "host": [
+                "{{user_base_url}}/api/v1/profiles/me"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Get profile returns 200', () => pm.response.to.have.status(200));",
+                  "pm.response.to.be.json;",
+                  "pm.test('Profile contains Newman business name', () => pm.expect(pm.response.text()).to.include('Newman Snack House'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "SP-PROFILE-005 Invalid profile payload should fail",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{umkm_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{user_base_url}}/api/v1/profiles/me",
+              "host": [
+                "{{user_base_url}}/api/v1/profiles/me"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"business_name\": \"\",\n  \"nik\": \"123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Invalid profile payload rejected', () => pm.response.to.have.status(400));",
+                  "pm.response.to.be.json;"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 - Products Service",
+      "item": [
+        {
+          "name": "HP-PRODUCT-001 List products initially",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{umkm_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{user_base_url}}/api/v1/products/",
+              "host": [
+                "{{user_base_url}}/api/v1/products/"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('List products returns 200', () => pm.response.to.have.status(200));",
+                  "pm.response.to.be.json;",
+                  "pm.test('Products field exists', () => pm.expect(pm.response.json().products).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HP-PRODUCT-002 Create product for sales test",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{umkm_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{user_base_url}}/api/v1/products/",
+              "host": [
+                "{{user_base_url}}/api/v1/products/"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Keripik Newman {{run_id}}\",\n  \"category_name\": \"Makanan Ringan\",\n  \"description\": \"Produk dummy untuk test transaksi penjualan.\",\n  \"price\": 15000,\n  \"initial_stock\": 20,\n  \"status\": \"AKTIF\",\n  \"legalitas\": \"PIRT\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Create product returns 201', () => pm.response.to.have.status(201));",
+                  "pm.response.to.be.json;",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.product.id, 'product.id').to.be.a('string').and.not.empty;",
+                  "pm.environment.set('product_id', json.product.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HP-PRODUCT-003 Get product detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{umkm_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{user_base_url}}/api/v1/products/{{product_id}}",
+              "host": [
+                "{{user_base_url}}/api/v1/products/{{product_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Get product returns 200', () => pm.response.to.have.status(200));",
+                  "pm.response.to.be.json;",
+                  "pm.test('Product id matches', () => pm.expect(pm.response.json().product.id).to.eql(pm.environment.get('product_id')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HP-PRODUCT-004 Update product stock",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{umkm_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{user_base_url}}/api/v1/products/{{product_id}}/stock",
+              "host": [
+                "{{user_base_url}}/api/v1/products/{{product_id}}/stock"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"RESTOCK\",\n  \"quantity\": 5,\n  \"note\": \"Newman restock test\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Update stock returns 200', () => pm.response.to.have.status(200));",
+                  "pm.response.to.be.json;"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "SP-PRODUCT-005 Invalid product create should fail",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{umkm_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{user_base_url}}/api/v1/products/",
+              "host": [
+                "{{user_base_url}}/api/v1/products/"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"\",\n  \"price\": -1,\n  \"initial_stock\": -10\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Invalid product rejected', () => pm.response.to.have.status(400));",
+                  "pm.response.to.be.json;"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 - Sales Reporting / Sales Transactions",
+      "item": [
+        {
+          "name": "HP-SALES-001 Create sales transaction",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{umkm_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{user_base_url}}/api/v1/sales/",
+              "host": [
+                "{{user_base_url}}/api/v1/sales/"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transaction_date\": \"2026-06-10\",\n  \"total_profit\": 10000,\n  \"note\": \"Newman automated sales transaction test\",\n  \"items\": [\n    {\n      \"product_id\": \"{{product_id}}\",\n      \"quantity\": 2\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Create sale returns 201', () => pm.response.to.have.status(201));",
+                  "pm.response.to.be.json;",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.sale.id, 'sale.id').to.be.a('string').and.not.empty;",
+                  "pm.environment.set('sale_id', json.sale.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HP-SALES-002 List sales transactions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{umkm_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{user_base_url}}/api/v1/sales/?from=2026-06-01&to=2026-06-30",
+              "host": [
+                "{{user_base_url}}/api/v1/sales/?from=2026-06-01&to=2026-06-30"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('List sales returns 200', () => pm.response.to.have.status(200));",
+                  "pm.response.to.be.json;",
+                  "pm.test('Sales field exists', () => pm.expect(pm.response.json().sales).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HP-SALES-003 Get sales transaction detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{umkm_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{user_base_url}}/api/v1/sales/{{sale_id}}",
+              "host": [
+                "{{user_base_url}}/api/v1/sales/{{sale_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Get sale returns 200', () => pm.response.to.have.status(200));",
+                  "pm.response.to.be.json;",
+                  "pm.test('Sale id matches', () => pm.expect(pm.response.json().sale.id).to.eql(pm.environment.get('sale_id')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "SP-SALES-004 Create sale without items should fail",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{umkm_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{user_base_url}}/api/v1/sales/",
+              "host": [
+                "{{user_base_url}}/api/v1/sales/"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transaction_date\": \"2026-06-10\",\n  \"total_profit\": 1000,\n  \"items\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('No items rejected', () => pm.response.to.have.status(400));",
+                  "pm.response.to.be.json;"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "SP-SALES-005 Create sale with excessive quantity should fail",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{umkm_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{user_base_url}}/api/v1/sales/",
+              "host": [
+                "{{user_base_url}}/api/v1/sales/"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transaction_date\": \"2026-06-10\",\n  \"total_profit\": 1000,\n  \"items\": [\n    {\n      \"product_id\": \"{{product_id}}\",\n      \"quantity\": 999999\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Excessive quantity rejected', () => pm.response.to.have.status(400));",
+                  "pm.response.to.be.json;"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
