@@ -1,0 +1,1015 @@
+{
+  "info": {
+    "_postman_id": "041c949c-cfb0-429b-a81b-c6455ba71977",
+    "name": "UMKM Tumbuh Backend - Happy Alternative Sad Path",
+    "description": "Newman automated backend tests: happy path, alternative path, and sad path.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.environment.get('run_id')) {",
+          "  const runId = Date.now().toString();",
+          "  pm.environment.set('run_id', runId);",
+          "  pm.environment.set('umkm_email', `qa.umkm.${runId}@example.com`);",
+          "  pm.environment.set('mitra_email', `qa.mitra.${runId}@example.com`);",
+          "  pm.environment.set('umkm_password', 'password12345');",
+          "  pm.environment.set('mitra_password', 'password12345');",
+          "  pm.environment.set('umkm_phone', `08${runId.slice(-11)}`);",
+          "  pm.environment.set('mitra_phone', `09${runId.slice(-11)}`);",
+          "  pm.environment.set('umkm_nik', `3372${runId.slice(-12).padStart(12, '0')}`);",
+          "  pm.environment.set('mitra_nik', `3373${runId.slice(-12).padStart(12, '0')}`);",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "00 - Health Checks",
+      "item": [
+        {
+          "name": "HP-HEALTH-001 Auth service health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{auth_base_url}}/api/v1/health",
+              "host": [
+                "{{auth_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "health"
+              ]
+            },
+            "description": "Happy Path: auth service is reachable."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () { pm.response.to.be.json; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HP-HEALTH-002 Auth DB health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{auth_base_url}}/api/v1/health/db",
+              "host": [
+                "{{auth_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "health",
+                "db"
+              ]
+            },
+            "description": "Happy Path: auth database connection is healthy."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () { pm.response.to.be.json; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HP-HEALTH-003 User service health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{user_base_url}}/api/v1/health",
+              "host": [
+                "{{user_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "health"
+              ]
+            },
+            "description": "Happy Path: user service is reachable."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () { pm.response.to.be.json; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HP-HEALTH-004 User DB health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{user_base_url}}/api/v1/health/db",
+              "host": [
+                "{{user_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "health",
+                "db"
+              ]
+            },
+            "description": "Happy Path: user database connection is healthy."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "pm.test('Response is JSON', function () { pm.response.to.be.json; });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "01 - Auth Registration Flow",
+      "item": [
+        {
+          "name": "HP-AUTH-001 Admin login successfully",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auth_base_url}}/api/v1/auth/login",
+              "host": [
+                "{{auth_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Happy Path: seeded admin can login.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{admin_email}}\",\n  \"password\": \"{{admin_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "const json = pm.response.json();",
+                  "pm.test('Admin token exists', function () { pm.expect(json.access_token).to.be.a('string').and.not.empty; });",
+                  "pm.test('Admin role is ADMIN', function () { pm.expect(json.user.role).to.eql('ADMIN'); });",
+                  "pm.environment.set('admin_token', json.access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HP-REG-001 Register UMKM successfully",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auth_base_url}}/api/v1/auth/register",
+              "host": [
+                "{{auth_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Happy Path: public UMKM registration is accepted as pending.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": \"QA UMKM {{run_id}}\",\n  \"email\": \"{{umkm_email}}\",\n  \"phone_number\": \"{{umkm_phone}}\",\n  \"nik\": \"{{umkm_nik}}\",\n  \"password\": \"{{umkm_password}}\",\n  \"role\": \"UMKM\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () { pm.response.to.have.status(201); });",
+                  "const json = pm.response.json();",
+                  "pm.test('User object exists', function () { pm.expect(json.user).to.be.an('object'); });",
+                  "pm.test('Role is UMKM', function () { pm.expect(json.user.role).to.eql('UMKM'); });",
+                  "pm.test('Status is MENUNGGU', function () { pm.expect(json.user.status).to.eql('MENUNGGU'); });",
+                  "pm.environment.set('umkm_user_id', json.user.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "SP-REG-001 Duplicate UMKM registration is rejected",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auth_base_url}}/api/v1/auth/register",
+              "host": [
+                "{{auth_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Sad Path: duplicate email/phone/NIK returns conflict.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": \"QA UMKM Duplicate {{run_id}}\",\n  \"email\": \"{{umkm_email}}\",\n  \"phone_number\": \"{{umkm_phone}}\",\n  \"nik\": \"{{umkm_nik}}\",\n  \"password\": \"{{umkm_password}}\",\n  \"role\": \"UMKM\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 409', function () { pm.response.to.have.status(409); });",
+                  "const json = pm.response.json();",
+                  "pm.test('Duplicate message exists', function () { pm.expect(JSON.stringify(json).toLowerCase()).to.include('terdaftar'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "SP-AUTH-001 Pending UMKM cannot login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auth_base_url}}/api/v1/auth/login",
+              "host": [
+                "{{auth_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Sad Path: pending account cannot login.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{umkm_email}}\",\n  \"password\": \"{{umkm_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 403', function () { pm.response.to.have.status(403); });",
+                  "const json = pm.response.json();",
+                  "pm.test('Pending message exists', function () { pm.expect(JSON.stringify(json).toLowerCase()).to.include('menunggu'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AP-REG-001 Register Mitra successfully",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auth_base_url}}/api/v1/auth/register",
+              "host": [
+                "{{auth_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Alternative Path: public Mitra registration is valid.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": \"QA Mitra {{run_id}}\",\n  \"email\": \"{{mitra_email}}\",\n  \"phone_number\": \"{{mitra_phone}}\",\n  \"nik\": \"{{mitra_nik}}\",\n  \"password\": \"{{mitra_password}}\",\n  \"role\": \"MITRA\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () { pm.response.to.have.status(201); });",
+                  "const json = pm.response.json();",
+                  "pm.test('Role is MITRA', function () { pm.expect(json.user.role).to.eql('MITRA'); });",
+                  "pm.environment.set('mitra_user_id', json.user.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "SP-REG-002 Invalid email is rejected",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auth_base_url}}/api/v1/auth/register",
+              "host": [
+                "{{auth_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Sad Path: invalid email rejected.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": \"Bad Email User\",\n  \"email\": \"not-an-email\",\n  \"phone_number\": \"081111111111\",\n  \"nik\": \"3372999999999999\",\n  \"password\": \"password12345\",\n  \"role\": \"UMKM\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 400', function () { pm.response.to.have.status(400); });",
+                  "const json = pm.response.json();",
+                  "pm.test('Email validation message exists', function () { pm.expect(JSON.stringify(json).toLowerCase()).to.include('email'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "SP-REG-003 Invalid public role is rejected",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auth_base_url}}/api/v1/auth/register",
+              "host": [
+                "{{auth_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
+            },
+            "description": "Sad Path: public registration cannot create ADMIN.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": \"Bad Role User\",\n  \"email\": \"bad.role.{{run_id}}@example.com\",\n  \"phone_number\": \"081111111112\",\n  \"nik\": \"3372999999999998\",\n  \"password\": \"password12345\",\n  \"role\": \"ADMIN\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 400', function () { pm.response.to.have.status(400); });",
+                  "const json = pm.response.json();",
+                  "pm.test('Role validation message exists', function () { pm.expect(JSON.stringify(json).toLowerCase()).to.include('umkm'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 - Admin Approval and Access Control",
+      "item": [
+        {
+          "name": "HP-ADMIN-001 Admin approves pending UMKM",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{auth_base_url}}/api/v1/admin/registrations/{{umkm_user_id}}/approve",
+              "host": [
+                "{{auth_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "registrations",
+                "{{umkm_user_id}}",
+                "approve"
+              ]
+            },
+            "description": "Happy Path: admin approves pending UMKM."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "const json = pm.response.json();",
+                  "pm.test('Status is DISETUJUI', function () { pm.expect(json.status).to.eql('DISETUJUI'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HP-AUTH-002 Approved UMKM login succeeds",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auth_base_url}}/api/v1/auth/login",
+              "host": [
+                "{{auth_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Happy Path: approved UMKM can login.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{umkm_email}}\",\n  \"password\": \"{{umkm_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "const json = pm.response.json();",
+                  "pm.test('UMKM token exists', function () { pm.expect(json.access_token).to.be.a('string').and.not.empty; });",
+                  "pm.test('UMKM role returned', function () { pm.expect(json.user.role).to.eql('UMKM'); });",
+                  "pm.environment.set('umkm_token', json.access_token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AP-AUTH-001 Uppercase email login succeeds",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auth_base_url}}/api/v1/auth/login",
+              "host": [
+                "{{auth_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Alternative Path: email normalization allows uppercase input.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{umkm_email_upper}}\",\n  \"password\": \"{{umkm_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set('umkm_email_upper', pm.environment.get('umkm_email').toUpperCase());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "const json = pm.response.json();",
+                  "pm.test('Token exists', function () { pm.expect(json.access_token).to.be.a('string').and.not.empty; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HP-AUTH-003 Get current user",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{umkm_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{auth_base_url}}/api/v1/auth/me",
+              "host": [
+                "{{auth_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Happy Path: valid JWT can read current user."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "const json = pm.response.json();",
+                  "pm.test('Current user role is UMKM', function () { pm.expect(json.role).to.eql('UMKM'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AP-ADMIN-001 Admin rejects Mitra with reason",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{auth_base_url}}/api/v1/admin/registrations/{{mitra_user_id}}/reject",
+              "host": [
+                "{{auth_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "registrations",
+                "{{mitra_user_id}}",
+                "reject"
+              ]
+            },
+            "description": "Alternative Path: admin can reject registration with reason.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rejection_reason\": \"Dokumen belum lengkap untuk testing otomatis.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "const json = pm.response.json();",
+                  "pm.test('Status is DITOLAK', function () { pm.expect(json.status).to.eql('DITOLAK'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "SP-AUTH-002 Rejected Mitra cannot login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{auth_base_url}}/api/v1/auth/login",
+              "host": [
+                "{{auth_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Sad Path: rejected user cannot login.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{mitra_email}}\",\n  \"password\": \"{{mitra_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 403', function () { pm.response.to.have.status(403); });",
+                  "const json = pm.response.json();",
+                  "pm.test('Rejected/inactive account message exists', function () { const text = JSON.stringify(json).toLowerCase(); pm.expect(text).to.match(/ditolak|tidak aktif|inactive|rejected/); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "SP-ADMIN-001 Admin list without token is rejected",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{auth_base_url}}/api/v1/admin/registrations?status=ALL",
+              "host": [
+                "{{auth_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "registrations?status=ALL"
+              ]
+            },
+            "description": "Sad Path: admin route requires JWT."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 401', function () { pm.response.to.have.status(401); });",
+                  "const json = pm.response.json();",
+                  "pm.test('Authorization error exists', function () { pm.expect(JSON.stringify(json).toLowerCase()).to.include('authorization'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "SP-ADMIN-002 Non-admin cannot approve",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{umkm_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{auth_base_url}}/api/v1/admin/registrations/{{umkm_user_id}}/approve",
+              "host": [
+                "{{auth_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "registrations",
+                "{{umkm_user_id}}",
+                "approve"
+              ]
+            },
+            "description": "Sad Path: UMKM token cannot access admin endpoint."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 403', function () { pm.response.to.have.status(403); });",
+                  "const json = pm.response.json();",
+                  "pm.test('Admin-only message exists', function () { pm.expect(JSON.stringify(json).toLowerCase()).to.include('admin'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "SP-ADMIN-003 Reject without reason is rejected",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{auth_base_url}}/api/v1/admin/registrations/{{umkm_user_id}}/reject",
+              "host": [
+                "{{auth_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "registrations",
+                "{{umkm_user_id}}",
+                "reject"
+              ]
+            },
+            "description": "Sad Path: rejection reason is required.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rejection_reason\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 400', function () { pm.response.to.have.status(400); });",
+                  "const json = pm.response.json();",
+                  "pm.test('Reason validation message exists', function () { pm.expect(JSON.stringify(json).toLowerCase()).to.include('alasan'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AP-ADMIN-002 Admin lists all registrations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{auth_base_url}}/api/v1/admin/registrations?status=ALL",
+              "host": [
+                "{{auth_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "registrations?status=ALL"
+              ]
+            },
+            "description": "Alternative Path: admin can list all registrations."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "const json = pm.response.json();",
+                  "pm.test('Response is array', function () { pm.expect(json).to.be.an('array'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 - User Service Protected Route",
+      "item": [
+        {
+          "name": "SP-PROFILE-001 Profile without token is rejected",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{user_base_url}}/api/v1/profiles/me",
+              "host": [
+                "{{user_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "profiles",
+                "me"
+              ]
+            },
+            "description": "Sad Path: profile endpoint requires JWT."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 401', function () { pm.response.to.have.status(401); });",
+                  "const json = pm.response.json();",
+                  "pm.test('Authorization error exists', function () { pm.expect(JSON.stringify(json).toLowerCase()).to.include('authorization'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
