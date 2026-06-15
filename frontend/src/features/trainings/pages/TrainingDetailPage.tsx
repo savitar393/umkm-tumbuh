@@ -1,664 +1,263 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import Header from "../../../shared/components/Header";
 import Footer from "../../../shared/components/Footer";
 import TermsModal from "./TermsModal";
+import { useTrainingDetail, useEnrollTraining } from "../hooks";
+import { useTrainingStore } from "../store";
+import { getMyProfile } from "../../../shared/api/profile";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface Module {
-  id: number;
-  title: string;
-  description: string;
-}
-
-interface Training {
-  id: string;
-  level: string;
-  duration: string;
-  title: string;
-  mentor: string;
-  rating: number;
-  alumni: string;
-  description: string[];
-  price: number | null; // null = GRATIS
-  originalPrice: number;
-  benefits: string[];
-  modules: Module[];
-  requirements: string[];
-  outcomes: string[];
-  heroImage?: string;
-}
-
-// ─── Mock Data ─────────────────────────────────────────────────────────────────
-
-const trainingData: Training = {
-  id: "manajemen-keuangan-umkm",
-  level: "INTERMEDIATE",
-  duration: "10 JAM BELAJAR",
-  title: "Manajemen Keuangan UMKM",
-  mentor: "Budi Santoso",
-  rating: 4.9,
-  alumni: "2.4k",
-  description: [
-    "Kuasai seni mengelola arus kas dan perencanaan keuangan yang dirancang khusus untuk pemilik usaha kecil dan menengah. Pelatihan ini tidak hanya mengajarkan teori, tetapi memberikan alat praktis yang dapat langsung Anda terapkan di bisnis Anda.",
-    "Pelajari cara memisahkan keuangan pribadi dan bisnis, menghitung harga pokok penjualan yang akurat, hingga membaca laporan laba rugi untuk pengambilan keputusan strategis yang lebih cerdas.",
-  ],
-  price: null,
-  originalPrice: 750000,
-  benefits: [
-    "Akses seumur hidup ke modul pembelajaran",
-    "15+ File template & materi pendukung",
-  ],
-  modules: [
-    {
-      id: 1,
-      title: "Dasar-dasar Akuntansi UMKM",
-      description: "Memahami konsep debit, kredit, dan persamaan akuntansi dasar.",
-    },
-    {
-      id: 2,
-      title: "Manajemen Arus Kas (Cash Flow)",
-      description: "Teknik menjaga likuiditas agar bisnis tetap beroperasi setiap hari.",
-    },
-    {
-      id: 3,
-      title: "Perpajakan Sederhana",
-      description: "Cara menghitung dan melaporkan pajak PPh Final 0.5% untuk UMKM.",
-    },
-  ],
-  requirements: [
-    "Memiliki usaha yang sudah berjalan minimal 3 bulan.",
-    "Memiliki perangkat komputer/laptop dengan koneksi internet.",
-    "Komitmen menyelesaikan tugas di setiap modul.",
-  ],
-  outcomes: [
-    "Mampu menyusun Laporan Laba Rugi bulanan secara mandiri.",
-    "Sertifikat Kompetensi Digital yang diakui industri.",
-    "Template Excel Manajemen Keuangan Siap Pakai.",
-  ],
-};
-
-// ─── Sub-components ────────────────────────────────────────────────────────────
-
-function ModuleAccordion({ module, index }: { module: Module; index: number }) {
+function ModuleAccordion({ module: mod, index }: { module: { modul_id: string; judul_modul: string; deskripsi_modul: string | null; durasi_menit: number; is_preview: boolean }; index: number }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div
-      className="module-item"
-      style={{
-        border: "1px solid #e5e7eb",
-        borderRadius: "8px",
-        padding: "20px 24px",
-        marginBottom: "12px",
-        cursor: "pointer",
-        background: "#fff",
-        transition: "box-shadow 0.2s",
-      }}
-      onClick={() => setOpen(!open)}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: "16px",
-        }}
-      >
+    <div className="module-item" style={{
+      border: "1px solid #e5e7eb", borderRadius: "8px", padding: "20px 24px",
+      marginBottom: "12px", cursor: "pointer", background: "#fff", transition: "box-shadow 0.2s",
+    }} onClick={() => setOpen(!open)}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px" }}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: "20px" }}>
-          {/* Number */}
-          <span
-            style={{
-              fontSize: "22px",
-              fontWeight: "700",
-              color: "#2A7A4B",
-              minWidth: "32px",
-              lineHeight: 1,
-              paddingTop: "2px",
-            }}
-          >
+          <span style={{ fontSize: "22px", fontWeight: "700", color: "#2A7A4B", minWidth: "32px", lineHeight: 1, paddingTop: "2px" }}>
             {String(index + 1).padStart(2, "0")}
           </span>
-          {/* Text */}
           <div>
-            <p
-              style={{
-                margin: 0,
-                fontWeight: "700",
-                fontSize: "15px",
-                color: "#111827",
-                lineHeight: "1.4",
-              }}
-            >
-              {module.title}
+            <p style={{ margin: 0, fontWeight: "700", fontSize: "15px", color: "#111827", lineHeight: "1.4" }}>
+              {mod.judul_modul}
             </p>
-            {!open && (
-              <p
-                style={{
-                  margin: "4px 0 0",
-                  fontSize: "13px",
-                  color: "#6b7280",
-                  lineHeight: "1.5",
-                }}
-              >
-                {module.description}
-              </p>
-            )}
-            {open && (
-              <p
-                style={{
-                  margin: "8px 0 0",
-                  fontSize: "13px",
-                  color: "#374151",
-                  lineHeight: "1.6",
-                }}
-              >
-                {module.description}
+            <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#6b7280" }}>
+              {mod.durasi_menit} Menit {mod.is_preview ? "• Preview" : ""}
+            </p>
+            {open && mod.deskripsi_modul && (
+              <p style={{ margin: "8px 0 0", fontSize: "13px", color: "#374151", lineHeight: "1.6" }}>
+                {mod.deskripsi_modul}
               </p>
             )}
           </div>
         </div>
-        <Icon
-          icon={open ? "mdi:chevron-up" : "mdi:chevron-down"}
-          style={{ fontSize: "22px", color: "#6b7280", flexShrink: 0 }}
-        />
+        <Icon icon={open ? "mdi:chevron-up" : "mdi:chevron-down"} style={{ fontSize: "22px", color: "#6b7280", flexShrink: 0 }} />
       </div>
     </div>
   );
 }
 
-// ─── Main Page ─────────────────────────────────────────────────────────────────
-
 export default function TrainingDetailPage() {
   const navigate = useNavigate();
-  const training = trainingData;
+  const { id } = useParams<{ id: string }>();
+  const { data: detail, isLoading, error } = useTrainingDetail(id || "");
+  const enrollMutation = useEnrollTraining();
+  const umkmId = useTrainingStore((s) => s.umkmId);
+  const setUmkmId = useTrainingStore((s) => s.setUmkmId);
 
-  // ── Modal state ──────────────────────────────────────────────
   const [showTerms, setShowTerms] = useState(false);
 
-  const handleConfirmRegister = () => {
+  const handleConfirmRegister = async () => {
     setShowTerms(false);
-    // TODO: hit registration API endpoint here
-    // Navigate to success page
-    navigate(`/umkm/trainings/${training.id}/success`);
+    let currentUmkmId = umkmId;
+    if (!currentUmkmId) {
+      const profile = await getMyProfile();
+      if (profile?.id) {
+        setUmkmId(profile.id);
+        currentUmkmId = profile.id;
+      }
+    }
+    if (!currentUmkmId || !id) return;
+
+    enrollMutation.mutate(
+      { umkm_id: currentUmkmId, pelatihan_id: id },
+      {
+        onSuccess: (data) => {
+          navigate(`/umkm/trainings/${id}/success`, { state: { enrollment: data.enrollment } });
+        },
+      }
+    );
   };
-  // ────────────────────────────────────────────────────────────
 
   const formatPrice = (price: number) =>
-    new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      maximumFractionDigits: 0,
-    }).format(price);
+    new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(price);
+
+  if (isLoading) {
+    return (
+      <div style={{ fontFamily: "'Segoe UI', sans-serif", background: "#f9fafb", minHeight: "100vh" }}>
+        <Header />
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh" }}>
+          <p style={{ fontSize: 16, color: "#64748b" }}>Memuat detail pelatihan...</p>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (error || !detail) {
+    return (
+      <div style={{ fontFamily: "'Segoe UI', sans-serif", background: "#f9fafb", minHeight: "100vh" }}>
+        <Header />
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "60vh", flexDirection: "column", gap: 12 }}>
+          <Icon icon="mdi:alert-circle" style={{ fontSize: 48, color: "#ef4444" }} />
+          <p style={{ fontSize: 16, color: "#ef4444", fontWeight: 600 }}>Gagal memuat detail pelatihan</p>
+          <button onClick={() => navigate("/umkm/trainings/list")}
+            style={{ padding: "10px 24px", background: "#1a3fa4", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer" }}>
+            Kembali ke Daftar
+          </button>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  const training = detail.training;
+  const modules = detail.modules;
 
   return (
     <div style={{ fontFamily: "'Segoe UI', sans-serif", background: "#f9fafb", minHeight: "100vh" }}>
       <Header />
 
-      {/* ── Terms Modal ───────────────────────────────────────────── */}
+      <style>{`
+        .module-item { transition: box-shadow 0.2s; }
+        .module-item:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+      `}</style>
+
+      <div style={{
+        background: "linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%)",
+        padding: "48px 80px 56px",
+        position: "relative", overflow: "hidden",
+      }}>
+        <div style={{ position: "absolute", top: -80, right: -80, width: 300, height: 300, borderRadius: "50%", background: "rgba(255,255,255,0.03)" }} />
+        <div style={{ position: "absolute", bottom: -120, left: "40%", width: 240, height: 240, borderRadius: "50%", background: "rgba(255,255,255,0.02)" }} />
+        <div style={{ maxWidth: 1200, margin: "0 auto", position: "relative", zIndex: 2 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "14px", flexWrap: "wrap" }}>
+            <span style={{ background: "rgba(255,255,255,0.15)", color: "#fff", padding: "4px 12px", borderRadius: "20px", fontSize: "11px", fontWeight: 700, letterSpacing: 0.8 }}>
+              {training.jenis_pelatihan.toUpperCase()}
+            </span>
+            <span style={{ background: "rgba(255,255,255,0.15)", color: "#fff", padding: "4px 12px", borderRadius: "20px", fontSize: "11px", fontWeight: 700, letterSpacing: 0.8 }}>
+              {training.durasi_jam} JAM
+            </span>
+            {training.akses_seumur_hidup && (
+              <span style={{ background: "rgba(255,255,255,0.15)", color: "#fff", padding: "4px 12px", borderRadius: "20px", fontSize: "11px", fontWeight: 700, letterSpacing: 0.8 }}>
+                SEUMUR HIDUP
+              </span>
+            )}
+          </div>
+
+          <h1 style={{ fontSize: "clamp(24px, 3vw, 36px)", fontWeight: 900, color: "#fff", lineHeight: 1.2, margin: "0 0 12px" }}>
+            {training.judul_pelatihan}
+          </h1>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "24px", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#3b82f6", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 11, fontWeight: 700 }}>
+                {training.mentor_nama ? training.mentor_nama.split(" ").map(s => s[0]).join("").slice(0, 2).toUpperCase() : "?"}
+              </div>
+              <div>
+                <p style={{ margin: 0, fontSize: "13px", color: "rgba(255,255,255,0.6)", lineHeight: 1.1 }}>Mentor</p>
+                <p style={{ margin: 0, fontSize: "14px", fontWeight: 600, color: "#fff" }}>{training.mentor_nama || "TBA"}</p>
+              </div>
+            </div>
+            {training.rating_rata_rata && (
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <Icon icon="mdi:star" style={{ fontSize: "18px", color: "#fbbf24" }} />
+                <span style={{ fontSize: "15px", fontWeight: 700, color: "#fff" }}>{training.rating_rata_rata.toFixed(1)}</span>
+                <span style={{ fontSize: "13px", color: "rgba(255,255,255,0.6)" }}>({training.jumlah_alumni} alumni)</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ maxWidth: 1200, margin: "-24px auto 48px", padding: "0 24px", position: "relative", zIndex: 5 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: "32px", alignItems: "start" }}>
+          <div>
+            <div style={{ background: "#fff", borderRadius: "16px", padding: "32px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)", marginBottom: "24px" }}>
+              <h2 style={{ fontSize: "17px", fontWeight: 800, color: "#0f172a", margin: "0 0 16px" }}>Tentang Pelatihan Ini</h2>
+              <p style={{ fontSize: "14px", color: "#475569", lineHeight: "1.7", margin: 0, whiteSpace: "pre-line" }}>
+                {training.deskripsi_pelatihan || "Tidak ada deskripsi"}
+              </p>
+            </div>
+
+            <div style={{ background: "#fff", borderRadius: "16px", padding: "32px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)", marginBottom: "24px" }}>
+              <h2 style={{ fontSize: "17px", fontWeight: 800, color: "#0f172a", margin: "0 0 20px" }}>
+                Kurikulum ({modules.length} Modul)
+              </h2>
+              {modules.map((mod, i) => (
+                <ModuleAccordion key={mod.modul_id} module={mod} index={i} />
+              ))}
+            </div>
+
+            <div style={{ background: "#fff", borderRadius: "16px", padding: "32px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+              <h2 style={{ fontSize: "17px", fontWeight: 800, color: "#0f172a", margin: "0 0 12px" }}>Syarat & Ketentuan</h2>
+              {training.syarat_ketentuan ? (
+                <p style={{ fontSize: "14px", color: "#475569", lineHeight: "1.7", margin: 0 }}>{training.syarat_ketentuan}</p>
+              ) : (
+                <p style={{ fontSize: "14px", color: "#94a3b8", margin: 0 }}>Tidak ada syarat khusus</p>
+              )}
+            </div>
+          </div>
+
+          <div style={{ position: "sticky", top: 88 }}>
+            <div style={{ background: "#fff", borderRadius: "16px", padding: "28px", boxShadow: "0 4px 20px rgba(0,0,0,0.1)" }}>
+              {training.harga === 0 ? (
+                <div style={{ marginBottom: "20px" }}>
+                  <span style={{ fontSize: "32px", fontWeight: 900, color: "#0f172a" }}>Gratis</span>
+                </div>
+              ) : (
+                <div style={{ marginBottom: "20px" }}>
+                  <span style={{ fontSize: "32px", fontWeight: 900, color: "#0f172a" }}>{formatPrice(training.harga)}</span>
+                </div>
+              )}
+
+              <ul style={{ listStyle: "none", padding: 0, margin: "0 0 24px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                <li style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px", color: "#475569" }}>
+                  <Icon icon="mdi:check-circle" style={{ fontSize: "18px", color: "#16a34a" }} />
+                  {training.total_modul} Modul Pembelajaran
+                </li>
+                <li style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px", color: "#475569" }}>
+                  <Icon icon="mdi:check-circle" style={{ fontSize: "18px", color: "#16a34a" }} />
+                  {training.akses_seumur_hidup ? "Akses Seumur Hidup" : `${training.masa_akses_hari || 0} Hari Akses`}
+                </li>
+                <li style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px", color: "#475569" }}>
+                  <Icon icon="mdi:check-circle" style={{ fontSize: "18px", color: "#16a34a" }} />
+                  Sertifikat Kelulusan
+                </li>
+                <li style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "13px", color: "#475569" }}>
+                  <Icon icon="mdi:check-circle" style={{ fontSize: "18px", color: "#16a34a" }} />
+                  Mentoring oleh {training.mentor_nama || "Praktisi"}
+                </li>
+              </ul>
+
+              <button
+                onClick={() => setShowTerms(true)}
+                disabled={enrollMutation.isPending}
+                style={{
+                  width: "100%", padding: "16px", border: "none", borderRadius: "12px",
+                  background: enrollMutation.isPending ? "#94a3b8" : "linear-gradient(135deg, #1a3fa4 0%, #1e3a8a 100%)",
+                  color: "#fff", fontSize: "16px", fontWeight: 700, cursor: enrollMutation.isPending ? "not-allowed" : "pointer",
+                  boxShadow: enrollMutation.isPending ? "none" : "0 4px 16px rgba(26,63,164,0.35)",
+                  transition: "opacity 0.2s",
+                }}
+              >
+                {enrollMutation.isPending ? "Mendaftarkan..." : "Daftar Sekarang"}
+              </button>
+
+              {enrollMutation.isError && (
+                <p style={{ margin: "12px 0 0", fontSize: "13px", color: "#ef4444", textAlign: "center" }}>
+                  {enrollMutation.error?.message || "Gagal mendaftar"}
+                </p>
+              )}
+
+              {training.thumbnail_url && (
+                <img src={training.thumbnail_url} alt={training.judul_pelatihan}
+                  style={{ width: "100%", borderRadius: 12, marginTop: 16 }} />
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
       <TermsModal
         isOpen={showTerms}
         onClose={() => setShowTerms(false)}
         onConfirm={handleConfirmRegister}
       />
-
-      {/* ── Hero Section ─────────────────────────────────────────── */}
-      <section
-        style={{
-          position: "relative",
-          width: "100%",
-          minHeight: "360px",
-          background: "linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #0f2a1e 100%)",
-          display: "flex",
-          alignItems: "flex-end",
-          overflow: "hidden",
-        }}
-      >
-        {/* Background decorative grid lines */}
-        <div
-          aria-hidden
-          style={{
-            position: "absolute",
-            inset: 0,
-            backgroundImage:
-              "linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)",
-            backgroundSize: "48px 48px",
-          }}
-        />
-        {/* Glow */}
-        <div
-          aria-hidden
-          style={{
-            position: "absolute",
-            top: "10%",
-            right: "15%",
-            width: "320px",
-            height: "320px",
-            background: "radial-gradient(circle, rgba(59,130,246,0.15) 0%, transparent 70%)",
-            borderRadius: "50%",
-          }}
-        />
-
-        {/* Hero content */}
-        <div
-          style={{
-            position: "relative",
-            zIndex: 1,
-            maxWidth: "1100px",
-            margin: "0 auto",
-            padding: "80px 32px 48px",
-            width: "100%",
-          }}
-        >
-          {/* Badges */}
-          <div style={{ display: "flex", gap: "8px", marginBottom: "20px" }}>
-            <span
-              style={{
-                background: "#2563eb",
-                color: "#fff",
-                fontSize: "11px",
-                fontWeight: "700",
-                letterSpacing: "0.08em",
-                padding: "4px 12px",
-                borderRadius: "4px",
-                textTransform: "uppercase",
-              }}
-            >
-              {training.level}
-            </span>
-            <span
-              style={{
-                background: "rgba(255,255,255,0.15)",
-                color: "#fff",
-                fontSize: "11px",
-                fontWeight: "600",
-                letterSpacing: "0.06em",
-                padding: "4px 12px",
-                borderRadius: "4px",
-              }}
-            >
-              {training.duration}
-            </span>
-          </div>
-
-          {/* Title */}
-          <h1
-            style={{
-              margin: "0 0 20px",
-              fontSize: "clamp(28px, 5vw, 46px)",
-              fontWeight: "900",
-              color: "#ffffff",
-              lineHeight: "1.15",
-              letterSpacing: "-0.02em",
-              maxWidth: "700px",
-            }}
-          >
-            {training.title}
-          </h1>
-
-          {/* Meta */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "20px",
-              flexWrap: "wrap",
-            }}
-          >
-            <span
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "6px",
-                color: "rgba(255,255,255,0.85)",
-                fontSize: "14px",
-              }}
-            >
-              <Icon icon="mdi:account-circle-outline" style={{ fontSize: "18px" }} />
-              Mentor: {training.mentor}
-            </span>
-            <span style={{ color: "rgba(255,255,255,0.3)", fontSize: "12px" }}>•</span>
-            <span
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-                color: "rgba(255,255,255,0.85)",
-                fontSize: "14px",
-              }}
-            >
-              <Icon icon="mdi:star" style={{ fontSize: "16px", color: "#fbbf24" }} />
-              {training.rating}
-            </span>
-            <span style={{ color: "rgba(255,255,255,0.3)", fontSize: "12px" }}>•</span>
-            <span style={{ color: "rgba(255,255,255,0.85)", fontSize: "14px" }}>
-              {training.alumni} Alumni
-            </span>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Main Content ─────────────────────────────────────────── */}
-      <div
-        style={{
-          maxWidth: "1100px",
-          margin: "0 auto",
-          padding: "48px 32px",
-          display: "grid",
-          gridTemplateColumns: "1fr 320px",
-          gap: "48px",
-          alignItems: "start",
-        }}
-      >
-        {/* LEFT COLUMN */}
-        <div>
-          {/* Deskripsi Pelatihan */}
-          <section style={{ marginBottom: "48px" }}>
-            <h2
-              style={{
-                fontSize: "22px",
-                fontWeight: "800",
-                color: "#111827",
-                margin: "0 0 16px",
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-              }}
-            >
-              <span
-                style={{
-                  display: "inline-block",
-                  width: "28px",
-                  height: "4px",
-                  background: "#2563eb",
-                  borderRadius: "2px",
-                  flexShrink: 0,
-                }}
-              />
-              Deskripsi Pelatihan
-            </h2>
-            {training.description.map((para, i) => (
-              <p
-                key={i}
-                style={{
-                  margin: "0 0 14px",
-                  fontSize: "15px",
-                  color: "#374151",
-                  lineHeight: "1.75",
-                }}
-              >
-                {para}
-              </p>
-            ))}
-          </section>
-
-          {/* Kurikulum Belajar */}
-          <section style={{ marginBottom: "48px" }}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: "20px",
-              }}
-            >
-              <h2
-                style={{
-                  fontSize: "22px",
-                  fontWeight: "800",
-                  color: "#111827",
-                  margin: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                }}
-              >
-                <span
-                  style={{
-                    display: "inline-block",
-                    width: "28px",
-                    height: "4px",
-                    background: "#2563eb",
-                    borderRadius: "2px",
-                    flexShrink: 0,
-                  }}
-                />
-                Kurikulum Belajar
-              </h2>
-              <span style={{ fontSize: "14px", fontWeight: "700", color: "#2563eb" }}>
-                {training.modules.length * 2 + 2} Modul
-              </span>
-            </div>
-
-            {training.modules.map((mod, i) => (
-              <ModuleAccordion key={mod.id} module={mod} index={i} />
-            ))}
-          </section>
-
-          {/* Syarat & Ketentuan + Hasil Belajar */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "20px",
-              marginBottom: "40px",
-            }}
-          >
-            {/* Syarat & Ketentuan */}
-            <div
-              style={{
-                background: "linear-gradient(145deg, #1e3a8a 0%, #1d4ed8 100%)",
-                borderRadius: "16px",
-                padding: "28px",
-                color: "#fff",
-              }}
-            >
-              <h3
-                style={{
-                  fontSize: "16px",
-                  fontWeight: "800",
-                  margin: "0 0 18px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                }}
-              >
-                <Icon icon="mdi:shield-check-outline" style={{ fontSize: "20px" }} />
-                Syarat &amp; Ketentuan
-              </h3>
-              <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
-                {training.requirements.map((req, i) => (
-                  <li
-                    key={i}
-                    style={{
-                      display: "flex",
-                      alignItems: "flex-start",
-                      gap: "8px",
-                      marginBottom: "10px",
-                      fontSize: "13px",
-                      lineHeight: "1.5",
-                      color: "rgba(255,255,255,0.9)",
-                    }}
-                  >
-                    <Icon
-                      icon="mdi:check-circle-outline"
-                      style={{ fontSize: "16px", flexShrink: 0, marginTop: "1px", color: "#93c5fd" }}
-                    />
-                    {req}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Hasil Belajar */}
-            <div
-              style={{
-                background: "linear-gradient(145deg, #312e81 0%, #4c1d95 100%)",
-                borderRadius: "16px",
-                padding: "28px",
-                color: "#fff",
-              }}
-            >
-              <h3
-                style={{
-                  fontSize: "16px",
-                  fontWeight: "800",
-                  margin: "0 0 18px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                }}
-              >
-                <Icon icon="ph:sparkle-fill" style={{ fontSize: "20px", color: "#c4b5fd" }} />
-                Hasil Belajar
-              </h3>
-              <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
-                {training.outcomes.map((outcome, i) => (
-                  <li
-                    key={i}
-                    style={{
-                      display: "flex",
-                      alignItems: "flex-start",
-                      gap: "8px",
-                      marginBottom: "10px",
-                      fontSize: "13px",
-                      lineHeight: "1.5",
-                      color: "rgba(255,255,255,0.9)",
-                    }}
-                  >
-                    <Icon
-                      icon="mdi:check-circle-outline"
-                      style={{ fontSize: "16px", flexShrink: 0, marginTop: "1px", color: "#c4b5fd" }}
-                    />
-                    {outcome}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          {/* Kembali Button */}
-          <button
-            onClick={() => navigate(-1)}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: "6px",
-              padding: "10px 24px",
-              background: "#fff",
-              border: "1px solid #d1d5db",
-              borderRadius: "8px",
-              fontSize: "14px",
-              fontWeight: "600",
-              color: "#374151",
-              cursor: "pointer",
-              transition: "background 0.2s, border-color 0.2s",
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = "#f3f4f6";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = "#fff";
-            }}
-          >
-            Kembali
-          </button>
-        </div>
-
-        {/* RIGHT COLUMN – Sticky Card */}
-        <aside>
-          <div
-            style={{
-              background: "#fff",
-              borderRadius: "16px",
-              boxShadow: "0 4px 24px rgba(0,0,0,0.10)",
-              padding: "28px",
-              position: "sticky",
-              top: "88px",
-            }}
-          >
-            {/* Price */}
-            <div style={{ marginBottom: "16px" }}>
-              <div style={{ display: "flex", alignItems: "baseline", gap: "10px", flexWrap: "wrap" }}>
-                <span
-                  style={{
-                    fontSize: "28px",
-                    fontWeight: "900",
-                    color: "#111827",
-                    letterSpacing: "-0.02em",
-                  }}
-                >
-                  {training.price === null ? "GRATIS" : formatPrice(training.price)}
-                </span>
-                <span
-                  style={{
-                    fontSize: "15px",
-                    color: "#9ca3af",
-                    textDecoration: "line-through",
-                    fontWeight: "500",
-                  }}
-                >
-                  {formatPrice(training.originalPrice)}
-                </span>
-              </div>
-            </div>
-
-            {/* Benefits */}
-            <div style={{ marginBottom: "24px" }}>
-              {training.benefits.map((benefit, i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: "8px",
-                    marginBottom: "8px",
-                    fontSize: "13px",
-                    color: "#374151",
-                    lineHeight: "1.5",
-                  }}
-                >
-                  <Icon
-                    icon={i === 0 ? "mdi:infinity" : "mdi:download-outline"}
-                    style={{ fontSize: "16px", color: "#2563eb", flexShrink: 0, marginTop: "1px" }}
-                  />
-                  {benefit}
-                </div>
-              ))}
-            </div>
-
-            {/* CTA Button ── onClick buka TermsModal */}
-            <button
-              onClick={() => setShowTerms(true)}
-              style={{
-                width: "100%",
-                padding: "14px",
-                background: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)",
-                color: "#fff",
-                border: "none",
-                borderRadius: "10px",
-                fontSize: "15px",
-                fontWeight: "700",
-                cursor: "pointer",
-                transition: "opacity 0.2s, transform 0.15s",
-                letterSpacing: "0.01em",
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.opacity = "0.92";
-                (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-1px)";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.opacity = "1";
-                (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)";
-              }}
-            >
-              Daftar Sekarang
-            </button>
-          </div>
-        </aside>
-      </div>
 
       <Footer />
     </div>

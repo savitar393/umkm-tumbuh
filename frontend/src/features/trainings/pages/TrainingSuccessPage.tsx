@@ -1,383 +1,140 @@
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import Header from "../../../shared/components/Header";
 import Footer from "../../../shared/components/Footer";
-
-// ─── Mock Data ────────────────────────────────────────────────────────────────
-
-const relatedTrainings = [
-  {
-    id: 1,
-    title: "Strategic Decision Making",
-    duration: "5 Hours",
-    thumbnail: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&h=250&fit=crop",
-  },
-  {
-    id: 2,
-    title: "Machine Learning for Managers",
-    duration: "8 Hours",
-    thumbnail: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=250&fit=crop",
-  },
-  {
-    id: 3,
-    title: "Cybersecurity Governance",
-    duration: "10 Hours",
-    thumbnail: "https://images.unsplash.com/photo-1563986768609-322da13575f3?w=400&h=250&fit=crop",
-  },
-];
-
-// ─── Component ────────────────────────────────────────────────────────────────
+import { useTrainings } from "../hooks";
+import type { Enrollment } from "../types";
 
 export default function TrainingSuccessPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
+  const enrollment = (location.state as { enrollment?: Enrollment })?.enrollment;
+  const { data: trainings } = useTrainings();
+
+  const related = (trainings || []).filter((t) => t.pelatihan_id !== id).slice(0, 3);
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "#f5f7fa" }}>
       <Header />
 
-      {/* ── Main Content ────────────────────────────────────────────────── */}
       <main style={{ flex: 1, padding: "48px 24px" }}>
         <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
-          {/* ── Grid Layout: Informasi Kursus + Modul ─────────────────────── */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "32px",
-              marginBottom: "48px",
-            }}
-          >
-            {/* ── LEFT: Informasi Kursus ────────────────────────────────────── */}
-            <div
-              style={{
-                background: "#ffffff",
-                borderRadius: "16px",
-                padding: "32px",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-              }}
-            >
-              {/* Header dengan icon */}
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "24px" }}>
-                <Icon icon="mdi:file-document-outline" style={{ fontSize: "20px", color: "#1a3fa4" }} />
-                <h2 style={{ margin: 0, fontSize: "18px", fontWeight: "700", color: "#0f172a" }}>
-                  Informasi Kursus
-                </h2>
-              </div>
-
-              {/* Thumbnail + Training Info */}
-              <div style={{ display: "flex", gap: "20px", marginBottom: "32px" }}>
-                {/* Thumbnail */}
-                <div
-                  style={{
-                    width: "120px",
-                    height: "90px",
-                    borderRadius: "12px",
-                    background: "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)",
-                    flexShrink: 0,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    overflow: "hidden",
-                  }}
-                >
-                  <img
-                    src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=200&h=150&fit=crop"
-                    alt="Training"
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "32px", marginBottom: "48px" }}>
+            <div style={{ background: "#fff", borderRadius: "16px", padding: "32px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "24px" }}>
+                <div style={{ width: "64px", height: "64px", borderRadius: "16px", background: "#dcfce7", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Icon icon="mdi:check-circle" style={{ fontSize: "36px", color: "#16a34a" }} />
                 </div>
-
-                {/* Info */}
-                <div style={{ flex: 1 }}>
-                  <h3
-                    style={{
-                      margin: "0 0 8px",
-                      fontSize: "16px",
-                      fontWeight: "700",
-                      color: "#1a3fa4",
-                      lineHeight: "1.3",
-                    }}
-                  >
-                    Strategi Data Lanjutan
-                  </h3>
-                  <p style={{ margin: "0 0 6px", fontSize: "13px", color: "#64748b" }}>
-                    Instruktur: Sarah J. Miller, PhD
+                <div>
+                  <h2 style={{ margin: 0, fontSize: "20px", fontWeight: 800, color: "#0f172a", lineHeight: 1.2 }}>
+                    Pendaftaran Berhasil!
+                  </h2>
+                  <p style={{ margin: "4px 0 0", fontSize: "14px", color: "#64748b" }}>
+                    Selamat, Anda telah terdaftar di pelatihan ini
                   </p>
-                  <span
-                    style={{
-                      display: "inline-block",
-                      padding: "4px 12px",
-                      background: "#dbeafe",
-                      color: "#1e40af",
-                      fontSize: "11px",
-                      fontWeight: "600",
-                      borderRadius: "6px",
-                    }}
-                  >
-                    DURASI: 12 MINGGU
-                  </span>
                 </div>
               </div>
 
-              {/* ID Pendaftaran & Akses Berakhir */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
-                <div>
-                  <p
-                    style={{
-                      margin: "0 0 6px",
-                      fontSize: "11px",
-                      fontWeight: "600",
-                      color: "#94a3b8",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                    }}
-                  >
-                    ID Pendaftaran
-                  </p>
-                  <p
-                    style={{
-                      margin: 0,
-                      fontSize: "16px",
-                      fontWeight: "800",
-                      color: "#0f172a",
-                      fontFamily: "monospace",
-                    }}
-                  >
-                    UPS-{id || "7829"}-XL
-                  </p>
-                </div>
-                <div>
-                  <p
-                    style={{
-                      margin: "0 0 6px",
-                      fontSize: "11px",
-                      fontWeight: "600",
-                      color: "#94a3b8",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.05em",
-                    }}
-                  >
-                    Akses Berakhir
-                  </p>
-                  <p style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "#0f172a" }}>
-                    Oct 24, 2025
-                  </p>
-                </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                {enrollment && (
+                  <>
+                    <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid #f1f5f9" }}>
+                      <span style={{ fontSize: "13px", color: "#64748b" }}>ID Pendaftaran</span>
+                      <span style={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>{enrollment.pendaftaran_pelatihan_id}</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid #f1f5f9" }}>
+                      <span style={{ fontSize: "13px", color: "#64748b" }}>Status</span>
+                      <span style={{ fontSize: "13px", fontWeight: 700, color: "#16a34a" }}>{enrollment.status_pendaftaran}</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid #f1f5f9" }}>
+                      <span style={{ fontSize: "13px", color: "#64748b" }}>Tanggal Daftar</span>
+                      <span style={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>
+                        {new Date(enrollment.tanggal_daftar).toLocaleDateString("id-ID", { year: "numeric", month: "long", day: "numeric" })}
+                      </span>
+                    </div>
+                    {enrollment.akses_berakhir_at && (
+                      <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid #f1f5f9" }}>
+                        <span style={{ fontSize: "13px", color: "#64748b" }}>Akses Berakhir</span>
+                        <span style={{ fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>
+                          {new Date(enrollment.akses_berakhir_at).toLocaleDateString("id-ID", { year: "numeric", month: "long", day: "numeric" })}
+                        </span>
+                      </div>
+                    )}
+                  </>
+                )}
+                {!enrollment && (
+                  <p style={{ fontSize: "14px", color: "#94a3b8" }}>Data pendaftaran tidak tersedia.</p>
+                )}
               </div>
             </div>
 
-            {/* ── RIGHT: Modul ──────────────────────────────────────────────── */}
-            <div
-              style={{
-                background: "#ffffff",
-                borderRadius: "16px",
-                padding: "32px",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-              }}
-            >
-              {/* Header */}
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "24px" }}>
-                <Icon icon="mdi:star-outline" style={{ fontSize: "20px", color: "#1a3fa4" }} />
-                <h2 style={{ margin: 0, fontSize: "18px", fontWeight: "700", color: "#0f172a" }}>
-                  Modul
-                </h2>
-              </div>
-
-              {/* Modul List */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                {[
-                  {
-                    icon: "mdi:briefcase-outline",
-                    title: "24 Kerangka Kerja",
-                    color: "#1a3fa4",
-                  },
-                  {
-                    icon: "mdi:certificate-outline",
-                    title: "Sertifikat Digital Terverifikasi",
-                    color: "#1a3fa4",
-                  },
-                ].map((modul, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "12px",
-                      padding: "14px 16px",
-                      background: "#f8fafc",
-                      borderRadius: "10px",
-                      border: "1px solid #e2e8f0",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: "36px",
-                        height: "36px",
-                        borderRadius: "8px",
-                        background: "#ffffff",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        flexShrink: 0,
-                        boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
-                      }}
-                    >
-                      <Icon icon={modul.icon} style={{ fontSize: "18px", color: modul.color }} />
+            <div style={{ background: "#fff", borderRadius: "16px", padding: "32px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+              <h3 style={{ fontSize: "16px", fontWeight: 800, color: "#0f172a", margin: "0 0 20px" }}>Modul Pelatihan</h3>
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {enrollment && (
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px", background: "#f8fafc", borderRadius: "8px" }}>
+                    <div style={{ width: "40px", height: "40px", borderRadius: "10px", background: "#e0f2fe", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Icon icon="mdi:book-open-page-variant" style={{ fontSize: "20px", color: "#0284c7" }} />
                     </div>
-                    <p style={{ margin: 0, fontSize: "14px", fontWeight: "600", color: "#334155" }}>
-                      {modul.title}
+                    <div style={{ flex: 1 }}>
+                      <p style={{ margin: 0, fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>{enrollment.judul_pelatihan}</p>
+                      <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#64748b" }}>
+                        {enrollment.total_modul_snapshot} Modul • {enrollment.modul_selesai} Selesai
+                      </p>
+                    </div>
+                  </div>
+                )}
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px", background: "#f0fdf4", borderRadius: "8px" }}>
+                  <div style={{ width: "40px", height: "40px", borderRadius: "10px", background: "#dcfce7", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Icon icon="mdi:certificate-outline" style={{ fontSize: "20px", color: "#16a34a" }} />
+                  </div>
+                  <div>
+                    <p style={{ margin: 0, fontSize: "13px", fontWeight: 700, color: "#0f172a" }}>Sertifikat</p>
+                    <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#64748b" }}>
+                      Dapatkan setelah menyelesaikan semua modul
                     </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {related.length > 0 && (
+            <section>
+              <h3 style={{ fontSize: "18px", fontWeight: 800, color: "#0f172a", margin: "0 0 20px" }}>Jelajahi Konten Terkait</h3>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "20px" }}>
+                {related.map((t) => (
+                  <div
+                    key={t.pelatihan_id}
+                    onClick={() => navigate(`/umkm/trainings/${t.pelatihan_id}`)}
+                    style={{ background: "#fff", borderRadius: "16px", overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.08)", cursor: "pointer", transition: "transform 0.2s" }}
+                  >
+                    {t.thumbnail_url ? (
+                      <img src={t.thumbnail_url} alt={t.judul_pelatihan} style={{ width: "100%", height: "160px", objectFit: "cover" }} />
+                    ) : (
+                      <div style={{ height: "160px", background: "linear-gradient(135deg, #1a3fa4, #2563eb)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "14px", fontWeight: 600 }}>
+                        {t.judul_pelatihan}
+                      </div>
+                    )}
+                    <div style={{ padding: "16px" }}>
+                      <h4 style={{ fontSize: "14px", fontWeight: 700, color: "#0f172a", margin: "0 0 4px" }}>{t.judul_pelatihan}</h4>
+                      <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>{t.durasi_jam} Jam • {t.jenis_pelatihan}</p>
+                    </div>
                   </div>
                 ))}
               </div>
-            </div>
-          </div>
+            </section>
+          )}
 
-          {/* ── Jelajahi Konten Terkait ──────────────────────────────────────── */}
-          <section>
-            <h2
-              style={{
-                margin: "0 0 28px",
-                fontSize: "22px",
-                fontWeight: "800",
-                color: "#0f172a",
-              }}
-            >
-              Jelajahi Konten Terkait
-            </h2>
-
-            {/* Grid 3 Columns */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(3, 1fr)",
-                gap: "24px",
-              }}
-            >
-              {relatedTrainings.map((training) => (
-                <div
-                  key={training.id}
-                  style={{
-                    background: "#ffffff",
-                    borderRadius: "16px",
-                    overflow: "hidden",
-                    boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
-                    cursor: "pointer",
-                    transition: "transform 0.2s, box-shadow 0.2s",
-                  }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLDivElement).style.transform = "translateY(-4px)";
-                    (e.currentTarget as HTMLDivElement).style.boxShadow = "0 8px 24px rgba(0,0,0,0.12)";
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
-                    (e.currentTarget as HTMLDivElement).style.boxShadow = "0 2px 12px rgba(0,0,0,0.08)";
-                  }}
-                  onClick={() => navigate("/umkm/trainings/list")}
-                >
-                  {/* Thumbnail */}
-                  <div
-                    style={{
-                      width: "100%",
-                      height: "180px",
-                      background: "linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)",
-                      position: "relative",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <img
-                      src={training.thumbnail}
-                      alt={training.title}
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                      }}
-                    />
-                    {/* Badge overlay */}
-                    <div
-                      style={{
-                        position: "absolute",
-                        bottom: "12px",
-                        left: "12px",
-                        padding: "6px 12px",
-                        background: "#1a3fa4",
-                        color: "#fff",
-                        fontSize: "11px",
-                        fontWeight: "700",
-                        borderRadius: "6px",
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      DIREKOMENDASI KAN
-                    </div>
-                  </div>
-
-                  {/* Content */}
-                  <div style={{ padding: "20px" }}>
-                    <h3
-                      style={{
-                        margin: "0 0 8px",
-                        fontSize: "16px",
-                        fontWeight: "700",
-                        color: "#0f172a",
-                        lineHeight: "1.4",
-                      }}
-                    >
-                      {training.title}
-                    </h3>
-                    <p style={{ margin: 0, fontSize: "13px", color: "#64748b" }}>
-                      {training.duration}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* ── Tombol Kembali ──────────────────────────────────────────────── */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              marginTop: "40px",
-            }}
-          >
+          <div style={{ textAlign: "center", marginTop: "48px" }}>
             <button
-              onClick={() => navigate("/umkm/trainings/list")}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "8px",
-                padding: "12px 32px",
-                background: "linear-gradient(135deg, #1a3fa4 0%, #3b82f6 100%)",
-                color: "#ffffff",
-                border: "none",
-                borderRadius: "12px",
-                fontSize: "14px",
-                fontWeight: "600",
-                cursor: "pointer",
-                boxShadow: "0 4px 14px rgba(26, 63, 164, 0.35)",
-                transition: "transform 0.2s, box-shadow 0.2s",
-                letterSpacing: "0.02em",
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-2px)";
-                (e.currentTarget as HTMLButtonElement).style.boxShadow =
-                  "0 8px 24px rgba(26, 63, 164, 0.45)";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.transform = "translateY(0)";
-                (e.currentTarget as HTMLButtonElement).style.boxShadow =
-                  "0 4px 14px rgba(26, 63, 164, 0.35)";
-              }}
+              onClick={() => navigate("/umkm/trainings")}
+              style={{ padding: "14px 32px", background: "#1a3fa4", color: "#fff", border: "none", borderRadius: "12px", fontSize: "15px", fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 14px rgba(26,63,164,0.3)" }}
             >
-              <Icon icon="mdi:arrow-left" style={{ fontSize: "18px" }} />
-              Kembali ke Daftar Pelatihan
+              Kembali ke Dashboard
             </button>
           </div>
-
         </div>
       </main>
 

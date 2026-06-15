@@ -2,246 +2,188 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import Header from "../../../shared/components/Header";
 import Footer from "../../../shared/components/Footer";
-
-// ─── Mock Data ────────────────────────────────────────────────────────────────
+import { useTrainingStore } from "../store";
+import { useUserCertificates } from "../../certificates/hooks";
+import { useUserEnrollments } from "../hooks";
 
 const relatedContent = [
   {
-    id: 1,
-    title: "Strategic Decision Making",
-    duration: "6 Hours",
-    level: "Advanced",
-    badge: "DIREKOMENDASI KAN",
+    id: 1, title: "Strategic Decision Making", duration: "6 Hours", level: "Advanced",
+    badge: "DIREKOMENDASIKAN",
     thumbnail: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&h=250&fit=crop",
   },
   {
-    id: 2,
-    title: "Machine Learning for Managers",
-    duration: "8 Hours",
-    level: "Intermediate",
+    id: 2, title: "Machine Learning for Managers", duration: "8 Hours", level: "Intermediate",
     thumbnail: "https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=400&h=250&fit=crop",
   },
   {
-    id: 3,
-    title: "Cybersecurity Governance",
-    duration: "10 Hours",
-    level: "Professional",
+    id: 3, title: "Cybersecurity Governance", duration: "10 Hours", level: "Professional",
     thumbnail: "https://images.unsplash.com/photo-1563986768609-322da13575f3?w=400&h=250&fit=crop",
   },
 ];
 
-const timelineSteps = [
-  {
-    status: "completed",
-    title: "Diajukan",
-    date: "24 Okt 2023, 10:45 WIB",
-  },
-  {
-    status: "current",
-    title: "Dalam Validasi",
-    description: "Sedang dalam proses review teknis",
-  },
-  {
-    status: "pending",
-    title: "Terbit",
-    description: "Menunggu tanggal selesainya",
-  },
-];
-
-// ─── Component ────────────────────────────────────────────────────────────────
+function getTimelineSteps(certStatus?: string, certDate?: string, certDesc?: string) {
+  return [
+    {
+      status: certStatus ? "completed" : "current",
+      title: "Diajukan",
+      date: certDate || "Baru diajukan",
+    },
+    {
+      status: certStatus === "TERBIT" ? "completed" : certStatus === "DIAJUKAN" ? "current" : "pending",
+      title: "Dalam Validasi",
+      description: certStatus === "DIAJUKAN" ? "Sedang dalam proses review" : certDesc || "Menunggu pengajuan",
+    },
+    {
+      status: certStatus === "TERBIT" ? "completed" : "pending",
+      title: "Terbit",
+      description: certStatus === "TERBIT" ? `Terbit ${certDate}` : "Menunggu validasi",
+    },
+  ];
+}
 
 export default function TrainingAfterSuccessPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  const progress = 65;
+  const umkmId = useTrainingStore((s) => s.umkmId);
+  const { data: certificates } = useUserCertificates(umkmId);
+  const { data: enrollments } = useUserEnrollments(umkmId);
+
+  const cert = (certificates || []).find((c) => c.pelatihan_id === id);
+  const enrollment = (enrollments || []).find((e) => e.pelatihan_id === id);
+  const progress = enrollment?.progress_persen || 65;
+  const timelineSteps = getTimelineSteps(cert?.status_sertifikat_id, cert?.tanggal_terbit || undefined, cert?.catatan_validasi || undefined);
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "#f5f7fa" }}>
       <Header />
-
-      {/* ── Main Content ────────────────────────────────────────────── */}
-      <main style={{ flex: 1, padding: "48px 32px" }}>
-        <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
-          {/* ── Top Section: Verification Status ──────────────────────── */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: "32px", marginBottom: "56px" }}>
-            {/* LEFT: Waiting Status */}
-            <div style={{ background: "#fff", borderRadius: "20px", padding: "48px 40px", boxShadow: "0 2px 12px rgba(0,0,0,0.08)", textAlign: "center" }}>
-              {/* Hourglass Icon */}
-              <div style={{ display: "flex", justifyContent: "center", marginBottom: "28px" }}>
-                <div style={{ width: "120px", height: "120px", borderRadius: "50%", background: "linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <Icon icon="mdi:timer-sand" style={{ fontSize: "60px", color: "#ec4899" }} />
+      <main style={{ flex: 1, maxWidth: 1100, margin: "0 auto", padding: "48px 24px", width: "100%" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 360px", gap: 32 }}>
+          <div>
+            <div style={{ background: "#fff", borderRadius: 16, padding: 32, boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+              <div style={{ textAlign: "center", marginBottom: 32 }}>
+                <div style={{ width: 80, height: 80, borderRadius: "50%", background: "#fef3c7", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+                  <Icon icon="mdi:clock-outline" style={{ fontSize: 40, color: "#d97706" }} />
                 </div>
-              </div>
-
-              <h1 style={{ margin: "0 0 16px", fontSize: "28px", fontWeight: "800", color: "#0f172a", lineHeight: "1.2" }}>
-                Menunggu Verifikasi
-              </h1>
-              <p style={{ margin: "0 0 40px", fontSize: "15px", color: "#64748b", lineHeight: "1.7", maxWidth: "480px", marginLeft: "auto", marginRight: "auto" }}>
-                Pengajuan pelatihan Anda sedang ditinjau oleh mentor ahli kami. Sertifikat digital akan diterbitkan segera setelah materi Anda disetujui.
-              </p>
-
-              {/* Progress Bar */}
-              <div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-                  <span style={{ fontSize: "13px", fontWeight: "700", color: "#3b82f6", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                    Progress Validasi
-                  </span>
-                  <span style={{ fontSize: "20px", fontWeight: "800", color: "#1a3fa4" }}>{progress}%</span>
-                </div>
-                <div style={{ width: "100%", height: "10px", background: "#e0e7ff", borderRadius: "5px", overflow: "hidden" }}>
-                  <div style={{ width: `${progress}%`, height: "100%", background: "linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%)", borderRadius: "5px", transition: "width 0.5s ease" }} />
-                </div>
-                <p style={{ margin: "12px 0 0", fontSize: "13px", color: "#94a3b8" }}>
-                  Estimasi waktu penyelesaian: 1-2 hari kerja
+                <h2 style={{ fontSize: 20, fontWeight: 800, color: "#0f172a", margin: "0 0 8px" }}>Menunggu Verifikasi</h2>
+                <p style={{ fontSize: 14, color: "#64748b", margin: 0 }}>
+                  Evaluasi Anda sedang dalam proses review oleh tim kurator
                 </p>
               </div>
-            </div>
 
-            {/* RIGHT: Course Info & Timeline */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-              {/* Informasi Kursus Card */}
-              <div style={{ background: "linear-gradient(135deg, #1e3a8a 0%, #1a3fa4 100%)", borderRadius: "16px", padding: "24px", color: "#fff", boxShadow: "0 4px 16px rgba(26,63,164,0.25)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "20px" }}>
-                  <Icon icon="mdi:information-outline" style={{ fontSize: "22px" }} />
-                  <h3 style={{ margin: 0, fontSize: "17px", fontWeight: "700" }}>Informasi Kursus</h3>
+              <div style={{ marginBottom: 32 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 13, color: "#64748b" }}>
+                  <span>Progress</span>
+                  <span>{Math.round(progress)}%</span>
                 </div>
-
-                <div style={{ marginBottom: "16px" }}>
-                  <p style={{ margin: "0 0 6px", fontSize: "11px", fontWeight: "600", color: "rgba(255,255,255,0.7)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                    Pelatihan
-                  </p>
-                  <p style={{ margin: 0, fontSize: "16px", fontWeight: "700", color: "#fff" }}>
-                    Strategi Data Lanjutan
-                  </p>
-                </div>
-
-                <div style={{ marginBottom: "20px" }}>
-                  <p style={{ margin: "0 0 6px", fontSize: "11px", fontWeight: "600", color: "rgba(255,255,255,0.7)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                    ID Pendaftaran
-                  </p>
-                  <p style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "#fff", fontFamily: "monospace" }}>
-                    UPS-{id || "7829"}-XL
-                  </p>
-                </div>
-
-                <div style={{ padding: "14px 16px", background: "rgba(255,255,255,0.1)", borderRadius: "10px", display: "flex", alignItems: "center", gap: "12px" }}>
-                  <Icon icon="mdi:shield-check" style={{ fontSize: "24px", color: "#93c5fd" }} />
-                  <div>
-                    <p style={{ margin: "0 0 2px", fontSize: "13px", fontWeight: "700", color: "#fff" }}>
-                      Sertifikat Terverifikasi
-                    </p>
-                    <p style={{ margin: 0, fontSize: "11px", color: "rgba(255,255,255,0.8)" }}>
-                      Terbit otomatis via Blockchain
-                    </p>
-                  </div>
+                <div style={{ background: "#e2e8f0", borderRadius: 99, height: 8 }}>
+                  <div style={{ width: `${progress}%`, background: "linear-gradient(90deg, #3b82f6, #1a3fa4)", borderRadius: 99, height: 8, transition: "width 0.7s" }} />
                 </div>
               </div>
 
-              {/* Timeline Proses */}
-              <div style={{ background: "#fff", borderRadius: "16px", padding: "24px", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
-                <h3 style={{ margin: "0 0 20px", fontSize: "17px", fontWeight: "700", color: "#0f172a", display: "flex", alignItems: "center", gap: "8px" }}>
-                  <Icon icon="mdi:timeline-clock-outline" style={{ fontSize: "22px", color: "#1a3fa4" }} />
-                  Timeline Proses
-                </h3>
-
-                <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-                  {timelineSteps.map((step, i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "14px" }}>
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
-                        <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: step.status === "completed" ? "#10b981" : step.status === "current" ? "#3b82f6" : "#e2e8f0", display: "flex", alignItems: "center", justifyContent: "center", border: step.status === "current" ? "3px solid #bfdbfe" : "none" }}>
-                          {step.status === "completed" && <Icon icon="mdi:check" style={{ fontSize: "18px", color: "#fff" }} />}
-                          {step.status === "current" && <div style={{ width: "10px", height: "10px", background: "#fff", borderRadius: "50%" }} />}
-                          {step.status === "pending" && <div style={{ width: "8px", height: "8px", background: "#cbd5e1", borderRadius: "50%" }} />}
-                        </div>
-                        {i < timelineSteps.length - 1 && (
-                          <div style={{ width: "2px", height: "32px", background: step.status === "completed" ? "#10b981" : "#e2e8f0", marginTop: "4px" }} />
-                        )}
-                      </div>
-                      <div style={{ flex: 1, paddingTop: "4px" }}>
-                        <p style={{ margin: "0 0 4px", fontSize: "14px", fontWeight: "700", color: step.status === "current" ? "#3b82f6" : step.status === "completed" ? "#0f172a" : "#94a3b8" }}>
-                          {step.title}
-                        </p>
-                        {(step.date || step.description) && (
-                          <p style={{ margin: 0, fontSize: "12px", color: "#64748b", lineHeight: "1.5" }}>
-                            {step.date || step.description}
-                          </p>
-                        )}
-                      </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                {timelineSteps.map((step, i) => (
+                  <div key={i} style={{ display: "flex", gap: 16, position: "relative", paddingBottom: i < timelineSteps.length - 1 ? 32 : 0 }}>
+                    {i < timelineSteps.length - 1 && (
+                      <div style={{ position: "absolute", left: 15, top: 32, width: 2, height: 40, background: step.status === "completed" ? "#16a34a" : "#e2e8f0" }} />
+                    )}
+                    <div style={{
+                      width: 32, height: 32, borderRadius: "50%", flexShrink: 0,
+                      background: step.status === "completed" ? "#16a34a" : step.status === "current" ? "#3b82f6" : "#e2e8f0",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                      {step.status === "completed" ? (
+                        <Icon icon="mdi:check" style={{ fontSize: 18, color: "#fff" }} />
+                      ) : step.status === "current" ? (
+                        <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#fff" }} />
+                      ) : (
+                        <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#94a3b8" }} />
+                      )}
                     </div>
-                  ))}
-                </div>
+                    <div style={{ flex: 1, paddingTop: 4 }}>
+                      <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 700, color: step.status === "pending" ? "#94a3b8" : "#0f172a" }}>
+                        {step.title}
+                      </p>
+                      {step.date && <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{step.date}</p>}
+                      {step.description && !step.date && <p style={{ margin: 0, fontSize: 12, color: "#64748b" }}>{step.description}</p>}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
 
-          {/* ── Bottom Section: Related Content ────────────────────────── */}
-          <section>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "28px" }}>
-              <h2 style={{ margin: 0, fontSize: "24px", fontWeight: "800", color: "#0f172a" }}>
-                Jelajahi Konten Terkait
-              </h2>
-              <button
-                onClick={() => navigate("/umkm/trainings/list")}
-                style={{ padding: "10px 20px", background: "transparent", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "14px", fontWeight: "600", color: "#1a3fa4", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", transition: "all 0.2s" }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.background = "#f8fafc";
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = "#cbd5e1";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.background = "transparent";
-                  (e.currentTarget as HTMLButtonElement).style.borderColor = "#e2e8f0";
-                }}
-              >
-                Lihat Semua
-                <Icon icon="mdi:arrow-right" style={{ fontSize: "16px" }} />
-              </button>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "24px" }}>
-              {relatedContent.map((content) => (
-                <div
-                  key={content.id}
-                  style={{ background: "#fff", borderRadius: "16px", overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,0.08)", cursor: "pointer", transition: "all 0.2s" }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLDivElement).style.transform = "translateY(-4px)";
-                    (e.currentTarget as HTMLDivElement).style.boxShadow = "0 8px 24px rgba(0,0,0,0.12)";
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
-                    (e.currentTarget as HTMLDivElement).style.boxShadow = "0 2px 12px rgba(0,0,0,0.08)";
-                  }}
-                  onClick={() => navigate("/umkm/trainings/list")}
-                >
-                  <div style={{ position: "relative", width: "100%", height: "180px", overflow: "hidden" }}>
-                    <img src={content.thumbnail} alt={content.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                    {content.badge && (
-                      <div style={{ position: "absolute", top: "12px", left: "12px", padding: "6px 12px", background: "#1a3fa4", color: "#fff", fontSize: "10px", fontWeight: "700", borderRadius: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                        {content.badge}
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ padding: "20px" }}>
-                    <h3 style={{ margin: "0 0 12px", fontSize: "17px", fontWeight: "700", color: "#0f172a", lineHeight: "1.3" }}>
-                      {content.title}
-                    </h3>
-                    <div style={{ display: "flex", alignItems: "center", gap: "16px", fontSize: "13px", color: "#64748b" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                        <Icon icon="mdi:clock-outline" style={{ fontSize: "16px" }} />
-                        <span>{content.duration}</span>
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                        <Icon icon="mdi:signal" style={{ fontSize: "16px" }} />
-                        <span>{content.level}</span>
-                      </div>
-                    </div>
-                  </div>
+          <div>
+            <div style={{ background: "#fff", borderRadius: 16, padding: 24, boxShadow: "0 2px 8px rgba(0,0,0,0.08)", marginBottom: 24 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+                <div style={{ width: 48, height: 48, borderRadius: 12, background: "#eff6ff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Icon icon="mdi:book-open-page-variant" style={{ fontSize: 24, color: "#3b82f6" }} />
                 </div>
-              ))}
+                <div>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#0f172a" }}>
+                    {enrollment?.judul_pelatihan || "Pelatihan"}
+                  </p>
+                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748b" }}>
+                    ID: {enrollment?.pendaftaran_pelatihan_id || "-"}
+                  </p>
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, padding: 12, background: "#f0fdf4", borderRadius: 8 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: "#dcfce7", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Icon icon="mdi:certificate-outline" style={{ fontSize: 20, color: "#16a34a" }} />
+                </div>
+                <div>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#0f172a" }}>Sertifikat</p>
+                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748b" }}>
+                    {cert?.nomor_sertifikat ? `No: ${cert.nomor_sertifikat}` : "Terbit otomatis via Blockchain"}
+                  </p>
+                </div>
+              </div>
+              {cert?.nomor_sertifikat && (
+                <p style={{ fontSize: 11, color: "#94a3b8", margin: "8px 0 0" }}>
+                  Status: {cert.nama_status_sertifikat}
+                </p>
+              )}
             </div>
-          </section>
-        </div>
-      </main>
 
+            <div style={{ background: "#fff", borderRadius: 16, padding: 24, boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
+              <h4 style={{ fontSize: 14, fontWeight: 800, color: "#0f172a", margin: "0 0 16px" }}>Akses Cepat</h4>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <button onClick={() => navigate("/umkm/trainings")}
+                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, cursor: "pointer", fontSize: 13, color: "#475569", fontWeight: 600 }}>
+                  <Icon icon="mdi:view-dashboard" style={{ fontSize: 18 }} />
+                  Dashboard Pelatihan
+                </button>
+                <button onClick={() => navigate(`/umkm/trainings/${id}/list`)}
+                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, cursor: "pointer", fontSize: 13, color: "#475569", fontWeight: 600 }}>
+                  <Icon icon="mdi:book-open" style={{ fontSize: 18 }} />
+                  Lihat Modul
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <section style={{ marginTop: 48 }}>
+          <h3 style={{ fontSize: 18, fontWeight: 800, color: "#0f172a", margin: "0 0 20px" }}>Jelajahi Konten Terkait</h3>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 20 }}>
+            {relatedContent.map((item) => (
+              <div key={item.id} style={{ background: "#fff", borderRadius: 16, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.08)", cursor: "pointer" }}>
+                <img src={item.thumbnail} alt={item.title} style={{ width: "100%", height: 140, objectFit: "cover" }} />
+                <div style={{ padding: 16 }}>
+                  {item.badge && (
+                    <span style={{ fontSize: 10, fontWeight: 800, color: "#1a3fa4", background: "#e0e7ff", padding: "2px 8px", borderRadius: 4, display: "inline-block", marginBottom: 6 }}>
+                      {item.badge}
+                    </span>
+                  )}
+                  <h4 style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", margin: "0 0 4px" }}>{item.title}</h4>
+                  <p style={{ fontSize: 12, color: "#64748b", margin: 0 }}>{item.duration} • {item.level}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </main>
       <Footer />
     </div>
   );

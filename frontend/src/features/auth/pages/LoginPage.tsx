@@ -23,8 +23,8 @@ export default function LoginPage() {
 
       if (result.user.role === "ADMIN") {
         navigate("/admin");
-      } else if (result.user.role === "UMKM") {
-        navigate("/umkm");
+      } else       if (result.user.role === "UMKM") {
+        navigate("/umkm/trainings");
       } else if (result.user.role === "MITRA") {
         navigate("/mitra");
       } else {
