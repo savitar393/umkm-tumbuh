@@ -1,5 +1,6 @@
-import { http } from "../../shared/api/http";
+import { partnershipHttp as http } from "../../shared/api/partnershipHttp";
 import type { CreatePartnershipRequest, PartnershipStatus } from "./types";
+
 
 interface SuccessResponse<T> {
   status: "success";
@@ -39,7 +40,7 @@ export interface IncomingPartnershipsResponse {
   };
 }
 
-const API_BASE = "/api/v1/partnerships";
+const API_BASE = "/partnerships";
 
 export const partnershipsApi = {
   // POST /api/v1/partnerships - Submit pengajuan kemitraan
