@@ -3,6 +3,48 @@ import { useParams, useNavigate } from "react-router-dom";
 import { partnershipsApi } from "../api";
 import type { PartnershipRequest, PartnershipStatus } from "../types";
 
+// ─── Logo Components ──────────────────────────────────────────────────────────
+
+const LogoNusantara: React.FC<{ size?: number }> = ({ size = 48 }) => (
+  <div style={{
+    width: size,
+    height: size,
+    background: "#1A3A6B",
+    borderRadius: 12,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "#F5A623",
+    fontWeight: "bold",
+    fontSize: size * 0.4,
+  }}>
+    NV
+  </div>
+);
+
+// ─── Star Rating Component ────────────────────────────────────────────────────
+
+const StarRating: React.FC<{ rating: number }> = ({ rating }) => {
+  const fullStars = Math.floor(rating);
+  const hasHalfStar = rating % 1 >= 0.5;
+  
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+      {[...Array(5)].map((_, i) => (
+        <span key={i} style={{ 
+          color: i < fullStars ? "#F5A623" : (i === fullStars && hasHalfStar ? "#F5A623" : "#E8E7E2"), 
+          fontSize: 16 
+        }}>
+          {i < fullStars ? "★" : (i === fullStars && hasHalfStar ? "½" : "☆")}
+        </span>
+      ))}
+      <span style={{ fontSize: 13, color: "#888780", marginLeft: 6 }}>{rating.toFixed(1)}</span>
+    </div>
+  );
+};
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
 const PartnershipDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -10,10 +52,7 @@ const PartnershipDetailPage: React.FC = () => {
   const [partnership, setPartnership] = useState<PartnershipRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  // Get user role from localStorage or context (simulated)
-  const userRole = localStorage.getItem("userRole") || "UMKM";
-  const isReceiver = userRole === "MITRA"; // Simplified logic
+  const [showDownloadAlert, setShowDownloadAlert] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -46,55 +85,24 @@ const PartnershipDetailPage: React.FC = () => {
         requester_role: "UMKM",
         receiver_role: "MITRA",
         category: "Pendanaan",
-        proposal_title: "Pengajuan Kerjasama Pendanaan untuk Pengembangan Produk Roti Tradisional",
-        proposal_description: "Mengajukan kerjasama pendanaan untuk pengembangan produk roti tradisional dengan berbagai varian rasa baru. Dana akan digunakan untuk:\n1. Pengembangan resep dan varian rasa baru\n2. Pembelian peralatan produksi yang lebih modern\n3. Pengemasan produk yang lebih menarik\n4. Promosi dan pemasaran digital\n\nTarget yang ingin dicapai:\n- Meningkatkan produksi sebesar 50%\n- Memperluas pasar ke 3 kota baru\n- Meningkatkan omset sebesar 100% dalam 1 tahun",
+        proposal_title: "Pengajuan Kerjasama Pendanaan",
+        proposal_description: "Mengajukan kerjasama pendanaan untuk pengembangan produk",
         business_name: "UMKM Sari Roti",
-        contact_person: "+628123456789 / sariroti@email.com",
-        product_description: "Roti tradisional dengan berbagai varian rasa seperti coklat, keju, kacang hijau, dan durian. Produk dibuat dengan bahan-bahan alami tanpa pengawet dan memiliki masa simpan 3 hari. Telah memiliki izin PIRT dan sertifikat halal.",
-        reason_for_partnership: "Membutuhkan mitra pendanaan untuk mengembangkan usaha yang sudah berjalan selama 2 tahun. Saat ini produksi terbatas karena modal yang terbatas. Dengan pendanaan yang memadai, dapat meningkatkan kapasitas produksi dan memperluas pasar.",
-        nib_ktp_file: "nib_umkm_sari_roti.pdf",
-        proposal_file: "proposal_pendanaan_roti.pdf",
-        certificate_file: "sertifikat_halal.pdf",
+        contact_person: "+628123456789",
+        product_description: "Produk roti tradisional",
+        reason_for_partnership: "Membutuhkan modal pengembangan",
+        nib_ktp_file: "nib.pdf",
+        proposal_file: "proposal.pdf",
         status: "SUBMITTED",
         submitted_at: "2026-06-08T10:00:00Z",
         created_at: "2026-06-08T10:00:00Z",
         updated_at: "2026-06-08T10:00:00Z",
-        requester_name: "UMKM Sari Roti (Budi Santoso)",
-        receiver_name: "PT. Mitra Sejahtera",
+        requester_name: "UMKM Sari Roti",
+        receiver_name: "Nusantara Ventures",
       });
     } finally {
       setLoading(false);
     }
-  };
-
-  const getStatusColor = (status: PartnershipStatus) => {
-    const colors: Record<PartnershipStatus, string> = {
-      DRAFT: "bg-gray-100 text-gray-800",
-      SUBMITTED: "bg-blue-100 text-blue-800",
-      REVIEWED: "bg-yellow-100 text-yellow-800",
-      APPROVED: "bg-green-100 text-green-800",
-      REJECTED: "bg-red-100 text-red-800",
-      ACTIVE: "bg-indigo-100 text-indigo-800",
-      COMPLETED: "bg-purple-100 text-purple-800",
-      CANCELLED: "bg-gray-100 text-gray-800",
-      WAITING_DOCUMENT: "bg-orange-100 text-orange-800",
-    };
-    return colors[status] || "bg-gray-100 text-gray-800";
-  };
-
-  const getStatusText = (status: PartnershipStatus) => {
-    const texts: Record<PartnershipStatus, string> = {
-      DRAFT: "Draft",
-      SUBMITTED: "Terkirim - Menunggu Tinjauan",
-      REVIEWED: "Sedang Ditinjau",
-      APPROVED: "Disetujui",
-      REJECTED: "Ditolak",
-      ACTIVE: "Aktif",
-      COMPLETED: "Selesai",
-      CANCELLED: "Dibatalkan",
-      WAITING_DOCUMENT: "Menunggu Dokumen Tanda Tangan",
-    };
-    return texts[status] || status;
   };
 
   const formatDate = (dateString?: string) => {
@@ -103,79 +111,17 @@ const PartnershipDetailPage: React.FC = () => {
       day: 'numeric',
       month: 'long',
       year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
     });
   };
 
-  const handleApprove = async () => {
-    if (!partnership || !window.confirm("Setujui pengajuan kemitraan ini?")) return;
-    
-    try {
-      const response = await partnershipsApi.approve(partnership.id);
-      
-      if (response.status === "success") {
-        alert("Pengajuan berhasil disetujui!");
-        fetchPartnership(partnership.id);
-      } else {
-        alert(`Gagal menyetujui: ${response.message}`);
-      }
-    } catch (err) {
-      console.error("Error approving partnership:", err);
-      alert("Terjadi kesalahan saat menyetujui pengajuan");
-    }
+  const handleDownloadTemplate = () => {
+    setShowDownloadAlert(true);
+    setTimeout(() => setShowDownloadAlert(false), 3000);
+    // In production: window.open('/template/pengajuan-kemitraan.pdf', '_blank');
   };
 
-  const handleReject = async () => {
-    if (!partnership) return;
-    
-    const reason = prompt("Masukkan alasan penolakan:");
-    if (!reason || reason.trim() === "") {
-      alert("Alasan penolakan harus diisi");
-      return;
-    }
-    
-    if (!window.confirm("Tolak pengajuan kemitraan ini?")) return;
-    
-    try {
-      const response = await partnershipsApi.reject(partnership.id, reason);
-      
-      if (response.status === "success") {
-        alert("Pengajuan berhasil ditolak!");
-        fetchPartnership(partnership.id);
-      } else {
-        alert(`Gagal menolak: ${response.message}`);
-      }
-    } catch (err) {
-      console.error("Error rejecting partnership:", err);
-      alert("Terjadi kesalahan saat menolak pengajuan");
-    }
-  };
-
-  const handleSign = async () => {
-    if (!partnership) return;
-    
-    const documentId = prompt("Masukkan ID dokumen kontrak yang sudah ditandatangani:");
-    if (!documentId || documentId.trim() === "") {
-      alert("ID dokumen kontrak harus diisi");
-      return;
-    }
-    
-    if (!window.confirm("Tandatangani dan setujui kemitraan ini?")) return;
-    
-    try {
-      const response = await partnershipsApi.sign(partnership.id, { contract_document_id: documentId });
-      
-      if (response.status === "success") {
-        alert("Kemitraan berhasil ditandatangani dan diaktifkan!");
-        fetchPartnership(partnership.id);
-      } else {
-        alert(`Gagal menandatangani: ${response.message}`);
-      }
-    } catch (err) {
-      console.error("Error signing partnership:", err);
-      alert("Terjadi kesalahan saat menandatangani kemitraan");
-    }
+  const handleAjukanKemitraan = () => {
+    navigate(`/partnerships/create?receiver_id=${partnership?.receiver_id || id}&receiver_name=Nusantara%20Ventures`);
   };
 
   const handleBack = () => {
@@ -184,23 +130,76 @@ const PartnershipDetailPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto p-6 text-center">
-        <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <p className="mt-2 text-gray-600">Memuat detail kemitraan...</p>
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "100vh",
+        background: "#F5F4F0",
+      }}>
+        <div style={{ textAlign: "center" }}>
+          <div style={{
+            display: "inline-block",
+            width: 40,
+            height: 40,
+            borderRadius: "50%",
+            border: "3px solid #E8E7E2",
+            borderTopColor: "#1A3A6B",
+            animation: "spin 0.8s linear infinite",
+          }} />
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          <p style={{ marginTop: 16, color: "#888780" }}>Memuat detail mitra...</p>
+        </div>
       </div>
     );
   }
 
   if (error || !partnership) {
     return (
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <p className="text-red-700">{error || "Data kemitraan tidak ditemukan"}</p>
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "100vh",
+        background: "#F5F4F0",
+      }}>
+        <div style={{
+          background: "white",
+          borderRadius: 16,
+          padding: "40px",
+          textAlign: "center",
+          maxWidth: 400,
+        }}>
+          <div style={{
+            width: 64,
+            height: 64,
+            background: "#FEF2F2",
+            borderRadius: "50%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            margin: "0 auto 20px",
+          }}>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#E24B4A" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </div>
+          <h3 style={{ margin: "0 0 8px", fontSize: 20, color: "#2C2C2A" }}>Data Tidak Ditemukan</h3>
+          <p style={{ margin: "0 0 24px", color: "#888780" }}>{error || "Detail kemitraan tidak tersedia"}</p>
           <button
             onClick={handleBack}
-            className="mt-2 px-4 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200"
+            style={{
+              padding: "10px 24px",
+              background: "#1A3A6B",
+              border: "none",
+              borderRadius: 8,
+              color: "white",
+              cursor: "pointer",
+            }}
           >
-            Kembali ke Daftar
+            Kembali
           </button>
         </div>
       </div>
@@ -208,253 +207,293 @@ const PartnershipDetailPage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex justify-between items-start">
-          <div>
-            <button
-              onClick={handleBack}
-              className="flex items-center text-blue-600 hover:text-blue-800 mb-4"
-            >
-              <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              Kembali ke Daftar
-            </button>
-            <h1 className="text-3xl font-bold text-gray-800">Detail Pengajuan Kemitraan</h1>
-            <p className="text-gray-600 mt-2">{partnership.request_code}</p>
-          </div>
-          
-          <div className="text-right">
-            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(partnership.status)}`}>
-              {getStatusText(partnership.status)}
-            </span>
-            <p className="mt-2 text-sm text-gray-500">
-              Diajukan: {formatDate(partnership.submitted_at || partnership.created_at)}
+    <div style={{
+      maxWidth: 1200,
+      margin: "0 auto",
+      padding: "40px 24px",
+      fontFamily: "'Segoe UI', Roboto, sans-serif",
+      background: "#F5F4F0",
+      minHeight: "100vh",
+    }}>
+      {/* Download Alert Toast */}
+      {showDownloadAlert && (
+        <div style={{
+          position: "fixed",
+          top: 80,
+          right: 24,
+          background: "#1D9E75",
+          color: "white",
+          padding: "12px 20px",
+          borderRadius: 12,
+          fontSize: 14,
+          zIndex: 1000,
+          animation: "slideIn 0.3s ease",
+        }}>
+          <style>{`
+            @keyframes slideIn {
+              from { transform: translateX(100%); opacity: 0; }
+              to { transform: translateX(0); opacity: 1; }
+            }
+          `}</style>
+          📄 Template pengajuan sedang diunduh...
+        </div>
+      )}
+
+      {/* Back Button */}
+      <button
+        onClick={handleBack}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          background: "none",
+          border: "none",
+          color: "#1A3A6B",
+          cursor: "pointer",
+          marginBottom: 24,
+          fontSize: 14,
+        }}
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M19 12H5M12 19l-7-7 7-7" />
+        </svg>
+        Kembali ke Daftar
+      </button>
+
+      {/* Main Content - Two Columns */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "1fr 360px",
+        gap: 32,
+      }}>
+        {/* LEFT COLUMN - Company Profile */}
+        <div>
+          {/* Header with Logo and Company Name */}
+          <div style={{
+            background: "white",
+            borderRadius: 20,
+            padding: "32px",
+            marginBottom: 24,
+            boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 20, marginBottom: 24 }}>
+              <LogoNusantara size={64} />
+              <div>
+                <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700, color: "#1A3A6B" }}>
+                  Nusantara Ventures
+                </h1>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8 }}>
+                  <StarRating rating={4.8} />
+                  <span style={{ fontSize: 13, color: "#888780" }}>• 120+ Kemitraan</span>
+                  <span style={{ fontSize: 13, color: "#1D9E75" }}>• 85% Sukses</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Description */}
+            <p style={{
+              fontSize: 15,
+              lineHeight: 1.6,
+              color: "#5F5E5A",
+              marginBottom: 24,
+            }}>
+              Nusantara Ventures adalah perusahaan modal ventura terkemuka yang berdedikasi untuk 
+              memberdayakan UMKM pengrajin dan kreatif di Indonesia. Kami tidak hanya memberikan 
+              pendanaan, tetapi juga ekosistem pendukung yang kuat untuk membantu bisnis Anda 
+              naik kelas ke pasar internasional.
             </p>
-          </div>
-        </div>
-      </div>
 
-      {/* Action Buttons for Receiver */}
-      {isReceiver && partnership.status === "SUBMITTED" && (
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <h3 className="font-medium text-blue-800 mb-2">Tinjau Pengajuan</h3>
-          <div className="flex space-x-4">
-            <button
-              onClick={handleApprove}
-              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-            >
-              Setujui
-            </button>
-            <button
-              onClick={handleReject}
-              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-            >
-              Tolak
-            </button>
-            <button
-              onClick={() => navigate(`/partnerships/review/${partnership.id}`)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              Tinjau Detail
-            </button>
-          </div>
-        </div>
-      )}
+            <p style={{
+              fontSize: 15,
+              lineHeight: 1.6,
+              color: "#5F5E5A",
+              marginBottom: 24,
+            }}>
+              Memiliki lebih dari 120+ kerja sama dengan pasar internasional maupun nasional. 
+              Memiliki tingkat kesuksesan 85% dalam bermitra. Kami lebih berfokus pada produk 
+              kriya dan fashion, kuliner olahan berkelanjutan dan teknologi rantai pasok.
+            </p>
 
-      {/* Action Button for Waiting Document */}
-      {isReceiver && partnership.status === "WAITING_DOCUMENT" && (
-        <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
-          <h3 className="font-medium text-orange-800 mb-2">Menunggu Tanda Tangan Dokumen</h3>
-          <button
-            onClick={handleSign}
-            className="px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
-          >
-            Tandatangani & Aktifkan
-          </button>
-        </div>
-      )}
+            {/* Criteria Section */}
+            <div style={{
+              background: "#F0FAF6",
+              borderRadius: 16,
+              padding: "20px",
+              marginBottom: 24,
+            }}>
+              <h3 style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 700, color: "#1D9E75" }}>
+                Kriteria Bermitra
+              </h3>
+              <ul style={{ margin: 0, paddingLeft: 20, color: "#5F5E5A", fontSize: 14, lineHeight: 1.8 }}>
+                <li>Beroperasi minimal 12 bulan</li>
+                <li>Memiliki laporan keuangan dasar</li>
+                <li>Potensi skalabilitas tinggi</li>
+              </ul>
+            </div>
 
-      {/* Main Content */}
-      <div className="space-y-6">
-        {/* Basic Info Card */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Informasi Dasar</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Benefits Section */}
             <div>
-              <p className="text-sm text-gray-500">Pengaju</p>
-              <p className="font-medium text-gray-900">{partnership.requester_name || partnership.business_name}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Penerima</p>
-              <p className="font-medium text-gray-900">{partnership.receiver_name || "Mitra"}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Kategori Kerjasama</p>
-              <p className="font-medium text-gray-900">{partnership.category}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Kontak Person</p>
-              <p className="font-medium text-gray-900">{partnership.contact_person}</p>
+              <h3 style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 700, color: "#1A3A6B" }}>
+                Keuntungan Bermitra
+              </h3>
+              <ul style={{ margin: 0, paddingLeft: 20, color: "#5F5E5A", fontSize: 14, lineHeight: 1.8 }}>
+                <li>Akses pendanaan</li>
+                <li>Mentoring dari para ahli</li>
+                <li>Jejaring global</li>
+              </ul>
             </div>
           </div>
         </div>
 
-        {/* Proposal Details Card */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Detail Proposal</h2>
-          <div className="space-y-4">
+        {/* RIGHT COLUMN - Action Card */}
+        <div>
+          {/* Ajukan Kemitraan Card */}
+          <div style={{
+            background: "white",
+            borderRadius: 20,
+            padding: "28px",
+            marginBottom: 24,
+            boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+            position: "sticky",
+            top: 24,
+          }}>
+            <h2 style={{
+              margin: "0 0 8px",
+              fontSize: 22,
+              fontWeight: 700,
+              color: "#1A3A6B",
+            }}>
+              Ajukan Kemitraan
+            </h2>
+            <p style={{
+              fontSize: 13,
+              color: "#888780",
+              marginBottom: 24,
+            }}>
+              Bergabung dengan ekosistem kami
+            </p>
+
+            {/* Download Template Button */}
+            <button
+              onClick={handleDownloadTemplate}
+              style={{
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 10,
+                padding: "14px 0",
+                background: "#F5F4F0",
+                border: "1px solid #E8E7E2",
+                borderRadius: 12,
+                fontSize: 14,
+                fontWeight: 500,
+                color: "#1A3A6B",
+                cursor: "pointer",
+                marginBottom: 20,
+                transition: "background 0.15s",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "#E8E7E2")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "#F5F4F0")}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              Unduh Template Pengajuan Kemitraan (PDF)
+            </button>
+
+            {/* Divider */}
+            <div style={{
+              height: 1,
+              background: "#E8E7E2",
+              margin: "20px 0",
+            }} />
+
+            {/* Ajukan Sekarang Button */}
+            <button
+              onClick={handleAjukanKemitraan}
+              style={{
+                width: "100%",
+                padding: "14px 0",
+                background: "#1A3A6B",
+                border: "none",
+                borderRadius: 12,
+                fontSize: 14,
+                fontWeight: 600,
+                color: "white",
+                cursor: "pointer",
+                marginBottom: 24,
+                transition: "background 0.15s",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "#2A5DA8")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "#1A3A6B")}
+            >
+              Ajukan Sekarang
+            </button>
+
+            {/* Contact Info */}
             <div>
-              <p className="text-sm text-gray-500">Judul Proposal</p>
-              <p className="font-medium text-gray-900">{partnership.proposal_title}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Deskripsi Proposal</p>
-              <div className="mt-1 p-3 bg-gray-50 rounded-md">
-                <p className="text-gray-900 whitespace-pre-line">{partnership.proposal_description}</p>
+              <h3 style={{
+                margin: "0 0 12px",
+                fontSize: 14,
+                fontWeight: 600,
+                color: "#2C2C2A",
+              }}>
+                Informasi Kontak
+              </h3>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <a
+                  href="mailto:partnership@nusantara.vc"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    fontSize: 13,
+                    color: "#1A3A6B",
+                    textDecoration: "none",
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <rect x="2" y="4" width="20" height="16" rx="2" />
+                    <path d="m22 7-10 7L2 7" />
+                  </svg>
+                  partnership@nusantara.vc
+                </a>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: "#5F5E5A" }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.362 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0122 16.92z" />
+                  </svg>
+                  +62 21 555 0123
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Business Details Card */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Detail Usaha</h2>
-          <div className="space-y-4">
-            <div>
-              <p className="text-sm text-gray-500">Nama Usaha/Organisasi</p>
-              <p className="font-medium text-gray-900">{partnership.business_name}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Deskripsi Produk/Jasa</p>
-              <div className="mt-1 p-3 bg-gray-50 rounded-md">
-                <p className="text-gray-900 whitespace-pre-line">{partnership.product_description}</p>
-              </div>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Alasan Ingin Bermitra</p>
-              <div className="mt-1 p-3 bg-gray-50 rounded-md">
-                <p className="text-gray-900 whitespace-pre-line">{partnership.reason_for_partnership}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Documents Card */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Dokumen Pendukung</h2>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 border border-gray-200 rounded-md">
+          {/* Stats Card */}
+          <div style={{
+            background: "linear-gradient(135deg, #1A3A6B 0%, #2A5DA8 100%)",
+            borderRadius: 20,
+            padding: "24px",
+            color: "white",
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
               <div>
-                <p className="font-medium text-gray-900">NIB / KTP</p>
-                <p className="text-sm text-gray-500">{partnership.nib_ktp_file}</p>
+                <p style={{ margin: 0, fontSize: 11, opacity: 0.7 }}>TOTAL KEMITRAAN</p>
+                <p style={{ margin: "4px 0 0", fontSize: 28, fontWeight: 700 }}>120+</p>
               </div>
-              <button className="px-3 py-1 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 text-sm">
-                Lihat / Unduh
-              </button>
-            </div>
-            
-            <div className="flex items-center justify-between p-3 border border-gray-200 rounded-md">
               <div>
-                <p className="font-medium text-gray-900">Proposal Kemitraan (PDF)</p>
-                <p className="text-sm text-gray-500">{partnership.proposal_file}</p>
-              </div>
-              <button className="px-3 py-1 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 text-sm">
-                Lihat / Unduh
-              </button>
-            </div>
-            
-            {partnership.certificate_file && (
-              <div className="flex items-center justify-between p-3 border border-gray-200 rounded-md">
-                <div>
-                  <p className="font-medium text-gray-900">Sertifikat Halal/PIRT</p>
-                  <p className="text-sm text-gray-500">{partnership.certificate_file}</p>
-                </div>
-                <button className="px-3 py-1 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 text-sm">
-                  Lihat / Unduh
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Timeline Card */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Timeline</h2>
-          <div className="space-y-4">
-            <div className="flex items-start">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                  <div className="w-3 h-3 rounded-full bg-blue-600"></div>
-                </div>
-              </div>
-              <div className="ml-4">
-                <p className="font-medium text-gray-900">Pengajuan Dikirim</p>
-                <p className="text-sm text-gray-500">{formatDate(partnership.submitted_at || partnership.created_at)}</p>
+                <p style={{ margin: 0, fontSize: 11, opacity: 0.7 }}>TINGKAT SUKSES</p>
+                <p style={{ margin: "4px 0 0", fontSize: 28, fontWeight: 700 }}>85%</p>
               </div>
             </div>
-            
-            {partnership.decided_at && (
-              <div className="flex items-start">
-                <div className="flex-shrink-0">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    partnership.status === "APPROVED" || partnership.status === "ACTIVE" 
-                      ? "bg-green-100" 
-                      : "bg-red-100"
-                  }`}>
-                    <div className={`w-3 h-3 rounded-full ${
-                      partnership.status === "APPROVED" || partnership.status === "ACTIVE" 
-                        ? "bg-green-600" 
-                        : "bg-red-600"
-                    }`}></div>
-                  </div>
-                </div>
-                <div className="ml-4">
-                  <p className="font-medium text-gray-900">
-                    {partnership.status === "APPROVED" || partnership.status === "ACTIVE" ? "Disetujui" : "Ditolak"}
-                  </p>
-                  <p className="text-sm text-gray-500">{formatDate(partnership.decided_at)}</p>
-                  {partnership.rejection_reason && partnership.status === "REJECTED" && (
-                    <div className="mt-2 p-2 bg-red-50 border border-red-100 rounded-md">
-                      <p className="text-sm text-red-700">Alasan penolakan: {partnership.rejection_reason}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-            
-            {partnership.contract_signed_at && (
-              <div className="flex items-start">
-                <div className="flex-shrink-0">
-                  <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
-                    <div className="w-3 h-3 rounded-full bg-indigo-600"></div>
-                  </div>
-                </div>
-                <div className="ml-4">
-                  <p className="font-medium text-gray-900">Dokumen Ditandatangani</p>
-                  <p className="text-sm text-gray-500">{formatDate(partnership.contract_signed_at)}</p>
-                </div>
-              </div>
-            )}
-            
-            {partnership.partnership_start && (
-              <div className="flex items-start">
-                <div className="flex-shrink-0">
-                  <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
-                    <div className="w-3 h-3 rounded-full bg-purple-600"></div>
-                  </div>
-                </div>
-                <div className="ml-4">
-                  <p className="font-medium text-gray-900">Kerjasama Dimulai</p>
-                  <p className="text-sm text-gray-500">{formatDate(partnership.partnership_start)}</p>
-                  {partnership.partnership_end && (
-                    <p className="text-sm text-gray-500">Berakhir: {formatDate(partnership.partnership_end)}</p>
-                  )}
-                </div>
-              </div>
-            )}
+            <div style={{ height: 4, background: "rgba(255,255,255,0.2)", borderRadius: 2, overflow: "hidden" }}>
+              <div style={{ width: "85%", height: "100%", background: "#F5A623", borderRadius: 2 }} />
+            </div>
+            <p style={{ margin: "16px 0 0", fontSize: 12, opacity: 0.8, textAlign: "center" }}>
+              Bergabung dengan 120+ mitra UMKM lainnya
+            </p>
           </div>
         </div>
       </div>

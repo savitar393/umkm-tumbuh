@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { partnershipsApi } from "../api";
-import type { PartnershipRequest, PartnershipStatus } from "../types";
 
 // ─── Logo Components ──────────────────────────────────────────────────────────
 
@@ -23,93 +22,128 @@ const LogoKementrian: React.FC<{ size?: number }> = ({ size = 36 }) => (
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface UMKMProfile {
+interface MitraProfile {
   id: string;
   name: string;
-  location: string;
-  description: string;
-  rating: number;
-  reviewCount: number;
   category: string;
-  image?: string;
+  description: string;
+  location: string;
+  totalPartnership: number;
+  successRate: number;
+  imageInitials: string;
 }
 
 // ─── Mock Data ────────────────────────────────────────────────────────────────
 
-const MOCK_UMKM_LIST: UMKMProfile[] = [
+const MOCK_MITRA_LIST: MitraProfile[] = [
   {
     id: "1",
-    name: "Wastra Kencana Solo",
-    location: "Surakarta, Jawa Tengah",
-    description: "Produksi kain batik tulis dan cap premium dengan pewarnaan alami.",
-    rating: 4.2,
-    reviewCount: 128,
-    category: "Batik",
+    name: "Bank Mandiri UMKM",
+    category: "Perbankan",
+    description: "Solusi permodalan KUR dan Kredit Usaha Mikro dengan bunga kompetitif serta pendampingan bisnis untuk UMKM naik kelas.",
+    location: "Jakarta",
+    totalPartnership: 5000,
+    successRate: 92,
+    imageInitials: "BM",
   },
   {
     id: "2",
-    name: "Jepara Ukir Lestari",
-    location: "Jepara, Jawa Tengah",
-    description: "Mebel kayu jati kualitas ekspor dengan ukiran tangan asli. Jepara yang ...",
-    rating: 4.3,
-    reviewCount: 245,
-    category: "Mebel",
+    name: "Nusantara Ventures",
+    category: "Ventura Capital",
+    description: "Modal ventura yang fokus pada pendanaan tahap awal untuk UMKM kreatif dan inovatif di Indonesia.",
+    location: "Surabaya",
+    totalPartnership: 120,
+    successRate: 85,
+    imageInitials: "NV",
   },
   {
     id: "3",
-    name: "Tembikar Jatiwangi",
-    location: "Majalengka, Jawa Barat",
-    description: "Seni kerajinan tangan gerabah komersil yang menggabungkan teknik ...",
-    rating: 4.2,
-    reviewCount: 89,
-    category: "Kerajinan",
+    name: "Bank CIMB Niaga",
+    category: "Perbankan",
+    description: "Solusi perbankan lengkap dengan produk KUR, pembiayaan modal kerja, dan layanan ekspor impor untuk UMKM.",
+    location: "Jakarta",
+    totalPartnership: 3500,
+    successRate: 88,
+    imageInitials: "CN",
   },
   {
     id: "4",
-    name: "Mie Keprabon",
-    location: "Solo, Jawa Tengah",
-    description: "Mie instan homemade dengan bumbu rempah asli dan pilihan topping ...",
-    rating: 4.5,
-    reviewCount: 312,
-    category: "Kuliner",
+    name: "PT Jaya Wijaya",
+    category: "Distribusi",
+    description: "Mitra distribusi nasional yang fokus pada pendanaan tahap awal untuk UMKM kreatif dan inovatif di Indonesia.",
+    location: "Surabaya",
+    totalPartnership: 250,
+    successRate: 78,
+    imageInitials: "JW",
   },
   {
     id: "5",
-    name: "Es Teh Sulthan",
-    location: "Bandung, Jawa Barat",
-    description: "Minuman teh kekinian dengan varian rasa premium dan harga terjangkau.",
-    rating: 4.1,
-    reviewCount: 156,
-    category: "Kuliner",
+    name: "JNE International",
+    category: "Logistik",
+    description: "Mitra pengiriman ekspor terpercaya dengan tarif khusus bagi pelaku UMKM yang ingin go international.",
+    location: "Jakarta",
+    totalPartnership: 10000,
+    successRate: 95,
+    imageInitials: "JI",
   },
   {
     id: "6",
-    name: "Little Blue Bakehouse",
-    location: "Yogyakarta, DIY",
-    description: "Roti dan pastry artisan dengan bahan organik tanpa pengawet.",
-    rating: 4.7,
-    reviewCount: 203,
-    category: "Kuliner",
+    name: "Pusat Kreatif Nusantara",
+    category: "Inkubator",
+    description: "Program inkubasi 6 bulan yang membekali pengrajin dengan skills digital marketing dan ekspor.",
+    location: "Bandung",
+    totalPartnership: 89,
+    successRate: 82,
+    imageInitials: "PK",
+  },
+  {
+    id: "7",
+    name: "Tokopedia",
+    category: "E-commerce",
+    description: "Platform marketplace terbesar di Indonesia dengan program khusus untuk onboarding UMKM naik kelas.",
+    location: "Jakarta",
+    totalPartnership: 12000,
+    successRate: 90,
+    imageInitials: "TK",
+  },
+  {
+    id: "8",
+    name: "Shopee Indonesia",
+    category: "E-commerce",
+    description: "Platform belanja online dengan fitur Shopee UMKM Campus dan akses pasar ekspor.",
+    location: "Jakarta",
+    totalPartnership: 15000,
+    successRate: 88,
+    imageInitials: "SI",
+  },
+  {
+    id: "9",
+    name: "Gojek",
+    category: "Teknologi",
+    description: "Super app dengan program Gojek Wirausaha untuk membantu UMKM go digital.",
+    location: "Jakarta",
+    totalPartnership: 8000,
+    successRate: 87,
+    imageInitials: "GJ",
   },
 ];
 
-// ─── Star Rating Component ────────────────────────────────────────────────────
+// ─── Avatar Color Helper ──────────────────────────────────────────────────────
 
-const StarRating: React.FC<{ rating: number }> = ({ rating }) => {
-  const fullStars = Math.floor(rating);
-  const hasHalfStar = rating % 1 >= 0.5;
-  
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-      {[...Array(5)].map((_, i) => (
-        <span key={i} style={{ color: i < fullStars ? "#F5A623" : (i === fullStars && hasHalfStar ? "#F5A623" : "#E8E7E2"), fontSize: 14 }}>
-          {i < fullStars ? "★" : (i === fullStars && hasHalfStar ? "½" : "☆")}
-        </span>
-      ))}
-      <span style={{ fontSize: 12, color: "#888780", marginLeft: 4 }}>{rating.toFixed(1)}</span>
-    </div>
-  );
-};
+const AVATAR_COLORS = [
+  { bg: "#1A3A6B", text: "white" },
+  { bg: "#1D9E75", text: "white" },
+  { bg: "#F5A623", text: "#1A3A6B" },
+  { bg: "#E24B4A", text: "white" },
+  { bg: "#5F5E5A", text: "white" },
+  { bg: "#2A5DA8", text: "white" },
+];
+
+function getAvatarColor(name: string) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
@@ -118,7 +152,46 @@ const PartnershipListPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const itemsPerPage = 9; // 3 kolom x 3 baris
+
+  // Categories
+  const categories = [
+    { id: "all", name: "Semua Mitra" },
+    { id: "perbankan", name: "Perbankan" },
+    { id: "ventura", name: "Ventura Capital" },
+    { id: "logistik", name: "Logistik" },
+    { id: "ecommerce", name: "E-commerce" },
+    { id: "teknologi", name: "Teknologi" },
+    { id: "distribusi", name: "Distribusi" },
+    { id: "inkubator", name: "Inkubator" },
+  ];
+
+  // Filter mitra
+  const filteredMitra = MOCK_MITRA_LIST.filter((mitra) => {
+    const matchesSearch = mitra.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         mitra.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         mitra.location.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === "all" || 
+                           mitra.category.toLowerCase() === selectedCategory.toLowerCase();
+    return matchesSearch && matchesCategory;
+  });
+
+  // Pagination
+  const totalItems = filteredMitra.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const paginatedMitra = filteredMitra.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleLihatProfil = (mitraId: string) => {
+    navigate(`/partnerships/${mitraId}`);
+  };
 
   // Sidebar navigation items
   const navItems = [
@@ -140,7 +213,7 @@ const PartnershipListPage: React.FC = () => {
           <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
         </svg>
       ),
-      path: "/partnerships/create",
+      path: "/partnerships",
       active: true,
     },
     {
@@ -154,42 +227,6 @@ const PartnershipListPage: React.FC = () => {
       path: "/umkm",
     },
   ];
-
-  // Categories from mockup
-  const categories = [
-    { id: "all", name: "Semua UMKM" },
-    { id: "batik", name: "Batik" },
-    { id: "mebel", name: "Mebel" },
-    { id: "kerajinan", name: "Kerajinan" },
-    { id: "kuliner", name: "Kuliner" },
-    { id: "fashion", name: "Fashion" },
-  ];
-
-  // Filter UMKM based on search and category
-  const filteredUMKM = MOCK_UMKM_LIST.filter((umkm) => {
-    const matchesSearch = umkm.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         umkm.location.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === "all" || 
-                           umkm.category.toLowerCase() === selectedCategory.toLowerCase();
-    return matchesSearch && matchesCategory;
-  });
-
-  // Pagination
-  const totalItems = filteredUMKM.length;
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
-  const paginatedUMKM = filteredUMKM.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  const handleAjukanKemitraan = (umkmId: string, umkmName: string) => {
-    navigate(`/partnerships/create?receiver_id=${umkmId}&receiver_name=${encodeURIComponent(umkmName)}`);
-  };
 
   return (
     <div style={{
@@ -211,7 +248,6 @@ const PartnershipListPage: React.FC = () => {
         height: "100vh",
         zIndex: 100,
       }}>
-        {/* Logo */}
         <div style={{ padding: "24px 20px", borderBottom: "1px solid rgba(255,255,255,0.12)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <LogoUMKMTumbuh size={36} />
@@ -221,7 +257,6 @@ const PartnershipListPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Navigation */}
         <nav style={{ flex: 1, padding: "20px 0" }}>
           {navItems.map((item) => (
             <button
@@ -251,7 +286,6 @@ const PartnershipListPage: React.FC = () => {
           ))}
         </nav>
 
-        {/* Logout */}
         <div style={{ padding: "20px", borderTop: "1px solid rgba(255,255,255,0.12)" }}>
           <button
             onClick={() => navigate("/login")}
@@ -298,7 +332,6 @@ const PartnershipListPage: React.FC = () => {
           top: 0,
           zIndex: 50,
         }}>
-          {/* Search Bar */}
           <div style={{ position: "relative", width: 340 }}>
             <svg
               style={{
@@ -320,7 +353,7 @@ const PartnershipListPage: React.FC = () => {
             </svg>
             <input
               type="text"
-              placeholder="Cari UMKM atau lokasi..."
+              placeholder="Cari Mitra..."
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
@@ -340,9 +373,7 @@ const PartnershipListPage: React.FC = () => {
             />
           </div>
 
-          {/* Right Section */}
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            {/* Notification */}
             <button style={{
               background: "#1A3A6B",
               border: "none",
@@ -361,7 +392,6 @@ const PartnershipListPage: React.FC = () => {
               </svg>
             </button>
 
-            {/* Profile */}
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ textAlign: "right" }}>
                 <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#1A7A5E" }}>
@@ -390,18 +420,18 @@ const PartnershipListPage: React.FC = () => {
           {/* Page Title */}
           <h1 style={{
             margin: "0 0 8px",
-            fontSize: 28,
+            fontSize: 32,
             fontWeight: 700,
             color: "#1A3A6B",
           }}>
-            Temukan UMKM Strategis
+            Temukan Mitra Strategis
           </h1>
           <p style={{
             margin: "0 0 28px",
             fontSize: 14,
             color: "#888780",
           }}>
-            Pilih UMKM potensial untuk diajak kerjasama kemitraan
+            Temukan mitra terbaik untuk mengembangkan usaha Anda
           </p>
 
           {/* Category Filters */}
@@ -426,11 +456,11 @@ const PartnershipListPage: React.FC = () => {
                   border: "none",
                   background: selectedCategory === cat.id ? "#1A3A6B" : "white",
                   color: selectedCategory === cat.id ? "white" : "#5F5E5A",
-                  fontSize: 13,
+                  fontSize: 14,
                   fontWeight: selectedCategory === cat.id ? 600 : 400,
                   cursor: "pointer",
                   transition: "all 0.15s",
-                  boxShadow: selectedCategory === cat.id ? "none" : "0 1px 2px rgba(0,0,0,0.05)",
+                  boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
                 }}
               >
                 {cat.name}
@@ -438,132 +468,206 @@ const PartnershipListPage: React.FC = () => {
             ))}
           </div>
 
-          {/* UMKM Cards Grid */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {paginatedUMKM.map((umkm) => (
-              <div
-                key={umkm.id}
-                style={{
-                  background: "white",
-                  borderRadius: 16,
-                  padding: "20px 24px",
-                  border: "1px solid #E8E7E2",
-                  transition: "box-shadow 0.2s, transform 0.2s",
-                  cursor: "pointer",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.08)";
-                  e.currentTarget.style.transform = "translateY(-2px)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.boxShadow = "none";
-                  e.currentTarget.style.transform = "translateY(0)";
-                }}
-              >
-                <div style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "flex-start",
-                  flexWrap: "wrap",
-                  gap: 16,
-                }}>
-                  {/* Left Section - Info */}
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
-                      <h3 style={{
-                        margin: 0,
-                        fontSize: 18,
-                        fontWeight: 700,
-                        color: "#2C2C2A",
-                      }}>
-                        {umkm.name}
-                      </h3>
-                      <div style={{
-                        background: "#F1EFE8",
-                        padding: "2px 10px",
-                        borderRadius: 20,
-                        fontSize: 11,
-                        fontWeight: 600,
-                        color: "#888780",
-                      }}>
-                        {umkm.category}
-                      </div>
-                    </div>
-                    
-                    {/* Location */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#888780" strokeWidth="1.8">
-                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
-                        <circle cx="12" cy="10" r="3" />
-                      </svg>
-                      <span style={{ fontSize: 13, color: "#888780" }}>{umkm.location}</span>
-                    </div>
-                    
-                    {/* Description */}
-                    <p style={{
-                      margin: "0 0 16px",
-                      fontSize: 13,
-                      color: "#5F5E5A",
-                      lineHeight: 1.5,
+          {/* Mitra Cards Grid - 3 Columns */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: 24,
+          }}>
+            {paginatedMitra.map((mitra) => {
+              const avatarColor = getAvatarColor(mitra.name);
+              
+              return (
+                <div
+                  key={mitra.id}
+                  onClick={() => handleLihatProfil(mitra.id)}
+                  style={{
+                    background: "white",
+                    borderRadius: 20,
+                    padding: "24px",
+                    border: "1px solid #E8E7E2",
+                    transition: "box-shadow 0.2s, transform 0.2s",
+                    cursor: "pointer",
+                    display: "flex",
+                    flexDirection: "column",
+                    height: "100%",
+                    minHeight: 320,
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.12)";
+                    e.currentTarget.style.transform = "translateY(-4px)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.boxShadow = "none";
+                    e.currentTarget.style.transform = "translateY(0)";
+                  }}
+                >
+                  {/* Avatar / Logo */}
+                  <div style={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: 16,
+                    background: avatarColor.bg,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: 20,
+                  }}>
+                    <span style={{
+                      fontSize: 20,
+                      fontWeight: 700,
+                      color: avatarColor.text,
                     }}>
-                      {umkm.description}
-                    </p>
-                    
-                    {/* Rating */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <StarRating rating={umkm.rating} />
-                      <span style={{
-                        fontSize: 12,
-                        color: "#B4B2A9",
-                      }}>
-                        ({umkm.reviewCount}+ ulasan)
-                      </span>
+                      {mitra.imageInitials}
+                    </span>
+                  </div>
+
+                  {/* Company Name */}
+                  <h3 style={{
+                    margin: "0 0 8px",
+                    fontSize: 18,
+                    fontWeight: 700,
+                    color: "#2C2C2A",
+                  }}>
+                    {mitra.name}
+                  </h3>
+
+                  {/* Category Badge */}
+                  <div style={{
+                    display: "inline-block",
+                    background: "#F1EFE8",
+                    padding: "4px 12px",
+                    borderRadius: 20,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: "#888780",
+                    marginBottom: 16,
+                    alignSelf: "flex-start",
+                  }}>
+                    {mitra.category}
+                  </div>
+
+                  {/* Location */}
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    marginBottom: 12,
+                  }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#888780" strokeWidth="1.8">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" />
+                      <circle cx="12" cy="10" r="3" />
+                    </svg>
+                    <span style={{ fontSize: 13, color: "#888780" }}>{mitra.location}</span>
+                  </div>
+
+                  {/* Description */}
+                  <p style={{
+                    margin: "0 0 20px",
+                    fontSize: 13,
+                    color: "#5F5E5A",
+                    lineHeight: 1.5,
+                    flex: 1,
+                  }}>
+                    {mitra.description.length > 120 
+                      ? mitra.description.substring(0, 120) + "..." 
+                      : mitra.description}
+                  </p>
+
+                  {/* Stats */}
+                  <div style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    marginBottom: 20,
+                    paddingTop: 12,
+                    borderTop: "1px solid #F1EFE8",
+                  }}>
+                    <div>
+                      <p style={{ margin: 0, fontSize: 11, color: "#B4B2A9" }}>Kemitraan</p>
+                      <p style={{ margin: "2px 0 0", fontSize: 16, fontWeight: 700, color: "#1A3A6B" }}>
+                        {mitra.totalPartnership.toLocaleString()}
+                      </p>
+                    </div>
+                    <div>
+                      <p style={{ margin: 0, fontSize: 11, color: "#B4B2A9" }}>Tingkat Sukses</p>
+                      <p style={{ margin: "2px 0 0", fontSize: 16, fontWeight: 700, color: "#1D9E75" }}>
+                        {mitra.successRate}%
+                      </p>
                     </div>
                   </div>
 
-                  {/* Right Section - Action Button */}
-                  <div>
-                    <button
-                      onClick={() => handleAjukanKemitraan(umkm.id, umkm.name)}
-                      style={{
-                        padding: "10px 28px",
-                        background: "#1A3A6B",
-                        border: "none",
-                        borderRadius: 10,
-                        color: "white",
-                        fontSize: 13,
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        transition: "background 0.15s",
-                        whiteSpace: "nowrap",
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = "#2A5DA8")}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = "#1A3A6B")}
-                    >
-                      Ajukan Kemitraan
-                    </button>
-                  </div>
+                  {/* Button - Lihat Profil */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleLihatProfil(mitra.id);
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "12px 0",
+                      background: "#1A3A6B",
+                      border: "none",
+                      borderRadius: 12,
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: "white",
+                      cursor: "pointer",
+                      transition: "background 0.15s, transform 0.1s",
+                      marginTop: "auto",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "#2A5DA8";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "#1A3A6B";
+                    }}
+                    onMouseDown={(e) => {
+                      e.currentTarget.style.transform = "scale(0.98)";
+                    }}
+                    onMouseUp={(e) => {
+                      e.currentTarget.style.transform = "scale(1)";
+                    }}
+                  >
+                    Lihat Profil
+                  </button>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Empty State */}
-          {paginatedUMKM.length === 0 && (
+          {paginatedMitra.length === 0 && (
             <div style={{
               textAlign: "center",
-              padding: "60px 20px",
+              padding: "80px 20px",
               background: "white",
-              borderRadius: 16,
+              borderRadius: 20,
               border: "1px solid #E8E7E2",
             }}>
-              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#B4B2A9" strokeWidth="1.5">
+              <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#B4B2A9" strokeWidth="1.5">
                 <circle cx="12" cy="12" r="10" />
                 <line x1="22" y1="22" x2="15" y2="15" />
               </svg>
-              <p style={{ marginTop: 16, fontSize: 14, color: "#888780" }}>
-                Tidak ada UMKM yang ditemukan
+              <p style={{ marginTop: 16, fontSize: 16, color: "#888780" }}>
+                Tidak ada mitra yang ditemukan
               </p>
+              <button
+                onClick={() => {
+                  setSearchTerm("");
+                  setSelectedCategory("all");
+                }}
+                style={{
+                  marginTop: 16,
+                  padding: "8px 24px",
+                  background: "#1A3A6B",
+                  border: "none",
+                  borderRadius: 30,
+                  color: "white",
+                  cursor: "pointer",
+                }}
+              >
+                Reset Filter
+              </button>
             </div>
           )}
 
@@ -571,101 +675,77 @@ const PartnershipListPage: React.FC = () => {
           {totalPages > 1 && (
             <div style={{
               display: "flex",
-              justifyContent: "space-between",
+              justifyContent: "center",
               alignItems: "center",
-              marginTop: 32,
-              paddingTop: 16,
+              gap: 12,
+              marginTop: 40,
+              paddingTop: 20,
               borderTop: "1px solid #E8E7E2",
             }}>
-              <p style={{ fontSize: 13, color: "#888780" }}>
-                Menampilkan {paginatedUMKM.length} dari {totalItems} UMKM strategis
-              </p>
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: 10,
+                  border: "1px solid #D3D1C7",
+                  background: currentPage === 1 ? "#F5F4F0" : "white",
+                  fontSize: 13,
+                  cursor: currentPage === 1 ? "not-allowed" : "pointer",
+                  opacity: currentPage === 1 ? 0.5 : 1,
+                }}
+              >
+                Sebelumnya
+              </button>
               
-              <div style={{ display: "flex", gap: 8 }}>
+              {[...Array(totalPages)].map((_, i) => (
                 <button
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage === 1}
+                  key={i}
+                  onClick={() => handlePageChange(i + 1)}
                   style={{
-                    padding: "8px 16px",
-                    borderRadius: 8,
-                    border: "1px solid #D3D1C7",
-                    background: "white",
-                    fontSize: 13,
-                    cursor: currentPage === 1 ? "not-allowed" : "pointer",
-                    opacity: currentPage === 1 ? 0.5 : 1,
+                    width: 36,
+                    height: 36,
+                    borderRadius: 10,
+                    border: currentPage === i + 1 ? "none" : "1px solid #D3D1C7",
+                    background: currentPage === i + 1 ? "#1A3A6B" : "white",
+                    color: currentPage === i + 1 ? "white" : "#5F5E5A",
+                    fontSize: 14,
+                    fontWeight: currentPage === i + 1 ? 600 : 400,
+                    cursor: "pointer",
                   }}
                 >
-                  Sebelumnya
+                  {i + 1}
                 </button>
-                
-                {[...Array(totalPages)].map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handlePageChange(i + 1)}
-                    style={{
-                      padding: "8px 16px",
-                      borderRadius: 8,
-                      border: currentPage === i + 1 ? "none" : "1px solid #D3D1C7",
-                      background: currentPage === i + 1 ? "#1A3A6B" : "white",
-                      color: currentPage === i + 1 ? "white" : "#5F5E5A",
-                      fontWeight: currentPage === i + 1 ? 600 : 400,
-                      cursor: "pointer",
-                    }}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
-                
-                <button
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  style={{
-                    padding: "8px 16px",
-                    borderRadius: 8,
-                    border: "1px solid #D3D1C7",
-                    background: "white",
-                    fontSize: 13,
-                    cursor: currentPage === totalPages ? "not-allowed" : "pointer",
-                    opacity: currentPage === totalPages ? 0.5 : 1,
-                  }}
-                >
-                  Selanjutnya
-                </button>
-              </div>
+              ))}
+              
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: 10,
+                  border: "1px solid #D3D1C7",
+                  background: currentPage === totalPages ? "#F5F4F0" : "white",
+                  fontSize: 13,
+                  cursor: currentPage === totalPages ? "not-allowed" : "pointer",
+                  opacity: currentPage === totalPages ? 0.5 : 1,
+                }}
+              >
+                Selanjutnya
+              </button>
             </div>
           )}
 
-          {/* Show More Button (alternative to pagination) */}
-          {totalPages === 1 && totalItems > 5 && (
-            <div style={{ textAlign: "center", marginTop: 32 }}>
-              <button
-                onClick={() => setCurrentPage(currentPage + 1)}
-                style={{
-                  padding: "12px 32px",
-                  background: "white",
-                  border: "1px solid #1A3A6B",
-                  borderRadius: 40,
-                  color: "#1A3A6B",
-                  fontSize: 14,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  transition: "all 0.15s",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "#1A3A6B";
-                  e.currentTarget.style.color = "white";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "white";
-                  e.currentTarget.style.color = "#1A3A6B";
-                }}
-              >
-                Tampilkan Lebih Banyak Mitra
-              </button>
-              <p style={{ marginTop: 12, fontSize: 12, color: "#888780" }}>
-                Menampilkan {paginatedUMKM.length} dari {totalItems} UMKM strategis
-              </p>
-            </div>
+          {/* Info Total */}
+          {totalItems > 0 && (
+            <p style={{
+              textAlign: "center",
+              marginTop: 24,
+              fontSize: 13,
+              color: "#888780",
+            }}>
+              Menampilkan {paginatedMitra.length} dari {totalItems} mitra strategis terdaftar
+            </p>
           )}
         </div>
       </main>

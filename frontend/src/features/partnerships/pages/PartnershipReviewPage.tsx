@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { partnershipsApi } from "../api";
-import type { CreatePartnershipRequest } from "../types";
+import type { PartnershipRequest } from "../types";
 
 // ─── Logo Components ──────────────────────────────────────────────────────────
 
@@ -555,7 +555,7 @@ const PartnershipReviewPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   
-  const [partnership, setPartnership] = useState<CreatePartnershipRequest | null>(null);
+  const [partnership, setPartnership] = useState<PartnershipRequest | null>(null);
   const [loading, setLoading] = useState(true);
   const [signedFile, setSignedFile] = useState<File | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -612,7 +612,7 @@ const PartnershipReviewPage: React.FC = () => {
     try {
       const response = await partnershipsApi.getDetail(partnershipId);
       if (response.status === "success" && response.data) {
-        const data = response.data as CreatePartnershipRequest;
+        const data = response.data as PartnershipRequest;
         setPartnership(data);
         if (data.status === "ACTIVE" || data.contract_signed_at) {
           setIsSigned(true);
