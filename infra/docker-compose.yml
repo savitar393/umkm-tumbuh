@@ -88,13 +88,13 @@ services:
     environment:
       APP_ENV: ${APP_ENV:-development}
       SERVER_HOST: 0.0.0.0
-      SERVER_PORT: ${SERVER_PORT:-8081}
+      SERVER_PORT: ${AUTH_SERVICE_PORT:-8080}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       DATABASE_URL: postgres://${POSTGRES_USER:-umkm_user}:${POSTGRES_PASSWORD:-umkm_password}@postgres:5432/${POSTGRES_DB:-umkm_tumbuh}?sslmode=disable
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-1440}
     ports:
-      - "8081:8081"
+      - "${AUTH_SERVICE_PORT:-8081}:8080"
     depends_on:
       auth-seed-admin:
         condition: service_completed_successfully
@@ -116,6 +116,30 @@ services:
       JWT_SECRET: ${JWT_SECRET}
     ports:
       - "8082:8082"
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+    networks:
+      - umkm_network
+
+  # ============================================================
+  # Training Service (merged with Certificate Service)
+  # ============================================================
+  training-service:
+    build:
+      context: ../services/training-service
+      dockerfile: Dockerfile
+    container_name: umkm_training_service
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      SERVER_HOST: 0.0.0.0
+      TRAINING_SERVICE_PORT: ${TRAINING_SERVICE_PORT:-8083}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      DATABASE_URL: postgres://${POSTGRES_USER:-umkm_user}:${POSTGRES_PASSWORD:-umkm_password}@postgres:5432/${POSTGRES_DB:-umkm_tumbuh}?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET}
+    ports:
+      - "8083:8083"
     depends_on:
       db-migrate:
         condition: service_completed_successfully

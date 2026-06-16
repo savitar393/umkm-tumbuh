@@ -49,6 +49,17 @@ const thumbColors = [
   "#2563eb", "#059669", "#7c3aed", "#0891b2",
 ];
 
+const defaultThumbnails = [
+  "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=400&h=250&fit=crop",
+  "https://images.unsplash.com/photo-1552664730-d307ca884978?w=400&h=250&fit=crop",
+  "https://images.unsplash.com/photo-1531482615713-2afd69097998?w=400&h=250&fit=crop",
+  "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=400&h=250&fit=crop",
+  "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=400&h=250&fit=crop",
+  "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=400&h=250&fit=crop",
+  "https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=400&h=250&fit=crop",
+  "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=400&h=250&fit=crop",
+];
+
 const levelColors: Record<string, { bg: string; text: string }> = {
   Pemula: { bg: "#d1fae5", text: "#065f46" },
   Menengah: { bg: "#fef3c7", text: "#92400e" },
@@ -69,9 +80,11 @@ function getInitial(name: string | null): string {
 function TrainingCard({ t, idx }: { t: TrainingProgram; idx: number }) {
   const navigate = useNavigate();
   const [hovered, setHovered] = useState(false);
+  const [imgError, setImgError] = useState(false);
   const level = getLevel(t.durasi_jam);
   const lc = levelColors[level] || { bg: "#ede9fe", text: "#5b21b6" };
   const color = thumbColors[idx % thumbColors.length];
+  const thumbSrc = t.thumbnail_url || defaultThumbnails[idx % defaultThumbnails.length];
 
   const cardStyle: CSSProperties = {
     background: "#fff",
@@ -92,9 +105,31 @@ function TrainingCard({ t, idx }: { t: TrainingProgram; idx: number }) {
     <div style={cardStyle} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
       onClick={() => navigate(`/umkm/trainings/${t.pelatihan_id}`)}>
       <div style={{
-        height: 172, background: `linear-gradient(135deg, ${color}ee, ${color}99)`,
-        display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden"
+        height: 172, position: "relative", overflow: "hidden",
+        background: imgError ? `linear-gradient(135deg, ${color}ee, ${color}99)` : "none",
+        display: "flex", alignItems: "center", justifyContent: "center",
       }}>
+        {imgError ? (
+          <div style={{
+            width: 70, height: 70, borderRadius: "50%",
+            background: "rgba(255,255,255,0.2)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 28, fontWeight: 700, color: "rgba(255,255,255,0.85)",
+            transition: "transform 0.3s", transform: hovered ? "scale(1.1)" : "scale(1)",
+          }}>
+            {t.judul_pelatihan.charAt(0)}
+          </div>
+        ) : (
+          <img
+            src={thumbSrc}
+            alt={t.judul_pelatihan}
+            style={{
+              width: "100%", height: "100%", objectFit: "cover",
+              transition: "transform 0.3s", transform: hovered ? "scale(1.08)" : "scale(1)",
+            }}
+            onError={() => setImgError(true)}
+          />
+        )}
         {t.rating_rata_rata && t.rating_rata_rata >= 4.5 && (
           <div style={{
             position: "absolute", top: 10, left: 10,
@@ -105,15 +140,6 @@ function TrainingCard({ t, idx }: { t: TrainingProgram; idx: number }) {
             <StarIcon />TERPOPULER
           </div>
         )}
-        <div style={{
-          width: 70, height: 70, borderRadius: "50%",
-          background: "rgba(255,255,255,0.2)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 28, fontWeight: 700, color: "rgba(255,255,255,0.85)",
-          transition: "transform 0.3s", transform: hovered ? "scale(1.1)" : "scale(1)",
-        }}>
-          {t.judul_pelatihan.charAt(0)}
-        </div>
       </div>
 
       <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>

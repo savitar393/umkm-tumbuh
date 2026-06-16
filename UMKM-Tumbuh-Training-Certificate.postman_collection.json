@@ -1,0 +1,422 @@
+{
+	"info": {
+		"name": "UMKM Tumbuh - Training & Certificate Service",
+		"description": "Postman Collection untuk testing Training Service dan Certificate Service\n\n## Cara Pakai\n1. Buka folder **Auth Service** → **POST Login** → login sebagai admin\n2. Copy `access_token` → set variable `token`\n3. Buka **Auth Service** → **POST Register** → daftar akun UMKM\n4. **PATCH Approve Registration** → approve sebagai admin\n5. **User Service** → **PUT Create Profile** → buat profil UMKM\n6. Jalankan endpoint berurutan: **Trainings → Enrollments → Certificates**\n\n## Base URL\n```\nTraining Service : http://localhost:8083/api/v1\nAuth Service     : http://localhost:8081/api/v1\nUser Service     : http://localhost:8082/api/v1\n```\n\n## Variables\n- `baseUrl`: `http://localhost:8083/api/v1`\n- `token`: JWT Bearer token (isi setelah login)\n- `trainingId`: ID pelatihan (dari GET /trainings)\n- `umkmId`: ID UMKM (dari PUT /profiles/me)\n- `pendaftaranId`: ID pendaftaran (dari POST /enroll)\n- `certId`: ID sertifikat (dari GET /certificates)\n\n## Flow Testing\nHealth → Trainings → Auth (login) → Auth (register) → User (profile) → Enrollments → Certificates",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "umkm-tumbuh"
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"item": [
+				{
+					"name": "GET Health",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/health",
+							"host": ["{{baseUrl}}"],
+							"path": ["health"]
+						},
+						"description": "Cek status service"
+					},
+					"response": []
+				},
+				{
+					"name": "GET Database Health",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/health/db",
+							"host": ["{{baseUrl}}"],
+							"path": ["health", "db"]
+						},
+						"description": "Cek koneksi database"
+					},
+					"response": []
+				}
+			],
+			"description": "Public endpoints untuk mengecek status service dan database"
+		},
+		{
+			"name": "Auth Service (Setup Akun)",
+			"item": [
+				{
+					"name": "POST Login Admin",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"admin12345\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8081/api/v1/auth/login",
+							"host": ["http", "://localhost", "8081"],
+							"path": ["api", "v1", "auth", "login"]
+						},
+						"description": "Login sebagai admin. Copy `access_token` ke variable `token`."
+					},
+					"response": []
+				},
+				{
+					"name": "POST Register UMKM",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"umkm@test.com\",\n  \"password\": \"password123\",\n  \"full_name\": \"UMKM Test\",\n  \"phone_number\": \"081234567890\",\n  \"role\": \"UMKM\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8081/api/v1/auth/register",
+							"host": ["http", "://localhost", "8081"],
+							"path": ["api", "v1", "auth", "register"]
+						},
+						"description": "Daftar akun UMKM baru. Response `id` = akun_id (contoh: AKUNxxx)."
+					},
+					"response": []
+				},
+				{
+					"name": "PATCH Approve Registration",
+					"request": {
+						"method": "PATCH",
+						"header": [],
+						"url": {
+							"raw": "http://localhost:8081/api/v1/admin/registrations/AKUN376D8B96F8FC4748/approve",
+							"host": ["http", "://localhost", "8081"],
+							"path": ["api", "v1", "admin", "registrations", "AKUN376D8B96F8FC4748", "approve"]
+						},
+						"description": "Approve registrasi UMKM sebagai admin. Ganti ID akun sesuai response register."
+					},
+					"response": []
+				},
+				{
+					"name": "POST Login UMKM",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"umkm@test.com\",\n  \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8081/api/v1/auth/login",
+							"host": ["http", "://localhost", "8081"],
+							"path": ["api", "v1", "auth", "login"]
+						},
+						"description": "Login sebagai UMKM. Copy token ke variable `token` untuk step selanjutnya."
+					},
+					"response": []
+				},
+				{
+					"name": "PUT Create UMKM Profile",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"business_name\": \"Toko UMKM Test\",\n  \"owner_name\": \"UMKM Test\",\n  \"nik\": \"1234567890123456\",\n  \"phone_number\": \"081234567890\",\n  \"address\": \"Jl. Merdeka No. 1\",\n  \"city\": \"Jakarta\",\n  \"province\": \"DKI Jakarta\",\n  \"district\": \"Gambir\",\n  \"village\": \"Gambir\",\n  \"postal_code\": \"10110\",\n  \"business_category\": \"UMUM\"\n}"
+						},
+						"url": {
+							"raw": "http://localhost:8082/api/v1/profiles/me",
+							"host": ["http", "://localhost", "8082"],
+							"path": ["api", "v1", "profiles", "me"]
+						},
+						"description": "Buat profil UMKM (User Service port 8082). Response `id` = umkm_id (contoh: UMKMxxx). Set ke variable `umkmId`."
+					},
+					"response": []
+				}
+			],
+			"description": "Setup akun admin dan UMKM sebelum testing endpoints lain."
+		},
+		{
+			"name": "Trainings",
+			"item": [
+				{
+					"name": "GET All Trainings",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/trainings",
+							"host": ["{{baseUrl}}"],
+							"path": ["trainings"]
+						},
+						"description": "Ambil semua program pelatihan yang aktif. Copy `pelatihan_id` ke variable `trainingId`."
+					},
+					"response": []
+				},
+				{
+					"name": "GET Training By ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/trainings/{{trainingId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["trainings", "{{trainingId}}"]
+						},
+						"description": "Ambil detail pelatihan berdasarkan ID"
+					},
+					"response": []
+				},
+				{
+					"name": "GET Training Detail with Modules",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/trainings/{{trainingId}}/detail",
+							"host": ["{{baseUrl}}"],
+							"path": ["trainings", "{{trainingId}}", "detail"]
+						},
+						"description": "Ambil detail pelatihan beserta modul-modulnya"
+					},
+					"response": []
+				}
+			],
+			"description": "Public endpoints untuk melihat program pelatihan"
+		},
+		{
+			"name": "Enrollments (Auth)",
+			"item": [
+				{
+					"name": "POST Enroll User",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"umkm_id\": \"{{umkmId}}\",\n  \"pelatihan_id\": \"{{trainingId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/trainings/enroll",
+							"host": ["{{baseUrl}}"],
+							"path": ["trainings", "enroll"]
+						},
+						"description": "Daftarkan UMKM ke program pelatihan\n\n**Auth:** Bearer token required\nRequest body: `umkm_id`, `pelatihan_id`\n\nCopy `pendaftaran_pelatihan_id` ke variable `pendaftaranId`."
+					},
+					"response": []
+				},
+				{
+					"name": "GET User Enrollments",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/enrollments/user/{{umkmId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["enrollments", "user", "{{umkmId}}"]
+						},
+						"description": "Ambil semua pendaftaran pelatihan milik UMKM\n\n**Auth:** Bearer token required"
+					},
+					"response": []
+				},
+				{
+					"name": "PATCH Update Progress",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"pendaftaran_pelatihan_id\": \"{{pendaftaranId}}\",\n  \"modul_selesai\": 5,\n  \"total_modul\": 5\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/enrollments/progress",
+							"host": ["{{baseUrl}}"],
+							"path": ["enrollments", "progress"]
+						},
+						"description": "Update progress modul. Set `modul_selesai` = `total_modul` untuk mencapai 100%."
+					},
+					"response": []
+				},
+				{
+					"name": "PATCH Complete Training",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"pendaftaran_pelatihan_id\": \"{{pendaftaranId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/enrollments/complete",
+							"host": ["{{baseUrl}}"],
+							"path": ["enrollments", "complete"]
+						},
+						"description": "Tandai pelatihan selesai. Error 400 = modul belum semua selesai. Update progress dulu."
+					},
+					"response": []
+				}
+			],
+			"description": "Protected endpoints untuk manajemen enrollment/pendaftaran pelatihan.\n\n> Semua endpoint di folder ini memerlukan **JWT Bearer token** (isi variable `token`)."
+		},
+		{
+			"name": "Certificates (Auth)",
+			"item": [
+				{
+					"name": "POST Request Certificate",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"name": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"pendaftaran_pelatihan_id\": \"{{pendaftaranId}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/certificates/request",
+							"host": ["{{baseUrl}}"],
+							"path": ["certificates", "request"]
+						},
+						"description": "Ajukan sertifikat. Hanya bisa untuk pelatihan yang sudah selesai (status SELESAI).\nResponse: `sertifikat_id`, `nomor_sertifikat`"
+					},
+					"response": []
+				},
+				{
+					"name": "GET User Dashboard",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/certificates/user/{{umkmId}}/dashboard",
+							"host": ["{{baseUrl}}"],
+							"path": ["certificates", "user", "{{umkmId}}", "dashboard"]
+						},
+						"description": "Ringkasan dashboard: total pelatihan, selesai, sertifikat, terbit."
+					},
+					"response": []
+				},
+				{
+					"name": "GET User Certificates",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/certificates/user/{{umkmId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["certificates", "user", "{{umkmId}}"]
+						},
+						"description": "Semua sertifikat milik UMKM. Copy `sertifikat_id` ke variable `certId`."
+					},
+					"response": []
+				},
+				{
+					"name": "GET Certificate By ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/certificates/{{certId}}",
+							"host": ["{{baseUrl}}"],
+							"path": ["certificates", "{{certId}}"]
+						},
+						"description": "Detail sertifikat berdasarkan ID."
+					},
+					"response": []
+				}
+			],
+			"description": "Protected endpoints untuk manajemen sertifikat pelatihan.\n\n> Semua endpoint memerlukan **JWT Bearer token** (isi variable `token`)."
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8083/api/v1",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "trainingId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "umkmId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "pendaftaranId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "certId",
+			"value": "",
+			"type": "string"
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{token}}",
+				"type": "string"
+			}
+		]
+	}
+}

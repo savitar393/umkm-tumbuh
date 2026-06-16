@@ -154,10 +154,10 @@ export default function TrainingAfterSuccessPage() {
                   <Icon icon="mdi:view-dashboard" style={{ fontSize: 18 }} />
                   Dashboard Pelatihan
                 </button>
-                <button onClick={() => navigate(`/umkm/trainings/${id}/list`)}
+                <button onClick={() => navigate(`/umkm/trainings/${id}`)}
                   style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, cursor: "pointer", fontSize: 13, color: "#475569", fontWeight: 600 }}>
                   <Icon icon="mdi:book-open" style={{ fontSize: 18 }} />
-                  Lihat Modul
+                  Detail Pelatihan
                 </button>
               </div>
             </div>

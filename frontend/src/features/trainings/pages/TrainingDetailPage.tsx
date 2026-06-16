@@ -50,6 +50,8 @@ export default function TrainingDetailPage() {
   const setUmkmId = useTrainingStore((s) => s.setUmkmId);
 
   const [showTerms, setShowTerms] = useState(false);
+  const [thumbError, setThumbError] = useState(false);
+  const thumbnailSrc = detail?.training.thumbnail_url || "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=800&h=400&fit=crop";
 
   const handleConfirmRegister = async () => {
     setShowTerms(false);
@@ -244,9 +246,10 @@ export default function TrainingDetailPage() {
                 </p>
               )}
 
-              {training.thumbnail_url && (
-                <img src={training.thumbnail_url} alt={training.judul_pelatihan}
-                  style={{ width: "100%", borderRadius: 12, marginTop: 16 }} />
+              {!thumbError && (
+                <img src={thumbnailSrc} alt={training.judul_pelatihan}
+                  style={{ width: "100%", borderRadius: 12, marginTop: 16 }}
+                  onError={() => setThumbError(true)} />
               )}
             </div>
           </div>

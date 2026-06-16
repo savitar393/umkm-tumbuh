@@ -2,12 +2,18 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import Footer from "../../../shared/components/Footer";
+import { useCompleteTraining, useUserEnrollments } from "../hooks";
+import { useTrainingStore } from "../store";
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function TrainingEvaluationPage() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const umkmId = useTrainingStore((s) => s.umkmId);
+  const { data: enrollments } = useUserEnrollments(umkmId);
+  const completeMutation = useCompleteTraining();
+  const enrollment = (enrollments || []).find((e) => e.pelatihan_id === id);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [checkboxes, setCheckboxes] = useState({
@@ -58,10 +64,11 @@ export default function TrainingEvaluationPage() {
   const canSubmit = selectedFile && allChecked;
 
   const handleSubmit = () => {
-    if (!canSubmit) return;
-    // TODO: Submit logic here
-    alert("Evaluasi berhasil dikirim!");
-    navigate(`/umkm/trainings/${id}/verification`);
+    if (!canSubmit || !enrollment) return;
+    completeMutation.mutate(
+      { pendaftaran_pelatihan_id: enrollment.pendaftaran_pelatihan_id },
+      { onSuccess: () => navigate(`/umkm/trainings/${id}/verification`) }
+    );
   };
 
   return (
@@ -76,14 +83,11 @@ export default function TrainingEvaluationPage() {
             <input type="text" placeholder="Cari materi..." style={{ width: "100%", padding: "8px 12px 8px 38px", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "13px", outline: "none", background: "#f8fafc" }} />
           </div>
 
-          <button style={{ width: "34px", height: "34px", borderRadius: "50%", border: "1px solid #e2e8f0", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#64748b" }}>
-            <Icon icon="mdi:bell-outline" style={{ fontSize: "18px" }} />
-          </button>
-          <button style={{ width: "34px", height: "34px", borderRadius: "50%", border: "1px solid #e2e8f0", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#64748b" }}>
-            <Icon icon="mdi:help-circle-outline" style={{ fontSize: "18px" }} />
-          </button>
-          <div style={{ width: "34px", height: "34px", borderRadius: "50%", background: "#cbd5e1", display: "flex", alignItems: "center", justifyContent: "center", color: "#475569", fontWeight: "600", fontSize: "13px", border: "2px solid #fff", boxShadow: "0 0 0 1px #e2e8f0" }}>
-            <Icon icon="mdi:account" style={{ fontSize: "18px" }} />
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <div style={{ width: "34px", height: "34px", borderRadius: "50%", background: "linear-gradient(135deg, #FFD700, #f59e0b)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 6px rgba(255,215,0,0.3)" }}>
+              <Icon icon="mdi:account" style={{ fontSize: "18px", color: "#1a3fa4" }} />
+            </div>
+            <span style={{ color: "#0f172a", fontWeight: 600, fontSize: "13px" }}>User UMKM</span>
           </div>
         </div>
       </div>
@@ -227,24 +231,24 @@ export default function TrainingEvaluationPage() {
 
           <button
             onClick={handleSubmit}
-            disabled={!canSubmit}
+            disabled={!canSubmit || completeMutation.isPending}
             style={{
               padding: "16px 40px",
-              background: canSubmit ? "linear-gradient(135deg, #1a3fa4 0%, #1e3a8a 100%)" : "#e2e8f0",
+              background: canSubmit && !completeMutation.isPending ? "linear-gradient(135deg, #1a3fa4 0%, #1e3a8a 100%)" : "#e2e8f0",
               border: "none",
               borderRadius: "12px",
               fontSize: "16px",
               fontWeight: "700",
-              color: canSubmit ? "#fff" : "#94a3b8",
-              cursor: canSubmit ? "pointer" : "not-allowed",
+              color: canSubmit && !completeMutation.isPending ? "#fff" : "#94a3b8",
+              cursor: canSubmit && !completeMutation.isPending ? "pointer" : "not-allowed",
               display: "flex",
               alignItems: "center",
               gap: "10px",
-              boxShadow: canSubmit ? "0 4px 14px rgba(26,63,164,0.35)" : "none",
+              boxShadow: canSubmit && !completeMutation.isPending ? "0 4px 14px rgba(26,63,164,0.35)" : "none",
               transition: "all 0.2s",
             }}
           >
-            Kirim Evaluasi Akhir
+            {completeMutation.isPending ? "Mengirim..." : "Kirim Evaluasi Akhir"}
             <Icon icon="mdi:send" style={{ fontSize: "20px" }} />
           </button>
         </div>

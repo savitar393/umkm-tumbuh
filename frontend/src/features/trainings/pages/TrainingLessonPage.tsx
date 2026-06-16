@@ -137,13 +137,11 @@ export default function TrainingLessonPage() {
             <Icon icon="mdi:chevron-right" style={{ fontSize: 16, color: "#cbd5e1" }} />
             <span style={{ fontSize: 13, fontWeight: 600, color: "#0f172a" }}>{currentModule?.judul_modul || "Materi"}</span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <button style={{ width: 34, height: 34, borderRadius: "50%", border: "1px solid #e2e8f0", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-              <Icon icon="mdi:bell-outline" style={{ fontSize: 18, color: "#64748b" }} />
-            </button>
-            <div style={{ width: 34, height: 34, borderRadius: "50%", background: "#cbd5e1", display: "flex", alignItems: "center", justifyContent: "center", color: "#475569", fontWeight: 600, fontSize: 13 }}>
-              <Icon icon="mdi:account" style={{ fontSize: 18 }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 34, height: 34, borderRadius: "50%", background: "linear-gradient(135deg, #FFD700, #f59e0b)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 6px rgba(255,215,0,0.3)" }}>
+              <Icon icon="mdi:account" style={{ fontSize: 18, color: "#1a3fa4" }} />
             </div>
+            <span style={{ color: "#0f172a", fontWeight: 600, fontSize: 13 }}>User UMKM</span>
           </div>
         </div>
 

@@ -1,9 +1,18 @@
 import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useState } from "react";
 import { Icon } from "@iconify/react";
 import Header from "../../../shared/components/Header";
 import Footer from "../../../shared/components/Footer";
 import { useTrainings } from "../hooks";
 import type { Enrollment } from "../types";
+
+const relatedThumbnails = [
+  "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=400&h=250&fit=crop",
+  "https://images.unsplash.com/photo-1552664730-d307ca884978?w=400&h=250&fit=crop",
+  "https://images.unsplash.com/photo-1531482615713-2afd69097998?w=400&h=250&fit=crop",
+  "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=400&h=250&fit=crop",
+  "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=400&h=250&fit=crop",
+];
 
 export default function TrainingSuccessPage() {
   const navigate = useNavigate();
@@ -104,19 +113,18 @@ export default function TrainingSuccessPage() {
             <section>
               <h3 style={{ fontSize: "18px", fontWeight: 800, color: "#0f172a", margin: "0 0 20px" }}>Jelajahi Konten Terkait</h3>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "20px" }}>
-                {related.map((t) => (
+                {related.map((t, i) => (
                   <div
                     key={t.pelatihan_id}
                     onClick={() => navigate(`/umkm/trainings/${t.pelatihan_id}`)}
                     style={{ background: "#fff", borderRadius: "16px", overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.08)", cursor: "pointer", transition: "transform 0.2s" }}
                   >
-                    {t.thumbnail_url ? (
-                      <img src={t.thumbnail_url} alt={t.judul_pelatihan} style={{ width: "100%", height: "160px", objectFit: "cover" }} />
-                    ) : (
-                      <div style={{ height: "160px", background: "linear-gradient(135deg, #1a3fa4, #2563eb)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: "14px", fontWeight: 600 }}>
-                        {t.judul_pelatihan}
-                      </div>
-                    )}
+                    <div style={{ height: "160px", background: "linear-gradient(135deg, #1a3fa4, #2563eb)", position: "relative" }}>
+                      <img src={t.thumbnail_url || relatedThumbnails[i % relatedThumbnails.length]} alt={t.judul_pelatihan}
+                        style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }}
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                      />
+                    </div>
                     <div style={{ padding: "16px" }}>
                       <h4 style={{ fontSize: "14px", fontWeight: 700, color: "#0f172a", margin: "0 0 4px" }}>{t.judul_pelatihan}</h4>
                       <p style={{ fontSize: "12px", color: "#64748b", margin: 0 }}>{t.durasi_jam} Jam • {t.jenis_pelatihan}</p>

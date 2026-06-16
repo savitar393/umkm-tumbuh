@@ -1,21 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { Icon } from "@iconify/react";
 import logoImg from "../../assets/umkm-tumbuh.webp";
-
-const HelpIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10"/>
-    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-    <line x1="12" y1="17" x2="12.01" y2="17"/>
-  </svg>
-);
-
-const UserCircleIcon = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-    <circle cx="12" cy="7" r="4"/>
-  </svg>
-);
 
 const MenuIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -55,8 +41,8 @@ export default function Header() {
         height: 64,
       }}>
 
-        {/* Logo - menggunakan gambar umkm-tumbuh.webp dengan warna asli */}
-        <Link to="/" style={{ display: "flex", alignItems: "center", textDecoration: "none" }}>
+        {/* Logo + Teks Emas */}
+        <Link to="/" style={{ display: "flex", alignItems: "center", textDecoration: "none", gap: 10 }}>
           <img 
             src={logoImg} 
             alt="UMKM Tumbuh" 
@@ -64,9 +50,17 @@ export default function Header() {
               height: 40, 
               width: "auto",
               display: "block",
-              // HAPUS filter: "brightness(0) invert(1)" - biar warna asli
             }} 
           />
+          <span style={{
+            fontWeight: 800,
+            fontSize: 18,
+            color: "#FFD700",
+            letterSpacing: -0.3,
+            fontFamily: "'Plus Jakarta Sans', 'Segoe UI', sans-serif",
+          }}>
+            UMKM Tumbuh
+          </span>
         </Link>
 
         {/* Desktop Nav */}
@@ -92,27 +86,21 @@ export default function Header() {
           })}
         </nav>
 
-        {/* Right: help icon + user */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <button style={{
-            width: 36, height: 36, borderRadius: "50%",
-            border: "none", background: "rgba(255,255,255,0.15)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            cursor: "pointer", color: "#fff",
-            transition: "background 0.2s",
-          }}>
-            <HelpIcon />
-          </button>
-
-          <button style={{
-            width: 36, height: 36, borderRadius: "50%",
-            border: "none", background: "rgba(255,255,255,0.2)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            cursor: "pointer", color: "#fff",
-            transition: "background 0.2s",
-          }}>
-            <UserCircleIcon />
-          </button>
+        {/* Right: user profile + mobile hamburger */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div className="hidden-mobile" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{
+              width: 36, height: 36, borderRadius: "50%",
+              background: "linear-gradient(135deg, #FFD700, #f59e0b)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              boxShadow: "0 2px 8px rgba(255,215,0,0.4)",
+            }}>
+              <Icon icon="mdi:account" style={{ fontSize: 20, color: "#1a3fa4" }} />
+            </div>
+            <span style={{ color: "#fff", fontWeight: 600, fontSize: 14 }}>
+              User UMKM
+            </span>
+          </div>
 
           {/* Mobile hamburger */}
           <button

@@ -412,7 +412,16 @@ export default function TrainingDashboardPage() {
                       </p>
                     </div>
                     {c.nomor_sertifikat && (
-                      <button className="btn-dl" title={c.nomor_sertifikat}><IconDownload /></button>
+                      <button
+                        className="btn-dl"
+                        title={c.dokumen_url ? c.nomor_sertifikat : "Dokumen belum tersedia"}
+                        onClick={() => {
+                          if (c.dokumen_url) window.open(c.dokumen_url, "_blank");
+                        }}
+                        style={{ opacity: c.dokumen_url ? 1 : 0.4, cursor: c.dokumen_url ? "pointer" : "not-allowed" }}
+                      >
+                        <IconDownload />
+                      </button>
                     )}
                   </div>
                 ))}
