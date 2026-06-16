@@ -38,10 +38,10 @@ type UMKMDashboardData struct {
 // ─── Monitoring Business ─────────────────────────────────────────────────────
 
 type MonitoringBusinessResponse struct {
-	NamaUMKM          string           `json:"nama_umkm"`
-	KategoriUsaha     string           `json:"kategori_usaha"`
-	ChartData         ChartData        `json:"chart_data"`
-	Summary           MonitoringSummary `json:"summary"`
+	NamaUMKM      string            `json:"nama_umkm"`
+	KategoriUsaha string            `json:"kategori_usaha"`
+	ChartData     ChartData         `json:"chart_data"`
+	Summary       MonitoringSummary `json:"summary"`
 }
 
 type ChartData struct {
@@ -58,12 +58,12 @@ type Dataset struct {
 }
 
 type MonitoringSummary struct {
-	TotalOmzet          float64 `json:"total_omzet"`
-	GrowthRate          float64 `json:"growth_rate"`
-	TotalProduksi       int64   `json:"total_produksi"`
-	StatusPerkembangan  string  `json:"status_perkembangan"`
-	TotalItemTerjual    int64   `json:"total_item_terjual"`
-	RataRataPerItem     float64 `json:"rata_rata_per_item"`
+	TotalOmzet         float64 `json:"total_omzet"`
+	GrowthRate         float64 `json:"growth_rate"`
+	TotalProduksi      int64   `json:"total_produksi"`
+	StatusPerkembangan string  `json:"status_perkembangan"`
+	TotalItemTerjual   int64   `json:"total_item_terjual"`
+	RataRataPerItem    float64 `json:"rata_rata_per_item"`
 }
 
 // ─── Mitra Dashboard ─────────────────────────────────────────────────────────
