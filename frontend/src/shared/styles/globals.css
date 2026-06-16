@@ -1409,6 +1409,147 @@ button.danger {
   font-style: italic;
 }
 
+/* ── Combobox ── */
+.ufb-combobox {
+  position: relative;
+  width: 100%;
+}
+
+.ufb-combobox-input {
+  width: 100%;
+  min-height: 44px;
+  border-radius: 14px;
+  border: 1px solid #e5e7eb;
+  background: #f8fafc;
+  padding: 12px 36px 12px 14px;
+  color: #111827;
+  font-size: 14px;
+  outline: none;
+}
+
+.ufb-combobox-input:focus {
+  border-color: #1f45b6;
+  background: #fff;
+}
+
+.ufb-combobox-clear {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #9ca3af;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.ufb-combobox-clear:hover {
+  color: #6b7280;
+}
+
+.ufb-combobox-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  margin-top: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.ufb-combobox-item {
+  padding: 10px 14px;
+  font-size: 14px;
+  cursor: pointer;
+  color: #111827;
+}
+
+.ufb-combobox-item:hover {
+  background: #eef3ff;
+}
+
+.ufb-combobox-item.active {
+  background: #eef3ff;
+  font-weight: 600;
+  color: #1f45b6;
+}
+
+.ufb-combobox-empty {
+  padding: 12px 14px;
+  font-size: 13px;
+  color: #9ca3af;
+  text-align: center;
+}
+
+/* ── Profile Progress Bar ── */
+.ud-profile-progress {
+  background: #fff;
+  border-radius: 24px;
+  padding: 16px 20px;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
+  margin-bottom: 16px;
+}
+
+.ud-profile-progress__info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.ud-profile-progress__text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.ud-profile-progress__text strong {
+  color: #111827;
+}
+
+.ud-profile-progress__btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 16px;
+  border-radius: 20px;
+  border: 1px solid #1f45b6;
+  color: #1f45b6;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.ud-profile-progress__btn:hover {
+  background: #1f45b6;
+  color: #fff;
+}
+
+.ud-profile-progress__bar {
+  width: 100%;
+  height: 6px;
+  background: #e5e7eb;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.ud-profile-progress__fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f59e0b, #f97316);
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
 /* ===================== UMKM / MITRA DASHBOARD ===================== */
 
 .ud-loading {

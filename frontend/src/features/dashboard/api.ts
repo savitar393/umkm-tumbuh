@@ -1,25 +1,5 @@
 import { http } from "../../shared/api/http";
 
-const USER_API = import.meta.env.VITE_USER_API_BASE_URL ?? "http://localhost:8081/api/v1";
-
-function userHttp<T>(path: string): Promise<T> {
-  return http<T>(path, { auth: true } as Parameters<typeof http>[1] & { _base?: string });
-}
-
-// Panggil user-service langsung (port 8081)
-async function userServiceGet<T>(path: string): Promise<T> {
-  const token = localStorage.getItem("access_token");
-  const res = await fetch(`${USER_API}${path}`, {
-    headers: {
-      Authorization: token ? `Bearer ${token}` : "",
-      "Content-Type": "application/json",
-    },
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data?.error ?? "Terjadi kesalahan");
-  return data as T;
-}
-
 // ─── UMKM Dashboard Types ──────────────────────────────────────────────────
 
 export type LabaHarianItem = {
@@ -39,6 +19,9 @@ export type UMKMDashboardData = {
   total_omzet_hari_ini: number;
   total_omzet_kemarin: number;
   persen_vs_kemarin: number;
+  omzet_bulan_ini: number;
+  omzet_bulan_lalu: number;
+  persen_vs_bulan_lalu: number;
   total_item_terjual: number;
   rata_rata_per_item: number;
   laba_harian: LabaHarianItem[];
@@ -46,6 +29,7 @@ export type UMKMDashboardData = {
   total_hari: number;
   filter_bulan: string;
   filter_tahun: number;
+  trend_days: number;
 };
 
 // ─── Mitra Dashboard Types ─────────────────────────────────────────────────
@@ -58,14 +42,19 @@ export type UMKMMitraItem = {
 export type UMKMDashboardForMitra = {
   umkm_id: string;
   nama_umkm: string;
+  kategori_usaha: string;
   total_omzet_hari_ini: number;
   total_omzet_kemarin: number;
   persen_vs_kemarin: number;
+  omzet_bulan_ini: number;
+  omzet_bulan_lalu: number;
+  persen_vs_bulan_lalu: number;
   total_item_terjual: number;
   rata_rata_per_item: number;
   laba_harian: LabaHarianItem[];
   tren_mingguan: TrenMingguan[];
   total_hari: number;
+  trend_days: number;
 };
 
 export type MitraDashboardData = {
@@ -76,20 +65,22 @@ export type MitraDashboardData = {
 
 // ─── API Calls ─────────────────────────────────────────────────────────────
 
-export function getUMKMDashboard(dateFrom?: string, dateTo?: string): Promise<UMKMDashboardData> {
+export function getUMKMDashboard(dateFrom: string, dateTo: string): Promise<UMKMDashboardData> {
   const params = new URLSearchParams();
-  if (dateFrom) params.set("date_from", dateFrom);
-  if (dateTo) params.set("date_to", dateTo);
-  const qs = params.toString() ? `?${params.toString()}` : "";
-  return userServiceGet<UMKMDashboardData>(`/dashboard/umkm${qs}`);
+  params.set("date_from", dateFrom);
+  params.set("date_to", dateTo);
+  return http<UMKMDashboardData>(`/dashboard/umkm?${params.toString()}`, { auth: true, useUserApi: true });
+}
+
+export function checkProfileExists(): Promise<boolean> {
+  return http<unknown>("/profiles/me", { auth: true, useUserApi: true })
+    .then(() => true)
+    .catch(() => false);
 }
 
 export function getMitraDashboard(umkmId?: string): Promise<MitraDashboardData> {
   const params = new URLSearchParams();
   if (umkmId) params.set("umkm_id", umkmId);
   const qs = params.toString() ? `?${params.toString()}` : "";
-  return userServiceGet<MitraDashboardData>(`/dashboard/mitra${qs}`);
+  return http<MitraDashboardData>(`/dashboard/mitra${qs}`, { auth: true, useUserApi: true });
 }
-
-// Supaya tidak error TS — export kosong untuk userHttp juga
-export { userHttp };

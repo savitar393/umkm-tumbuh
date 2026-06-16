@@ -99,6 +99,7 @@ export type DashboardData = {
   atensi: AtensiData;
 };
 
-export function getDashboard() {
-  return http<DashboardData>("/admin/dashboard");
+export function getDashboard(queryString?: string) {
+  const path = queryString ? `/admin/dashboard${queryString}` : "/admin/dashboard";
+  return http<DashboardData>(path);
 }

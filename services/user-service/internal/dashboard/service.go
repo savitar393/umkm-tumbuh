@@ -19,7 +19,6 @@ func (s *Service) GetUMKMDashboard(ctx context.Context, accountID, dateFrom, dat
 	// 1. Resolve umkm_id — kalau belum punya profil UMKM, return kosong bukan error
 	umkmID, namaUMKM, err := s.Repo.GetUMKMByAccount(ctx, accountID)
 	if err != nil {
-		// Akun belum punya profil UMKM — return data kosong, bukan 500
 		return &UMKMDashboardData{
 			NamaUMKM:     "Profil belum dibuat",
 			LabaHarian:   []LabaHarianItem{},
@@ -29,7 +28,7 @@ func (s *Service) GetUMKMDashboard(ctx context.Context, accountID, dateFrom, dat
 		}, nil
 	}
 
-	// 2. Resolusi rentang tanggal — selalu gunakan rentang dari data yang ada
+	// 2. Resolusi rentang tanggal
 	minDB, maxDB, rangeErr := s.Repo.GetDefaultDateRange(ctx, umkmID)
 	if rangeErr != nil || minDB == "" {
 		now := time.Now()
@@ -37,7 +36,6 @@ func (s *Service) GetUMKMDashboard(ctx context.Context, accountID, dateFrom, dat
 		maxDB = now.Format("2006-01-02")
 	}
 
-	// Kalau ada param dari user, pakai. Kalau tidak, default ke seluruh bulan dari data terbaru.
 	if dateTo == "" {
 		dateTo = maxDB
 	}
@@ -64,19 +62,26 @@ func (s *Service) GetUMKMDashboard(ctx context.Context, accountID, dateFrom, dat
 		rataRata = omzetHariIni / float64(totalItem)
 	}
 
-	// 6. Laba harian (tabel)
+	// 6. Omzet bulanan
+	omzetBulanIni, omzetBulanLalu, _ := s.Repo.GetOmzetBulanan(ctx, umkmID)
+	var persenBulan float64
+	if omzetBulanLalu > 0 {
+		persenBulan = ((omzetBulanIni - omzetBulanLalu) / omzetBulanLalu) * 100
+	}
+
+	// 7. Laba harian (tabel)
 	labaHarian, err := s.Repo.GetLabaHarian(ctx, umkmID, dateFrom, dateTo)
 	if err != nil || labaHarian == nil {
 		labaHarian = []LabaHarianItem{}
 	}
 
-	// 7. Tren mingguan (7 hari)
-	tren, err := s.Repo.GetTrenMingguan(ctx, umkmID, 7)
+	// 8. Tren — pakai 7 hari default (frontend minta data, kita selalu kirim 90 hari biar bisa filter 7/14/30/90 di FE)
+	tren, err := s.Repo.GetTrenMingguan(ctx, umkmID, 90)
 	if err != nil || tren == nil {
 		tren = []TrenMingguan{}
 	}
 
-	// 8. Parse nama bulan dari dateFrom
+	// 9. Parse nama bulan dari dateFrom
 	filterBulan := ""
 	filterTahun := time.Now().Year()
 	if t, err := time.Parse("2006-01-02", dateFrom); err == nil {
@@ -90,6 +95,9 @@ func (s *Service) GetUMKMDashboard(ctx context.Context, accountID, dateFrom, dat
 		TotalOmzetHariIni: omzetHariIni,
 		TotalOmzetKemarin: omzetKemarin,
 		PersenVsKemarin:   persen,
+		OmzetBulanIni:     omzetBulanIni,
+		OmzetBulanLalu:    omzetBulanLalu,
+		PersenVsBulanLalu: persenBulan,
 		TotalItemTerjual:  totalItem,
 		RataRataPerItem:   rataRata,
 		LabaHarian:        labaHarian,
@@ -99,13 +107,13 @@ func (s *Service) GetUMKMDashboard(ctx context.Context, accountID, dateFrom, dat
 		FilterTahun:       filterTahun,
 		DateFrom:          dateFrom,
 		DateTo:            dateTo,
+		TrendDays:         90,
 	}, nil
 }
 
 // ─── Mitra Dashboard ─────────────────────────────────────────────────────────
 
 func (s *Service) GetMitraDashboard(ctx context.Context, accountID, selectedUMKMID string) (*MitraDashboardData, error) {
-	// 1. Resolve mitra_id — kalau belum punya profil mitra, return kosong
 	mitraID, namaMitra, err := s.Repo.GetMitraByAccount(ctx, accountID)
 	if err != nil {
 		return &MitraDashboardData{
@@ -115,13 +123,11 @@ func (s *Service) GetMitraDashboard(ctx context.Context, accountID, selectedUMKM
 		}, nil
 	}
 
-	// 2. Daftar UMKM mitra
 	umkmList, err := s.Repo.GetUMKMPartnersOfMitra(ctx, mitraID)
 	if err != nil || umkmList == nil {
 		umkmList = []UMKMMitraItem{}
 	}
 
-	// 3. Tentukan UMKM yang akan ditampilkan
 	if selectedUMKMID == "" && len(umkmList) > 0 {
 		selectedUMKMID = umkmList[0].UMKMID
 	}
@@ -129,7 +135,6 @@ func (s *Service) GetMitraDashboard(ctx context.Context, accountID, selectedUMKM
 	var dashboard *UMKMDashboardForMitra
 
 	if selectedUMKMID != "" {
-		// Cari nama UMKM
 		namaUMKM := selectedUMKMID
 		for _, u := range umkmList {
 			if u.UMKMID == selectedUMKMID {
@@ -138,19 +143,18 @@ func (s *Service) GetMitraDashboard(ctx context.Context, accountID, selectedUMKM
 			}
 		}
 
-		// Gunakan tanggal dari data terbaru UMKM tersebut
 		dateFrom, dateTo, rangeErr := s.Repo.GetDefaultDateRange(ctx, selectedUMKMID)
 		if rangeErr != nil || dateFrom == "" {
 			now := time.Now()
 			dateFrom = now.Format("2006-01") + "-01"
 			dateTo = now.Format("2006-01-02")
 		} else {
-			// Ambil bulan dari tanggal terbaru
 			t, _ := time.Parse("2006-01-02", dateTo)
 			dateFrom = time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, t.Location()).Format("2006-01-02")
 		}
 
-		// Omzet summary
+		kategoriUsaha, _ := s.Repo.GetKategoriUsaha(ctx, selectedUMKMID)
+
 		omzetHariIni, omzetKemarin, totalItem, tglTerkini, _ := s.Repo.GetOmzetSummary(ctx, selectedUMKMID)
 
 		var persen float64
@@ -163,12 +167,18 @@ func (s *Service) GetMitraDashboard(ctx context.Context, accountID, selectedUMKM
 			rataRata = omzetHariIni / float64(totalItem)
 		}
 
+		omzetBulanIni, omzetBulanLalu, _ := s.Repo.GetOmzetBulanan(ctx, selectedUMKMID)
+		var persenBulan float64
+		if omzetBulanLalu > 0 {
+			persenBulan = ((omzetBulanIni - omzetBulanLalu) / omzetBulanLalu) * 100
+		}
+
 		labaHarian, _ := s.Repo.GetLabaHarian(ctx, selectedUMKMID, dateFrom, dateTo)
 		if labaHarian == nil {
 			labaHarian = []LabaHarianItem{}
 		}
 
-		tren, _ := s.Repo.GetTrenMingguan(ctx, selectedUMKMID, 7)
+		tren, _ := s.Repo.GetTrenMingguan(ctx, selectedUMKMID, 90)
 		if tren == nil {
 			tren = []TrenMingguan{}
 		}
@@ -176,10 +186,14 @@ func (s *Service) GetMitraDashboard(ctx context.Context, accountID, selectedUMKM
 		dashboard = &UMKMDashboardForMitra{
 			UMKMID:            selectedUMKMID,
 			NamaUMKM:          namaUMKM,
+			KategoriUsaha:     kategoriUsaha,
 			TglTerkini:        tglTerkini,
 			TotalOmzetHariIni: omzetHariIni,
 			TotalOmzetKemarin: omzetKemarin,
 			PersenVsKemarin:   persen,
+			OmzetBulanIni:     omzetBulanIni,
+			OmzetBulanLalu:    omzetBulanLalu,
+			PersenVsBulanLalu: persenBulan,
 			TotalItemTerjual:  totalItem,
 			RataRataPerItem:   rataRata,
 			LabaHarian:        labaHarian,
@@ -187,6 +201,7 @@ func (s *Service) GetMitraDashboard(ctx context.Context, accountID, selectedUMKM
 			TotalHari:         len(labaHarian),
 			DateFrom:          dateFrom,
 			DateTo:            dateTo,
+			TrendDays:         90,
 		}
 	}
 

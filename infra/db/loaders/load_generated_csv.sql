@@ -98,3 +98,8 @@ DROP TABLE tmp_registrasi;
 \copy training.transaksi_sertifikatpelatihan(pendaftaran_pelatihan_id, status_sertifikat_id, dokumen_id, nomor_sertifikat, tanggal_pengajuan, tanggal_terbit, diverifikasi_oleh_admin_id, catatan_validasi) FROM 'csv/transaksi_sertifikatpelatihan.csv' WITH (FORMAT csv, HEADER true, NULL '');
 \copy partnership.transaksi_pengajuankerjasama(pengajuan_id, kode_pengajuan, umkm_id, mitra_id, pengaju_akun_id, penerima_akun_id, status_pengajuan_id, pesan_pengajuan, catatan_keputusan, dokumen_perjanjian_id, tanggal_pengajuan, tanggal_keputusan, tanggal_upload_dokumen, tanggal_mulai_kerjasama, tanggal_selesai_kerjasama, created_at, updated_at) FROM 'csv/transaksi_pengajuankerjasama.csv' WITH (FORMAT csv, HEADER true, NULL '');
 \copy dashboard.transaksi_monitoringperkembangan(umkm_id, status_perkembangan_id, laba_harian, jumlah_produk, created_at) FROM 'csv/transaksi_monitoringperkembangan.csv' WITH (FORMAT csv, HEADER true, NULL '');
+
+-- Fix password hashes (SHA-256 → bcrypt) for UMKM/MITRA accounts
+\i /app/loaders/fix_passwords.sql
+-- Link test accounts from README.md to existing UMKM/Mitra data
+\i /app/loaders/link_test_accounts.sql

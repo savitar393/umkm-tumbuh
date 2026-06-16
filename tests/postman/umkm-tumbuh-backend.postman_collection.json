@@ -342,13 +342,17 @@
           ] } }]
         },
         {
-          "name": "SP-DASH-MITRA-001 Missing umkm_id",
+          "name": "HP-DASH-MITRA-002 Without umkm_id (returns list)",
           "request": {
             "method": "GET",
             "header": [{"key":"Authorization","value":"Bearer {{mitra_token}}"}],
             "url": { "raw": "{{user_base_url}}/api/v1/dashboard/mitra", "host": ["{{user_base_url}}"], "path": ["api","v1","dashboard","mitra"] }
           },
-          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 400', () => pm.response.to.have.status(400));"] } }]
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test('Has umkm_list array', () => pm.expect(json.umkm_list).to.be.an('array'));"
+          ] } }]
         },
         {
           "name": "SP-DASH-MITRA-002 Non-mitra token",
@@ -361,6 +365,168 @@
               "path": ["api","v1","dashboard","mitra"],
               "query": [{"key":"umkm_id","value":"{{umkm_user_id}}"}]
             }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 403', () => pm.response.to.have.status(403));"] } }]
+        }
+      ]
+    },
+    {
+      "name": "06 - Pre-Seeded Accounts (Direct Login)",
+      "item": [
+        {
+          "name": "HP-SEED-001 Admin login (pre-seeded)",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Content-Type","value":"application/json"}],
+            "url": { "raw": "{{auth_base_url}}/api/v1/auth/login", "host": ["{{auth_base_url}}"], "path": ["api","v1","auth","login"] },
+            "body": { "mode": "raw", "raw": "{\"email\":\"{{admin_email}}\",\"password\":\"{{admin_password}}\"}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test('Role ADMIN', () => pm.expect(json.user.role).to.eql('ADMIN'));",
+            "pm.environment.set('admin_token', json.access_token);"
+          ] } }]
+        },
+        {
+          "name": "HP-SEED-002 UMKM login (pre-seeded, password123)",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Content-Type","value":"application/json"}],
+            "url": { "raw": "{{auth_base_url}}/api/v1/auth/login", "host": ["{{auth_base_url}}"], "path": ["api","v1","auth","login"] },
+            "body": { "mode": "raw", "raw": "{\"email\":\"{{umkm_email}}\",\"password\":\"{{umkm_password}}\"}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test('Role UMKM', () => pm.expect(json.user.role).to.eql('UMKM'));",
+            "pm.environment.set('umkm_token', json.access_token);",
+            "pm.environment.set('umkm_user_id', json.user.id);"
+          ] } }]
+        },
+        {
+          "name": "HP-SEED-003 Mitra login (pre-seeded, password123)",
+          "request": {
+            "method": "POST",
+            "header": [{"key":"Content-Type","value":"application/json"}],
+            "url": { "raw": "{{auth_base_url}}/api/v1/auth/login", "host": ["{{auth_base_url}}"], "path": ["api","v1","auth","login"] },
+            "body": { "mode": "raw", "raw": "{\"email\":\"{{mitra_email}}\",\"password\":\"{{mitra_password}}\"}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test('Role MITRA', () => pm.expect(json.user.role).to.eql('MITRA'));",
+            "pm.environment.set('mitra_token', json.access_token);"
+          ] } }]
+        },
+        {
+          "name": "HP-SEED-004 UMKM dashboard with data",
+          "request": {
+            "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{umkm_token}}"}],
+            "url": {
+              "raw": "{{user_base_url}}/api/v1/dashboard/umkm?date_from=2026-06-01&date_to=2026-06-30",
+              "host": ["{{user_base_url}}"],
+              "path": ["api","v1","dashboard","umkm"],
+              "query": [{"key":"date_from","value":"2026-06-01"},{"key":"date_to","value":"2026-06-30"}]
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test('Has nama_umkm', () => pm.expect(json.nama_umkm).to.be.a('string'));",
+            "pm.test('Has omzet fields', () => pm.expect(json).to.have.property('omzet_bulan_ini'));",
+            "pm.test('Has tren_mingguan', () => pm.expect(json.tren_mingguan).to.be.an('array'));"
+          ] } }]
+        },
+        {
+          "name": "HP-SEED-005 Mitra dashboard with UMKM data",
+          "request": {
+            "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{mitra_token}}"}],
+            "url": {
+              "raw": "{{user_base_url}}/api/v1/dashboard/mitra",
+              "host": ["{{user_base_url}}"],
+              "path": ["api","v1","dashboard","mitra"]
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test('Has umkm_list', () => pm.expect(json.umkm_list).to.be.an('array'));",
+            "pm.test('umkm_list should not be empty for test mitra', () => pm.expect(json.umkm_list.length).to.be.above(0));"
+          ] } }]
+        }
+      ]
+    },
+    {
+      "name": "07 - Admin Dashboard (National)",
+      "item": [
+        {
+          "name": "HP-ADMIN-DASH-001 Default (no filter)",
+          "request": {
+            "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{admin_token}}"}],
+            "url": { "raw": "{{auth_base_url}}/api/v1/admin/dashboard", "host": ["{{auth_base_url}}"], "path": ["api","v1","admin","dashboard"] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test('Has summary', () => pm.expect(json.summary).to.be.an('object'));",
+            "pm.test('Has map_data', () => pm.expect(json.map_data).to.be.an('array'));",
+            "pm.test('Has registration_trend', () => pm.expect(json.registration_trend).to.be.an('array'));"
+          ] } }]
+        },
+        {
+          "name": "HP-ADMIN-DASH-002 Filter by provinsi",
+          "request": {
+            "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{admin_token}}"}],
+            "url": {
+              "raw": "{{auth_base_url}}/api/v1/admin/dashboard?provinsi=Jawa+Tengah",
+              "host": ["{{auth_base_url}}"],
+              "path": ["api","v1","admin","dashboard"],
+              "query": [{"key":"provinsi","value":"Jawa Tengah"}]
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('Status 200', () => pm.response.to.have.status(200));"
+          ] } }]
+        },
+        {
+          "name": "HP-ADMIN-DASH-003 Filter by bulan + tahun",
+          "request": {
+            "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{admin_token}}"}],
+            "url": {
+              "raw": "{{auth_base_url}}/api/v1/admin/dashboard?bulan=2026-06&tahun=2026",
+              "host": ["{{auth_base_url}}"],
+              "path": ["api","v1","admin","dashboard"],
+              "query": [{"key":"bulan","value":"2026-06"},{"key":"tahun","value":"2026"}]
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] } }]
+        },
+        {
+          "name": "HP-ADMIN-DASH-004 Filter by status_umkm",
+          "request": {
+            "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{admin_token}}"}],
+            "url": {
+              "raw": "{{auth_base_url}}/api/v1/admin/dashboard?status_umkm=AKTIF",
+              "host": ["{{auth_base_url}}"],
+              "path": ["api","v1","admin","dashboard"],
+              "query": [{"key":"status_umkm","value":"AKTIF"}]
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"] } }]
+        },
+        {
+          "name": "SP-ADMIN-DASH-001 Non-admin gets 403",
+          "request": {
+            "method": "GET",
+            "header": [{"key":"Authorization","value":"Bearer {{umkm_token}}"}],
+            "url": { "raw": "{{auth_base_url}}/api/v1/admin/dashboard", "host": ["{{auth_base_url}}"], "path": ["api","v1","admin","dashboard"] }
           },
           "event": [{ "listen": "test", "script": { "exec": ["pm.test('Status 403', () => pm.response.to.have.status(403));"] } }]
         }

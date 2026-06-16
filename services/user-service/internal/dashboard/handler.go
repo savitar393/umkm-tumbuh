@@ -45,7 +45,7 @@ func (h *Handler) GetUMKMDashboard(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, data)
 }
 
-// GetMitraDashboard — GET /api/v1/dashboard/mitra?umkm_id=UMK000001
+// GetMitraDashboard — GET /api/v1/dashboard/mitra?umkm_id=UMK000001 (optional)
 func (h *Handler) GetMitraDashboard(w http.ResponseWriter, r *http.Request) {
 	user, ok := middleware.CurrentUserFromContext(r.Context())
 	if !ok {
@@ -60,12 +60,7 @@ func (h *Handler) GetMitraDashboard(w http.ResponseWriter, r *http.Request) {
 
 	umkmID := r.URL.Query().Get("umkm_id")
 
-	// ✅ TAMBAHKAN VALIDASI INI
-	if umkmID == "" {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "umkm_id is required"})
-		return
-	}
-
+	// ✅ umkm_id sekarang OPTIONAL — kalau kosong, service return list UMKM saja
 	data, err := h.Service.GetMitraDashboard(r.Context(), user.ID, umkmID)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "Gagal memuat data dashboard mitra: " + err.Error()})

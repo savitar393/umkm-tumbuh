@@ -19,6 +19,10 @@ export default defineConfig({
         target: "http://localhost:8081",
         changeOrigin: true,
       },
+      "/api/v1/dashboard": {
+        target: "http://localhost:8081",
+        changeOrigin: true,
+      },
     },
   },
 });

@@ -189,3 +189,52 @@ func (r *Repository) GetDefaultDateRange(ctx context.Context, umkmID string) (mi
 	`, umkmID).Scan(&minDate, &maxDate)
 	return
 }
+
+// GetOmzetBulanan — omzet bulan ini dan bulan lalu
+func (r *Repository) GetOmzetBulanan(ctx context.Context, umkmID string) (omzetBulanIni, omzetBulanLalu float64, err error) {
+	err = r.DB.QueryRow(ctx, `
+		WITH monthly AS (
+			SELECT
+				DATE_TRUNC('month', created_at) AS bulan,
+				SUM(laba_harian) AS total
+			FROM dashboard.transaksi_monitoringperkembangan
+			WHERE umkm_id = $1
+			GROUP BY DATE_TRUNC('month', created_at)
+			ORDER BY bulan DESC
+			LIMIT 2
+		)
+		SELECT
+			COALESCE(MAX(CASE WHEN rn = 1 THEN total END), 0),
+			COALESCE(MAX(CASE WHEN rn = 2 THEN total END), 0)
+		FROM (
+			SELECT *, ROW_NUMBER() OVER (ORDER BY bulan DESC) AS rn FROM monthly
+		) sub
+	`, umkmID).Scan(&omzetBulanIni, &omzetBulanLalu)
+	return
+}
+
+// GetKategoriUsaha — ambil nama kategori usaha UMKM
+func (r *Repository) GetKategoriUsaha(ctx context.Context, umkmID string) (string, error) {
+	var nama string
+	err := r.DB.QueryRow(ctx, `
+		SELECT COALESCE(k.nama_kategori_usaha, '')
+		FROM user_mgmt.master_umkm u
+		LEFT JOIN ref.ref_kategoriusaha k ON k.kategori_usaha_id = u.kategori_usaha_id
+		WHERE u.umkm_id = $1 AND u.is_deleted = FALSE
+	`, umkmID).Scan(&nama)
+	return nama, err
+}
+
+// GetStatusPerkembangan — ambil status perkembangan terakhir UMKM
+func (r *Repository) GetStatusPerkembangan(ctx context.Context, umkmID string) (string, error) {
+	var status string
+	err := r.DB.QueryRow(ctx, `
+		SELECT COALESCE(s.nama_status_perkembangan, '')
+		FROM dashboard.transaksi_monitoringperkembangan m
+		LEFT JOIN ref.ref_statusperkembangan s ON s.status_perkembangan_id = m.status_perkembangan_id
+		WHERE m.umkm_id = $1
+		ORDER BY m.created_at DESC
+		LIMIT 1
+	`, umkmID).Scan(&status)
+	return status, err
+}
