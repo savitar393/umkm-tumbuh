@@ -1,7 +1,8 @@
-import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useState, useRef, useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import logoImg from "../../assets/umkm-tumbuh.webp";
+import { getCurrentUser, clearAuthStorage } from "../../shared/auth/currentUser";
 
 const MenuIcon = () => (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -26,7 +27,26 @@ const navLinks = [
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const profileRef = useRef<HTMLDivElement>(null);
+  const user = getCurrentUser();
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setProfileOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleLogout = () => {
+    clearAuthStorage();
+    navigate("/login");
+  };
 
   return (
     <header style={{
@@ -86,20 +106,68 @@ export default function Header() {
           })}
         </nav>
 
-        {/* Right: user profile + mobile hamburger */}
+        {/* Right: user profile dropdown + mobile hamburger */}
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div className="hidden-mobile" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: "50%",
-              background: "linear-gradient(135deg, #FFD700, #f59e0b)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: "0 2px 8px rgba(255,215,0,0.4)",
-            }}>
-              <Icon icon="mdi:account" style={{ fontSize: 20, color: "#1a3fa4" }} />
+          <div ref={profileRef} style={{ position: "relative" }} className="hidden-mobile">
+            <div
+              onClick={() => setProfileOpen(!profileOpen)}
+              style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", userSelect: "none" }}
+            >
+              <div style={{
+                width: 36, height: 36, borderRadius: "50%",
+                background: "linear-gradient(135deg, #FFD700, #f59e0b)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                boxShadow: "0 2px 8px rgba(255,215,0,0.4)",
+              }}>
+                <Icon icon="mdi:account" style={{ fontSize: 20, color: "#1a3fa4" }} />
+              </div>
+              <span style={{ color: "#fff", fontWeight: 600, fontSize: 14 }}>
+                {user?.full_name || "User UMKM"}
+              </span>
+              <Icon icon={profileOpen ? "mdi:chevron-up" : "mdi:chevron-down"} style={{ fontSize: 16, color: "rgba(255,255,255,0.6)" }} />
             </div>
-            <span style={{ color: "#fff", fontWeight: 600, fontSize: 14 }}>
-              User UMKM
-            </span>
+
+            {profileOpen && (
+              <div style={{
+                position: "absolute", top: "100%", right: 0, marginTop: 10,
+                background: "#fff", borderRadius: 14, minWidth: 230,
+                boxShadow: "0 12px 48px rgba(0,0,0,0.18)",
+                padding: "8px 0", zIndex: 200, overflow: "hidden",
+                animation: "fadeSlideDown 0.2s ease",
+              }}>
+                <div style={{ padding: "14px 18px", borderBottom: "1px solid #f1f5f9" }}>
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{user?.full_name || "User UMKM"}</p>
+                  <p style={{ margin: "3px 0 0", fontSize: 12, color: "#64748b" }}>{user?.email || "user@example.com"}</p>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: "#1a3fa4", background: "#e0e7ff", padding: "2px 10px", borderRadius: 6, display: "inline-block", marginTop: 7 }}>
+                    {user?.role || "UMKM"}
+                  </span>
+                </div>
+
+                <div style={{ padding: "4px 0" }}>
+                  <button
+                    onClick={() => { navigate("/umkm/trainings"); setProfileOpen(false); }}
+                    style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 18px", border: "none", background: "none", width: "100%", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#334155", textAlign: "left", transition: "background 0.15s" }}
+                    onMouseEnter={e => e.currentTarget.style.background = "#f8fafc"}
+                    onMouseLeave={e => e.currentTarget.style.background = "none"}
+                  >
+                    <Icon icon="mdi:view-dashboard" style={{ fontSize: 18, color: "#1a3fa4" }} />
+                    Dashboard UMKM
+                  </button>
+                </div>
+
+                <div style={{ borderTop: "1px solid #f1f5f9", padding: "4px 0" }}>
+                  <button
+                    onClick={handleLogout}
+                    style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 18px", border: "none", background: "none", width: "100%", cursor: "pointer", fontSize: 13, fontWeight: 600, color: "#ef4444", textAlign: "left", transition: "background 0.15s" }}
+                    onMouseEnter={e => e.currentTarget.style.background = "#fef2f2"}
+                    onMouseLeave={e => e.currentTarget.style.background = "none"}
+                  >
+                    <Icon icon="mdi:logout" style={{ fontSize: 18 }} />
+                    Keluar
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Mobile hamburger */}
@@ -148,6 +216,10 @@ export default function Header() {
       )}
 
       <style>{`
+        @keyframes fadeSlideDown {
+          from { opacity: 0; transform: translateY(-8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
         @media (min-width: 768px) { .show-mobile { display: none !important; } }
         @media (max-width: 767px) { .hidden-mobile { display: none !important; } }
       `}</style>
