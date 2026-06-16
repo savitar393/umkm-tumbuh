@@ -29,6 +29,65 @@ function formatRupiah(value: number) {
   }).format(value);
 }
 
+const MOCK_PRODUCTS: Product[] = [
+  {
+    id: "mock-1",
+    umkm_id: "mock",
+    category_id: "cat-1",
+    category_name: "Minuman",
+    name: "Kopi Arabika Gayo",
+    price: 35000,
+    stock: 120,
+    status: "AKTIF",
+    description: "Kopi arabika premium dari Aceh Tengah",
+    legalitas: "PIRT",
+    created_at: "2026-01-15T00:00:00Z",
+    updated_at: "2026-01-15T00:00:00Z",
+  },
+  {
+    id: "mock-2",
+    umkm_id: "mock",
+    category_id: "cat-2",
+    category_name: "Makanan",
+    name: "Keripik Pisang Lumer",
+    price: 15000,
+    stock: 200,
+    status: "AKTIF",
+    description: "Keripik pisang dengan varian coklat dan keju",
+    legalitas: "PIRT, Halal",
+    created_at: "2026-02-10T00:00:00Z",
+    updated_at: "2026-02-10T00:00:00Z",
+  },
+  {
+    id: "mock-3",
+    umkm_id: "mock",
+    category_id: "cat-3",
+    category_name: "Kerajinan",
+    name: "Tas Anyaman Rotan",
+    price: 85000,
+    stock: 45,
+    status: "AKTIF",
+    description: "Tas anyaman rotan buatan tangan pengrajin lokal",
+    legalitas: "",
+    created_at: "2026-03-05T00:00:00Z",
+    updated_at: "2026-03-05T00:00:00Z",
+  },
+  {
+    id: "mock-4",
+    umkm_id: "mock",
+    category_id: "cat-1",
+    category_name: "Minuman",
+    name: "Wedang Uwuh",
+    price: 12000,
+    stock: 0,
+    status: "NONAKTIF",
+    description: "Minuman rempah tradisional khas Yogyakarta",
+    legalitas: "PIRT",
+    created_at: "2026-01-20T00:00:00Z",
+    updated_at: "2026-01-20T00:00:00Z",
+  },
+];
+
 export default function ProductListPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [form, setForm] = useState<ProductPayload>(emptyForm);
@@ -39,6 +98,7 @@ export default function ProductListPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [useMock, setUseMock] = useState(false);
 
   const totalProducts = products.length;
   const totalStock = useMemo(
@@ -58,8 +118,10 @@ export default function ProductListPage() {
       });
 
       setProducts(response.products);
+      setUseMock(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Gagal memuat produk.");
+      setUseMock(true);
+      setProducts(MOCK_PRODUCTS);
     } finally {
       setLoading(false);
     }
@@ -173,6 +235,7 @@ export default function ProductListPage() {
       <div className="feature-page">
         {message ? <div className="success-message">{message}</div> : null}
         {error ? <div className="error-message">{error}</div> : null}
+        {useMock ? <div className="error-message" style={{ background: "#fff3cd", color: "#856404", border: "1px solid #ffeeba" }}>Mode offline — menampilkan data contoh. Backend tidak terhubung.</div> : null}
 
         <section className="stat-cards-grid product-stat-grid">
           <article className="stat-card stat-card--blue">

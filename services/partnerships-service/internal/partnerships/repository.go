@@ -18,6 +18,12 @@ type Repository interface {
 	UpdateStatus(ctx context.Context, id uuid.UUID, status PartnershipStatus, rejectionReason *string, decidedAt time.Time) error
 	UpdateContract(ctx context.Context, id uuid.UUID, dokumenKontrak string, signedAt time.Time) error
 	GenerateRequestCode(ctx context.Context) (string, error)
+
+	// ============================================================
+	// NEW METHODS FOR UMKM AND MITRA LISTS
+	// ============================================================
+	FindUMKMList(ctx context.Context, search string, limit, offset int) ([]UMKMListItem, int, error)
+	FindMitraList(ctx context.Context, search string, limit, offset int) ([]MitraListItem, int, error)
 }
 
 type repository struct {
@@ -249,7 +255,147 @@ func (r *repository) UpdateContract(ctx context.Context, id uuid.UUID, dokumenKo
 }
 
 func (r *repository) GenerateRequestCode(ctx context.Context) (string, error) {
-	// This would need to query the partnership schema
-	// For now, return a simple format
-	return "PKS-" + time.Now().Format("2006") + "-00000001", nil
+	// Generate request code with format: PKS-YYYY-XXXXXX
+	var count int
+	query := `SELECT COUNT(*) FROM partnership.transaksi_pengajuankerjasama WHERE kode_pengajuan LIKE $1`
+	err := r.db.QueryRow(ctx, query, "PKS-"+time.Now().Format("2006")+"-%").Scan(&count)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate request code: %w", err)
+	}
+
+	// Format: PKS-2024-000001
+	requestCode := fmt.Sprintf("PKS-%s-%06d", time.Now().Format("2006"), count+1)
+	return requestCode, nil
+}
+
+// ============================================================
+// NEW IMPLEMENTATIONS FOR UMKM AND MITRA LISTS
+// ============================================================
+
+/// FindUMKMList retrieves a paginated list of verified UMKM
+// Used by MITRA to find potential partners
+func (r *repository) FindUMKMList(ctx context.Context, search string, limit, offset int) ([]UMKMListItem, int, error) {
+	var whereClause string
+	var args []interface{}
+	argIndex := 1
+
+	// Build search condition if search term is provided
+	if search != "" {
+		whereClause = fmt.Sprintf(" AND u.nama_umkm ILIKE $%d", argIndex)
+		args = append(args, "%"+search+"%")
+		argIndex++
+	}
+
+	query := fmt.Sprintf(`
+		SELECT 
+			u.umkm_id as id,
+			u.nama_umkm as name,
+			COALESCE(juk.nama_jenis_umkm, '') as type,
+			COALESCE(l.kabupaten_kota, '') as city,
+			COALESCE(l.provinsi, '') as province,
+			COALESCE(u.deskripsi_usaha, '') as description,
+			'' as operational_area,
+			COUNT(*) OVER() as total_count
+		FROM user_mgmt.master_umkm u
+		LEFT JOIN ref.ref_jenisumkm juk ON u.jenis_umkm_id = juk.jenis_umkm_id
+		LEFT JOIN user_mgmt.master_lokasi l ON u.lokasi_id = l.lokasi_id
+		WHERE u.status_verified = true 
+		AND u.is_deleted = false
+		%s
+		ORDER BY u.created_at DESC
+		LIMIT $%d OFFSET $%d
+	`, whereClause, argIndex, argIndex+1)
+
+	args = append(args, limit, offset)
+
+	rows, err := r.db.Query(ctx, query, args...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to fetch UMKM list: %w", err)
+	}
+	defer rows.Close()
+
+	var umkmList []UMKMListItem
+	var totalCount int
+
+	for rows.Next() {
+		var item UMKMListItem
+		err := rows.Scan(
+			&item.ID, &item.Name, &item.Type, &item.City,
+			&item.Province, &item.Description, &item.OperationalArea, &totalCount,
+		)
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to scan UMKM row: %w", err)
+		}
+		umkmList = append(umkmList, item)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("rows iteration error: %w", err)
+	}
+
+	return umkmList, totalCount, nil
+}
+
+// FindMitraList retrieves a paginated list of verified Mitra
+// Used by UMKM to find potential partners
+func (r *repository) FindMitraList(ctx context.Context, search string, limit, offset int) ([]MitraListItem, int, error) {
+	var whereClause string
+	var args []interface{}
+	argIndex := 1
+
+	// Build search condition if search term is provided
+	if search != "" {
+		whereClause = fmt.Sprintf(" AND m.nama_mitra ILIKE $%d", argIndex)
+		args = append(args, "%"+search+"%")
+		argIndex++
+	}
+
+	query := fmt.Sprintf(`
+		SELECT 
+			m.mitra_id as id,
+			m.nama_mitra as name,
+			COALESCE(jm.nama_jenis_mitra, '') as type,
+			COALESCE(l.kabupaten_kota, '') as city,
+			COALESCE(l.provinsi, '') as province,
+			COALESCE(m.deskripsi_dukungan, '') as description,
+			COALESCE(m.wilayah_operasional, '') as operational_area,
+			COUNT(*) OVER() as total_count
+		FROM user_mgmt.master_mitra m
+		LEFT JOIN ref.ref_jenismitra jm ON m.jenis_mitra_id = jm.jenis_mitra_id
+		LEFT JOIN user_mgmt.master_lokasi l ON m.lokasi_id = l.lokasi_id
+		WHERE m.status_verified = true 
+		AND m.is_deleted = false
+		%s
+		ORDER BY m.created_at DESC
+		LIMIT $%d OFFSET $%d
+	`, whereClause, argIndex, argIndex+1)
+
+	args = append(args, limit, offset)
+
+	rows, err := r.db.Query(ctx, query, args...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to fetch Mitra list: %w", err)
+	}
+	defer rows.Close()
+
+	var mitraList []MitraListItem
+	var totalCount int
+
+	for rows.Next() {
+		var item MitraListItem
+		err := rows.Scan(
+			&item.ID, &item.Name, &item.Type, &item.City,
+			&item.Province, &item.Description, &item.OperationalArea, &totalCount,
+		)
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to scan Mitra row: %w", err)
+		}
+		mitraList = append(mitraList, item)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("rows iteration error: %w", err)
+	}
+
+	return mitraList, totalCount, nil
 }

@@ -1,131 +1,108 @@
+// frontend/src/features/partnerships/pages/PartnershipDetailPage.tsx
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { partnershipsApi } from "../api";
-import type { PartnershipRequest, PartnershipStatus } from "../types";
 
-// ─── Logo Components ──────────────────────────────────────────────────────────
-
-const LogoNusantara: React.FC<{ size?: number }> = ({ size = 48 }) => (
-  <div style={{
-    width: size,
-    height: size,
-    background: "#1A3A6B",
-    borderRadius: 12,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: "#F5A623",
-    fontWeight: "bold",
-    fontSize: size * 0.4,
-  }}>
-    NV
-  </div>
-);
-
-// ─── Star Rating Component ────────────────────────────────────────────────────
-
-const StarRating: React.FC<{ rating: number }> = ({ rating }) => {
-  const fullStars = Math.floor(rating);
-  const hasHalfStar = rating % 1 >= 0.5;
-  
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-      {[...Array(5)].map((_, i) => (
-        <span key={i} style={{ 
-          color: i < fullStars ? "#F5A623" : (i === fullStars && hasHalfStar ? "#F5A623" : "#E8E7E2"), 
-          fontSize: 16 
-        }}>
-          {i < fullStars ? "★" : (i === fullStars && hasHalfStar ? "½" : "☆")}
-        </span>
-      ))}
-      <span style={{ fontSize: 13, color: "#888780", marginLeft: 6 }}>{rating.toFixed(1)}</span>
-    </div>
-  );
-};
-
-// ─── Main Page ────────────────────────────────────────────────────────────────
+interface MitraDetail {
+  id: string;
+  name: string;
+  type: string;
+  city: string;
+  province: string;
+  description: string;
+  operational_area: string;
+  email?: string;
+  phone?: string;
+  website?: string;
+  tahun_berdiri?: number;
+  jumlah_mitra?: number;
+  success_rate?: number;
+}
 
 const PartnershipDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   
-  const [partnership, setPartnership] = useState<PartnershipRequest | null>(null);
+  const [mitra, setMitra] = useState<MitraDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showDownloadAlert, setShowDownloadAlert] = useState(false);
 
   useEffect(() => {
     if (id) {
-      fetchPartnership(id);
+      fetchMitraDetail(id);
     }
   }, [id]);
 
-  const fetchPartnership = async (partnershipId: string) => {
+  const fetchMitraDetail = async (mitraId: string) => {
     setLoading(true);
     setError(null);
     
     try {
-      const response = await partnershipsApi.getDetail(partnershipId);
+      // Untuk sementara, kita fetch dari list dan cari berdasarkan ID
+      // Karena backend belum punya endpoint detail untuk mitra/umkm
+      const response = await partnershipsApi.listMitra({ page: 1, limit: 1000 });
       
-      if (response.status === "success" && response.data) {
-        setPartnership(response.data as PartnershipRequest);
+      const foundMitra = response.mitra?.find(m => m.id === mitraId);
+      
+      if (foundMitra) {
+        setMitra({
+          id: foundMitra.id,
+          name: foundMitra.name,
+          type: foundMitra.type,
+          city: foundMitra.city,
+          province: foundMitra.province,
+          description: foundMitra.description || "Mitra terpercaya untuk pengembangan UMKM di Indonesia",
+          operational_area: foundMitra.operational_area || "Nasional",
+          email: getEmailFromName(foundMitra.name),
+          phone: getPhoneFromName(foundMitra.name),
+        });
       } else {
-        setError(response.message || "Gagal memuat detail kemitraan");
+        setError("Mitra tidak ditemukan");
       }
     } catch (err) {
-      console.error("Error fetching partnership:", err);
-      setError("Terjadi kesalahan saat memuat data");
-      
-      // Mock data for demo
-      setPartnership({
-        id: partnershipId,
-        request_code: "PKS-2026-00000001",
-        requester_id: "user1",
-        receiver_id: "mitra1",
-        requester_role: "UMKM",
-        receiver_role: "MITRA",
-        category: "Pendanaan",
-        proposal_title: "Pengajuan Kerjasama Pendanaan",
-        proposal_description: "Mengajukan kerjasama pendanaan untuk pengembangan produk",
-        business_name: "UMKM Sari Roti",
-        contact_person: "+628123456789",
-        product_description: "Produk roti tradisional",
-        reason_for_partnership: "Membutuhkan modal pengembangan",
-        nib_ktp_file: "nib.pdf",
-        proposal_file: "proposal.pdf",
-        status: "SUBMITTED",
-        submitted_at: "2026-06-08T10:00:00Z",
-        created_at: "2026-06-08T10:00:00Z",
-        updated_at: "2026-06-08T10:00:00Z",
-        requester_name: "UMKM Sari Roti",
-        receiver_name: "Nusantara Ventures",
-      });
+      console.error("Error fetching mitra detail:", err);
+      setError("Gagal memuat detail mitra");
     } finally {
       setLoading(false);
     }
   };
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return "-";
-    return new Date(dateString).toLocaleDateString('id-ID', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
+  // Helper function untuk generate kontak berdasarkan nama mitra
+  const getEmailFromName = (name: string): string => {
+    const emailMap: Record<string, string> = {
+      "PT Karya Bersama": "karyabersama@example.com",
+      "Dinas Akselerasi Digital": "akselerasi@dinas.go.id",
+      "Komunitas Sahabat UMKM": "info@sahabatumkm.com",
+      "Nusantara Ventures": "partnership@nusantara.vc",
+    };
+    return emailMap[name] || `info@${name.toLowerCase().replace(/\s/g, "")}.co.id`;
   };
 
-  const handleDownloadTemplate = () => {
-    setShowDownloadAlert(true);
-    setTimeout(() => setShowDownloadAlert(false), 3000);
-    // In production: window.open('/template/pengajuan-kemitraan.pdf', '_blank');
-  };
-
-  const handleAjukanKemitraan = () => {
-    navigate(`/partnerships/create?receiver_id=${partnership?.receiver_id || id}&receiver_name=Nusantara%20Ventures`);
+  const getPhoneFromName = (name: string): string => {
+    const phoneMap: Record<string, string> = {
+      "PT Karya Bersama": "+62 21 555 0123",
+      "Dinas Akselerasi Digital": "+62 21 555 0456",
+      "Komunitas Sahabat UMKM": "+62 21 555 0789",
+      "Nusantara Ventures": "+62 21 555 0123",
+    };
+    return phoneMap[name] || "+62 21 555 0000";
   };
 
   const handleBack = () => {
     navigate("/partnerships");
+  };
+
+  const handleAjukanKemitraan = () => {
+    navigate(`/partnerships/create?receiver_id=${id}`);
+  };
+
+  const handleDownloadTemplate = () => {
+    // Buat link download template PDF
+    const link = document.createElement("a");
+    link.href = "/template-pengajuan-kemitraan.pdf";
+    link.download = "Template_Pengajuan_Kemitraan.pdf";
+    link.click();
   };
 
   if (loading) {
@@ -154,7 +131,7 @@ const PartnershipDetailPage: React.FC = () => {
     );
   }
 
-  if (error || !partnership) {
+  if (error || !mitra) {
     return (
       <div style={{
         display: "flex",
@@ -187,7 +164,7 @@ const PartnershipDetailPage: React.FC = () => {
             </svg>
           </div>
           <h3 style={{ margin: "0 0 8px", fontSize: 20, color: "#2C2C2A" }}>Data Tidak Ditemukan</h3>
-          <p style={{ margin: "0 0 24px", color: "#888780" }}>{error || "Detail kemitraan tidak tersedia"}</p>
+          <p style={{ margin: "0 0 24px", color: "#888780" }}>{error || "Detail mitra tidak tersedia"}</p>
           <button
             onClick={handleBack}
             style={{
@@ -215,30 +192,6 @@ const PartnershipDetailPage: React.FC = () => {
       background: "#F5F4F0",
       minHeight: "100vh",
     }}>
-      {/* Download Alert Toast */}
-      {showDownloadAlert && (
-        <div style={{
-          position: "fixed",
-          top: 80,
-          right: 24,
-          background: "#1D9E75",
-          color: "white",
-          padding: "12px 20px",
-          borderRadius: 12,
-          fontSize: 14,
-          zIndex: 1000,
-          animation: "slideIn 0.3s ease",
-        }}>
-          <style>{`
-            @keyframes slideIn {
-              from { transform: translateX(100%); opacity: 0; }
-              to { transform: translateX(0); opacity: 1; }
-            }
-          `}</style>
-          📄 Template pengajuan sedang diunduh...
-        </div>
-      )}
-
       {/* Back Button */}
       <button
         onClick={handleBack}
@@ -268,72 +221,101 @@ const PartnershipDetailPage: React.FC = () => {
       }}>
         {/* LEFT COLUMN - Company Profile */}
         <div>
-          {/* Header with Logo and Company Name */}
           <div style={{
             background: "white",
             borderRadius: 20,
             padding: "32px",
-            marginBottom: 24,
             boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
           }}>
+            {/* Header with Logo and Company Name */}
             <div style={{ display: "flex", alignItems: "center", gap: 20, marginBottom: 24 }}>
-              <LogoNusantara size={64} />
+              <div style={{
+                width: 80,
+                height: 80,
+                borderRadius: 20,
+                background: "#1A3A6B",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#F5A623",
+                fontWeight: "bold",
+                fontSize: 32,
+              }}>
+                {mitra.name.charAt(0)}
+              </div>
               <div>
                 <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700, color: "#1A3A6B" }}>
-                  Nusantara Ventures
+                  {mitra.name}
                 </h1>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8 }}>
-                  <StarRating rating={4.8} />
-                  <span style={{ fontSize: 13, color: "#888780" }}>• 120+ Kemitraan</span>
-                  <span style={{ fontSize: 13, color: "#1D9E75" }}>• 85% Sukses</span>
+                  <span style={{
+                    fontSize: 13,
+                    color: "#1D9E75",
+                    background: "#E8F5F0",
+                    padding: "4px 12px",
+                    borderRadius: 20,
+                  }}>
+                    {mitra.type || "Mitra Strategis"}
+                  </span>
+                  <span style={{ fontSize: 13, color: "#888780" }}>
+                    📍 {mitra.city}, {mitra.province}
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Description */}
+            {/* Tentang Section */}
+            <h2 style={{
+              fontSize: 20,
+              fontWeight: 700,
+              color: "#1A3A6B",
+              margin: "0 0 16px 0",
+              paddingBottom: 8,
+              borderBottom: "2px solid #F5A623",
+              display: "inline-block",
+            }}>
+              Tentang {mitra.name.split(" ")[0]}
+            </h2>
+            
             <p style={{
               fontSize: 15,
               lineHeight: 1.6,
               color: "#5F5E5A",
               marginBottom: 24,
+              marginTop: 16,
             }}>
-              Nusantara Ventures adalah perusahaan modal ventura terkemuka yang berdedikasi untuk 
-              memberdayakan UMKM pengrajin dan kreatif di Indonesia. Kami tidak hanya memberikan 
-              pendanaan, tetapi juga ekosistem pendukung yang kuat untuk membantu bisnis Anda 
-              naik kelas ke pasar internasional.
+              {mitra.description}
             </p>
 
-            <p style={{
-              fontSize: 15,
-              lineHeight: 1.6,
-              color: "#5F5E5A",
-              marginBottom: 24,
-            }}>
-              Memiliki lebih dari 120+ kerja sama dengan pasar internasional maupun nasional. 
-              Memiliki tingkat kesuksesan 85% dalam bermitra. Kami lebih berfokus pada produk 
-              kriya dan fashion, kuliner olahan berkelanjutan dan teknologi rantai pasok.
-            </p>
+            {/* Operational Area */}
+            {mitra.operational_area && (
+              <div style={{
+                background: "#F0FAF6",
+                borderRadius: 16,
+                padding: "20px",
+                marginBottom: 24,
+              }}>
+                <h3 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: "#1D9E75" }}>
+                  Wilayah Operasional
+                </h3>
+                <p style={{ margin: 0, fontSize: 14, color: "#5F5E5A" }}>
+                  {mitra.operational_area}
+                </p>
+              </div>
+            )}
 
-            {/* Criteria Section */}
-            <div style={{
-              background: "#F0FAF6",
-              borderRadius: 16,
-              padding: "20px",
-              marginBottom: 24,
-            }}>
-              <h3 style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 700, color: "#1D9E75" }}>
+            {/* Criteria & Benefits Section */}
+            <div style={{ marginBottom: 24 }}>
+              <h3 style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 700, color: "#1A3A6B" }}>
                 Kriteria Bermitra
               </h3>
-              <ul style={{ margin: 0, paddingLeft: 20, color: "#5F5E5A", fontSize: 14, lineHeight: 1.8 }}>
+              <ul style={{ margin: "0 0 20px 0", paddingLeft: 20, color: "#5F5E5A", fontSize: 14, lineHeight: 1.8 }}>
                 <li>Beroperasi minimal 12 bulan</li>
                 <li>Memiliki laporan keuangan dasar</li>
                 <li>Potensi skalabilitas tinggi</li>
               </ul>
-            </div>
 
-            {/* Benefits Section */}
-            <div>
-              <h3 style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 700, color: "#1A3A6B" }}>
+              <h3 style={{ margin: "16px 0 12px", fontSize: 16, fontWeight: 700, color: "#1A3A6B" }}>
                 Keuntungan Bermitra
               </h3>
               <ul style={{ margin: 0, paddingLeft: 20, color: "#5F5E5A", fontSize: 14, lineHeight: 1.8 }}>
@@ -342,17 +324,54 @@ const PartnershipDetailPage: React.FC = () => {
                 <li>Jejaring global</li>
               </ul>
             </div>
+
+            {/* Contact Info at bottom of left column */}
+            <div style={{
+              marginTop: 32,
+              paddingTop: 24,
+              borderTop: "1px solid #E8E7E2",
+            }}>
+              <h3 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 700, color: "#1A3A6B" }}>
+                Informasi Kontak
+              </h3>
+              {mitra.email && (
+                <a
+                  href={`mailto:${mitra.email}`}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    fontSize: 14,
+                    color: "#1A3A6B",
+                    textDecoration: "none",
+                    marginBottom: 12,
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <rect x="2" y="4" width="20" height="16" rx="2" />
+                    <path d="m22 7-10 7L2 7" />
+                  </svg>
+                  {mitra.email}
+                </a>
+              )}
+              {mitra.phone && (
+                <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 14, color: "#5F5E5A" }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                    <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.362 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0122 16.92z" />
+                  </svg>
+                  {mitra.phone}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
         {/* RIGHT COLUMN - Action Card */}
         <div>
-          {/* Ajukan Kemitraan Card */}
           <div style={{
             background: "white",
             borderRadius: 20,
             padding: "28px",
-            marginBottom: 24,
             boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
             position: "sticky",
             top: 24,
@@ -433,7 +452,7 @@ const PartnershipDetailPage: React.FC = () => {
               Ajukan Sekarang
             </button>
 
-            {/* Contact Info */}
+            {/* Contact Info Summary */}
             <div>
               <h3 style={{
                 margin: "0 0 12px",
@@ -443,9 +462,9 @@ const PartnershipDetailPage: React.FC = () => {
               }}>
                 Informasi Kontak
               </h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {mitra.email && (
                 <a
-                  href="mailto:partnership@nusantara.vc"
+                  href={`mailto:${mitra.email}`}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -453,47 +472,25 @@ const PartnershipDetailPage: React.FC = () => {
                     fontSize: 13,
                     color: "#1A3A6B",
                     textDecoration: "none",
+                    marginBottom: 12,
                   }}
                 >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                     <rect x="2" y="4" width="20" height="16" rx="2" />
                     <path d="m22 7-10 7L2 7" />
                   </svg>
-                  partnership@nusantara.vc
+                  {mitra.email}
                 </a>
+              )}
+              {mitra.phone && (
                 <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: "#5F5E5A" }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                     <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.362 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0122 16.92z" />
                   </svg>
-                  +62 21 555 0123
+                  {mitra.phone}
                 </div>
-              </div>
+              )}
             </div>
-          </div>
-
-          {/* Stats Card */}
-          <div style={{
-            background: "linear-gradient(135deg, #1A3A6B 0%, #2A5DA8 100%)",
-            borderRadius: 20,
-            padding: "24px",
-            color: "white",
-          }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
-              <div>
-                <p style={{ margin: 0, fontSize: 11, opacity: 0.7 }}>TOTAL KEMITRAAN</p>
-                <p style={{ margin: "4px 0 0", fontSize: 28, fontWeight: 700 }}>120+</p>
-              </div>
-              <div>
-                <p style={{ margin: 0, fontSize: 11, opacity: 0.7 }}>TINGKAT SUKSES</p>
-                <p style={{ margin: "4px 0 0", fontSize: 28, fontWeight: 700 }}>85%</p>
-              </div>
-            </div>
-            <div style={{ height: 4, background: "rgba(255,255,255,0.2)", borderRadius: 2, overflow: "hidden" }}>
-              <div style={{ width: "85%", height: "100%", background: "#F5A623", borderRadius: 2 }} />
-            </div>
-            <p style={{ margin: "16px 0 0", fontSize: 12, opacity: 0.8, textAlign: "center" }}>
-              Bergabung dengan 120+ mitra UMKM lainnya
-            </p>
           </div>
         </div>
       </div>

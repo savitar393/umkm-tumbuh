@@ -89,3 +89,31 @@ type PartnershipListResponse struct {
 	DecidedAt     *time.Time        `json:"decided_at"`
 	Category      string            `json:"category"`
 }
+
+// ============================================================
+// NEW STRUCTS FOR UMKM AND MITRA LISTS
+// ============================================================
+
+// UMKMListItem represents an UMKM entity for listing purposes
+// Used when MITRA wants to see list of UMKM to partner with
+type UMKMListItem struct {
+	ID              string `json:"id"`                // umkm_id from database
+	Name            string `json:"name"`              // nama_umkm
+	Type            string `json:"type"`              // jenis UMKM (from ref table)
+	City            string `json:"city"`              // kabupaten/kota
+	Province        string `json:"province"`          // provinsi
+	Description     string `json:"description"`       // deskripsi_usaha
+	OperationalArea string `json:"operational_area"`  // wilayah_operasional
+}
+
+// MitraListItem represents a Mitra entity for listing purposes
+// Used when UMKM wants to see list of Mitra to partner with
+type MitraListItem struct {
+	ID              string `json:"id"`                // mitra_id from database
+	Name            string `json:"name"`              // nama_mitra
+	Type            string `json:"type"`              // jenis mitra (from ref table)
+	City            string `json:"city"`              // kabupaten/kota
+	Province        string `json:"province"`          // provinsi
+	Description     string `json:"description"`       // deskripsi_dukungan
+	OperationalArea string `json:"operational_area"`  // wilayah_operasional
+}

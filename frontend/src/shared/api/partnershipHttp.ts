@@ -1,11 +1,11 @@
+// frontend/src/shared/api/httpPartnerships.ts
+
 import { getAccessToken } from "../auth/currentUser";
 
-// ⭐ PASTIKAN base URL mengarah ke backend (port 8082)
-// JANGAN pakai relative path!
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8082/api/v1";
+  import.meta.env.VITE_PARTNERSHIPS_API_URL ?? "http://localhost:8082/api/v1";
 
-console.log("[HTTP Client] API_BASE_URL:", API_BASE_URL);
+console.log("[HTTP Partnerships] API_BASE_URL:", API_BASE_URL);
 
 export type RequestOptions = RequestInit & {
   auth?: boolean;
@@ -60,7 +60,6 @@ export function createHttpClient(baseUrl: string) {
       requestHeaders.set("Content-Type", "application/json");
     }
 
-    // Tambahkan header X-User-Role untuk partnerships-service
     const userRole = localStorage.getItem("userRole") || "UMKM";
     requestHeaders.set("X-User-Role", userRole);
 
@@ -72,14 +71,8 @@ export function createHttpClient(baseUrl: string) {
       }
     }
 
-    // ⭐ Gunakan baseUrl + path, jangan relative
     const fullUrl = path.startsWith("http") ? path : `${baseUrl}${path}`;
-    console.log(`[API Request] ${rest.method || "GET"} ${fullUrl}`);
-    console.log("[API Request Headers]", {
-      "X-User-Role": userRole,
-      "Authorization": accessToken ? "Bearer ***" : "none",
-      "Content-Type": requestHeaders.get("Content-Type"),
-    });
+    console.log(`[HTTP Partnerships] ${rest.method || "GET"} ${fullUrl}`);
 
     try {
       const response = await fetch(fullUrl, {
@@ -87,10 +80,7 @@ export function createHttpClient(baseUrl: string) {
         headers: requestHeaders,
       });
 
-      console.log(`[API Response] Status: ${response.status}`);
-
       const responseText = await response.text();
-      console.log("[API Response Body Raw (first 200 chars)]:", responseText.substring(0, 200));
 
       if (!response.ok) {
         let message = `HTTP Error ${response.status}`;
@@ -104,14 +94,12 @@ export function createHttpClient(baseUrl: string) {
       }
 
       if (responseText && responseText.trim()) {
-        const payload = JSON.parse(responseText);
-        console.log("[API Response Parsed]:", payload);
-        return payload as T;
+        return JSON.parse(responseText) as T;
       }
 
       return null as T;
     } catch (error) {
-      console.error("[API Request Failed]:", error);
+      console.error("[HTTP Partnerships] Request failed:", error);
       throw error;
     }
   }
@@ -125,12 +113,8 @@ export function createHttpClient(baseUrl: string) {
 
   return Object.assign(httpRequest, {
     get<T>(path: string, options?: RequestOptions) {
-      return apiRequest<T>(path, {
-        ...options,
-        method: "GET",
-      });
+      return apiRequest<T>(path, { ...options, method: "GET" });
     },
-
     post<T>(path: string, body?: unknown, options?: RequestOptions) {
       return apiRequest<T>(path, {
         ...options,
@@ -138,7 +122,6 @@ export function createHttpClient(baseUrl: string) {
         body: serializeBody(body),
       });
     },
-
     put<T>(path: string, body?: unknown, options?: RequestOptions) {
       return apiRequest<T>(path, {
         ...options,
@@ -146,7 +129,6 @@ export function createHttpClient(baseUrl: string) {
         body: serializeBody(body),
       });
     },
-
     patch<T>(path: string, body?: unknown, options?: RequestOptions) {
       return apiRequest<T>(path, {
         ...options,
@@ -154,14 +136,10 @@ export function createHttpClient(baseUrl: string) {
         body: serializeBody(body),
       });
     },
-
     delete<T>(path: string, options?: RequestOptions) {
-      return apiRequest<T>(path, {
-        ...options,
-        method: "DELETE",
-      });
+      return apiRequest<T>(path, { ...options, method: "DELETE" });
     },
   });
 }
 
-export const http = createHttpClient(API_BASE_URL);
+export const httpPartnerships = createHttpClient(API_BASE_URL);

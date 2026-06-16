@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { partnershipsApi } from "../api";
-import type { PartnershipRequest } from "../types";
+
 
 // ─── Logo Components ──────────────────────────────────────────────────────────
 
@@ -555,7 +555,7 @@ const PartnershipReviewPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   
-  const [partnership, setPartnership] = useState<PartnershipRequest | null>(null);
+  const [partnership, setPartnership] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [signedFile, setSignedFile] = useState<File | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -612,7 +612,7 @@ const PartnershipReviewPage: React.FC = () => {
     try {
       const response = await partnershipsApi.getDetail(partnershipId);
       if (response.status === "success" && response.data) {
-        const data = response.data as PartnershipRequest;
+        const data = response.data as any;
         setPartnership(data);
         if (data.status === "ACTIVE" || data.contract_signed_at) {
           setIsSigned(true);
@@ -622,56 +622,9 @@ const PartnershipReviewPage: React.FC = () => {
             uploadedAt: new Date(data.contract_signed_at || data.updated_at).toLocaleDateString('id-ID'),
           });
         }
-      } else {
-        // Mock data for demo
-        setPartnership({
-          id: partnershipId,
-          request_code: "042/MITRA-ARTISAN/CONTRACT/2024",
-          requester_id: "user1",
-          receiver_id: "mitra1",
-          requester_role: "UMKM",
-          receiver_role: "MITRA",
-          category: "Pendanaan",
-          proposal_title: "PERJANJIAN KEMITRAAN STRATEGIS",
-          proposal_description: "Perjanjian ini mengatur hubungan kerja sama antara Mitra Artisan (Pihak Pertama) dan Pemilik Usaha (Pihak Kedua) dalam hal penyediaan produk kriya eksklusif melalui platform digital...",
-          business_name: "Jati Luhur Furniture",
-          contact_person: "+628123456789",
-          product_description: "Furniture & Craft",
-          reason_for_partnership: "Didirikan pada tahun 2012, Jati Luhur Furniture berfokus pada pelestarian motif klasik. Memiliki 45 pengrajin binaan di wilayah Jawa Tengah.",
-          nib_ktp_file: "nib.pdf",
-          proposal_file: "Draf Kontrak Kemitraan_v2.pdf",
-          status: "WAITING_DOCUMENT",
-          submitted_at: "2026-06-08T10:00:00Z",
-          created_at: "2026-06-08T10:00:00Z",
-          updated_at: "2026-06-08T10:00:00Z",
-          requester_name: "Jati Luhur Furniture",
-          receiver_name: "Jati Luhur Furniture",
-        });
       }
     } catch {
-      setPartnership({
-        id: partnershipId,
-        request_code: "042/MITRA-ARTISAN/CONTRACT/2024",
-        requester_id: "user1",
-        receiver_id: "mitra1",
-        requester_role: "UMKM",
-        receiver_role: "MITRA",
-        category: "Pendanaan",
-        proposal_title: "PERJANJIAN KEMITRAAN STRATEGIS",
-        proposal_description: "Perjanjian ini mengatur hubungan kerja sama antara Mitra Artisan (Pihak Pertama) dan Pemilik Usaha (Pihak Kedua) dalam hal penyediaan produk kriya eksklusif melalui platform digital...",
-        business_name: "Jati Luhur Furniture",
-        contact_person: "+628123456789",
-        product_description: "Furniture & Craft",
-        reason_for_partnership: "Didirikan pada tahun 2012, Jati Luhur Furniture berfokus pada pelestarian motif klasik. Memiliki 45 pengrajin binaan di wilayah Jawa Tengah.",
-        nib_ktp_file: "nib.pdf",
-        proposal_file: "Draf Kontrak Kemitraan_v2.pdf",
-        status: "WAITING_DOCUMENT",
-        submitted_at: "2026-06-08T10:00:00Z",
-        created_at: "2026-06-08T10:00:00Z",
-        updated_at: "2026-06-08T10:00:00Z",
-        requester_name: "Jati Luhur Furniture",
-        receiver_name: "Jati Luhur Furniture",
-      });
+      setPartnership(null);
     } finally {
       setLoading(false);
     }
@@ -685,6 +638,19 @@ const PartnershipReviewPage: React.FC = () => {
     alert("Mengunduh dokumen persetujuan kemitraan...");
   };
 
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        const base64 = result.split(",")[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleSignAndApprove = async () => {
     if (!isSigned && !signedFile) {
       setUploadError("Harap unggah dokumen kontrak yang sudah ditandatangani");
@@ -693,32 +659,51 @@ const PartnershipReviewPage: React.FC = () => {
     
     setSubmitting(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      if (!id) throw new Error("ID pengajuan tidak ditemukan");
+
+      // Upload dokumen yang sudah ditandatangani
+      if (signedFile) {
+        const base64 = await fileToBase64(signedFile);
+        await partnershipsApi.sign(id, base64);
+      }
+
+      // Setujui kemitraan
+      await partnershipsApi.approve(id, "Dokumen telah ditandatangani dan disetujui");
       
       setIsSigned(true);
       setSignedDocument({
         name: signedFile ? signedFile.name : "Dokumen_Persetujuan_Kemitraan.pdf",
-        size: "2.4 MB",
+        size: `${(signedFile!.size / (1024 * 1024)).toFixed(1)} MB`,
         uploadedAt: "hari ini",
       });
       
       alert("Kontrak berhasil ditandatangani! Kemitraan telah aktif.");
-    } catch {
-      alert("Terjadi kesalahan saat memproses");
+    } catch (error: any) {
+      alert(`Terjadi kesalahan: ${error.message || "Gagal memproses"}`);
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleReject = (reason: string, additionalNotes: string) => {
+  const handleReject = async (reason: string, additionalNotes: string) => {
     setIsRejecting(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsRejecting(false);
+    try {
+      if (!id) throw new Error("ID pengajuan tidak ditemukan");
+      
+      let rejection_reason = reason;
+      if (additionalNotes.trim()) {
+        rejection_reason += ` - ${additionalNotes.trim()}`;
+      }
+      
+      await partnershipsApi.reject(id, rejection_reason);
       setShowCancelModal(false);
-      alert(`Pengajuan dibatalkan.\nAlasan: ${reason}\nKeterangan: ${additionalNotes || "-"}`);
+      alert("Pengajuan berhasil ditolak.");
       navigate(`/partnerships/${id}`);
-    }, 1000);
+    } catch (error: any) {
+      alert(`Terjadi kesalahan: ${error.message || "Gagal menolak pengajuan"}`);
+    } finally {
+      setIsRejecting(false);
+    }
   };
 
   const handleOpenCancelModal = () => {
@@ -1084,7 +1069,7 @@ const PartnershipReviewPage: React.FC = () => {
                     setUploadError(null);
                   }}
                   fileName={signedFile?.name || null}
-                  error={uploadError}
+                  error={uploadError ?? undefined}
                 />
               )}
             </div>

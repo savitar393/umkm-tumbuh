@@ -1,3 +1,5 @@
+// frontend/src/features/partnerships/types.ts
+
 export type PartnershipStatus = 
   | "DRAFT"
   | "SUBMITTED"
@@ -52,7 +54,7 @@ export interface IncomingPartnershipsData {
   };
 }
 
-// Partner candidate for UI (daftar mitra/UMKM)
+// Partner candidate for UI
 export interface PartnerCandidate {
   id: string;
   name: string;
@@ -99,3 +101,6 @@ export interface ErrorResponse {
   error_code?: string;
   message: string;
 }
+
+// Export semua type yang dibutuhkan
+export type { CreatePartnershipRequest as CreatePartnershipRequestType };

@@ -52,6 +52,21 @@ type Service interface {
 	ValidatePartnershipRequest(
 		req CreatePartnershipRequest,
 	) map[string]string
+
+	// ============================================================
+	// NEW METHODS FOR UMKM AND MITRA LISTS
+	// ============================================================
+	GetUMKMList(
+		ctx context.Context,
+		search string,
+		page, limit int,
+	) ([]UMKMListItem, int, error)
+
+	GetMitraList(
+		ctx context.Context,
+		search string,
+		page, limit int,
+	) ([]MitraListItem, int, error)
 }
 
 type service struct {
@@ -105,6 +120,7 @@ func (s *service) CreatePartnership(
 		return nil, apperror.New(500, "failed to generate request code")
 	}
 
+	// Determine receiver role based on sender role
 	receiverRole := RoleMitra
 	if userRole == RoleMitra {
 		receiverRole = RoleUMKM
@@ -264,4 +280,72 @@ func (s *service) SignPartnership(
 	}
 
 	return nil
+}
+
+// ============================================================
+// NEW IMPLEMENTATIONS FOR UMKM AND MITRA LISTS
+// ============================================================
+
+// GetUMKMList retrieves a paginated list of UMKM
+// This is called by MITRA to see available UMKM for partnership
+func (s *service) GetUMKMList(
+	ctx context.Context,
+	search string,
+	page, limit int,
+) ([]UMKMListItem, int, error) {
+	// Validate and normalize pagination parameters
+	if page < 1 {
+		page = 1
+	}
+	
+	if limit < 1 {
+		limit = 10
+	}
+	
+	if limit > 100 {
+		limit = 100
+	}
+	
+	// Calculate offset for database query
+	offset := (page - 1) * limit
+	
+	// Fetch UMKM list from repository
+	umkmList, totalCount, err := s.repo.FindUMKMList(ctx, search, limit, offset)
+	if err != nil {
+		return nil, 0, apperror.New(500, "failed to fetch UMKM list: "+err.Error())
+	}
+	
+	return umkmList, totalCount, nil
+}
+
+// GetMitraList retrieves a paginated list of Mitra
+// This is called by UMKM to see available Mitra for partnership
+func (s *service) GetMitraList(
+	ctx context.Context,
+	search string,
+	page, limit int,
+) ([]MitraListItem, int, error) {
+	// Validate and normalize pagination parameters
+	if page < 1 {
+		page = 1
+	}
+	
+	if limit < 1 {
+		limit = 10
+	}
+	
+	if limit > 100 {
+		limit = 100
+	}
+	
+	// Calculate offset for database query
+	offset := (page - 1) * limit
+	
+	// Fetch Mitra list from repository
+	mitraList, totalCount, err := s.repo.FindMitraList(ctx, search, limit, offset)
+	if err != nil {
+		return nil, 0, apperror.New(500, "failed to fetch Mitra list: "+err.Error())
+	}
+	
+	return mitraList, totalCount, nil
 }

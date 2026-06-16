@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { partnershipsApi } from "../api";
-import type { PartnershipStatus } from "../types";
+
 
 // ─── Logo components ──────────────────────────────────────────────────────────
 
@@ -13,13 +13,7 @@ const LogoUMKMTumbuh: React.FC<{ size?: number }> = ({ size = 36 }) => (
   </svg>
 );
 
-const LogoKementrian: React.FC<{ size?: number }> = ({ size = 34 }) => (
-  <svg width={size} height={size} viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="18" cy="18" r="17" stroke="white" strokeWidth="1.5" fill="none" />
-    <path d="M18 6 L20 13 L27 13 L21.5 17.5 L23.5 24.5 L18 20 L12.5 24.5 L14.5 17.5 L9 13 L16 13 Z" fill="white" />
-    <text x="18" y="32" textAnchor="middle" fill="white" fontSize="5" fontFamily="serif" fontWeight="bold">KEMENKOP</text>
-  </svg>
-);
+
 
 // ─── Avatar helpers ───────────────────────────────────────────────────────────
 
@@ -372,35 +366,36 @@ const TopBar: React.FC = () => (
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-const MOCK_DATA = [
-  { pengajuanID: "REQ-2024-089", statusPengajuan: "ACTIVE",     tanggalPengajuan: "2024-10-12", mitraUmkmTujuan: "Warisan Kopi Nusantara", proposalTitle: "Produk Minuman" },
-  { pengajuanID: "REQ-2024-092", statusPengajuan: "SUBMITTED",  tanggalPengajuan: "2024-10-15", mitraUmkmTujuan: "Tanah Liat Studio",      proposalTitle: "Kerajinan Tangan" },
-  { pengajuanID: "REQ-2024-081", statusPengajuan: "REJECTED",   tanggalPengajuan: "2024-10-08", mitraUmkmTujuan: "Sari Jamu Tradisional",  proposalTitle: "Kesehatan" },
-  { pengajuanID: "REQ-2024-095", statusPengajuan: "SUBMITTED",  tanggalPengajuan: "2024-10-18", mitraUmkmTujuan: "Batik Srawung",          proposalTitle: "Fashion & Tekstil" },
-];
-
 const PartnershipStatusPage: React.FC = () => {
   const [statusData, setStatusData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => { fetchStatus(); }, []);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  useEffect(() => { fetchStatus(); }, [currentPage, itemsPerPage, statusFilter]);
 
   const fetchStatus = async () => {
     setLoading(true);
-    setFetchError(null);
+    setError(null);
+
     try {
-      const response = await partnershipsApi.getStatus({ page: 1, limit: 50 });
+      const response = await partnershipsApi.getStatus({ 
+        page: currentPage, 
+        limit: itemsPerPage,
+        status: statusFilter || undefined,
+      });
       if (response.status === "success") {
         setStatusData(response.data);
       } else {
-        setStatusData({ pengajuan: MOCK_DATA, pagination: { total: 19, totalPages: 2 } });
+        setError(response.message || "Gagal memuat data");
       }
-    } catch {
-      setStatusData({ pengajuan: MOCK_DATA, pagination: { total: 19, totalPages: 2 } });
+    } catch (err: any) {
+      setError(err.message || "Terjadi kesalahan saat memuat data");
+      setStatusData(null);
     } finally {
       setLoading(false);
     }
@@ -417,8 +412,8 @@ const PartnershipStatusPage: React.FC = () => {
     return item.mitraUmkmTujuan.toLowerCase().includes(q) || item.pengajuanID.toLowerCase().includes(q);
   });
 
-  const totalPages = Math.ceil((statusData?.pagination?.total ?? filtered.length) / itemsPerPage);
-  const pageItems = filtered.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const totalPages = statusData?.pagination?.totalPages ?? 1;
+  const pageItems = filtered;
 
   const stats = {
     bermitra: allItems.filter((p) => p.statusPengajuan === "APPROVED" || p.statusPengajuan === "ACTIVE").length,
@@ -594,18 +589,51 @@ const PartnershipStatusPage: React.FC = () => {
                   }}
                 />
               </div>
-              {[
-                { label: "Filter", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg> },
-                { label: "Export", icon: <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> },
-              ].map((btn) => (
-                <button key={btn.label} style={{
-                  display: "flex", alignItems: "center", gap: 6,
-                  padding: "9px 16px", background: "white", border: "1px solid #D3D1C7",
-                  borderRadius: 8, fontSize: 13, color: "#5F5E5A", cursor: "pointer", fontWeight: 500,
-                }}>
-                  {btn.icon}{btn.label}
-                </button>
-              ))}
+              <select
+                value={statusFilter}
+                onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+                style={{
+                  padding: "9px 14px",
+                  border: "1px solid #D3D1C7",
+                  borderRadius: 8,
+                  fontSize: 13,
+                  color: statusFilter ? "#2C2C2A" : "#888780",
+                  background: "white",
+                  cursor: "pointer",
+                  outline: "none",
+                  fontFamily: "inherit",
+                }}
+              >
+                <option value="">Semua Status</option>
+                <option value="SUBMITTED">Menunggu</option>
+                <option value="REVIEWED">Ditinjau</option>
+                <option value="APPROVED">Disetujui</option>
+                <option value="REJECTED">Ditolak</option>
+                <option value="ACTIVE">Bermitra</option>
+                <option value="WAITING_DOCUMENT">Menunggu Dokumen</option>
+                <option value="COMPLETED">Selesai</option>
+                <option value="CANCELLED">Dibatalkan</option>
+              </select>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                style={{
+                  padding: "9px 10px",
+                  border: "1px solid #D3D1C7",
+                  borderRadius: 8,
+                  fontSize: 13,
+                  color: "#2C2C2A",
+                  background: "white",
+                  cursor: "pointer",
+                  outline: "none",
+                  fontFamily: "inherit",
+                }}
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
             </div>
 
             {/* ── Table ─────────────────────────────────────────────────────── */}
@@ -618,6 +646,25 @@ const PartnershipStatusPage: React.FC = () => {
                 }} />
                 <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
                 <p style={{ marginTop: 12, fontSize: 13 }}>Memuat data status...</p>
+              </div>
+            ) : error ? (
+              <div style={{ padding: "48px 20px", textAlign: "center" }}>
+                <p style={{ color: "#E24B4A", fontSize: 14, margin: "0 0 16px" }}>{error}</p>
+                <button
+                  onClick={fetchStatus}
+                  style={{
+                    padding: "8px 20px",
+                    background: "#1A3A6B",
+                    border: "none",
+                    borderRadius: 8,
+                    color: "white",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  Coba Lagi
+                </button>
               </div>
             ) : (
               <table style={{ width: "100%", borderCollapse: "collapse" }}>

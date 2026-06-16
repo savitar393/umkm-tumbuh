@@ -341,3 +341,117 @@ func (h *Handler) RejectPartnership(w http.ResponseWriter, r *http.Request) {
 
 	response.Success(w, http.StatusOK, nil, "Pengajuan ditolak.")
 }
+
+// ============================================================
+// NEW HANDLERS FOR UMKM AND MITRA LISTS
+// ============================================================
+
+// GetUMKMList - GET /api/v1/umkm
+// Menampilkan daftar UMKM yang bisa diajak kerjasama (diakses oleh MITRA)
+func (h *Handler) GetUMKMList(w http.ResponseWriter, r *http.Request) {
+	// Get query parameters
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page < 1 {
+		page = 1
+	}
+	
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit < 1 {
+		limit = 10
+	}
+	if limit > 50 {
+		limit = 50
+	}
+	
+	search := r.URL.Query().Get("q")
+	
+	// Extract user role - hanya MITRA yang bisa melihat UMKM
+	userRole := extractUserRoleFromRequest(r)
+	if userRole != RoleMitra {
+		response.Error(w, http.StatusForbidden, "Hanya mitra yang dapat melihat daftar UMKM", nil)
+		return
+	}
+	
+	// Get UMKM list from service
+	umkmList, totalCount, err := h.service.GetUMKMList(r.Context(), search, page, limit)
+	if err != nil {
+		if appErr, ok := err.(*apperror.AppError); ok {
+			response.Error(w, appErr.Code, appErr.Message, nil)
+			return
+		}
+		response.Error(w, http.StatusInternalServerError, "Gagal mengambil daftar UMKM", nil)
+		return
+	}
+	
+	// Calculate total pages
+	totalPages := 0
+	if totalCount > 0 {
+		totalPages = (totalCount + limit - 1) / limit
+	}
+	
+	// Return success response
+	response.Success(w, http.StatusOK, map[string]interface{}{
+		"umkm": umkmList,
+		"pagination": map[string]int{
+			"page":       page,
+			"limit":      limit,
+			"total":      totalCount,
+			"totalPages": totalPages,
+		},
+	}, "")
+}
+
+// GetMitraList - GET /api/v1/mitra
+// Menampilkan daftar mitra yang bisa diajak kerjasama (diakses oleh UMKM)
+func (h *Handler) GetMitraList(w http.ResponseWriter, r *http.Request) {
+	// Get query parameters
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page < 1 {
+		page = 1
+	}
+	
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit < 1 {
+		limit = 10
+	}
+	if limit > 50 {
+		limit = 50
+	}
+	
+	search := r.URL.Query().Get("q")
+	
+	// Extract user role - hanya UMKM yang bisa melihat mitra
+	userRole := extractUserRoleFromRequest(r)
+	if userRole != RoleUMKM {
+		response.Error(w, http.StatusForbidden, "Hanya UMKM yang dapat melihat daftar mitra", nil)
+		return
+	}
+	
+	// Get Mitra list from service
+	mitraList, totalCount, err := h.service.GetMitraList(r.Context(), search, page, limit)
+	if err != nil {
+		if appErr, ok := err.(*apperror.AppError); ok {
+			response.Error(w, appErr.Code, appErr.Message, nil)
+			return
+		}
+		response.Error(w, http.StatusInternalServerError, "Gagal mengambil daftar mitra", nil)
+		return
+	}
+	
+	// Calculate total pages
+	totalPages := 0
+	if totalCount > 0 {
+		totalPages = (totalCount + limit - 1) / limit
+	}
+	
+	// Return success response
+	response.Success(w, http.StatusOK, map[string]interface{}{
+		"mitra": mitraList,
+		"pagination": map[string]int{
+			"page":       page,
+			"limit":      limit,
+			"total":      totalCount,
+			"totalPages": totalPages,
+		},
+	}, "")
+}

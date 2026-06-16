@@ -1,13 +1,5 @@
-// frontend/src/features/partnerships/api.ts
-
-import { httpPartnerships } from "../../shared/api/partnershipHttp";
-import type { CreatePartnershipRequest, PartnershipStatus } from "./types";
-
-interface BackendResponse<T> {
-  success: boolean;
-  message: string;
-  data: T;
-}
+import { http } from "../../../shared/api/http";
+import type { CreatePartnershipRequest, PartnershipStatus } from "../types";
 
 interface SuccessResponse<T> {
   status: "success";
@@ -67,13 +59,13 @@ export interface PartnerListResponse {
   };
 }
 
+const API_BASE = "/partnerships";
+
 export const partnershipsApi = {
-  // POST /api/v1/partnerships
   create: async (data: CreatePartnershipRequest): Promise<SuccessResponse<{ pengajuanID: string }>> => {
-    return httpPartnerships.post<SuccessResponse<{ pengajuanID: string }>>("/partnerships", data);
+    return http.post<SuccessResponse<{ pengajuanID: string }>>(API_BASE, data);
   },
 
-  // GET /api/v1/partnerships/status
   getStatus: async (params?: {
     page?: number;
     limit?: number;
@@ -84,11 +76,10 @@ export const partnershipsApi = {
     if (params?.limit) queryParams.append("limit", params.limit.toString());
     if (params?.status) queryParams.append("status", params.status);
     
-    const url = `/partnerships/status${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
-    return httpPartnerships.get<SuccessResponse<PartnershipStatusResponse>>(url);
+    const url = `${API_BASE}/status${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
+    return http.get<SuccessResponse<PartnershipStatusResponse>>(url);
   },
 
-  // GET /api/v1/partnerships/incoming
   getIncoming: async (params?: {
     page?: number;
     limit?: number;
@@ -99,35 +90,36 @@ export const partnershipsApi = {
     if (params?.limit) queryParams.append("limit", params.limit.toString());
     if (params?.status) queryParams.append("status", params.status);
     
-    const url = `/partnerships/incoming${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
-    return httpPartnerships.get<SuccessResponse<IncomingPartnershipsResponse>>(url);
+    const url = `${API_BASE}/incoming${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
+    return http.get<SuccessResponse<IncomingPartnershipsResponse>>(url);
   },
 
-  // GET /api/v1/partnerships/{id}
   getDetail: async (id: string): Promise<SuccessResponse<any>> => {
-    return httpPartnerships.get<SuccessResponse<any>>(`/partnerships/${id}`);
+    return http.get<SuccessResponse<any>>(`${API_BASE}/${id}`);
   },
 
-  // POST /api/v1/partnerships/{id}/sign
-  sign: async (id: string, dokumenKontrak: string): Promise<SuccessResponse<void>> => {
-    return httpPartnerships.post<SuccessResponse<void>>(`/partnerships/${id}/sign`, {
+  sign: async (id: string, dokumenKontrak: string, tandaTangan?: string): Promise<SuccessResponse<void>> => {
+    return http.post<SuccessResponse<void>>(`${API_BASE}/${id}/sign`, {
       dokumen_kontrak: dokumenKontrak,
+      tanda_tangan: tandaTangan,
     });
   },
 
-  // PATCH /api/v1/partnerships/{id}/approve
-  approve: async (id: string): Promise<SuccessResponse<void>> => {
-    return httpPartnerships.patch<SuccessResponse<void>>(`/partnerships/${id}/approve`, {});
+  approve: async (id: string, catatan?: string): Promise<SuccessResponse<void>> => {
+    return http.patch<SuccessResponse<void>>(`${API_BASE}/${id}/approve`, { 
+      catatan: catatan,
+    });
   },
 
-  // PATCH /api/v1/partnerships/{id}/reject
   reject: async (id: string, rejection_reason: string): Promise<SuccessResponse<void>> => {
-    return httpPartnerships.patch<SuccessResponse<void>>(`/partnerships/${id}/reject`, {
+    return http.patch<SuccessResponse<void>>(`${API_BASE}/${id}/reject`, { 
       rejection_reason: rejection_reason,
     });
   },
 
-  // GET /api/v1/mitra
+  // ============================================================
+  // LIST MITRA - untuk UMKM users
+  // ============================================================
   listMitra: async (params?: {
     q?: string;
     page?: number;
@@ -139,15 +131,31 @@ export const partnershipsApi = {
     if (params?.limit) queryParams.append("limit", params.limit.toString());
     
     const url = `/mitra${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
-    const response = await httpPartnerships.get<BackendResponse<{ mitra: PartnerListItem[]; pagination: any }>>(url);
     
+    // http.get sudah mengembalikan response langsung dari backend
+    // Backend mengembalikan: { success, message, data: { mitra, pagination } }
+    const response = await http.get<any>(url);
+    
+    console.log("listMitra raw response:", response);
+    
+    // Response dari backend: { success: true, message: "", data: { mitra, pagination } }
+    if (response && response.data) {
+      return {
+        mitra: response.data.mitra,
+        pagination: response.data.pagination,
+      };
+    }
+    
+    // Fallback jika response berbeda
     return {
-      mitra: response.data.mitra,
-      pagination: response.data.pagination,
+      mitra: [],
+      pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
     };
   },
 
-  // GET /api/v1/umkm
+  // ============================================================
+  // LIST UMKM - untuk MITRA users
+  // ============================================================
   listUMKM: async (params?: {
     q?: string;
     page?: number;
@@ -159,11 +167,25 @@ export const partnershipsApi = {
     if (params?.limit) queryParams.append("limit", params.limit.toString());
     
     const url = `/umkm${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
-    const response = await httpPartnerships.get<BackendResponse<{ umkm: PartnerListItem[]; pagination: any }>>(url);
     
+    // http.get sudah mengembalikan response langsung dari backend
+    // Backend mengembalikan: { success, message, data: { umkm, pagination } }
+    const response = await http.get<any>(url);
+    
+    console.log("listUMKM raw response:", response);
+    
+    // Response dari backend: { success: true, message: "", data: { umkm, pagination } }
+    if (response && response.data) {
+      return {
+        umkm: response.data.umkm,
+        pagination: response.data.pagination,
+      };
+    }
+    
+    // Fallback jika response berbeda
     return {
-      umkm: response.data.umkm,
-      pagination: response.data.pagination,
+      umkm: [],
+      pagination: { page: 1, limit: 10, total: 0, totalPages: 0 },
     };
   },
 };
