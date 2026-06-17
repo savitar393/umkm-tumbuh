@@ -13,39 +13,64 @@ import type {
 
 // ─── Registration Trend ───────────────────────────────────────────────────────
 
+function getWeekOfMonth(dateStr: string): number {
+  const d = new Date(dateStr);
+  const day = d.getDate();
+  if (day <= 7) return 1;
+  if (day <= 14) return 2;
+  if (day <= 21) return 3;
+  return 4;
+}
+
+function getMonthLabel(dateStr: string): string {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("id-ID", { month: "short", year: "numeric" });
+}
+
 export function RegistrationTrendChart({ data }: { data: RegistrationTrendItem[] }) {
-  const chartData = data.map((d) => ({
-    bulan: d.tanggal.slice(0, 7), // YYYY-MM
-    total: d.total_pendaftaran,
+  // Kelompokkan per bulan lalu per minggu (1-4)
+  const weeklyMap = new Map<string, number>();
+  for (const d of data) {
+    const month = getMonthLabel(d.tanggal);
+    const week = getWeekOfMonth(d.tanggal);
+    const key = `${month} - Minggu ${week}`;
+    weeklyMap.set(key, (weeklyMap.get(key) ?? 0) + d.total_pendaftaran);
+  }
+
+  const chartData = Array.from(weeklyMap.entries()).map(([label, total]) => ({
+    label,
+    total,
   }));
+
+  const maxTotal = chartData.length > 0 ? Math.max(...chartData.map((d) => d.total)) : 0;
 
   return (
     <div className="chart-card">
       <div className="chart-card__header">
         <div>
           <div className="chart-card__title">Tren Pendaftaran UMKM Baru</div>
-          <div className="chart-card__sub">Jumlah pendaftaran tiap bulan</div>
+          <div className="chart-card__sub">Jumlah pendaftaran per minggu</div>
         </div>
         <span className="chart-badge">+Rincian</span>
       </div>
       <ResponsiveContainer width="100%" height={200}>
         <LineChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-          <XAxis dataKey="bulan" tick={{ fontSize: 11 }} />
+          <XAxis dataKey="label" tick={{ fontSize: 10 }} interval={0} angle={-25} textAnchor="end" height={60} />
           <YAxis tick={{ fontSize: 12 }} />
-          <Tooltip />
-          <Line type="monotone" dataKey="total" stroke="#1f45b6" strokeWidth={2} dot={{ r: 4 }} />
+          <Tooltip formatter={(value) => [(value as number).toLocaleString("id-ID"), "Pendaftaran"]} />
+          <Line type="monotone" dataKey="total" stroke="#1f45b6" strokeWidth={2} dot={{ r: 3 }} />
         </LineChart>
       </ResponsiveContainer>
       {chartData.length > 0 && (
         <div className="chart-stats-row">
           <div className="chart-stat">
             <span className="label">Total Data</span>
-            <span className="value">{chartData.length} bulan</span>
+            <span className="value">{chartData.length} minggu</span>
           </div>
           <div className="chart-stat">
-            <span className="label">Pendaftaran Terbanyak</span>
-            <span className="value">{Math.max(...chartData.map((d) => d.total)).toLocaleString("id-ID")}</span>
+            <span className="label">Terbanyak</span>
+            <span className="value">{maxTotal.toLocaleString("id-ID")}</span>
           </div>
         </div>
       )}

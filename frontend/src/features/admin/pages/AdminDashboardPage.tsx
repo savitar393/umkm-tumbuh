@@ -51,15 +51,17 @@ export default function AdminDashboardPage() {
 
   // Filter state
   const [provinsi, setProvinsi] = useState("Seluruh Indonesia");
-  const [bulan, setBulan] = useState(now.getMonth());
-  const [tahun, setTahun] = useState(now.getFullYear());
+  const [bulan, setBulan] = useState<number | "all">("all");
+  const [tahun, setTahun] = useState(2025);
   const [statusUmkm, setStatusUmkm] = useState("Semua Status");
 
   function buildQueryString() {
     const params = new URLSearchParams();
     if (provinsi !== "Seluruh Indonesia") params.set("provinsi", provinsi);
-    const monthStr = `${tahun}-${String(bulan + 1).padStart(2, "0")}`;
-    params.set("bulan", monthStr);
+    if (bulan !== "all") {
+      const monthStr = `${tahun}-${String((bulan as number) + 1).padStart(2, "0")}`;
+      params.set("bulan", monthStr);
+    }
     params.set("tahun", String(tahun));
     if (statusUmkm !== "Semua Status") params.set("status_umkm", statusUmkm);
     return params.toString() ? `?${params.toString()}` : "";
@@ -77,8 +79,8 @@ export default function AdminDashboardPage() {
 
   function resetFilters() {
     setProvinsi("Seluruh Indonesia");
-    setBulan(now.getMonth());
-    setTahun(now.getFullYear());
+    setBulan("all");
+    setTahun(2025);
     setStatusUmkm("Semua Status");
     fetchDashboard();
   }
@@ -130,7 +132,11 @@ export default function AdminDashboardPage() {
         </div>
         <div className="filter-group">
           <label className="filter-label">BULAN</label>
-          <select className="filter-select" value={bulan} onChange={(e) => setBulan(Number(e.target.value))}>
+          <select className="filter-select" value={bulan} onChange={(e) => {
+            const val = e.target.value;
+            setBulan(val === "all" ? "all" : Number(val));
+          }}>
+            <option value="all">Semua Bulan</option>
             {MONTHS.map((m, i) => (
               <option key={i} value={i}>{m}</option>
             ))}
