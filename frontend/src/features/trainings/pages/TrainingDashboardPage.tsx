@@ -6,7 +6,7 @@ import { useTrainingStore } from "../store";
 import { useCertificateDashboard, useUserCertificates, useRequestCertificate } from "../../certificates/hooks";
 import { useUserEnrollments } from "../hooks";
 import { getTrainingDetail } from "../api";
-import { getCertificateDownloadUrl } from "../../certificates/api";
+import { downloadCertificate } from "../../certificates/api";
 import { getMyProfile } from "../../../shared/api/profile";
 
 function IconTrendingUp({ size = 13, color = "#16a34a" }) {
@@ -442,7 +442,7 @@ export default function TrainingDashboardPage() {
                       <button
                         className="btn-dl"
                         title={c.nomor_sertifikat || "Download Sertifikat"}
-                        onClick={() => window.open(getCertificateDownloadUrl(c.sertifikat_id), "_blank")}
+                        onClick={() => downloadCertificate(c.sertifikat_id)}
                       >
                         <IconDownload />
                       </button>

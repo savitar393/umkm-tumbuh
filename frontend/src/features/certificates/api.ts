@@ -1,4 +1,5 @@
 import { http } from "../../shared/api/http";
+import { getAccessToken } from "../../shared/auth/currentUser";
 import {
   CertificateSchema,
   CertificateDashboardSchema,
@@ -36,7 +37,7 @@ export function getCertificateDownloadUrl(certId: number): string {
 
 export async function downloadCertificate(certId: number): Promise<void> {
   const url = getCertificateDownloadUrl(certId);
-  const token = getAccessTokenFromStorage();
+  const token = getAccessToken();
   const response = await fetch(url, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
@@ -50,15 +51,4 @@ export async function downloadCertificate(certId: number): Promise<void> {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(blobUrl);
-}
-
-function getAccessTokenFromStorage(): string | null {
-  try {
-    const raw = localStorage.getItem("auth-storage");
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return parsed?.state?.accessToken || null;
-  } catch {
-    return null;
-  }
 }

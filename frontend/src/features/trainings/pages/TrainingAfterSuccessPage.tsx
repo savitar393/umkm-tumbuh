@@ -5,7 +5,7 @@ import Header from "../../../shared/components/Header";
 import Footer from "../../../shared/components/Footer";
 import { useTrainingStore } from "../store";
 import { useUserCertificates, useRequestCertificate } from "../../certificates/hooks";
-import { getCertificateDownloadUrl } from "../../certificates/api";
+import { downloadCertificate } from "../../certificates/api";
 import { useUserEnrollments } from "../hooks";
 
 const relatedContent = [
@@ -166,7 +166,7 @@ export default function TrainingAfterSuccessPage() {
               )}
               {cert?.status_sertifikat_id === "TERBIT" && (
                 <button
-                  onClick={() => window.open(getCertificateDownloadUrl(cert.sertifikat_id), "_blank")}
+                  onClick={() => downloadCertificate(cert.sertifikat_id)}
                   style={{
                     marginTop: 12, width: "100%", padding: "10px 16px",
                     background: "linear-gradient(135deg, #1a3fa4, #1e3a8a)", color: "#fff",
