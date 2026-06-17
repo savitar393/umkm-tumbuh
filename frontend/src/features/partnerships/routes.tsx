@@ -42,7 +42,7 @@ export const publicPartnershipRoutes: RouteObject[] = [
 // Routes untuk UMKM (dengan prefix /umkm/)
 export const umkmPartnershipRoutes: RouteObject[] = [
   {
-    path: "umkm/partnerships",
+    path: "partnerships",
     children: [
       {
         index: true,
@@ -75,7 +75,7 @@ export const umkmPartnershipRoutes: RouteObject[] = [
 // Routes untuk MITRA (dengan prefix /mitra/)
 export const mitraPartnershipRoutes: RouteObject[] = [
   {
-    path: "mitra/partnerships",
+    path: "partnerships",
     children: [
       {
         index: true,
