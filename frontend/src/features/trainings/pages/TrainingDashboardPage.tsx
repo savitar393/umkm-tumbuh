@@ -1,10 +1,12 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../../../shared/components/Sidebar";
 import backgroundImg from "../../../assets/background1.png";
 import { useTrainingStore } from "../store";
-import { useCertificateDashboard, useUserCertificates } from "../../certificates/hooks";
+import { useCertificateDashboard, useUserCertificates, useRequestCertificate } from "../../certificates/hooks";
 import { useUserEnrollments } from "../hooks";
+import { getTrainingDetail } from "../api";
+import { getCertificateDownloadUrl } from "../../certificates/api";
 import { getMyProfile } from "../../../shared/api/profile";
 
 function IconTrendingUp({ size = 13, color = "#16a34a" }) {
@@ -100,6 +102,18 @@ export default function TrainingDashboardPage() {
     (e) => e.status_pendaftaran === "SELESAI" || e.tanggal_selesai
   );
   const certList = certificates || [];
+  const requestCertMutation = useRequestCertificate();
+  const requestedRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!completed.length) return;
+    completed.forEach((enrollment) => {
+      if (!requestedRef.current.has(enrollment.pendaftaran_pelatihan_id)) {
+        requestedRef.current.add(enrollment.pendaftaran_pelatihan_id);
+        requestCertMutation.mutate(enrollment.pendaftaran_pelatihan_id);
+      }
+    });
+  }, [completed.length]);
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'Plus Jakarta Sans','Segoe UI',sans-serif", position: "relative" }}>
@@ -274,6 +288,15 @@ export default function TrainingDashboardPage() {
                     <div
                       key={e.pendaftaran_pelatihan_id}
                       className={`hover-card anim-t${i}`}
+                      onClick={async () => {
+                        try {
+                          const detail = await getTrainingDetail(e.pelatihan_id);
+                          const nextModule = detail.modules[e.modul_selesai] || detail.modules[0];
+                          navigate(`/umkm/trainings/${e.pelatihan_id}/lesson/${nextModule.modul_id}`);
+                        } catch {
+                          navigate(`/umkm/trainings/${e.pelatihan_id}`);
+                        }
+                      }}
                       style={{ ...card, padding: "18px 20px", display: "flex", alignItems: "center", gap: 16 }}
                     >
                       <div style={{
@@ -327,7 +350,11 @@ export default function TrainingDashboardPage() {
               ) : (
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                   {completed.slice(0, 4).map((e) => (
-                    <div key={e.pendaftaran_pelatihan_id} className="hover-card" style={{ ...card, padding: "20px", display: "flex", alignItems: "center", gap: 14 }}>
+                    <div
+                      key={e.pendaftaran_pelatihan_id}
+                      className="hover-card"
+                      onClick={() => navigate(`/umkm/trainings/${e.pelatihan_id}/verification`)}
+                      style={{ ...card, padding: "20px", display: "flex", alignItems: "center", gap: 14 }}>
                       <div style={{
                         width: 52, height: 52, borderRadius: 14, background: "#e0f2fe",
                         display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
@@ -394,14 +421,11 @@ export default function TrainingDashboardPage() {
                         {c.nama_status_sertifikat}
                       </p>
                     </div>
-                    {c.nomor_sertifikat && (
+                    {c.status_sertifikat_id === "TERBIT" && (
                       <button
                         className="btn-dl"
-                        title={c.dokumen_url ? c.nomor_sertifikat : "Dokumen belum tersedia"}
-                        onClick={() => {
-                          if (c.dokumen_url) window.open(c.dokumen_url, "_blank");
-                        }}
-                        style={{ opacity: c.dokumen_url ? 1 : 0.4, cursor: c.dokumen_url ? "pointer" : "not-allowed" }}
+                        title={c.nomor_sertifikat || "Download Sertifikat"}
+                        onClick={() => window.open(getCertificateDownloadUrl(c.sertifikat_id), "_blank")}
                       >
                         <IconDownload />
                       </button>

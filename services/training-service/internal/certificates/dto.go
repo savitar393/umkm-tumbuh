@@ -43,3 +43,20 @@ type RequestCertificateResponse struct {
 	Message     string              `json:"message"`
 	Certificate CertificateResponse `json:"certificate"`
 }
+
+type RejectCertificateRequest struct {
+	Catatan string `json:"catatan_validasi"`
+}
+
+type ListCertificatesResponse struct {
+	Certificates []CertificateResponse `json:"certificates"`
+	Total        int                   `json:"total"`
+	Page         int                   `json:"page"`
+	Limit        int                   `json:"limit"`
+}
+
+type CertificateStatsResponse struct {
+	Diajukan int `json:"diajukan"`
+	Terbit   int `json:"terbit"`
+	Ditolak  int `json:"ditolak"`
+}
