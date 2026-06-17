@@ -407,6 +407,80 @@ func (h *Handler) UpdateStock(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"product": product})
 }
 
+func (h *Handler) AttachThumbnail(w http.ResponseWriter, r *http.Request) {
+	user, ok := currentUMKMUser(w, r)
+	if !ok {
+		return
+	}
+
+	var req AttachThumbnailRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Request body tidak valid."})
+		return
+	}
+
+	req.ObjectKey = strings.TrimSpace(req.ObjectKey)
+	req.PublicURL = strings.TrimSpace(req.PublicURL)
+	req.ContentType = strings.TrimSpace(req.ContentType)
+
+	if req.ObjectKey == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Object key thumbnail wajib diisi."})
+		return
+	}
+
+	if req.ContentType == "" {
+		req.ContentType = "application/octet-stream"
+	}
+
+	if req.SizeBytes <= 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Ukuran thumbnail tidak valid."})
+		return
+	}
+
+	umkmID, err := h.getUMKMID(r.Context(), user.ID)
+	if err != nil {
+		handleError(w, err, "Gagal mengambil data UMKM.")
+		return
+	}
+
+	productID := chi.URLParam(r, "id")
+
+	tag, err := h.DB.Exec(r.Context(), `
+		UPDATE user_mgmt.master_produkumkm
+		SET
+			thumbnail_object_key = $3,
+			thumbnail_url = $4,
+			thumbnail_content_type = $5,
+			thumbnail_size_bytes = $6,
+			thumbnail_updated_at = NOW(),
+			updated_at = NOW()
+		WHERE produk_id = $1
+		  AND umkm_id = $2
+		  AND is_deleted = FALSE
+	`, productID, umkmID, req.ObjectKey, nullableTrim(req.PublicURL), req.ContentType, req.SizeBytes)
+
+	if err != nil {
+		handleError(w, err, "Gagal menyimpan metadata thumbnail produk.")
+		return
+	}
+
+	if tag.RowsAffected() == 0 {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "Produk tidak ditemukan."})
+		return
+	}
+
+	product, err := h.findProductByID(r.Context(), umkmID, productID)
+	if err != nil {
+		handleError(w, err, "Thumbnail tersimpan, tetapi gagal membaca produk.")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"message": "Thumbnail produk berhasil diperbarui.",
+		"product": product,
+	})
+}
+
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	user, ok := currentUMKMUser(w, r)
 	if !ok {
