@@ -147,27 +147,35 @@ func (r *Repository) GetRegistrationTrend(ctx context.Context, days string) ([]R
 }
 
 func (r *Repository) GetRegistrationTrendFiltered(ctx context.Context, days, provinsi, startDate, endDate string) ([]RegistrationTrendItem, error) {
-	args := []any{days}
+	args := []any{}
 	clause := ""
-	argIdx := 2
-	if provinsi != "" {
-		clause += fmt.Sprintf(" AND provinsi = $%d", argIdx)
-		args = append(args, provinsi)
-		argIdx++
-	}
+	argIdx := 1
+
+	// Ketika startDate dari filter dipakai, abaikan 180-day window
 	if startDate != "" {
 		clause += fmt.Sprintf(" AND tanggal >= $%d::date", argIdx)
 		args = append(args, startDate)
+		argIdx++
+	} else {
+		// Fallback: pake days window
+		clause += fmt.Sprintf(" AND tanggal >= CURRENT_DATE - ($%d || ' days')::interval", argIdx)
+		args = append(args, days)
 		argIdx++
 	}
 	if endDate != "" {
 		clause += fmt.Sprintf(" AND tanggal <= $%d::date", argIdx)
 		args = append(args, endDate)
+		argIdx++
 	}
+	if provinsi != "" {
+		clause += fmt.Sprintf(" AND provinsi = $%d", argIdx)
+		args = append(args, provinsi)
+	}
+
 	query := `
 		SELECT tanggal::text, SUM(total_pendaftaran) AS total
 		FROM dashboard.vw_dashboard_nasional_pendaftaran_timeseries
-		WHERE tanggal >= CURRENT_DATE - ($1 || ' days')::interval` + clause + `
+		WHERE 1=1` + clause + `
 		GROUP BY tanggal ORDER BY tanggal ASC`
 	rows, err := r.DB.Query(ctx, query, args...)
 	if err != nil {
@@ -221,27 +229,32 @@ func (r *Repository) GetLabaTrend(ctx context.Context, days string) ([]LabaTimes
 }
 
 func (r *Repository) GetLabaTrendFiltered(ctx context.Context, days, provinsi, startDate, endDate string) ([]LabaTimeseriesItem, error) {
-	args := []any{days}
+	args := []any{}
 	clause := ""
-	argIdx := 2
-	if provinsi != "" {
-		clause += fmt.Sprintf(" AND provinsi = $%d", argIdx)
-		args = append(args, provinsi)
-		argIdx++
-	}
+	argIdx := 1
+
 	if startDate != "" {
 		clause += fmt.Sprintf(" AND tanggal >= $%d::date", argIdx)
 		args = append(args, startDate)
+		argIdx++
+	} else {
+		clause += fmt.Sprintf(" AND tanggal >= CURRENT_DATE - ($%d || ' days')::interval", argIdx)
+		args = append(args, days)
 		argIdx++
 	}
 	if endDate != "" {
 		clause += fmt.Sprintf(" AND tanggal <= $%d::date", argIdx)
 		args = append(args, endDate)
+		argIdx++
+	}
+	if provinsi != "" {
+		clause += fmt.Sprintf(" AND provinsi = $%d", argIdx)
+		args = append(args, provinsi)
 	}
 	query := `
 		SELECT tanggal::text, SUM(total_laba), AVG(rata_rata_laba), SUM(total_umkm_tercatat)
 		FROM dashboard.vw_dashboard_nasional_laba_timeseries
-		WHERE tanggal >= CURRENT_DATE - ($1 || ' days')::interval` + clause + `
+		WHERE 1=1` + clause + `
 		GROUP BY tanggal ORDER BY tanggal ASC`
 	rows, err := r.DB.Query(ctx, query, args...)
 	if err != nil {
