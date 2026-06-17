@@ -31,15 +31,21 @@ function initials(name: string) {
 // ─── Status helpers ───────────────────────────────────────────────────────────
 
 const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string }> = {
-  DRAFT:            { label: "Draft",            bg: "#F3F4F6", text: "#4B5563" },
-  SUBMITTED:        { label: "MENUNGGU",         bg: "#FEF3CD", text: "#856404" },
-  REVIEWED:         { label: "DITINJAU",         bg: "#FFF3E0", text: "#E65100" },
-  APPROVED:         { label: "DISETUJUI",        bg: "#D1FAE5", text: "#065F46" },
-  REJECTED:         { label: "DITOLAK",          bg: "#FEE2E2", text: "#B91C1C" },
-  ACTIVE:           { label: "BERMITRA",         bg: "#D1FAE5", text: "#065F46" },
-  COMPLETED:        { label: "SELESAI",          bg: "#E0E7FF", text: "#3730A3" },
-  CANCELLED:        { label: "DIBATALKAN",       bg: "#F3F4F6", text: "#4B5563" },
-  WAITING_DOCUMENT: { label: "MENUNGGU DOKUMEN", bg: "#FEF3CD", text: "#92400E" },
+  DRAFT:              { label: "Draft",               bg: "#F3F4F6", text: "#4B5563" },
+  DIAJUKAN:           { label: "DIAJUKAN",            bg: "#FEF3CD", text: "#856404" },
+  SUBMITTED:          { label: "DIAJUKAN",            bg: "#FEF3CD", text: "#856404" },
+  DITINJAU:           { label: "DITINJAU",            bg: "#FFF3E0", text: "#E65100" },
+  REVIEWED:           { label: "DITINJAU",            bg: "#FFF3E0", text: "#E65100" },
+  MENUNGGU_DOKUMEN_TTD: { label: "MENUNGGU DOKUMEN",  bg: "#FEF3CD", text: "#92400E" },
+  WAITING_DOCUMENT:   { label: "MENUNGGU DOKUMEN",    bg: "#FEF3CD", text: "#92400E" },
+  AKTIF:              { label: "AKTIF",               bg: "#D1FAE5", text: "#065F46" },
+  ACTIVE:             { label: "AKTIF",               bg: "#D1FAE5", text: "#065F46" },
+  DITOLAK:            { label: "DITOLAK",             bg: "#FEE2E2", text: "#B91C1C" },
+  REJECTED:           { label: "DITOLAK",             bg: "#FEE2E2", text: "#B91C1C" },
+  SELESAI:            { label: "SELESAI",             bg: "#E0E7FF", text: "#3730A3" },
+  COMPLETED:          { label: "SELESAI",             bg: "#E0E7FF", text: "#3730A3" },
+  DIBATALKAN:         { label: "DIBATALKAN",          bg: "#F3F4F6", text: "#4B5563" },
+  CANCELLED:          { label: "DIBATALKAN",          bg: "#F3F4F6", text: "#4B5563" },
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -68,7 +74,6 @@ const TopBar: React.FC = () => {
 
 const PartnershipStatusPage: React.FC = () => {
   const user = getCurrentUser();
-  const sidebarWidth = user?.role === "MITRA" ? 260 : 220;
   const [statusData, setStatusData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -175,10 +180,12 @@ const PartnershipStatusPage: React.FC = () => {
   };
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'Segoe UI', sans-serif", background: "#F5F4F0" }}>
+    <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'Segoe UI', sans-serif", position: "relative" }}>
+      <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundImage: "url(/background.png)", backgroundSize: "cover", backgroundPosition: "center", zIndex: 0, opacity: 0.7 }} />
+      <div style={{ position: "relative", zIndex: 1, display: "flex", width: "100%" }}>
       <PartnershipSidebar />
 
-      <main style={{ marginLeft: sidebarWidth, flex: 1, display: "flex", flexDirection: "column" }}>
+      <main style={{ marginLeft: 260, flex: 1, display: "flex", flexDirection: "column" }}>
         <TopBar />
 
         <div style={{ padding: "32px 36px" }}>
@@ -231,12 +238,6 @@ const PartnershipStatusPage: React.FC = () => {
               <div>
                 <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#888780", letterSpacing: 0.5 }}>Ditolak</p>
                 <p style={{ margin: "0 0 6px", fontSize: 32, fontWeight: 700, color: "#2C2C2A", lineHeight: 1 }}>{stats.ditolak}</p>
-                <button style={{ background: "none", border: "none", padding: 0, fontSize: 12, color: "#E24B4A", cursor: "pointer", display: "flex", alignItems: "center", gap: 3 }}>
-                  Lihat Alasan
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <polyline points="9 18 15 12 9 6" />
-                  </svg>
-                </button>
               </div>
               <div style={iconBox("#F8D7DA")}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#721C24" strokeWidth="2">
@@ -322,14 +323,13 @@ const PartnershipStatusPage: React.FC = () => {
                 }}
               >
                 <option value="">Semua Status</option>
-                <option value="SUBMITTED">Menunggu</option>
-                <option value="REVIEWED">Ditinjau</option>
-                <option value="APPROVED">Disetujui</option>
-                <option value="REJECTED">Ditolak</option>
-                <option value="ACTIVE">Bermitra</option>
-                <option value="WAITING_DOCUMENT">Menunggu Dokumen</option>
-                <option value="COMPLETED">Selesai</option>
-                <option value="CANCELLED">Dibatalkan</option>
+                <option value="DIAJUKAN">Diajukan</option>
+                <option value="DITINJAU">Ditinjau</option>
+                <option value="MENUNGGU_DOKUMEN_TTD">Menunggu Dokumen</option>
+                <option value="AKTIF">Aktif</option>
+                <option value="SELESAI">Selesai</option>
+                <option value="DITOLAK">Ditolak</option>
+                <option value="DIBATALKAN">Dibatalkan</option>
               </select>
               <select
                 value={itemsPerPage}
@@ -387,10 +387,10 @@ const PartnershipStatusPage: React.FC = () => {
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#FAFAF8" }}>
-                    {["MITRA UMKM", "ID PENGAJUAN", "TANGGAL", "STATUS", "AKSI"].map((h, i) => (
+                    {["MITRA UMKM", "ID PENGAJUAN", "TANGGAL", "STATUS"].map((h, i) => (
                       <th key={h} style={{
                         padding: "11px 20px",
-                        textAlign: i === 4 ? "right" : "left",
+                        textAlign: "left",
                         fontSize: 11,
                         fontWeight: 700,
                         color: "#888780",
@@ -404,7 +404,7 @@ const PartnershipStatusPage: React.FC = () => {
                 <tbody>
                   {pageItems.length === 0 ? (
                     <tr>
-                      <td colSpan={5} style={{ padding: "40px 20px", textAlign: "center", color: "#888780", fontSize: 14 }}>
+                      <td colSpan={4} style={{ padding: "40px 20px", textAlign: "center", color: "#888780", fontSize: 14 }}>
                         Tidak ada pengajuan ditemukan.
                       </td>
                     </tr>
@@ -474,7 +474,7 @@ const PartnershipStatusPage: React.FC = () => {
                 borderTop: "1px solid #F1EFE8",
               }}>
                 <p style={{ margin: 0, fontSize: 12, color: "#888780" }}>
-                  Menampilkan {pageItems.length} dari {statusData?.pagination?.total ?? filtered.length} pengajuan
+                  Menampilkan {Math.min(currentPage * itemsPerPage, statusData?.pagination?.total ?? filtered.length)} dari {statusData?.pagination?.total ?? filtered.length} pengajuan
                 </p>
 
                 <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -537,6 +537,7 @@ const PartnershipStatusPage: React.FC = () => {
           </div>
         </div>
       </main>
+      </div>
     </div>
   );
 };

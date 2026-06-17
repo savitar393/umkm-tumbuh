@@ -7,10 +7,10 @@ const PartnershipApprovalSuccessPage: React.FC = () => {
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'Segoe UI', Roboto, sans-serif", position: "relative" }}>
-      <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundImage: "url(/background.png)", backgroundSize: "cover", backgroundPosition: "center", backgroundAttachment: "fixed", zIndex: 0 }} />
-      <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", background: "rgba(255,255,255,0.45)", zIndex: 1 }} />
+      <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundImage: "url(/background.png)", backgroundSize: "cover", backgroundPosition: "center", zIndex: 0, opacity: 0.7 }} />
+      <div style={{ position: "relative", zIndex: 1, display: "flex", width: "100%" }}>
       <PartnershipSidebar />
-      <main style={{ marginLeft: 260, flex: 1, display: "flex", flexDirection: "column", position: "relative", zIndex: 2, minHeight: "100vh" }}>
+      <main style={{ marginLeft: 260, flex: 1, display: "flex", flexDirection: "column", minHeight: "100vh" }}>
         <header style={{ background: "white", borderBottom: "1px solid #E8E7E2", padding: "0 32px", height: 60, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 16, position: "sticky", top: 0, zIndex: 50 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ textAlign: "right" }}>
@@ -54,6 +54,7 @@ const PartnershipApprovalSuccessPage: React.FC = () => {
           </div>
         </div>
       </main>
+      </div>
     </div>
   );
 };

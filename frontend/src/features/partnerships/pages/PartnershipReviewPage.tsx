@@ -353,8 +353,8 @@ const UploadCard: React.FC<UploadCardProps> = ({ onFileSelect, onError, fileName
   const handleFile = (file: File | null) => {
     if (!file) return;
     
-    if (file.type !== "application/pdf") {
-      if (onError) onError("ERR-FILE-02: Hanya file PDF yang diperbolehkan. Maksimal 10MB.");
+    if (!["application/pdf", "image/jpeg", "image/png"].includes(file.type)) {
+      if (onError) onError("ERR-FILE-02: Hanya file PDF, JPG, dan PNG yang diperbolehkan. Maksimal 10MB.");
       return;
     }
     
@@ -408,7 +408,7 @@ const UploadCard: React.FC<UploadCardProps> = ({ onFileSelect, onError, fileName
       <input
         ref={inputRef}
         type="file"
-        accept=".pdf"
+        accept=".pdf,.jpg,.jpeg,.png"
         style={{ display: "none" }}
         onChange={(e) => handleFile(e.target.files?.[0] || null)}
       />
@@ -463,7 +463,7 @@ const UploadCard: React.FC<UploadCardProps> = ({ onFileSelect, onError, fileName
             Seret dan lepas file PDF Anda di sini, atau klik untuk memilih file
           </p>
           <p style={{ margin: "4px 0 0", fontSize: 11, color: "#B4B2A9" }}>
-            MAKSIMUM FILE 10MB • FORMAT PDF SAJA
+            MAKSIMAL 10MB • PDF, JPG, PNG
           </p>
         </>
       )}
@@ -564,7 +564,7 @@ const PartnershipReviewPage: React.FC = () => {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
 
-  const sidebarWidth = isMitraRoute ? 260 : 220;
+  const sidebarWidth = 260;
 
   const fetchPartnership = async (partnershipId: string) => {
     setLoading(true);
@@ -686,8 +686,9 @@ const PartnershipReviewPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div style={{ display: "flex", minHeight: "100vh", background: "#F5F4F0", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ textAlign: "center" }}>
+      <div style={{ display: "flex", minHeight: "100vh", position: "relative", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundImage: "url(/background.png)", backgroundSize: "cover", backgroundPosition: "center", zIndex: 0, opacity: 0.7 }} />
+        <div style={{ position: "relative", zIndex: 1, textAlign: "center" }}>
           <div style={{
             display: "inline-block",
             width: 40,
@@ -706,8 +707,11 @@ const PartnershipReviewPage: React.FC = () => {
 
   if (!partnership) {
     return (
-      <div style={{ display: "flex", minHeight: "100vh", background: "#F5F4F0", alignItems: "center", justifyContent: "center" }}>
-        <p>Data tidak ditemukan</p>
+      <div style={{ display: "flex", minHeight: "100vh", position: "relative", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundImage: "url(/background.png)", backgroundSize: "cover", backgroundPosition: "center", zIndex: 0, opacity: 0.7 }} />
+        <div style={{ position: "relative", zIndex: 1 }}>
+          <p>Data tidak ditemukan</p>
+        </div>
       </div>
     );
   }
@@ -717,8 +721,10 @@ const PartnershipReviewPage: React.FC = () => {
       display: "flex",
       minHeight: "100vh",
       fontFamily: "'Segoe UI', Roboto, sans-serif",
-      background: "#F5F4F0",
+      position: "relative",
     }}>
+      <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundImage: "url(/background.png)", backgroundSize: "cover", backgroundPosition: "center", zIndex: 0, opacity: 0.7 }} />
+      <div style={{ position: "relative", zIndex: 1, display: "flex", width: "100%" }}>
       {/* Cancel Confirmation Modal */}
       <CancelConfirmationModal
         isOpen={showCancelModal}
@@ -1022,6 +1028,7 @@ const PartnershipReviewPage: React.FC = () => {
           </div>
         </div>
       </main>
+      </div>
     </div>
   );
 };

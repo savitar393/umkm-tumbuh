@@ -115,7 +115,7 @@ const PartnershipApprovalPage: React.FC = () => {
 
   const handleFileSelect = (file: File | null) => {
     if (!file) return;
-    if (file.type !== "application/pdf") { setUploadError("ERR-FILE-02: Hanya file PDF yang diperbolehkan. Maksimal 10MB."); return; }
+    if (!["application/pdf", "image/jpeg", "image/png"].includes(file.type)) { setUploadError("ERR-FILE-02: Hanya file PDF, JPG, dan PNG yang diperbolehkan. Maksimal 10MB."); return; }
     if (file.size > 10 * 1024 * 1024) { setUploadError("ERR-FILE-02: File terlalu besar. Maksimal 10MB."); return; }
     setUploadError(null);
     setSignedFile(file);
@@ -158,14 +158,13 @@ const PartnershipApprovalPage: React.FC = () => {
   };
 
   const p = partnership?.pengajuan;
-  const sidebarWidth = isMitra ? 260 : 220;
 
   const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
     <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'Segoe UI', Roboto, sans-serif", position: "relative" }}>
-      <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundImage: "url(/background.png)", backgroundSize: "cover", backgroundPosition: "center", zIndex: 0 }} />
-      <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", background: "rgba(255,255,255,0.45)", zIndex: 1 }} />
+      <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundImage: "url(/background.png)", backgroundSize: "cover", backgroundPosition: "center", zIndex: 0, opacity: 0.7 }} />
+      <div style={{ position: "relative", zIndex: 1, display: "flex", width: "100%" }}>
       <PartnershipSidebar />
-      <main style={{ marginLeft: sidebarWidth, flex: 1, display: "flex", flexDirection: "column", position: "relative", zIndex: 2, minHeight: "100vh" }}>
+      <main style={{ marginLeft: 260, flex: 1, display: "flex", flexDirection: "column", minHeight: "100vh" }}>
         <header style={{ background: "white", borderBottom: "1px solid #E8E7E2", padding: "0 32px", height: 60, display: "flex", alignItems: "center", justifyContent: "flex-end", position: "sticky", top: 0, zIndex: 50 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ textAlign: "right" }}><p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#2C2C2A" }}>{user?.full_name || "User"}</p><p style={{ margin: 0, fontSize: 11, color: "#888780" }}>{user?.role || "MITRA"}</p></div>
@@ -173,6 +172,7 @@ const PartnershipApprovalPage: React.FC = () => {
         </header>
         <div style={{ padding: "32px 40px", width: "100%", maxWidth: 1200, alignSelf: "center" }}>{children}</div>
       </main>
+      </div>
     </div>
   );
 
@@ -244,7 +244,7 @@ const PartnershipApprovalPage: React.FC = () => {
           </h3>
         </div>
         <div style={{ padding: "28px 24px", textAlign: "center" }}>
-          <input ref={fileInputRef} type="file" accept=".pdf" style={{ display: "none" }} onChange={(e) => handleFileSelect(e.target.files?.[0] || null)} />
+          <input ref={fileInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png" style={{ display: "none" }} onChange={(e) => handleFileSelect(e.target.files?.[0] || null)} />
           {uploadState === "success" ? (
             <div style={{ border: "2px solid #1D9E75", borderRadius: 16, padding: "28px 20px", background: "#F0FAF6" }}>
               <div style={{ width: 48, height: 48, borderRadius: 12, background: "#1D9E75", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>

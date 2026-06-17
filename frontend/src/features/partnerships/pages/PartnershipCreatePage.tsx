@@ -31,8 +31,8 @@ const UploadCard: React.FC<UploadCardProps> = ({ label, hint, optional, icon, va
       onChange(null, "ERR-FILE-02: File terlalu besar. Maksimal 10MB.");
       return;
     }
-    if (file.type !== "application/pdf") {
-      onChange(null, "ERR-FILE-02: Hanya file PDF yang diperbolehkan.");
+    if (!["application/pdf", "image/jpeg", "image/png"].includes(file.type)) {
+      onChange(null, "ERR-FILE-02: Hanya file PDF, JPG, dan PNG yang diperbolehkan.");
       return;
     }
     onChange(file.name);
@@ -64,7 +64,7 @@ const UploadCard: React.FC<UploadCardProps> = ({ label, hint, optional, icon, va
       <input
         ref={inputRef}
         type="file"
-        accept=".pdf"
+        accept=".pdf,.jpg,.jpeg,.png"
         style={{ display: "none" }}
         onChange={handleFile}
       />
@@ -111,7 +111,6 @@ const PartnershipCreatePage: React.FC = () => {
   const user = getCurrentUser();
   const basePath = user?.role === "MITRA" ? "/mitra/partnerships" : "/umkm/partnerships";
   const isMitra = user?.role === "MITRA";
-  const sidebarWidth = isMitra ? 260 : 220;
   
   // State untuk daftar mitra dari backend
   const [mitraList, setMitraList] = useState<Array<{ id: string; name: string }>>([]);
@@ -169,7 +168,7 @@ const PartnershipCreatePage: React.FC = () => {
     };
     
     fetchPartnerList();
-  }, [user]);
+  }, [user?.role]);
 
   // Cek URL params untuk pre-select mitra (dropdown only)
   useEffect(() => {
@@ -317,7 +316,8 @@ const PartnershipCreatePage: React.FC = () => {
       <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundImage: "url(/background.png)", backgroundSize: "cover", backgroundPosition: "center", zIndex: 0, opacity: 0.7 }} />
       <div style={{ position: "relative", zIndex: 1, display: "flex", width: "100%" }}>
       <PartnershipSidebar />
-      <main style={{ marginLeft: sidebarWidth, flex: 1, padding: "40px", maxWidth: 860 }}>
+      <main style={{ marginLeft: 260, flex: 1, display: "flex", justifyContent: "center" }}>
+        <div style={{ width: "100%", maxWidth: 860, padding: "40px" }}>
         <div style={{ background: "white", borderRadius: 16, padding: "32px 36px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
 
           <div style={{ marginBottom: 28, textAlign: "center" }}>
@@ -421,7 +421,7 @@ const PartnershipCreatePage: React.FC = () => {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
                 <UploadCard
                   label="NIB / KTP"
-                  hint="Format: PDF, JPG (Max 2MB)"
+                  hint="PDF, JPG, PNG (Max 10MB)"
                   icon={<IconDoc />}
                   value={files.nib_ktp}
                   onChange={handleFileChange("nib_ktp")}
@@ -429,7 +429,7 @@ const PartnershipCreatePage: React.FC = () => {
                 />
                 <UploadCard
                   label="PDF Pengajuan Kemitraan"
-                  hint="Format: PDF, JPG (Max 2MB)"
+                  hint="PDF, JPG, PNG (Max 10MB)"
                   icon={<IconDoc />}
                   value={files.pdf_kemitraan}
                   onChange={handleFileChange("pdf_kemitraan")}
@@ -491,6 +491,7 @@ const PartnershipCreatePage: React.FC = () => {
               </button>
             </div>
           </form>
+        </div>
         </div>
       </main>
       </div>

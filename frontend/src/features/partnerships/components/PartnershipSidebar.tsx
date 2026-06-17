@@ -2,14 +2,6 @@ import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { getCurrentUser } from "../../../shared/auth/currentUser";
 
-const LogoUMKMTumbuh: React.FC<{ size?: number }> = ({ size = 40 }) => (
-  <svg width={size} height={size} viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect width="40" height="40" rx="8" fill="#F5A623" />
-    <path d="M8 28 L14 16 L20 22 L26 12 L32 28 Z" fill="#1A3A6B" strokeLinejoin="round" />
-    <circle cx="26" cy="12" r="3" fill="#1A3A6B" />
-  </svg>
-);
-
 interface NavItem {
   label: string;
   path: string;
@@ -23,8 +15,6 @@ const PartnershipSidebar: React.FC = () => {
   const isMitra = user?.role === "MITRA";
   const base = isMitra ? "/mitra/partnerships" : "/umkm/partnerships";
   const dashPath = isMitra ? "/mitra" : "/umkm";
-
-  const sidebarWidth = isMitra ? 260 : 220;
 
   const navItems: NavItem[] = [
     {
@@ -61,16 +51,6 @@ const PartnershipSidebar: React.FC = () => {
         </svg>
       ),
     },
-    ...(isMitra ? [{
-      label: "Inbox Pengajuan",
-      path: `${base}/inbox`,
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-          <path d="M22 12h-4l-3 3-3-3H2" />
-          <path d="M2 6v10a2 2 0 002 2h16a2 2 0 002-2V6" />
-        </svg>
-      ),
-    }] : []),
     {
       label: "Status Pengajuan",
       path: `${base}/status`,
@@ -94,8 +74,8 @@ const PartnershipSidebar: React.FC = () => {
 
   return (
     <aside style={{
-      width: sidebarWidth,
-      minWidth: sidebarWidth,
+      width: 260,
+      minWidth: 260,
       background: "#1A3A6B",
       display: "flex",
       flexDirection: "column",
@@ -105,23 +85,20 @@ const PartnershipSidebar: React.FC = () => {
       height: "100vh",
       zIndex: 100,
     }}>
-      {/* Logo */}
       <div style={{ padding: "28px 20px 24px", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <LogoUMKMTumbuh size={36} />
+          <img src="/logo.png" alt="logo" style={{ width: 36, height: 36, borderRadius: 8 }} />
           <span style={{ color: "#F5A623", fontWeight: 700, fontSize: 15, lineHeight: 1.2 }}>
             UMKM<br />Tumbuh
           </span>
         </div>
       </div>
 
-      {/* Navigation */}
       <nav style={{ flex: 1, padding: "12px 0" }}>
         {navItems.map((item) => {
           const isActive =
             location.pathname === item.path ||
-            (item.path !== "/" && location.pathname.startsWith(item.path + "/")) ||
-            (item.path === "/partnerships" && (location.pathname === "/partnerships" || location.pathname.startsWith("/partnerships/")));
+            (item.path !== "/" && location.pathname.startsWith(item.path + "/"));
           return (
             <button
               key={item.path}
@@ -152,7 +129,6 @@ const PartnershipSidebar: React.FC = () => {
         })}
       </nav>
 
-      {/* User + Logout */}
       <div style={{ padding: "16px 20px", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
         <button
           onClick={() => navigate("/login")}

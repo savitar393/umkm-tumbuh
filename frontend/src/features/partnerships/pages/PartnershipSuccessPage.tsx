@@ -7,12 +7,13 @@ const PartnershipSuccessPage: React.FC = () => {
   const navigate = useNavigate();
   const user = getCurrentUser();
   const basePath = user?.role === "MITRA" ? "/mitra/partnerships" : "/umkm/partnerships";
-  const sidebarWidth = user?.role === "MITRA" ? 260 : 220;
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'Segoe UI', Roboto, sans-serif", background: "#F5F4F0" }}>
+    <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'Segoe UI', Roboto, sans-serif", position: "relative" }}>
+      <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundImage: "url(/background.png)", backgroundSize: "cover", backgroundPosition: "center", zIndex: 0, opacity: 0.7 }} />
+      <div style={{ position: "relative", zIndex: 1, display: "flex", width: "100%" }}>
       <PartnershipSidebar />
-      <main style={{ marginLeft: sidebarWidth, flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px" }}>
+      <main style={{ marginLeft: 260, flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "40px" }}>
         <div style={{ maxWidth: 500, width: "100%", background: "white", borderRadius: 24, boxShadow: "0 8px 32px rgba(0,0,0,0.08)", padding: "56px 40px", textAlign: "center" }}>
           <div style={{ width: 80, height: 80, borderRadius: "50%", background: "#E8F5F0", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px" }}>
             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#1D9E75" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -34,6 +35,7 @@ const PartnershipSuccessPage: React.FC = () => {
           </button>
         </div>
       </main>
+      </div>
     </div>
   );
 };
