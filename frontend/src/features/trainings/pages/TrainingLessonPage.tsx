@@ -120,8 +120,8 @@ export default function TrainingLessonPage() {
                     display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
                   }}>
                     {done ? <Icon icon="mdi:check" style={{ fontSize: 14, color: "#fff" }} /> :
-                     curr ? <Icon icon="mdi:play" style={{ fontSize: 12, color: "#fff" }} /> :
-                     <Icon icon="mdi:lock" style={{ fontSize: 12, color: "#94a3b8" }} />}
+                      curr ? <Icon icon="mdi:play" style={{ fontSize: 12, color: "#fff" }} /> :
+                        <Icon icon="mdi:lock" style={{ fontSize: 12, color: "#94a3b8" }} />}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ margin: 0, fontSize: 13, fontWeight: curr ? 700 : 500, color: "#fff", lineHeight: 1.3 }}>{mod.judul_modul}</p>

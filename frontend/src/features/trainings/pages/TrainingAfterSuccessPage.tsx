@@ -1,9 +1,11 @@
+import { useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import Header from "../../../shared/components/Header";
 import Footer from "../../../shared/components/Footer";
 import { useTrainingStore } from "../store";
-import { useUserCertificates } from "../../certificates/hooks";
+import { useUserCertificates, useRequestCertificate } from "../../certificates/hooks";
+import { getCertificateDownloadUrl } from "../../certificates/api";
 import { useUserEnrollments } from "../hooks";
 
 const relatedContent = [
@@ -49,10 +51,20 @@ export default function TrainingAfterSuccessPage() {
   const { data: certificates } = useUserCertificates(umkmId);
   const { data: enrollments } = useUserEnrollments(umkmId);
 
+  const requestCertMutation = useRequestCertificate();
+  const requestedRef = useRef(false);
+
   const cert = (certificates || []).find((c) => c.pelatihan_id === id);
   const enrollment = (enrollments || []).find((e) => e.pelatihan_id === id);
   const progress = enrollment?.progress_persen || 65;
   const timelineSteps = getTimelineSteps(cert?.status_sertifikat_id, cert?.tanggal_terbit || undefined, cert?.catatan_validasi || undefined);
+
+  useEffect(() => {
+    if (!requestedRef.current && enrollment && enrollment.status_pendaftaran === "SELESAI") {
+      requestedRef.current = true;
+      requestCertMutation.mutate(enrollment.pendaftaran_pelatihan_id);
+    }
+  }, [enrollment]);
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "#f5f7fa" }}>
@@ -62,12 +74,20 @@ export default function TrainingAfterSuccessPage() {
           <div>
             <div style={{ background: "#fff", borderRadius: 16, padding: 32, boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
               <div style={{ textAlign: "center", marginBottom: 32 }}>
-                <div style={{ width: 80, height: 80, borderRadius: "50%", background: "#fef3c7", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
-                  <Icon icon="mdi:clock-outline" style={{ fontSize: 40, color: "#d97706" }} />
+                <div style={{ width: 80, height: 80, borderRadius: "50%", background: requestCertMutation.isPending ? "#e0e7ff" : "#fef3c7", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+                  {requestCertMutation.isPending ? (
+                    <Icon icon="mdi:loading" style={{ fontSize: 40, color: "#1a3fa4" }} />
+                  ) : cert?.status_sertifikat_id === "TERBIT" ? (
+                    <Icon icon="mdi:check-circle" style={{ fontSize: 40, color: "#16a34a" }} />
+                  ) : (
+                    <Icon icon="mdi:clock-outline" style={{ fontSize: 40, color: "#d97706" }} />
+                  )}
                 </div>
-                <h2 style={{ fontSize: 20, fontWeight: 800, color: "#0f172a", margin: "0 0 8px" }}>Menunggu Verifikasi</h2>
+                <h2 style={{ fontSize: 20, fontWeight: 800, color: "#0f172a", margin: "0 0 8px" }}>
+                  {requestCertMutation.isPending ? "Menerbitkan Sertifikat..." : cert?.status_sertifikat_id === "TERBIT" ? "Sertifikat Terbit" : "Menunggu Verifikasi"}
+                </h2>
                 <p style={{ fontSize: 14, color: "#64748b", margin: 0 }}>
-                  Evaluasi Anda sedang dalam proses review oleh tim kurator
+                  {requestCertMutation.isPending ? "Mohon tunggu, sertifikat sedang diproses..." : cert?.status_sertifikat_id === "TERBIT" ? "Selamat! Sertifikat Anda telah diterbitkan." : "Evaluasi Anda sedang dalam proses review oleh tim kurator"}
                 </p>
               </div>
 
@@ -143,6 +163,20 @@ export default function TrainingAfterSuccessPage() {
                 <p style={{ fontSize: 11, color: "#94a3b8", margin: "8px 0 0" }}>
                   Status: {cert.nama_status_sertifikat}
                 </p>
+              )}
+              {cert?.status_sertifikat_id === "TERBIT" && (
+                <button
+                  onClick={() => window.open(getCertificateDownloadUrl(cert.sertifikat_id), "_blank")}
+                  style={{
+                    marginTop: 12, width: "100%", padding: "10px 16px",
+                    background: "linear-gradient(135deg, #1a3fa4, #1e3a8a)", color: "#fff",
+                    border: "none", borderRadius: 8, fontSize: 13, fontWeight: 700,
+                    cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  }}
+                >
+                  <Icon icon="mdi:download" style={{ fontSize: 18 }} />
+                  Download Sertifikat PDF
+                </button>
               )}
             </div>
 

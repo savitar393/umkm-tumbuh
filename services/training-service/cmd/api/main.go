@@ -34,7 +34,7 @@ func main() {
 	trainingHandler := trainings.NewHandler(trainingService)
 
 	certRepo := certificates.NewRepository(db)
-	certService := certificates.NewService(certRepo)
+	certService := certificates.NewService(certRepo, cfg.CertificateDir)
 	certHandler := certificates.NewHandler(certService)
 
 	healthHandler := health.NewHandler(db)

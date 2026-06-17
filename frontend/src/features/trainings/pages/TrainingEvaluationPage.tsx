@@ -4,6 +4,7 @@ import { Icon } from "@iconify/react";
 import Footer from "../../../shared/components/Footer";
 import { useCompleteTraining, useUserEnrollments } from "../hooks";
 import { useTrainingStore } from "../store";
+import { useRequestCertificate } from "../../certificates/hooks";
 import { getCurrentUser, clearAuthStorage } from "../../../shared/auth/currentUser";
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -14,6 +15,7 @@ export default function TrainingEvaluationPage() {
   const umkmId = useTrainingStore((s) => s.umkmId);
   const { data: enrollments } = useUserEnrollments(umkmId);
   const completeMutation = useCompleteTraining();
+  const requestCertMutation = useRequestCertificate();
   const enrollment = (enrollments || []).find((e) => e.pelatihan_id === id);
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -45,17 +47,17 @@ export default function TrainingEvaluationPage() {
   const handleFileSelect = (file: File) => {
     const maxSize = 25 * 1024 * 1024; // 25MB
     const allowedTypes = ["application/pdf", "application/zip", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
-    
+
     if (file.size > maxSize) {
       alert("File terlalu besar! Maksimal 25MB");
       return;
     }
-    
+
     if (!allowedTypes.includes(file.type)) {
       alert("Format file tidak didukung! Gunakan PDF, ZIP, atau DOCX");
       return;
     }
-    
+
     setSelectedFile(file);
   };
 
@@ -87,7 +89,14 @@ export default function TrainingEvaluationPage() {
     if (!canSubmit || !enrollment) return;
     completeMutation.mutate(
       { pendaftaran_pelatihan_id: enrollment.pendaftaran_pelatihan_id },
-      { onSuccess: () => navigate(`/umkm/trainings/${id}/verification`) }
+      {
+        onSuccess: () => {
+          requestCertMutation.mutate(enrollment.pendaftaran_pelatihan_id, {
+            onSuccess: () => navigate(`/umkm/trainings/${id}/verification`),
+            onError: () => navigate(`/umkm/trainings/${id}/verification`),
+          });
+        },
+      }
     );
   };
 
