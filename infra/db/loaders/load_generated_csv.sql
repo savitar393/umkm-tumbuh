@@ -1,9 +1,54 @@
--- Run this with psql from the generator output directory that contains csv/*.csv.
--- Example:
---   psql "$DATABASE_URL" -f infra/db/loaders/load_mandat_generated_csv.sql
+-- load_mandat_generated_csv.sql (Versi A - TRUNCATE & Reload)
+-- Hapus data dulu, lalu load ulang. HATI-HATI: semua data akan di-reset!
 
-\set ON_ERROR_STOP off
+\set ON_ERROR_STOP on
 
+-- Truncate tabel dengan foreign key (urutan penting!)
+TRUNCATE TABLE 
+    dashboard.transaksi_monitoringperkembangan,
+    partnership.transaksi_pengajuankerjasama,
+    training.transaksi_sertifikatpelatihan,
+    training.transaksi_submissionassignment,
+    training.transaksi_pendaftaranpelatihan,
+    user_mgmt.transaksi_registrasipengguna,
+    document.transaksi_dokumenterunggah,
+    training.master_assignmentpelatihan,
+    training.master_modulpelatihan,
+    training.master_programpelatihan,
+    user_mgmt.master_mitrabentukdukungan,
+    user_mgmt.master_mitrabidangkemitraan,
+    user_mgmt.master_mitra,
+    user_mgmt.master_produkumkm,
+    user_mgmt.master_umkm,
+    user_mgmt.master_pelakuumkm,
+    user_mgmt.master_lokasi,
+    auth.master_admin,
+    auth.master_akunpengguna,
+    ref.ref_dimwaktu,
+    ref.ref_jenisdokumen,
+    ref.ref_statusdokumen,
+    ref.ref_statusperkembangan,
+    ref.ref_statuspengajuan,
+    ref.ref_statussertifikat,
+    ref.ref_statussubmission,
+    ref.ref_statuspendaftaranpelatihan,
+    ref.ref_statuspelatihan,
+    ref.ref_jenispelatihan,
+    ref.ref_skalakerjasama,
+    ref.ref_bentukdukungan,
+    ref.ref_bidangkemitraan,
+    ref.ref_statusmitra,
+    ref.ref_jenismitra,
+    ref.ref_statusumkm,
+    ref.ref_kategoriproduk,
+    ref.ref_kategoriusaha,
+    ref.ref_skalausaha,
+    ref.ref_jenisumkm
+    CASCADE;
+
+DELETE FROM user_mgmt.transaksi_registrasipengguna;
+
+-- Load reference tables (urutan bebas karena sudah kosong)
 \copy ref.ref_jenisumkm(jenis_umkm_id, nama_jenis_umkm) FROM 'csv/ref_jenisumkm.csv' WITH (FORMAT csv, HEADER true, NULL '');
 \copy ref.ref_skalausaha(skala_usaha_id, nama_skala_usaha) FROM 'csv/ref_skalausaha.csv' WITH (FORMAT csv, HEADER true, NULL '');
 \copy ref.ref_kategoriusaha(kategori_usaha_id, nama_kategori_usaha) FROM 'csv/ref_kategoriusaha.csv' WITH (FORMAT csv, HEADER true, NULL '');
@@ -24,6 +69,8 @@
 \copy ref.ref_statusdokumen(status_dokumen_id, nama_status_dokumen) FROM 'csv/ref_statusdokumen.csv' WITH (FORMAT csv, HEADER true, NULL '');
 \copy ref.ref_jenisdokumen(jenis_dokumen_id, nama_jenis_dokumen, deskripsi, allowed_extensions, max_size_mb, wajib_umkm, wajib_mitra, wajib_pengajuan_kemitraan) FROM 'csv/ref_jenisdokumen.csv' WITH (FORMAT csv, HEADER true, NULL '');
 \copy ref.ref_dimwaktu(tanggal, hari, minggu_ke, minggu_bulan, tanggal_awal_minggu, tanggal_akhir_minggu, bulan, nama_bulan, kuartal, tahun, is_weekend) FROM 'csv/ref_dimwaktu.csv' WITH (FORMAT csv, HEADER true, NULL '');
+
+-- Load master tables (urutan: akun → admin/lokasi/pelaku → umkm → produk/mitra)
 \copy auth.master_akunpengguna(akun_id, peran_id, nama_lengkap, email, no_hp, password_hash, status_aktif, email_verified_at, last_login_at, created_at, updated_at) FROM 'csv/master_akunpengguna.csv' WITH (FORMAT csv, HEADER true, NULL '');
 \copy auth.master_admin(admin_id, akun_id, kode_admin, is_active, created_at, updated_at) FROM 'csv/master_admin.csv' WITH (FORMAT csv, HEADER true, NULL '');
 \copy user_mgmt.master_lokasi(lokasi_id, provinsi, kabupaten_kota, kecamatan, kelurahan, kode_pos, alamat_detail, latitude, longitude, created_at, updated_at) FROM 'csv/master_lokasi.csv' WITH (FORMAT csv, HEADER true, NULL '');
@@ -37,9 +84,22 @@
 \copy training.master_modulpelatihan(modul_id, pelatihan_id, urutan_modul, judul_modul, deskripsi_modul, durasi_menit, materi_url, is_preview, status_aktif, created_at) FROM 'csv/master_modulpelatihan.csv' WITH (FORMAT csv, HEADER true, NULL '');
 \copy training.master_assignmentpelatihan(assignment_id, pelatihan_id, judul_assignment, deskripsi_assignment, instruksi_submission, due_days_after_enroll, status_aktif, created_at) FROM 'csv/master_assignmentpelatihan.csv' WITH (FORMAT csv, HEADER true, NULL '');
 \copy document.transaksi_dokumenterunggah(dokumen_id, jenis_dokumen_id, status_dokumen_id, uploader_akun_id, owner_type, owner_id, context_type, context_id, original_file_name, stored_file_name, file_extension, mime_type, file_size_bytes, bucket_name, object_key, storage_path, public_url, checksum_sha256, version_id, is_public, display_order, caption, uploaded_at, verified_at, expired_at, metadata_json) FROM 'csv/transaksi_dokumenterunggah.csv' WITH (FORMAT csv, HEADER true, NULL '');
-\copy user_mgmt.transaksi_registrasipengguna(akun_id, umkm_id, diverifikasi_oleh_admin_id, mitra_id, status_verifikasi_id, kode_registrasi, tanggal_submit, tanggal_review, tanggal_aktivasi, catatan_validasi, checklist_informasi_lengkap, created_at) FROM 'csv/transaksi_registrasipengguna.csv' WITH (FORMAT csv, HEADER true, NULL '');
+-- Load transaksi_registrasipengguna via staging table untuk handle duplikat akun_id
+CREATE TEMP TABLE tmp_registrasi (LIKE user_mgmt.transaksi_registrasipengguna INCLUDING DEFAULTS);
+\copy tmp_registrasi(akun_id, umkm_id, diverifikasi_oleh_admin_id, mitra_id, status_verifikasi_id, kode_registrasi, tanggal_submit, tanggal_review, tanggal_aktivasi, catatan_validasi, checklist_informasi_lengkap, created_at) FROM 'csv/transaksi_registrasipengguna.csv' WITH (FORMAT csv, HEADER true, NULL '');
+INSERT INTO user_mgmt.transaksi_registrasipengguna(akun_id, umkm_id, diverifikasi_oleh_admin_id, mitra_id, status_verifikasi_id, kode_registrasi, tanggal_submit, tanggal_review, tanggal_aktivasi, catatan_validasi, checklist_informasi_lengkap, created_at)
+SELECT DISTINCT ON (akun_id) akun_id, umkm_id, diverifikasi_oleh_admin_id, mitra_id, status_verifikasi_id, kode_registrasi, tanggal_submit, tanggal_review, tanggal_aktivasi, catatan_validasi, checklist_informasi_lengkap, created_at
+FROM tmp_registrasi
+ORDER BY akun_id, created_at DESC
+ON CONFLICT (akun_id) DO NOTHING;
+DROP TABLE tmp_registrasi;
 \copy training.transaksi_pendaftaranpelatihan(pendaftaran_pelatihan_id, umkm_id, pelatihan_id, status_pendaftaran_pelatihan_id, tanggal_daftar, akses_mulai_at, akses_berakhir_at, terakhir_diakses_at, progress_persen, modul_selesai, total_modul_snapshot, tanggal_selesai) FROM 'csv/transaksi_pendaftaranpelatihan.csv' WITH (FORMAT csv, HEADER true, NULL '');
 \copy training.transaksi_submissionassignment(pendaftaran_pelatihan_id, assignment_id, status_submission_id, dokumen_id, submission_link, submitted_at, reviewed_at) FROM 'csv/transaksi_submissionassignment.csv' WITH (FORMAT csv, HEADER true, NULL '');
 \copy training.transaksi_sertifikatpelatihan(pendaftaran_pelatihan_id, status_sertifikat_id, dokumen_id, nomor_sertifikat, tanggal_pengajuan, tanggal_terbit, diverifikasi_oleh_admin_id, catatan_validasi) FROM 'csv/transaksi_sertifikatpelatihan.csv' WITH (FORMAT csv, HEADER true, NULL '');
 \copy partnership.transaksi_pengajuankerjasama(pengajuan_id, kode_pengajuan, umkm_id, mitra_id, pengaju_akun_id, penerima_akun_id, status_pengajuan_id, pesan_pengajuan, catatan_keputusan, dokumen_perjanjian_id, tanggal_pengajuan, tanggal_keputusan, tanggal_upload_dokumen, tanggal_mulai_kerjasama, tanggal_selesai_kerjasama, created_at, updated_at) FROM 'csv/transaksi_pengajuankerjasama.csv' WITH (FORMAT csv, HEADER true, NULL '');
 \copy dashboard.transaksi_monitoringperkembangan(umkm_id, status_perkembangan_id, laba_harian, jumlah_produk, created_at) FROM 'csv/transaksi_monitoringperkembangan.csv' WITH (FORMAT csv, HEADER true, NULL '');
+
+-- Fix password hashes (SHA-256 → bcrypt) for UMKM/MITRA accounts
+\i /app/loaders/fix_passwords.sql
+-- Link test accounts from README.md to existing UMKM/Mitra data
+\i /app/loaders/link_test_accounts.sql
