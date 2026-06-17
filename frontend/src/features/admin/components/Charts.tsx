@@ -14,7 +14,7 @@ import type {
 // ─── Registration Trend ───────────────────────────────────────────────────────
 
 function getWeekOfMonth(dateStr: string): number {
-  const d = new Date(dateStr);
+  const d = new Date(dateStr + "T00:00:00");
   const day = d.getDate();
   if (day <= 7) return 1;
   if (day <= 14) return 2;
@@ -22,24 +22,30 @@ function getWeekOfMonth(dateStr: string): number {
   return 4;
 }
 
-function getMonthLabel(dateStr: string): string {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString("id-ID", { month: "short", year: "numeric" });
-}
-
 export function RegistrationTrendChart({ data }: { data: RegistrationTrendItem[] }) {
+  // Urutkan data ascending by date
+  const sorted = [...data].sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+
   // Kelompokkan per bulan lalu per minggu (1-4)
   const weeklyMap = new Map<string, number>();
-  for (const d of data) {
-    const month = getMonthLabel(d.tanggal);
+  const orderMap = new Map<string, number>();
+  let idx = 0;
+  for (const d of sorted) {
+    const [y, m] = d.tanggal.split("-");
     const week = getWeekOfMonth(d.tanggal);
-    const key = `${month} - Minggu ${week}`;
+    const key = `${y}-${m}-W${week}`;
+    if (!orderMap.has(key)) orderMap.set(key, idx++);
     weeklyMap.set(key, (weeklyMap.get(key) ?? 0) + d.total_pendaftaran);
   }
 
-  const chartData = Array.from(weeklyMap.entries()).map(([label, total]) => ({
-    label,
-    total,
+  // Urutkan berdasarkan urutan waktu
+  const sortedEntries = Array.from(orderMap.entries())
+    .sort((a, b) => a[1] - b[1])
+    .map(([key]) => key);
+
+  const chartData = sortedEntries.map((key) => ({
+    label: `M${key.slice(-1)}`,
+    total: weeklyMap.get(key) ?? 0,
   }));
 
   const maxTotal = chartData.length > 0 ? Math.max(...chartData.map((d) => d.total)) : 0;
@@ -56,7 +62,7 @@ export function RegistrationTrendChart({ data }: { data: RegistrationTrendItem[]
       <ResponsiveContainer width="100%" height={200}>
         <LineChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-          <XAxis dataKey="label" tick={{ fontSize: 10 }} interval={0} angle={-25} textAnchor="end" height={60} />
+          <XAxis dataKey="label" tick={{ fontSize: 11 }} />
           <YAxis tick={{ fontSize: 12 }} />
           <Tooltip formatter={(value) => [(value as number).toLocaleString("id-ID"), "Pendaftaran"]} />
           <Line type="monotone" dataKey="total" stroke="#1f45b6" strokeWidth={2} dot={{ r: 3 }} />
@@ -65,7 +71,7 @@ export function RegistrationTrendChart({ data }: { data: RegistrationTrendItem[]
       {chartData.length > 0 && (
         <div className="chart-stats-row">
           <div className="chart-stat">
-            <span className="label">Total Data</span>
+            <span className="label">Total Periode</span>
             <span className="value">{chartData.length} minggu</span>
           </div>
           <div className="chart-stat">

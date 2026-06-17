@@ -24,18 +24,19 @@ func parseDateRange(bulan, tahun string) (start, end string) {
 	y := now.Year()
 	m := now.Month()
 
-	if tahun != "" {
-		if t, err := fmt.Sscanf(tahun, "%d", &y); err != nil || t != 1 {
-			y = now.Year()
-		}
-	}
 	if bulan != "" {
 		var mm int
 		if t, err := fmt.Sscanf(bulan, "%d-%d", &y, &mm); err == nil && t == 2 {
 			m = time.Month(mm)
-		} else if tahun != "" {
+		}
+		// bulan tanpa tahun? parse di atas tetap pakai y = now.Year()
+	} else if tahun != "" {
+		// hanya tahun → full year (Jan - Dec)
+		if t, err := fmt.Sscanf(tahun, "%d", &y); err == nil && t == 1 {
 			m = 1
 		}
+	} else {
+		// hanya bulan (tanpa tahun) — fallback ke current year, sudah di-set di atas
 	}
 
 	first := time.Date(y, m, 1, 0, 0, 0, 0, time.UTC)
