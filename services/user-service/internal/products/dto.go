@@ -44,6 +44,14 @@ type UpdateStockRequest struct {
 	Note     string `json:"note"`
 }
 
+type AttachThumbnailRequest struct {
+	DocumentID  string `json:"document_id"`
+	ObjectKey   string `json:"object_key"`
+	PublicURL   string `json:"public_url"`
+	ContentType string `json:"content_type"`
+	SizeBytes   int64  `json:"size_bytes"`
+}
+
 type ProductResponse struct {
 	ID                   string     `json:"id"`
 	UMKMID               string     `json:"umkm_id"`

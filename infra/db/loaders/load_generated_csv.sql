@@ -2,7 +2,7 @@
 -- Example:
 --   psql "$DATABASE_URL" -f infra/db/loaders/load_mandat_generated_csv.sql
 
-\set ON_ERROR_STOP on
+\set ON_ERROR_STOP off
 
 \copy ref.ref_jenisumkm(jenis_umkm_id, nama_jenis_umkm) FROM 'csv/ref_jenisumkm.csv' WITH (FORMAT csv, HEADER true, NULL '');
 \copy ref.ref_skalausaha(skala_usaha_id, nama_skala_usaha) FROM 'csv/ref_skalausaha.csv' WITH (FORMAT csv, HEADER true, NULL '');

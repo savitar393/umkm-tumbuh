@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/savitar393/umkm-tumbuh/services/user-service/internal/dashboard"
 	"github.com/savitar393/umkm-tumbuh/services/user-service/internal/health"
 	"github.com/savitar393/umkm-tumbuh/services/user-service/internal/middleware"
 	"github.com/savitar393/umkm-tumbuh/services/user-service/internal/products"
@@ -32,6 +33,7 @@ func New(db *pgxpool.Pool, frontendURL string, jwtSecret string) http.Handler {
 	profileHandler := profiles.NewHandler(db)
 	productHandler := products.NewHandler(db)
 	salesHandler := sales.NewHandler(db)
+	dashboardHandler := dashboard.NewHandler(db)
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/health", healthHandler.ServiceHealth)
@@ -54,6 +56,7 @@ func New(db *pgxpool.Pool, frontendURL string, jwtSecret string) http.Handler {
 				r.Delete("/{id}", productHandler.Delete)
 				r.Get("/{id}/thumbnail", productHandler.GetThumbnail)
 				r.Post("/{id}/thumbnail", productHandler.UploadThumbnail)
+				r.Patch("/{id}/thumbnail", productHandler.AttachThumbnail)
 				r.Delete("/{id}/thumbnail", productHandler.DeleteThumbnail)
 			})
 
@@ -61,6 +64,10 @@ func New(db *pgxpool.Pool, frontendURL string, jwtSecret string) http.Handler {
 				r.Get("/", salesHandler.List)
 				r.Post("/", salesHandler.Create)
 				r.Get("/{id}", salesHandler.Get)
+			})
+
+			r.Route("/dashboard", func(r chi.Router) {
+				r.Get("/umkm/summary", dashboardHandler.UMKMSummary)
 			})
 		})
 

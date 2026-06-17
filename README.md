@@ -10,6 +10,7 @@ UMKM Tumbuh is a microservices-based web application for UMKM registration, prof
 | auth-service | 8080 | Authentication, registration, admin approval |
 | user-service | 8081 | UMKM/Mitra profiles, products, stock, sales reporting |
 | partnerships-service | 8082 | Partnership request workflow |
+| document-service | 8083 | Shared document/file metadata and storage API |
 | PostgreSQL | 5432 | Main relational database |
 | Garage S3 API | 3900 | S3-compatible object storage |
 | Garage RPC | 3901 | Garage internal RPC |
@@ -56,6 +57,7 @@ For local development, `frontend/.env` should contain:
     VITE_API_BASE_URL=http://localhost:8080/api/v1
     VITE_USER_API_BASE_URL=http://localhost:8081/api/v1
     VITE_PARTNERSHIP_API_BASE_URL=http://localhost:8082/api/v1
+    VITE_DOCUMENT_API_BASE_URL=http://localhost:8083/api/v1
 
 The root `.env` should include at least:
 
@@ -102,6 +104,7 @@ Check logs:
     docker compose --env-file .env -f infra/docker-compose.yml logs --tail=80 auth-service
     docker compose --env-file .env -f infra/docker-compose.yml logs --tail=80 user-service
     docker compose --env-file .env -f infra/docker-compose.yml logs --tail=80 partnerships-service
+    docker compose --env-file .env -f infra/docker-compose.yml logs --tail=80 document-service
     docker compose --env-file .env -f infra/docker-compose.yml logs --tail=80 db-migrate
     docker compose --env-file .env -f infra/docker-compose.yml logs --tail=80 partnerships-migrate
     docker compose --env-file .env -f infra/docker-compose.yml logs --tail=80 garage
@@ -111,6 +114,7 @@ Check logs:
     curl -i http://localhost:8080/api/v1/health
     curl -i http://localhost:8081/api/v1/health
     curl -i http://localhost:8082/api/v1/health
+    curl -i http://localhost:8083/api/v1/health
 
 Expected result: all services return HTTP 200.
 
@@ -243,6 +247,11 @@ Partnerships service:
     cd services/partnerships-service
     go test ./...
 
+Document service:
+
+    cd services/document-service
+    go test ./...
+
 ## Useful API Smoke Tests
 
 Login as admin:
@@ -291,3 +300,36 @@ Approve a registration:
 - In the final architecture, shared file uploads should move into `document-service`.
 - Do not run `npm audit fix --force` unless the team agrees.
 - Do not commit `.env`, `frontend/.env`, generated local volumes, or local Docker data.
+
+<!-- LOCAL_DEV_QUICKSTART_START -->
+## Local Development
+
+The current integrated local environment is documented in:
+
+```text
+docs/README_LOCAL_DEV.md
+```
+
+Current service ports:
+
+| Service | Port |
+|---|---:|
+| frontend | 5173 |
+| auth-service | 8080 |
+| user-service | 8081 |
+| partnerships-service | 8082 |
+| document-service | 8083 |
+| training-service | 8084 |
+| Garage object storage | 3900 |
+| PostgreSQL | 5432 |
+
+Quick health check:
+
+```bash
+curl -i http://localhost:8080/api/v1/health
+curl -i http://localhost:8081/api/v1/health
+curl -i http://localhost:8082/api/v1/health
+curl -i http://localhost:8083/api/v1/health
+curl -i http://localhost:8084/api/v1/health
+```
+<!-- LOCAL_DEV_QUICKSTART_END -->
