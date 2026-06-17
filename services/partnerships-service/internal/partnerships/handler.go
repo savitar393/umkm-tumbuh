@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/savitar393/umkm-tumbuh/services/partnerships-service/internal/apperror"
 	"github.com/savitar393/umkm-tumbuh/services/partnerships-service/internal/response"
 )
@@ -20,17 +20,57 @@ func NewHandler(service Service) *Handler {
 	return &Handler{service: service}
 }
 
-// Extract user ID from JWT (simulated for now - in production, extract from token)
-func extractUserIDFromRequest(r *http.Request) uuid.UUID {
-	// In production, extract from JWT token
-	// For now, return a dummy user ID
-	return uuid.MustParse("00000000-0000-0000-0000-000000000001")
+// Extract user ID from JWT
+func extractUserIDFromRequest(r *http.Request) string {
+	tokenString := extractBearerToken(r.Header.Get("Authorization"))
+	if tokenString == "" {
+		return ""
+	}
+
+	token, _, err := new(jwt.Parser).ParseUnverified(tokenString, jwt.MapClaims{})
+	if err != nil {
+		return ""
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return ""
+	}
+
+	userID, _ := claims["sub"].(string)
+	return userID
 }
 
-// Extract user role from JWT (simulated for now)
+// Extract user role from JWT
 func extractUserRoleFromRequest(r *http.Request) UserRole {
-	// In production, extract from JWT token
-	return UserRole(r.Header.Get("X-User-Role"))
+	tokenString := extractBearerToken(r.Header.Get("Authorization"))
+	if tokenString == "" {
+		return UserRole(r.Header.Get("X-User-Role"))
+	}
+
+	token, _, err := new(jwt.Parser).ParseUnverified(tokenString, jwt.MapClaims{})
+	if err != nil {
+		return UserRole(r.Header.Get("X-User-Role"))
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return UserRole(r.Header.Get("X-User-Role"))
+	}
+
+	role, _ := claims["role"].(string)
+	return UserRole(role)
+}
+
+func extractBearerToken(authHeader string) string {
+	if authHeader == "" {
+		return ""
+	}
+	parts := strings.SplitN(authHeader, " ", 2)
+	if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+		return ""
+	}
+	return parts[1]
 }
 
 // CreatePartnership - POST /api/v1/partnerships
@@ -67,7 +107,7 @@ func (h *Handler) CreatePartnership(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.Success(w, http.StatusOK, map[string]interface{}{
-		"pengajuanID": partnership.ID.String(),
+		"pengajuanID": partnership.ID,
 	}, "Pengajuan kemitraan berhasil dikirim.")
 }
 
@@ -106,10 +146,13 @@ func (h *Handler) GetPartnershipStatus(w http.ResponseWriter, r *http.Request) {
 	var formattedData []map[string]interface{}
 	for _, p := range partnerships {
 		formattedData = append(formattedData, map[string]interface{}{
-			"pengajuanID":        p.ID.String(),
+			"pengajuanID":        p.ID,
 			"statusPengajuan":    p.Status,
 			"tanggalPengajuan":   p.SubmittedAt,
 			"mitraUmkmTujuan":    p.ReceiverName,
+			"mitraUmkmUsaha":     p.ReceiverBusinessName,
+			"pengirim":           p.RequesterName,
+			"pengirimUsaha":      p.RequesterBusinessName,
 			"proposalTitle":      p.ProposalTitle,
 		})
 	}
@@ -122,6 +165,36 @@ func (h *Handler) GetPartnershipStatus(w http.ResponseWriter, r *http.Request) {
 			"total":      totalCount,
 			"totalPages": (totalCount + limit - 1) / limit,
 		},
+	}, "")
+}
+
+// GetPartnershipSummary - GET /api/v1/partnerships/summary
+func (h *Handler) GetPartnershipSummary(w http.ResponseWriter, r *http.Request) {
+	userID := extractUserIDFromRequest(r)
+	if userID == "" {
+		response.Error(w, http.StatusUnauthorized, "User not authenticated", nil)
+		return
+	}
+
+	summary, err := h.service.GetPartnershipSummary(r.Context(), userID)
+	if err != nil {
+		if appErr, ok := err.(*apperror.AppError); ok {
+			response.Error(w, appErr.Code, appErr.Message, nil)
+			return
+		}
+		response.Error(w, http.StatusInternalServerError, "Failed to get partnership summary", nil)
+		return
+	}
+
+	// Map raw DB statuses to frontend-friendly KPI keys
+	kpi := map[string]int{
+		"bermitra": summary["AKTIF"] + summary["SELESAI"],
+		"menunggu": summary["DIAJUKAN"] + summary["DITINJAU"] + summary["MENUNGGU_DOKUMEN_TTD"],
+		"ditolak":  summary["DITOLAK"] + summary["DIBATALKAN"],
+	}
+
+	response.Success(w, http.StatusOK, map[string]interface{}{
+		"summary": kpi,
 	}, "")
 }
 
@@ -160,10 +233,11 @@ func (h *Handler) GetIncomingPartnerships(w http.ResponseWriter, r *http.Request
 	var formattedData []map[string]interface{}
 	for _, p := range partnerships {
 		formattedData = append(formattedData, map[string]interface{}{
-			"pengajuanID":      p.ID.String(),
+			"pengajuanID":      p.ID,
 			"pengirim":         p.RequesterName,
 			"proposal_title":   p.ProposalTitle,
 			"tanggalPengajuan": p.SubmittedAt,
+			"status":           p.Status,
 		})
 	}
 
@@ -180,9 +254,8 @@ func (h *Handler) GetIncomingPartnerships(w http.ResponseWriter, r *http.Request
 
 // GetPartnershipDetail - GET /api/v1/partnerships/{id}
 func (h *Handler) GetPartnershipDetail(w http.ResponseWriter, r *http.Request) {
-	idStr := chi.URLParam(r, "id")
-	id, err := uuid.Parse(idStr)
-	if err != nil {
+	id := chi.URLParam(r, "id")
+	if id == "" {
 		response.Error(w, http.StatusBadRequest, "Invalid partnership ID", nil)
 		return
 	}
@@ -213,9 +286,8 @@ func (h *Handler) GetPartnershipDetail(w http.ResponseWriter, r *http.Request) {
 
 // SignPartnership - POST /api/v1/partnerships/{id}/sign
 func (h *Handler) SignPartnership(w http.ResponseWriter, r *http.Request) {
-	idStr := chi.URLParam(r, "id")
-	id, err := uuid.Parse(idStr)
-	if err != nil {
+	id := chi.URLParam(r, "id")
+	if id == "" {
 		response.Error(w, http.StatusBadRequest, "Invalid partnership ID", nil)
 		return
 	}
@@ -229,8 +301,7 @@ func (h *Handler) SignPartnership(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.service.SignPartnership(r.Context(), id, req)
-	if err != nil {
+	if err := h.service.SignPartnership(r.Context(), id, req); err != nil {
 		if appErr, ok := err.(*apperror.AppError); ok {
 			switch appErr.Code {
 			case http.StatusForbidden:
@@ -251,11 +322,20 @@ func (h *Handler) SignPartnership(w http.ResponseWriter, r *http.Request) {
 	response.Success(w, http.StatusOK, nil, "Dokumen berhasil diunggah. Pengajuan siap disetujui.")
 }
 
+// MarkAsRead - PATCH /api/v1/partnerships/{id}/read
+func (h *Handler) MarkAsRead(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		response.Error(w, http.StatusBadRequest, "Invalid partnership ID", nil)
+		return
+	}
+	response.Success(w, http.StatusOK, nil, "Status dibaca berhasil diperbarui.")
+}
+
 // ApprovePartnership - PATCH /api/v1/partnerships/{id}/approve
 func (h *Handler) ApprovePartnership(w http.ResponseWriter, r *http.Request) {
-	idStr := chi.URLParam(r, "id")
-	id, err := uuid.Parse(idStr)
-	if err != nil {
+	id := chi.URLParam(r, "id")
+	if id == "" {
 		response.Error(w, http.StatusBadRequest, "Invalid partnership ID", nil)
 		return
 	}
@@ -269,11 +349,10 @@ func (h *Handler) ApprovePartnership(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Set status to APPROVED
-	req.Status = "APPROVED"
+	// Set status to AKTIF (Active)
+	req.Status = "AKTIF"
 
-	err = h.service.UpdatePartnershipStatus(r.Context(), id, req)
-	if err != nil {
+	if err := h.service.UpdatePartnershipStatus(r.Context(), id, req); err != nil {
 		if appErr, ok := err.(*apperror.AppError); ok {
 			switch appErr.Code {
 			case http.StatusForbidden:
@@ -296,14 +375,12 @@ func (h *Handler) ApprovePartnership(w http.ResponseWriter, r *http.Request) {
 
 // RejectPartnership - PATCH /api/v1/partnerships/{id}/reject
 func (h *Handler) RejectPartnership(w http.ResponseWriter, r *http.Request) {
-	idStr := chi.URLParam(r, "id")
-	id, err := uuid.Parse(idStr)
-	if err != nil {
+	id := chi.URLParam(r, "id")
+	if id == "" {
 		response.Error(w, http.StatusBadRequest, "Invalid partnership ID", nil)
 		return
 	}
 
-	// Get user info from JWT - TODO: use for authorization
 	_ = extractUserIDFromRequest(r)
 
 	var req UpdatePartnershipStatus
@@ -317,11 +394,9 @@ func (h *Handler) RejectPartnership(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Set status to REJECTED
-	req.Status = "REJECTED"
+	req.Status = StatusRejected
 
-	err = h.service.UpdatePartnershipStatus(r.Context(), id, req)
-	if err != nil {
+	if err := h.service.UpdatePartnershipStatus(r.Context(), id, req); err != nil {
 		if appErr, ok := err.(*apperror.AppError); ok {
 			switch appErr.Code {
 			case http.StatusForbidden:
@@ -364,6 +439,7 @@ func (h *Handler) GetUMKMList(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	search := r.URL.Query().Get("q")
+	filterType := r.URL.Query().Get("filterType")
 	
 	// Extract user role - hanya MITRA yang bisa melihat UMKM
 	userRole := extractUserRoleFromRequest(r)
@@ -373,7 +449,7 @@ func (h *Handler) GetUMKMList(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	// Get UMKM list from service
-	umkmList, totalCount, err := h.service.GetUMKMList(r.Context(), search, page, limit)
+	umkmList, totalCount, err := h.service.GetUMKMList(r.Context(), search, filterType, page, limit)
 	if err != nil {
 		if appErr, ok := err.(*apperror.AppError); ok {
 			response.Error(w, appErr.Code, appErr.Message, nil)
@@ -419,6 +495,7 @@ func (h *Handler) GetMitraList(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	search := r.URL.Query().Get("q")
+	filterType := r.URL.Query().Get("filterType")
 	
 	// Extract user role - hanya UMKM yang bisa melihat mitra
 	userRole := extractUserRoleFromRequest(r)
@@ -428,7 +505,7 @@ func (h *Handler) GetMitraList(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	// Get Mitra list from service
-	mitraList, totalCount, err := h.service.GetMitraList(r.Context(), search, page, limit)
+	mitraList, totalCount, err := h.service.GetMitraList(r.Context(), search, filterType, page, limit)
 	if err != nil {
 		if appErr, ok := err.(*apperror.AppError); ok {
 			response.Error(w, appErr.Code, appErr.Message, nil)
@@ -453,5 +530,51 @@ func (h *Handler) GetMitraList(w http.ResponseWriter, r *http.Request) {
 			"total":      totalCount,
 			"totalPages": totalPages,
 		},
+	}, "")
+}
+
+// GetMitraDetail - GET /api/v1/mitra/{id}
+func (h *Handler) GetMitraDetail(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		response.Error(w, http.StatusBadRequest, "ID mitra tidak valid", nil)
+		return
+	}
+
+	detail, err := h.service.GetMitraDetail(r.Context(), id)
+	if err != nil {
+		if appErr, ok := err.(*apperror.AppError); ok {
+			response.Error(w, appErr.Code, appErr.Message, nil)
+			return
+		}
+		response.Error(w, http.StatusInternalServerError, "Gagal mengambil detail mitra", nil)
+		return
+	}
+
+	response.Success(w, http.StatusOK, map[string]interface{}{
+		"mitra": detail,
+	}, "")
+}
+
+// GetUMKMDetail - GET /api/v1/umkm/{id}
+func (h *Handler) GetUMKMDetail(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		response.Error(w, http.StatusBadRequest, "ID UMKM tidak valid", nil)
+		return
+	}
+
+	detail, err := h.service.GetUMKMDetail(r.Context(), id)
+	if err != nil {
+		if appErr, ok := err.(*apperror.AppError); ok {
+			response.Error(w, appErr.Code, appErr.Message, nil)
+			return
+		}
+		response.Error(w, http.StatusInternalServerError, "Gagal mengambil detail UMKM", nil)
+		return
+	}
+
+	response.Success(w, http.StatusOK, map[string]interface{}{
+		"umkm": detail,
 	}, "")
 }

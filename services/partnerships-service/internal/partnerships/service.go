@@ -2,28 +2,41 @@ package partnerships
 
 import (
 	"context"
+	"fmt"
+	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/savitar393/umkm-tumbuh/services/partnerships-service/internal/apperror"
 )
 
+var (
+	pgjMu      sync.Mutex
+	pgjCounter int
+	pgjOnce    sync.Once
+)
+
+
 type Service interface {
+	GetPartnershipSummary(
+		ctx context.Context,
+		userID string,
+	) (map[string]int, error)
+
 	CreatePartnership(
 		ctx context.Context,
-		userID uuid.UUID,
+		userID string,
 		userRole UserRole,
 		req CreatePartnershipRequest,
 	) (*PartnershipResponse, error)
 
 	GetPartnershipByID(
 		ctx context.Context,
-		id uuid.UUID,
+		id string,
 	) (*PartnershipResponse, error)
 
 	GetPartnershipsByRequester(
 		ctx context.Context,
-		requesterID uuid.UUID,
+		requesterID string,
 		status *PartnershipStatus,
 		page,
 		limit int,
@@ -31,7 +44,7 @@ type Service interface {
 
 	GetPartnershipsByReceiver(
 		ctx context.Context,
-		receiverID uuid.UUID,
+		receiverID string,
 		status *PartnershipStatus,
 		page,
 		limit int,
@@ -39,13 +52,13 @@ type Service interface {
 
 	UpdatePartnershipStatus(
 		ctx context.Context,
-		id uuid.UUID,
+		id string,
 		req UpdatePartnershipStatus,
 	) error
 
 	SignPartnership(
 		ctx context.Context,
-		id uuid.UUID,
+		id string,
 		req SignPartnershipRequest,
 	) error
 
@@ -53,20 +66,29 @@ type Service interface {
 		req CreatePartnershipRequest,
 	) map[string]string
 
-	// ============================================================
-	// NEW METHODS FOR UMKM AND MITRA LISTS
-	// ============================================================
 	GetUMKMList(
 		ctx context.Context,
 		search string,
+		filterType string,
 		page, limit int,
 	) ([]UMKMListItem, int, error)
 
 	GetMitraList(
 		ctx context.Context,
 		search string,
+		filterType string,
 		page, limit int,
 	) ([]MitraListItem, int, error)
+
+	GetUMKMDetail(
+		ctx context.Context,
+		umkmID string,
+	) (*UMKMDetail, error)
+
+	GetMitraDetail(
+		ctx context.Context,
+		mitraID string,
+	) (*MitraDetail, error)
 }
 
 type service struct {
@@ -85,7 +107,7 @@ func (s *service) ValidatePartnershipRequest(
 
 	errs := make(map[string]string)
 
-	if req.ReceiverID == uuid.Nil {
+	if req.ReceiverID == "" {
 		errs["receiver_id"] = "receiver_id wajib diisi"
 	}
 
@@ -110,7 +132,7 @@ func (s *service) ValidatePartnershipRequest(
 
 func (s *service) CreatePartnership(
 	ctx context.Context,
-	userID uuid.UUID,
+	userID string,
 	userRole UserRole,
 	req CreatePartnershipRequest,
 ) (*PartnershipResponse, error) {
@@ -120,19 +142,31 @@ func (s *service) CreatePartnership(
 		return nil, apperror.New(500, "failed to generate request code")
 	}
 
-	// Determine receiver role based on sender role
 	receiverRole := RoleMitra
 	if userRole == RoleMitra {
 		receiverRole = RoleUMKM
 	}
 
+	// Convert business ID (mitra_id/umkm_id) to akun_id
+	receiverAkunID, err := s.repo.FindAkunIDByBusinessID(ctx, req.ReceiverID, receiverRole)
+	if err != nil {
+		return nil, apperror.New(400, "Penerima tidak ditemukan: "+err.Error())
+	}
+
+	// Look up requester's business ID and receiver's business ID for FK constraints
+	// These may be empty for API-registered accounts without business profiles
+	requesterBusinessID, _ := s.repo.FindBusinessIDByAkunID(ctx, userID, userRole)
+	receiverBusinessID := req.ReceiverID
+
 	now := time.Now()
 
 	partnership := &PartnershipRequest{
-		ID:                   uuid.New(),
+		ID:                   generatePGJID(ctx, s.repo),
 		RequestCode:          requestCode,
 		RequesterID:          userID,
-		ReceiverID:           req.ReceiverID,
+		ReceiverID:           receiverAkunID,
+		RequesterBusinessID:  requesterBusinessID,
+		ReceiverBusinessID:   receiverBusinessID,
 		RequesterRole:        userRole,
 		ReceiverRole:         receiverRole,
 		Category:             "default",
@@ -154,16 +188,32 @@ func (s *service) CreatePartnership(
 	if err := s.repo.Create(ctx, partnership); err != nil {
 		return nil, apperror.New(
 			500,
-			"failed to create partnership request",
+			"failed to create partnership request: "+err.Error(),
 		)
 	}
 
 	return s.repo.FindByID(ctx, partnership.ID)
 }
 
+func generatePGJID(ctx context.Context, repo Repository) string {
+	pgjOnce.Do(func() {
+		count, err := repo.CountAll(ctx)
+		if err != nil {
+			pgjCounter = 0
+			return
+		}
+		pgjCounter = count
+	})
+
+	pgjMu.Lock()
+	defer pgjMu.Unlock()
+	pgjCounter++
+	return fmt.Sprintf("PGJ%06d", pgjCounter)
+}
+
 func (s *service) GetPartnershipByID(
 	ctx context.Context,
-	id uuid.UUID,
+	id string,
 ) (*PartnershipResponse, error) {
 
 	return s.repo.FindByID(ctx, id)
@@ -171,7 +221,7 @@ func (s *service) GetPartnershipByID(
 
 func (s *service) GetPartnershipsByRequester(
 	ctx context.Context,
-	requesterID uuid.UUID,
+	requesterID string,
 	status *PartnershipStatus,
 	page,
 	limit int,
@@ -198,7 +248,7 @@ func (s *service) GetPartnershipsByRequester(
 
 func (s *service) GetPartnershipsByReceiver(
 	ctx context.Context,
-	receiverID uuid.UUID,
+	receiverID string,
 	status *PartnershipStatus,
 	page,
 	limit int,
@@ -225,7 +275,7 @@ func (s *service) GetPartnershipsByReceiver(
 
 func (s *service) UpdatePartnershipStatus(
 	ctx context.Context,
-	id uuid.UUID,
+	id string,
 	req UpdatePartnershipStatus,
 ) error {
 
@@ -243,7 +293,7 @@ func (s *service) UpdatePartnershipStatus(
 	if err != nil {
 		return apperror.New(
 			500,
-			"failed to update partnership status",
+			"failed to update partnership status: "+err.Error(),
 		)
 	}
 
@@ -252,7 +302,7 @@ func (s *service) UpdatePartnershipStatus(
 
 func (s *service) SignPartnership(
 	ctx context.Context,
-	id uuid.UUID,
+	id string,
 	req SignPartnershipRequest,
 ) error {
 
@@ -282,6 +332,14 @@ func (s *service) SignPartnership(
 	return nil
 }
 
+func (s *service) GetPartnershipSummary(ctx context.Context, userID string) (map[string]int, error) {
+	summary, err := s.repo.GetSummary(ctx, userID)
+	if err != nil {
+		return nil, apperror.New(500, "failed to get partnership summary: "+err.Error())
+	}
+	return summary, nil
+}
+
 // ============================================================
 // NEW IMPLEMENTATIONS FOR UMKM AND MITRA LISTS
 // ============================================================
@@ -291,6 +349,7 @@ func (s *service) SignPartnership(
 func (s *service) GetUMKMList(
 	ctx context.Context,
 	search string,
+	filterType string,
 	page, limit int,
 ) ([]UMKMListItem, int, error) {
 	// Validate and normalize pagination parameters
@@ -310,7 +369,7 @@ func (s *service) GetUMKMList(
 	offset := (page - 1) * limit
 	
 	// Fetch UMKM list from repository
-	umkmList, totalCount, err := s.repo.FindUMKMList(ctx, search, limit, offset)
+	umkmList, totalCount, err := s.repo.FindUMKMList(ctx, search, filterType, limit, offset)
 	if err != nil {
 		return nil, 0, apperror.New(500, "failed to fetch UMKM list: "+err.Error())
 	}
@@ -323,6 +382,7 @@ func (s *service) GetUMKMList(
 func (s *service) GetMitraList(
 	ctx context.Context,
 	search string,
+	filterType string,
 	page, limit int,
 ) ([]MitraListItem, int, error) {
 	// Validate and normalize pagination parameters
@@ -342,10 +402,28 @@ func (s *service) GetMitraList(
 	offset := (page - 1) * limit
 	
 	// Fetch Mitra list from repository
-	mitraList, totalCount, err := s.repo.FindMitraList(ctx, search, limit, offset)
+	mitraList, totalCount, err := s.repo.FindMitraList(ctx, search, filterType, limit, offset)
 	if err != nil {
 		return nil, 0, apperror.New(500, "failed to fetch Mitra list: "+err.Error())
 	}
 	
 	return mitraList, totalCount, nil
+}
+
+// GetUMKMDetail retrieves full detail of an UMKM
+func (s *service) GetUMKMDetail(ctx context.Context, umkmID string) (*UMKMDetail, error) {
+	detail, err := s.repo.FindUMKMDetail(ctx, umkmID)
+	if err != nil {
+		return nil, apperror.New(404, err.Error())
+	}
+	return detail, nil
+}
+
+// GetMitraDetail retrieves full detail of a Mitra
+func (s *service) GetMitraDetail(ctx context.Context, mitraID string) (*MitraDetail, error) {
+	detail, err := s.repo.FindMitraDetail(ctx, mitraID)
+	if err != nil {
+		return nil, apperror.New(404, err.Error())
+	}
+	return detail, nil
 }

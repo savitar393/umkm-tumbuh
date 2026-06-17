@@ -39,9 +39,11 @@ func NewRouter(
 		// ============================================================
 		r.Post("/partnerships", partnershipHandler.CreatePartnership)
 		r.Get("/partnerships/status", partnershipHandler.GetPartnershipStatus)
+		r.Get("/partnerships/summary", partnershipHandler.GetPartnershipSummary)
 		r.Get("/partnerships/incoming", partnershipHandler.GetIncomingPartnerships)
 		r.Get("/partnerships/{id}", partnershipHandler.GetPartnershipDetail)
 		r.Post("/partnerships/{id}/sign", partnershipHandler.SignPartnership)
+		r.Patch("/partnerships/{id}/read", partnershipHandler.MarkAsRead)
 		r.Patch("/partnerships/{id}/approve", partnershipHandler.ApprovePartnership)
 		r.Patch("/partnerships/{id}/reject", partnershipHandler.RejectPartnership)
 
@@ -50,9 +52,13 @@ func NewRouter(
 		// ============================================================
 		// GET /api/v1/umkm - daftar UMKM (diakses oleh MITRA)
 		r.Get("/umkm", partnershipHandler.GetUMKMList)
+		// GET /api/v1/umkm/{id} - detail UMKM (diakses oleh MITRA)
+		r.Get("/umkm/{id}", partnershipHandler.GetUMKMDetail)
 		
 		// GET /api/v1/mitra - daftar Mitra (diakses oleh UMKM)
 		r.Get("/mitra", partnershipHandler.GetMitraList)
+		// GET /api/v1/mitra/{id} - detail Mitra (diakses oleh UMKM)
+		r.Get("/mitra/{id}", partnershipHandler.GetMitraDetail)
 	})
 
 	return r
