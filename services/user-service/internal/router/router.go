@@ -54,6 +54,7 @@ func New(db *pgxpool.Pool, frontendURL string, jwtSecret string) http.Handler {
 				r.Delete("/{id}", productHandler.Delete)
 				r.Get("/{id}/thumbnail", productHandler.GetThumbnail)
 				r.Post("/{id}/thumbnail", productHandler.UploadThumbnail)
+				r.Patch("/{id}/thumbnail", productHandler.AttachThumbnail)
 				r.Delete("/{id}/thumbnail", productHandler.DeleteThumbnail)
 			})
 
