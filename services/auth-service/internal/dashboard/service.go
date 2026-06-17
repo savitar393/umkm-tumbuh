@@ -24,7 +24,7 @@ func (s *Service) GetDashboardWithFilter(ctx context.Context, f DashboardFilter)
 		days = "180"
 	}
 
-	summary, err := s.Repo.GetSummaryFiltered(ctx, f.Provinsi, f.StatusUMKM)
+	summary, err := s.Repo.GetSummaryFiltered(ctx, f.Provinsi, f.StatusUMKM, f.StartDate, f.EndDate)
 	if err != nil {
 		return nil, err
 	}
@@ -34,7 +34,7 @@ func (s *Service) GetDashboardWithFilter(ctx context.Context, f DashboardFilter)
 		return nil, err
 	}
 
-	registrationTrend, err := s.Repo.GetRegistrationTrendFiltered(ctx, days, f.Provinsi)
+	registrationTrend, err := s.Repo.GetRegistrationTrendFiltered(ctx, days, f.Provinsi, f.StartDate, f.EndDate)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +44,7 @@ func (s *Service) GetDashboardWithFilter(ctx context.Context, f DashboardFilter)
 		return nil, err
 	}
 
-	labaTrend, err := s.Repo.GetLabaTrendFiltered(ctx, days, f.Provinsi)
+	labaTrend, err := s.Repo.GetLabaTrendFiltered(ctx, days, f.Provinsi, f.StartDate, f.EndDate)
 	if err != nil {
 		return nil, err
 	}

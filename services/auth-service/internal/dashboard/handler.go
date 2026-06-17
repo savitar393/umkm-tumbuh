@@ -2,14 +2,46 @@ package dashboard
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/apperror"
 	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/auth"
 	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/response"
 	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/users"
 )
+
+// parseDateRange konversi bulan (YYYY-MM) dan tahun (YYYY) ke startDate/endDate
+// Jika kedua params kosong, return empty strings (no filter).
+func parseDateRange(bulan, tahun string) (start, end string) {
+	if bulan == "" && tahun == "" {
+		return "", ""
+	}
+
+	now := time.Now()
+	y := now.Year()
+	m := now.Month()
+
+	if tahun != "" {
+		if t, err := fmt.Sscanf(tahun, "%d", &y); err != nil || t != 1 {
+			y = now.Year()
+		}
+	}
+	if bulan != "" {
+		var mm int
+		if t, err := fmt.Sscanf(bulan, "%d-%d", &y, &mm); err == nil && t == 2 {
+			m = time.Month(mm)
+		} else if tahun != "" {
+			m = 1
+		}
+	}
+
+	first := time.Date(y, m, 1, 0, 0, 0, 0, time.UTC)
+	last := first.AddDate(0, 1, -1)
+	return first.Format("2006-01-02"), last.Format("2006-01-02")
+}
 
 type Handler struct {
 	DashboardService *Service
@@ -29,12 +61,16 @@ func (h *Handler) GetDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Query params filter — semua opsional
+	bulan := r.URL.Query().Get("bulan")       // e.g. "2026-06" (YYYY-MM)
+	tahun := r.URL.Query().Get("tahun")       // e.g. "2026"
+	startDate, endDate := parseDateRange(bulan, tahun)
+
 	filter := DashboardFilter{
 		Provinsi:   r.URL.Query().Get("provinsi"),    // e.g. "Jawa Tengah"
-		Bulan:      r.URL.Query().Get("bulan"),       // e.g. "2026-06"  (YYYY-MM)
-		Tahun:      r.URL.Query().Get("tahun"),       // e.g. "2026"
 		StatusUMKM: r.URL.Query().Get("status_umkm"), // e.g. "AKTIF"
 		Days:       r.URL.Query().Get("days"),        // e.g. "180" untuk tren
+		StartDate:  startDate,
+		EndDate:    endDate,
 	}
 
 	data, err := h.DashboardService.GetDashboardWithFilter(r.Context(), filter)

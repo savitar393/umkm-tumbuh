@@ -5,7 +5,6 @@ import { getCurrentUser, clearAuthStorage } from "../../../shared/auth/currentUs
 const navItems = [
   { label: "Beranda Nasional", to: "/admin" },
   { label: "User Management", to: "/admin/users" },
-  { label: "Pelatihan", to: "/admin/training" },
 ];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {

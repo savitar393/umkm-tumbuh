@@ -2,6 +2,7 @@ package dashboard
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -76,10 +77,10 @@ func (r *Repository) GetOmzetSummary(ctx context.Context, umkmID string) (omzetH
 func (r *Repository) GetLabaHarian(ctx context.Context, umkmID, dateFrom, dateTo string) ([]LabaHarianItem, error) {
 	rows, err := r.DB.Query(ctx, `
 		SELECT
-			created_at::date                              AS tanggal,
+			created_at::date::text                        AS tanggal,
 			TO_CHAR(MIN(created_at), 'Day, DD Mon YYYY') AS nama_hari,
-			SUM(laba_harian)                              AS laba_bersih,
-			SUM(jumlah_produk)                            AS jumlah_produk
+			SUM(laba_harian)::float8                      AS laba_bersih,
+			SUM(jumlah_produk)::float8                    AS jumlah_produk
 		FROM dashboard.transaksi_monitoringperkembangan
 		WHERE umkm_id = $1
 		  AND created_at::date >= $2::date
@@ -105,6 +106,7 @@ func (r *Repository) GetLabaHarian(ctx context.Context, umkmID, dateFrom, dateTo
 
 // GetTrenMingguan — agregasi laba per hari untuk N hari terakhir berdasarkan data terbaru
 func (r *Repository) GetTrenMingguan(ctx context.Context, umkmID string, days int) ([]TrenMingguan, error) {
+	daysInterval := fmt.Sprintf("%d days", days)
 	rows, err := r.DB.Query(ctx, `
 		WITH latest AS (
 			SELECT MAX(created_at::date) AS tgl_max
@@ -113,13 +115,13 @@ func (r *Repository) GetTrenMingguan(ctx context.Context, umkmID string, days in
 		)
 		SELECT
 			TO_CHAR(mp.created_at::date, 'Dy') AS hari,
-			SUM(mp.laba_harian)                AS total_laba
+			SUM(mp.laba_harian)::float8         AS total_laba
 		FROM dashboard.transaksi_monitoringperkembangan mp, latest
 		WHERE mp.umkm_id = $1
-		  AND mp.created_at::date > (latest.tgl_max - ($2 || ' days')::interval)
+		  AND mp.created_at::date > (latest.tgl_max - $2::interval)
 		GROUP BY mp.created_at::date
 		ORDER BY mp.created_at::date ASC
-	`, umkmID, days)
+	`, umkmID, daysInterval)
 	if err != nil {
 		return nil, err
 	}

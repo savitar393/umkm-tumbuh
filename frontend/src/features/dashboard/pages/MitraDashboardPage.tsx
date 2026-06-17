@@ -95,7 +95,13 @@ export default function MitraDashboardPage() {
     }
     setPage(0);
     setLoadingDetail(true);
-    getMitraDashboard(selectedUMKM)
+    const now = new Date();
+    const monthsBack = Number(periode);
+    const dateTo = now.toISOString().slice(0, 10);
+    const from = new Date(now);
+    from.setMonth(from.getMonth() - monthsBack);
+    const dateFrom = from.toISOString().slice(0, 10);
+    getMitraDashboard(selectedUMKM, dateFrom, dateTo)
       .then((d) => setData(d))
       .catch((e) => setError(e instanceof Error ? e.message : "Gagal memuat data"))
       .finally(() => setLoadingDetail(false));

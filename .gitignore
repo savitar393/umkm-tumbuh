@@ -97,6 +97,8 @@ Thumbs.db
 *.swp
 *.swo
 *.md
+*.githooks/
+format-go.ps1
 
 # =========================
 # Dummy data/credentials

@@ -59,9 +59,10 @@ func (h *Handler) GetMitraDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	umkmID := r.URL.Query().Get("umkm_id")
+	dateFrom := r.URL.Query().Get("date_from")
+	dateTo := r.URL.Query().Get("date_to")
 
-	// ✅ umkm_id sekarang OPTIONAL — kalau kosong, service return list UMKM saja
-	data, err := h.Service.GetMitraDashboard(r.Context(), user.ID, umkmID)
+	data, err := h.Service.GetMitraDashboard(r.Context(), user.ID, umkmID, dateFrom, dateTo)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "Gagal memuat data dashboard mitra: " + err.Error()})
 		return

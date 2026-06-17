@@ -37,12 +37,12 @@ func statusClause(status string, argIdx int) (string, []any) {
 // ─── Summary ─────────────────────────────────────────────────────────────────
 
 func (r *Repository) GetSummary(ctx context.Context) (*SummaryResponse, error) {
-	return r.GetSummaryFiltered(ctx, "", "")
+	return r.GetSummaryFiltered(ctx, "", "", "", "")
 }
 
-func (r *Repository) GetSummaryFiltered(ctx context.Context, provinsi, statusUMKM string) (*SummaryResponse, error) {
+func (r *Repository) GetSummaryFiltered(ctx context.Context, provinsi, statusUMKM, startDate, endDate string) (*SummaryResponse, error) {
 	// Summary view is pre-aggregated — for filtered version query master tables directly
-	if provinsi == "" && statusUMKM == "" {
+	if provinsi == "" && statusUMKM == "" && startDate == "" && endDate == "" {
 		query := `
 			SELECT total_umkm, total_umkm_aktif, total_umkm_berkembang,
 			       total_umkm_tidak_aktif, total_laba, total_mitra,
@@ -69,6 +69,15 @@ func (r *Repository) GetSummaryFiltered(ctx context.Context, provinsi, statusUMK
 	if statusUMKM != "" {
 		where += fmt.Sprintf(" AND u.status_umkm_id = $%d", i)
 		args = append(args, statusUMKM)
+	}
+	if startDate != "" {
+		where += fmt.Sprintf(" AND COALESCE(u.tanggal_terdaftar, u.created_at::date) >= $%d::date", i)
+		args = append(args, startDate)
+		i++
+	}
+	if endDate != "" {
+		where += fmt.Sprintf(" AND COALESCE(u.tanggal_terdaftar, u.created_at::date) <= $%d::date", i)
+		args = append(args, endDate)
 	}
 
 	query := fmt.Sprintf(`
@@ -134,15 +143,26 @@ func (r *Repository) queryMapData(ctx context.Context, query string, args ...any
 // ─── Registration Trend ───────────────────────────────────────────────────────
 
 func (r *Repository) GetRegistrationTrend(ctx context.Context, days string) ([]RegistrationTrendItem, error) {
-	return r.GetRegistrationTrendFiltered(ctx, days, "")
+	return r.GetRegistrationTrendFiltered(ctx, days, "", "", "")
 }
 
-func (r *Repository) GetRegistrationTrendFiltered(ctx context.Context, days, provinsi string) ([]RegistrationTrendItem, error) {
+func (r *Repository) GetRegistrationTrendFiltered(ctx context.Context, days, provinsi, startDate, endDate string) ([]RegistrationTrendItem, error) {
 	args := []any{days}
 	clause := ""
+	argIdx := 2
 	if provinsi != "" {
-		clause = " AND provinsi = $2"
+		clause += fmt.Sprintf(" AND provinsi = $%d", argIdx)
 		args = append(args, provinsi)
+		argIdx++
+	}
+	if startDate != "" {
+		clause += fmt.Sprintf(" AND tanggal >= $%d::date", argIdx)
+		args = append(args, startDate)
+		argIdx++
+	}
+	if endDate != "" {
+		clause += fmt.Sprintf(" AND tanggal <= $%d::date", argIdx)
+		args = append(args, endDate)
 	}
 	query := `
 		SELECT tanggal::text, SUM(total_pendaftaran) AS total
@@ -197,15 +217,26 @@ func (r *Repository) GetStatusDistributionFiltered(ctx context.Context, provinsi
 // ─── Laba Trend ──────────────────────────────────────────────────────────────
 
 func (r *Repository) GetLabaTrend(ctx context.Context, days string) ([]LabaTimeseriesItem, error) {
-	return r.GetLabaTrendFiltered(ctx, days, "")
+	return r.GetLabaTrendFiltered(ctx, days, "", "", "")
 }
 
-func (r *Repository) GetLabaTrendFiltered(ctx context.Context, days, provinsi string) ([]LabaTimeseriesItem, error) {
+func (r *Repository) GetLabaTrendFiltered(ctx context.Context, days, provinsi, startDate, endDate string) ([]LabaTimeseriesItem, error) {
 	args := []any{days}
 	clause := ""
+	argIdx := 2
 	if provinsi != "" {
-		clause = " AND provinsi = $2"
+		clause += fmt.Sprintf(" AND provinsi = $%d", argIdx)
 		args = append(args, provinsi)
+		argIdx++
+	}
+	if startDate != "" {
+		clause += fmt.Sprintf(" AND tanggal >= $%d::date", argIdx)
+		args = append(args, startDate)
+		argIdx++
+	}
+	if endDate != "" {
+		clause += fmt.Sprintf(" AND tanggal <= $%d::date", argIdx)
+		args = append(args, endDate)
 	}
 	query := `
 		SELECT tanggal::text, SUM(total_laba), AVG(rata_rata_laba), SUM(total_umkm_tercatat)

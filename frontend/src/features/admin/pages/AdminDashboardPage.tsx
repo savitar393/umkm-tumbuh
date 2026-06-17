@@ -55,55 +55,34 @@ export default function AdminDashboardPage() {
   const [tahun, setTahun] = useState(now.getFullYear());
   const [statusUmkm, setStatusUmkm] = useState("Semua Status");
 
-  function fetchDashboard() {
-    setLoading(true);
-    setError("");
-
+  function buildQueryString() {
     const params = new URLSearchParams();
     if (provinsi !== "Seluruh Indonesia") params.set("provinsi", provinsi);
     const monthStr = `${tahun}-${String(bulan + 1).padStart(2, "0")}`;
     params.set("bulan", monthStr);
     params.set("tahun", String(tahun));
     if (statusUmkm !== "Semua Status") params.set("status_umkm", statusUmkm);
+    return params.toString() ? `?${params.toString()}` : "";
+  }
 
-    const qs = params.toString() ? `?${params.toString()}` : "";
+  function fetchDashboard() {
+    setLoading(true);
+    setError("");
 
-    getDashboard(qs)
-      .then((result) => {
-        setData(result);
-        setError("");
-      })
-      .catch((err) => {
-        setError(err instanceof Error ? err.message : "Gagal memuat data dashboard");
-      })
+    getDashboard(buildQueryString())
+      .then((result) => { setData(result); setError(""); })
+      .catch((err) => { setError(err instanceof Error ? err.message : "Gagal memuat data dashboard"); })
       .finally(() => setLoading(false));
   }
 
   useEffect(() => {
     let ignore = false;
-    const params = new URLSearchParams();
-    if (provinsi !== "Seluruh Indonesia") params.set("provinsi", provinsi);
-    const monthStr = `${tahun}-${String(bulan + 1).padStart(2, "0")}`;
-    params.set("bulan", monthStr);
-    params.set("tahun", String(tahun));
-    if (statusUmkm !== "Semua Status") params.set("status_umkm", statusUmkm);
-    const qs = params.toString() ? `?${params.toString()}` : "";
+    setLoading(true);
 
-    getDashboard(qs)
-      .then((result) => {
-        if (!ignore) {
-          setData(result);
-          setError("");
-        }
-      })
-      .catch((err) => {
-        if (!ignore) {
-          setError(err instanceof Error ? err.message : "Gagal memuat data dashboard");
-        }
-      })
-      .finally(() => {
-        if (!ignore) setLoading(false);
-      });
+    getDashboard(buildQueryString())
+      .then((result) => { if (!ignore) { setData(result); setError(""); } })
+      .catch((err) => { if (!ignore) setError(err instanceof Error ? err.message : "Gagal memuat data dashboard"); })
+      .finally(() => { if (!ignore) setLoading(false); });
 
     return () => { ignore = true; };
   }, []);
