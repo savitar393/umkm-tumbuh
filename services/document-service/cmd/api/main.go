@@ -24,7 +24,45 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-const maxUploadSize = 10 << 20 // 10 MiB
+const defaultMaxUploadSize = 10 << 20 // 10 MiB
+
+var allowedContentTypesByCategory = map[string]map[string]bool{
+	"PRODUCT_IMAGE": {
+		"image/jpeg": true,
+		"image/png":  true,
+		"image/webp": true,
+	},
+	"CERTIFICATE": {
+		"application/pdf": true,
+		"image/jpeg":      true,
+		"image/png":       true,
+		"image/webp":      true,
+	},
+	"PARTNERSHIP_FILE": {
+		"application/pdf":    true,
+		"image/jpeg":         true,
+		"image/png":          true,
+		"image/webp":         true,
+		"application/msword": true,
+		"application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
+	},
+	"GENERAL_DOCUMENT": {
+		"text/plain":         true,
+		"application/pdf":    true,
+		"image/jpeg":         true,
+		"image/png":          true,
+		"image/webp":         true,
+		"application/msword": true,
+		"application/vnd.openxmlformats-officedocument.wordprocessingml.document": true,
+	},
+}
+
+var maxUploadSizeByCategory = map[string]int64{
+	"PRODUCT_IMAGE":    5 << 20,
+	"CERTIFICATE":      10 << 20,
+	"PARTNERSHIP_FILE": 10 << 20,
+	"GENERAL_DOCUMENT": 10 << 20,
+}
 
 type app struct {
 	db          *pgxpool.Pool
@@ -141,9 +179,9 @@ func (a *app) handleUploadDocument(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
+	r.Body = http.MaxBytesReader(w, r.Body, defaultMaxUploadSize)
 
-	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
+	if err := r.ParseMultipartForm(defaultMaxUploadSize); err != nil {
 		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "File terlalu besar atau format multipart tidak valid."})
 		return
 	}
@@ -160,12 +198,20 @@ func (a *app) handleUploadDocument(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	category := normalizeCategory(r.FormValue("category"))
+	maxUploadSize := maxUploadSizeForCategory(category)
+
 	if header.Size > maxUploadSize {
-		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Ukuran file maksimal 10 MiB."})
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: fmt.Sprintf("Ukuran file maksimal %d MiB untuk kategori %s.", maxUploadSize/(1<<20), category)})
 		return
 	}
 
-	category := normalizeCategory(r.FormValue("category"))
+	contentType := detectContentType(header.Filename, header.Header.Get("Content-Type"))
+	if !isAllowedContentType(category, contentType) {
+		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "Tipe file tidak diizinkan untuk kategori dokumen ini."})
+		return
+	}
+
 	bucket := bucketForCategory(category)
 
 	if bucket == "" {
@@ -182,7 +228,6 @@ func (a *app) handleUploadDocument(w http.ResponseWriter, r *http.Request) {
 	documentID := "DOC" + strings.ToUpper(strings.ReplaceAll(uuid.NewString(), "-", ""))
 	extension := strings.ToLower(filepath.Ext(header.Filename))
 	objectKey := fmt.Sprintf("%s/%s/%s%s", strings.ToLower(category), user.ID, documentID, extension)
-	contentType := detectContentType(header.Filename, header.Header.Get("Content-Type"))
 	publicURL := publicObjectURL(bucket, objectKey)
 
 	if err := storageClient.putObject(r.Context(), objectKey, file, contentType); err != nil {
@@ -234,6 +279,12 @@ func (a *app) handleDocumentByID(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *app) handleGetDocument(w http.ResponseWriter, r *http.Request, documentID string) {
+	user, ok := userFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "User tidak ditemukan pada konteks."})
+		return
+	}
+
 	document, err := a.findDocumentByID(r.Context(), documentID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -245,12 +296,28 @@ func (a *app) handleGetDocument(w http.ResponseWriter, r *http.Request, document
 		return
 	}
 
+	if document.Status == "DIHAPUS" {
+		writeJSON(w, http.StatusNotFound, errorResponse{Error: "Dokumen tidak ditemukan."})
+		return
+	}
+
+	if !canAccessDocument(user, document) {
+		writeJSON(w, http.StatusForbidden, errorResponse{Error: "Anda tidak memiliki akses ke dokumen ini."})
+		return
+	}
+
 	writeJSON(w, http.StatusOK, map[string]any{
 		"document": document,
 	})
 }
 
 func (a *app) handleDeleteDocument(w http.ResponseWriter, r *http.Request, documentID string) {
+	user, ok := userFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "User tidak ditemukan pada konteks."})
+		return
+	}
+
 	document, err := a.findDocumentByID(r.Context(), documentID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -259,6 +326,11 @@ func (a *app) handleDeleteDocument(w http.ResponseWriter, r *http.Request, docum
 		}
 
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Gagal memuat dokumen."})
+		return
+	}
+
+	if !canAccessDocument(user, document) {
+		writeJSON(w, http.StatusForbidden, errorResponse{Error: "Anda tidak memiliki akses ke dokumen ini."})
 		return
 	}
 
@@ -476,6 +548,37 @@ func normalizeCategory(value string) string {
 	default:
 		return "GENERAL_DOCUMENT"
 	}
+}
+
+func maxUploadSizeForCategory(category string) int64 {
+	value, ok := maxUploadSizeByCategory[category]
+	if !ok || value <= 0 {
+		return defaultMaxUploadSize
+	}
+
+	return value
+}
+
+func isAllowedContentType(category string, contentType string) bool {
+	contentType = strings.ToLower(strings.TrimSpace(strings.Split(contentType, ";")[0]))
+	if contentType == "" {
+		return false
+	}
+
+	allowed, ok := allowedContentTypesByCategory[category]
+	if !ok {
+		allowed = allowedContentTypesByCategory["GENERAL_DOCUMENT"]
+	}
+
+	return allowed[contentType]
+}
+
+func canAccessDocument(user currentUser, document documentResponse) bool {
+	if user.Role == "ADMIN" {
+		return true
+	}
+
+	return document.UploaderAccount == user.ID
 }
 
 func bucketForCategory(category string) string {
