@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertCircle, Banknote, Handshake, Search, Store, TrendingUp } from "lucide-react";
+import { AlertCircle, Banknote, Handshake, RotateCcw, Search, Store } from "lucide-react";
 import AdminLayout from "../components/AdminLayout";
 import StatCard from "../components/StatCard";
 import IndonesiaMap from "../components/IndoMaps";
@@ -28,7 +28,7 @@ const MONTHS = [
   "Juli", "Agustus", "September", "Oktober", "November", "Desember",
 ];
 
-const YEARS = [2026, 2025, 2024, 2023];
+const YEARS = [2026, 2025, 2024];
 
 const STATUS_OPTIONS = ["Semua Status", "AKTIF", "NONAKTIF", "SUSPEND", "ARSIP"];
 
@@ -75,6 +75,14 @@ export default function AdminDashboardPage() {
       .finally(() => setLoading(false));
   }
 
+  function resetFilters() {
+    setProvinsi("Seluruh Indonesia");
+    setBulan(now.getMonth());
+    setTahun(now.getFullYear());
+    setStatusUmkm("Semua Status");
+    fetchDashboard();
+  }
+
   useEffect(() => {
     let ignore = false;
     setLoading(true);
@@ -99,16 +107,12 @@ export default function AdminDashboardPage() {
       sub: "Status aktif saat ini", color: "green" as const,
     },
     {
-      icon: TrendingUp, label: "UMKM Berkembang", value: s ? formatNumber(s.total_umkm_berkembang) : "—",
-      sub: "Tren naik / ekspansi", color: "yellow" as const,
-    },
-    {
       icon: AlertCircle, label: "UMKM Tidak Aktif", value: s ? formatNumber(s.total_umkm_tidak_aktif) : "—",
       sub: "Nonaktif / suspend / arsip", color: "purple" as const,
     },
     {
-      icon: Banknote, label: "Total Laba", value: s ? formatRupiah(s.total_laba) : "—",
-      sub: "Akumulasi laba tercatat", color: "orange" as const,
+      icon: Banknote, label: "Total Omzet", value: s ? formatRupiah(s.total_laba) : "—",
+      sub: "Akumulasi omzet tercatat", color: "orange" as const,
     },
   ];
 
@@ -151,7 +155,10 @@ export default function AdminDashboardPage() {
         <div className="filter-group filter-group--btn">
           <label className="filter-label">&nbsp;</label>
           <button className="filter-btn" onClick={fetchDashboard}>
-            <Search size={16} style={{ marginRight: 8 }} /> Terapkan Filter
+            <Search size={16} style={{ marginRight: 8 }} /> Terapkan
+          </button>
+          <button className="filter-btn filter-btn--secondary" onClick={resetFilters} style={{ marginLeft: 8 }}>
+            <RotateCcw size={16} style={{ marginRight: 8 }} /> Reset
           </button>
         </div>
       </div>
@@ -179,24 +186,6 @@ export default function AdminDashboardPage() {
         <CategoryBarChart data={data?.kategori_performa ?? []} />
       </div>
 
-      <div className="charts-row">
-        <div className="info-card">
-          <div className="chart-card__title">Tren Pertumbuhan</div>
-          <p>
-            {data
-              ? `Total ${formatNumber(data.summary.total_umkm)} UMKM terdaftar dengan ${formatNumber(data.summary.total_umkm_aktif)} aktif. Terdapat ${formatNumber(data.summary.total_umkm_berkembang)} UMKM dalam tren berkembang.`
-              : "Memuat data pertumbuhan..."}
-          </p>
-        </div>
-        <div className="info-card warning">
-          <div className="chart-card__title">Atensi Khusus</div>
-          <p>
-            {data?.atensi
-              ? `Terdapat ${formatNumber(data.atensi.total_umkm_perlu_atensi)} UMKM perlu perhatian dan ${formatNumber(data.atensi.total_umkm_berisiko)} UMKM berisiko di ${formatNumber(data.atensi.total_provinsi_terdampak)} provinsi.`
-              : "Memuat data atensi..."}
-          </p>
-        </div>
-      </div>
     </AdminLayout>
   );
 }

@@ -116,38 +116,38 @@ export function StatusDonutChart({ data }: { data: StatusDistributionItem[] }) {
 export function OmzetTrendChart({ data }: { data: LabaTimeseriesItem[] }) {
   const chartData = data.map((d) => ({
     bulan: d.tanggal.slice(0, 7),
-    laba: Math.round(d.total_laba / 1_000_000), // dalam juta
+    omzet: Math.round(d.total_laba / 1_000_000), // dalam juta
   }));
 
-  const maxLaba = chartData.length > 0 ? Math.max(...chartData.map((d) => d.laba)) : 0;
+  const maxOmzet = chartData.length > 0 ? Math.max(...chartData.map((d) => d.omzet)) : 0;
 
   return (
     <div className="chart-card full-width">
       <div className="chart-card__header">
         <div>
-          <div className="chart-card__title">Tren Laba UMKM</div>
-          <div className="chart-card__sub">Total laba per bulan (dalam juta Rp)</div>
+          <div className="chart-card__title">Tren Omzet UMKM</div>
+          <div className="chart-card__sub">Total omzet per bulan (dalam juta Rp)</div>
         </div>
         <span className="chart-badge">+Rincian</span>
       </div>
       <ResponsiveContainer width="100%" height={200}>
-        <LineChart data={chartData}>
+        <BarChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
           <XAxis dataKey="bulan" tick={{ fontSize: 11 }} />
           <YAxis tick={{ fontSize: 12 }} />
           <Tooltip
             formatter={(value) => {
-              const laba = typeof value === "number" ? value : Number(value ?? 0);
-              return [`Rp ${laba} Jt`, "Laba"];
+              const omzet = typeof value === "number" ? value : Number(value ?? 0);
+              return [`Rp ${omzet} Jt`, "Omzet"];
             }}
           />
-          <Line type="monotone" dataKey="laba" stroke="#1f45b6" strokeWidth={2} dot={{ r: 4 }} />
-        </LineChart>
+          <Bar dataKey="omzet" fill="#1f45b6" radius={[4, 4, 0, 0]} />
+        </BarChart>
       </ResponsiveContainer>
       <div className="chart-stats-row">
         <div className="chart-stat">
-          <span className="label">Laba Terbesar</span>
-          <span className="value">Rp {maxLaba.toLocaleString("id-ID")} Jt</span>
+          <span className="label">Omzet Terbesar</span>
+          <span className="value">Rp {maxOmzet.toLocaleString("id-ID")} Jt</span>
         </div>
       </div>
     </div>

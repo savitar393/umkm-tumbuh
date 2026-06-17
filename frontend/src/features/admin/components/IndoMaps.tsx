@@ -215,7 +215,7 @@ export default function IndonesiaMap({ mapData }: Props) {
             const d = pathGen(geo.geometry as Parameters<typeof pathGen>[0]);
             if (!d) return null;
 
-            const fill = isHov ? "#ffc933" : (laba > 0 ? blueColor(ratio) : "#b8d9ef");
+            const fill = isHov ? "#ffc933" : (laba > 0 ? blueColor(ratio) : "#d1d5db");
 
             // Hitung centroid untuk label
             let cx = 0, cy = 0;
@@ -299,7 +299,7 @@ export default function IndonesiaMap({ mapData }: Props) {
             <strong>{tooltip.totalUMKM.toLocaleString("id-ID")}</strong>
           </div>
           <div className="map-tooltip__row">
-            <span>Total Laba</span>
+            <span>Total Omzet</span>
             <strong>{formatRupiah(tooltip.totalLaba)}</strong>
           </div>
           {tooltip.totalLaba === 0 && (

@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import type { ReactNode } from "react";
+import { LogOut } from "lucide-react";
 import { getCurrentUser, clearAuthStorage } from "../../../shared/auth/currentUser";
 
 const navItems = [
@@ -61,6 +62,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         {/* Konten halaman */}
         <div className="admin-content-v2">
           {children}
+        </div>
+
+        {/* Tombol Keluar */}
+        <div className="admin-footer-logout">
+          <button className="btn-logout-bottom" onClick={logout}>
+            <LogOut size={16} style={{ marginRight: 6 }} /> Keluar
+          </button>
         </div>
       </main>
     </div>
