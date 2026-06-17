@@ -1,5 +1,12 @@
 export type UserRole = "UMKM" | "MITRA" | "ADMIN";
-export type UserStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+export type UserStatus =
+  | "MENUNGGU"
+  | "DISETUJUI"
+  | "DITOLAK"
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED";
 
 export type CurrentUser = {
   id: string;

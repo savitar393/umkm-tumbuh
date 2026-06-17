@@ -1,5 +1,4 @@
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { useState } from "react";
 import { Icon } from "@iconify/react";
 import Header from "../../../shared/components/Header";
 import Footer from "../../../shared/components/Footer";
