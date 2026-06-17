@@ -300,3 +300,36 @@ Approve a registration:
 - In the final architecture, shared file uploads should move into `document-service`.
 - Do not run `npm audit fix --force` unless the team agrees.
 - Do not commit `.env`, `frontend/.env`, generated local volumes, or local Docker data.
+
+<!-- LOCAL_DEV_QUICKSTART_START -->
+## Local Development
+
+The current integrated local environment is documented in:
+
+```text
+docs/README_LOCAL_DEV.md
+```
+
+Current service ports:
+
+| Service | Port |
+|---|---:|
+| frontend | 5173 |
+| auth-service | 8080 |
+| user-service | 8081 |
+| partnerships-service | 8082 |
+| document-service | 8083 |
+| training-service | 8084 |
+| Garage object storage | 3900 |
+| PostgreSQL | 5432 |
+
+Quick health check:
+
+```bash
+curl -i http://localhost:8080/api/v1/health
+curl -i http://localhost:8081/api/v1/health
+curl -i http://localhost:8082/api/v1/health
+curl -i http://localhost:8083/api/v1/health
+curl -i http://localhost:8084/api/v1/health
+```
+<!-- LOCAL_DEV_QUICKSTART_END -->
