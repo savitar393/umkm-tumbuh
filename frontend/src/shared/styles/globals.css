@@ -2377,3 +2377,303 @@ button.danger {
     min-width: 560px;
   }
 }
+
+/* ===================== UMKM DASHBOARD VISUAL POLISH ===================== */
+
+.umkm-dashboard-polish {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.umkm-dashboard-polish__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.umkm-dashboard-polish__header span {
+  display: block;
+  color: #1d4ed8;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.umkm-dashboard-polish__header h1 {
+  margin: 0.2rem 0 0;
+  color: #0f172a;
+  font-size: 1.65rem;
+  line-height: 1.15;
+}
+
+.umkm-dashboard-polish__header p {
+  margin: 0.35rem 0 0;
+  color: #64748b;
+  font-size: 0.95rem;
+}
+
+.umkm-dashboard-polish__primary-action,
+.umkm-dashboard-polish__secondary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border: 0;
+  text-decoration: none;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.umkm-dashboard-polish__primary-action {
+  min-height: 44px;
+  padding: 0 1rem;
+  border-radius: 12px;
+  color: #0f172a;
+  background: #f6b21a;
+}
+
+.umkm-dashboard-polish__secondary-action,
+.umkm-dashboard-polish__range-badge {
+  min-height: 42px;
+  padding: 0 0.95rem;
+  border-radius: 12px;
+  color: #173ea5;
+  background: #eef4ff;
+}
+
+.umkm-dashboard-polish__filter {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 16px;
+  background: #fff;
+}
+
+.umkm-dashboard-polish__filter label {
+  color: #64748b;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.umkm-dashboard-polish__filter select {
+  min-height: 40px;
+  padding: 0 0.8rem;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 10px;
+  background: #fff;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.umkm-dashboard-polish__filter span,
+.umkm-dashboard-polish__range-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: #173ea5;
+  font-weight: 800;
+}
+
+.umkm-dashboard-polish__summary {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(190px, 1fr) minmax(190px, 1fr);
+  gap: 1rem;
+}
+
+.umkm-dashboard-polish__omzet-card,
+.umkm-dashboard-polish__metric-card,
+.umkm-dashboard-polish__card {
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+}
+
+.umkm-dashboard-polish__omzet-card,
+.umkm-dashboard-polish__metric-card {
+  min-height: 132px;
+  border-radius: 18px;
+}
+
+.umkm-dashboard-polish__omzet-card {
+  padding: 1.35rem 1.5rem;
+  color: #fff;
+  background: linear-gradient(135deg, #2f66ee 0%, #1f4fd6 100%);
+}
+
+.umkm-dashboard-polish__omzet-card span,
+.umkm-dashboard-polish__metric-card span {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.umkm-dashboard-polish__omzet-card strong {
+  display: block;
+  margin-top: 0.55rem;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.umkm-dashboard-polish__omzet-card small {
+  display: inline-flex;
+  margin-top: 0.9rem;
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 0.8rem;
+}
+
+.umkm-dashboard-polish__metric-card {
+  padding: 1.15rem;
+}
+
+.umkm-dashboard-polish__metric-card strong {
+  display: block;
+  margin-top: 0.55rem;
+  color: #0f172a;
+  font-size: 1.15rem;
+}
+
+.umkm-dashboard-polish__icon-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  margin-bottom: 0.8rem;
+  border-radius: 12px;
+  color: #9a5a00;
+  background: #ffe0b8;
+}
+
+.umkm-dashboard-polish__icon-badge.blue {
+  color: #173ea5;
+  background: #dfe8ff;
+}
+
+.umkm-dashboard-polish__card {
+  padding: 1.35rem 1.5rem;
+  border-radius: 18px;
+}
+
+.umkm-dashboard-polish__card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.umkm-dashboard-polish__card-header h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.15rem;
+  line-height: 1.25;
+}
+
+.umkm-dashboard-polish__card-header p {
+  margin: 0.3rem 0 0;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.umkm-dashboard-polish__table {
+  overflow: hidden;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 14px;
+}
+
+.umkm-dashboard-polish__table table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.umkm-dashboard-polish__table th {
+  padding: 0.85rem 1rem;
+  background: #f5f6f3;
+  color: #34423d;
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.umkm-dashboard-polish__table td {
+  padding: 0.95rem 1rem;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  color: #0f172a;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.umkm-dashboard-polish__table td[colspan] {
+  padding: 1.45rem 1rem;
+  color: #64748b;
+}
+
+.umkm-dashboard-polish__profit {
+  display: inline-flex;
+  min-width: 86px;
+  justify-content: center;
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  color: #047857;
+  background: #d6fae8;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.umkm-dashboard-polish__chart-card {
+  min-height: 260px;
+  padding: 1rem;
+  border-radius: 16px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #f4f6fb 0%, #e3e9f7 100%);
+}
+
+.umkm-dashboard-polish__chart {
+  display: block;
+  width: 100%;
+  height: 220px;
+}
+
+.umkm-dashboard-polish__chart-labels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(42px, 1fr));
+  gap: 0.5rem;
+  color: #64748b;
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.umkm-dashboard-polish__empty {
+  margin: 0;
+  padding: 1.5rem;
+  color: #64748b;
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .umkm-dashboard-polish__header,
+  .umkm-dashboard-polish__card-header {
+    flex-direction: column;
+  }
+
+  .umkm-dashboard-polish__summary {
+    grid-template-columns: 1fr;
+  }
+
+  .umkm-dashboard-polish__table {
+    overflow-x: auto;
+  }
+
+  .umkm-dashboard-polish__table table {
+    min-width: 560px;
+  }
+}
