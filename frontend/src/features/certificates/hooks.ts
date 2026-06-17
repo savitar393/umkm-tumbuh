@@ -4,8 +4,6 @@ import {
   getUserCertificates,
   getCertificateById,
   requestCertificate,
-  getCertificateDownloadUrl,
-  downloadCertificate,
 } from "./api";
 
 export const certificateKeys = {
