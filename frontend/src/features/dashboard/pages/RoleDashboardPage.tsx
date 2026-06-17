@@ -1,19 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import {
-  AlertTriangle,
   CalendarDays,
   ClipboardList,
-  Package,
   Plus,
   ReceiptText,
   ShoppingCart,
-  TrendingUp,
 } from "lucide-react";
 import UmkmLayout from "../../umkm/components/UmkmLayout";
 import { getCurrentUser } from "../../../shared/auth/currentUser";
 import {
   getUMKMDashboardSummary,
+  type DashboardDailySale,
   type UMKMDashboardSummary,
 } from "../api";
 
@@ -40,6 +38,15 @@ function formatDate(value: string) {
   }).format(new Date(`${value}T00:00:00`));
 }
 
+function formatMonthYear(value?: string) {
+  if (!value) return "";
+
+  return new Intl.DateTimeFormat("id-ID", {
+    month: "long",
+    year: "numeric",
+  }).format(new Date(`${value}T00:00:00`));
+}
+
 function rangeLabel(range: DashboardRange) {
   switch (range) {
     case "today":
@@ -54,8 +61,64 @@ function rangeLabel(range: DashboardRange) {
   }
 }
 
+function buildTrendPath(data: DashboardDailySale[]) {
+  const width = 700;
+  const height = 220;
+  const paddingX = 24;
+  const paddingY = 28;
+  const baseline = height - paddingY;
+
+  if (data.length === 0) {
+    return {
+      linePath: "",
+      areaPath: "",
+      points: [],
+    };
+  }
+
+  const maxValue = Math.max(...data.map((item) => item.total_omzet), 0);
+  const denominator = data.length > 1 ? data.length - 1 : 1;
+
+  const points = data.map((item, index) => {
+    const x =
+      paddingX + (index / denominator) * (width - paddingX * 2);
+
+    const y =
+      maxValue > 0
+        ? baseline -
+          (item.total_omzet / maxValue) * (height - paddingY * 2)
+        : baseline;
+
+    return {
+      x,
+      y,
+      label: item.date.slice(5),
+      value: item.total_omzet,
+    };
+  });
+
+  const linePath = points
+    .map((point, index) =>
+      `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`,
+    )
+    .join(" ");
+
+  const first = points[0];
+  const last = points[points.length - 1];
+
+  const areaPath = `${linePath} L ${last.x.toFixed(2)} ${baseline} L ${first.x.toFixed(
+    2,
+  )} ${baseline} Z`;
+
+  return {
+    linePath,
+    areaPath,
+    points,
+  };
+}
+
 export default function RoleDashboardPage({ title }: RoleDashboardPageProps) {
-  const user = getCurrentUser();
+  const user = useMemo(() => getCurrentUser(), []);
   const [summary, setSummary] = useState<UMKMDashboardSummary | null>(null);
   const [range, setRange] = useState<DashboardRange>("7d");
   const [loading, setLoading] = useState(true);
@@ -87,14 +150,29 @@ export default function RoleDashboardPage({ title }: RoleDashboardPageProps) {
 
   const metrics = summary?.metrics;
 
-  const maxDailyOmzet = useMemo(() => {
-    if (!summary?.daily_sales.length) return 0;
+  const averagePerItem =
+    metrics && metrics.total_item > 0
+      ? metrics.total_omzet / metrics.total_item
+      : 0;
 
-    return Math.max(
-      ...summary.daily_sales.map((item) => item.total_omzet),
-      0,
-    );
+  const dailyRows = useMemo(() => {
+    if (!summary) return [];
+
+    return [...summary.daily_sales]
+      .filter(
+        (item) =>
+          item.total_item > 0 ||
+          item.total_profit > 0 ||
+          item.total_omzet > 0,
+      )
+      .reverse()
+      .slice(0, 5);
   }, [summary]);
+
+  const chart = useMemo(
+    () => buildTrendPath(summary?.daily_sales ?? []),
+    [summary],
+  );
 
   if (!user) return <Navigate to="/login" replace />;
 
@@ -106,8 +184,7 @@ export default function RoleDashboardPage({ title }: RoleDashboardPageProps) {
             <div>
               <h1>Ringkasan Bisnis</h1>
               <p>
-                Selamat datang kembali, berikut performa toko Anda berdasarkan
-                data laporan terbaru.
+                Selamat datang kembali, berikut performa toko Anda hari ini.
               </p>
             </div>
 
@@ -117,7 +194,7 @@ export default function RoleDashboardPage({ title }: RoleDashboardPageProps) {
             </Link>
           </header>
 
-          <div className="sales-filter-card">
+          <div className="sales-filter-card dashboard-period-filter">
             <label htmlFor="dashboard-range">Periode laporan</label>
             <select
               id="dashboard-range"
@@ -140,17 +217,11 @@ export default function RoleDashboardPage({ title }: RoleDashboardPageProps) {
 
           {error ? <div className="error-message">{error}</div> : null}
 
-          <section className="report-summary-grid">
+          <section className="report-summary-grid dashboard-mockup-summary">
             <article className="report-summary-primary">
               <span>Total Omzet</span>
               <strong>{formatRupiah(metrics?.total_omzet ?? 0)}</strong>
               <small>{rangeLabel(range)} dari transaksi final.</small>
-            </article>
-
-            <article className="report-summary-small">
-              <ReceiptText size={24} />
-              <span>Total Laba</span>
-              <strong>{formatRupiah(metrics?.total_profit ?? 0)}</strong>
             </article>
 
             <article className="report-summary-small">
@@ -160,43 +231,24 @@ export default function RoleDashboardPage({ title }: RoleDashboardPageProps) {
             </article>
 
             <article className="report-summary-small">
-              <TrendingUp size={24} />
-              <span>Rata-rata Transaksi</span>
-              <strong>{formatRupiah(metrics?.average_order ?? 0)}</strong>
-            </article>
-          </section>
-
-          <section className="report-summary-grid">
-            <article className="report-summary-small">
-              <Package size={24} />
-              <span>Produk Aktif</span>
-              <strong>{metrics?.active_products ?? 0}</strong>
-            </article>
-
-            <article className="report-summary-small">
-              <Package size={24} />
-              <span>Total Stok</span>
-              <strong>{metrics?.total_stock ?? 0}</strong>
-            </article>
-
-            <article className="report-summary-small">
-              <AlertTriangle size={24} />
-              <span>Produk Stok Rendah</span>
-              <strong>{metrics?.low_stock_count ?? 0}</strong>
-            </article>
-
-            <article className="report-summary-small">
               <ReceiptText size={24} />
-              <span>Total Transaksi</span>
-              <strong>{metrics?.transaction_count ?? 0}</strong>
+              <span>Rata-rata/Item</span>
+              <strong>{formatRupiah(averagePerItem)}</strong>
             </article>
           </section>
 
-          <section className="dashboard-card wide">
+          <section className="dashboard-card wide dashboard-mockup-card">
             <div className="page-header">
               <div>
-                <h2>Rincian Laporan Penjualan</h2>
-                <p>Menampilkan transaksi terbaru pada periode yang dipilih.</p>
+                <h2>
+                  Rincian Laba Harian
+                  {summary?.period.from
+                    ? ` (${formatMonthYear(summary.period.from)})`
+                    : ""}
+                </h2>
+                <p>
+                  Rekap laba bersih dan item terjual pada periode terpilih.
+                </p>
               </div>
 
               <Link className="button secondary" to="/umkm/sales">
@@ -206,46 +258,33 @@ export default function RoleDashboardPage({ title }: RoleDashboardPageProps) {
             </div>
 
             {loading ? (
-              <p>Memuat laporan...</p>
+              <p className="dashboard-empty-state">Memuat laporan...</p>
             ) : (
-              <div className="table-wrapper">
+              <div className="table-wrapper dashboard-mockup-table">
                 <table>
                   <thead>
                     <tr>
                       <th>Tanggal</th>
-                      <th>Nomor</th>
-                      <th>Omzet</th>
                       <th>Laba Bersih</th>
-                      <th>Item</th>
-                      <th>Detail</th>
+                      <th>Item Terjual</th>
                     </tr>
                   </thead>
 
                   <tbody>
-                    {!summary || summary.recent_sales.length === 0 ? (
+                    {dailyRows.length === 0 ? (
                       <tr>
-                        <td colSpan={6}>Belum ada laporan penjualan.</td>
+                        <td colSpan={3}>Belum ada laporan penjualan.</td>
                       </tr>
                     ) : (
-                      summary.recent_sales.map((sale) => (
-                        <tr key={sale.id}>
-                          <td>{formatDate(sale.transaction_date)}</td>
-                          <td>{sale.transaction_number}</td>
-                          <td>{formatRupiah(sale.total_omzet)}</td>
+                      dailyRows.map((item) => (
+                        <tr key={item.date}>
+                          <td>{formatDate(item.date)}</td>
                           <td>
                             <span className="profit-pill">
-                              {formatRupiah(sale.total_profit)}
+                              {formatRupiah(item.total_profit)}
                             </span>
                           </td>
-                          <td>{sale.total_item} Item</td>
-                          <td>
-                            <Link
-                              className="button secondary table-link-button"
-                              to={`/umkm/sales/${sale.id}`}
-                            >
-                              Detail
-                            </Link>
-                          </td>
+                          <td>{item.total_item} Item</td>
                         </tr>
                       ))
                     )}
@@ -255,10 +294,10 @@ export default function RoleDashboardPage({ title }: RoleDashboardPageProps) {
             )}
           </section>
 
-          <section className="dashboard-card wide">
+          <section className="dashboard-card wide dashboard-mockup-card">
             <div className="page-header">
               <div>
-                <h2>Tren Penjualan</h2>
+                <h2>Tren Penjualan Mingguan</h2>
                 <p>Omzet harian berdasarkan periode yang dipilih.</p>
               </div>
 
@@ -268,104 +307,59 @@ export default function RoleDashboardPage({ title }: RoleDashboardPageProps) {
               </div>
             </div>
 
-            <div className="simple-trend-card dashboard-bar-list">
-              {summary?.daily_sales.map((item) => {
-                const percentage =
-                  maxDailyOmzet > 0
-                    ? Math.max((item.total_omzet / maxDailyOmzet) * 100, 4)
-                    : 4;
+            <div className="dashboard-trend-panel">
+              {summary && summary.daily_sales.length > 0 ? (
+                <svg
+                  className="dashboard-trend-svg"
+                  viewBox="0 0 700 220"
+                  role="img"
+                  aria-label="Tren omzet harian"
+                  preserveAspectRatio="none"
+                >
+                  <defs>
+                    <linearGradient
+                      id="dashboardTrendArea"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop offset="0%" stopColor="#3767df" stopOpacity="0.62" />
+                      <stop offset="100%" stopColor="#3767df" stopOpacity="0.08" />
+                    </linearGradient>
+                  </defs>
 
-                return (
-                  <div className="dashboard-bar-row" key={item.date}>
-                    <span>{item.date.slice(5)}</span>
-                    <div className="dashboard-bar-track">
-                      <div
-                        className="simple-trend-fill"
-                        style={{ width: `${percentage}%` }}
-                      />
-                    </div>
-                    <strong>{formatRupiah(item.total_omzet)}</strong>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
+                  <path d={chart.areaPath} fill="url(#dashboardTrendArea)" />
+                  <path
+                    d={chart.linePath}
+                    fill="none"
+                    stroke="#3767df"
+                    strokeWidth="4"
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                  />
 
-          <section className="dashboard-card wide">
-            <div className="page-header">
-              <div>
-                <h2>Produk Terlaris</h2>
-                <p>Produk dengan jumlah penjualan tertinggi pada periode ini.</p>
+                  {chart.points.map((point) => (
+                    <circle
+                      key={point.label}
+                      cx={point.x}
+                      cy={point.y}
+                      r="4"
+                      fill="#3767df"
+                    />
+                  ))}
+                </svg>
+              ) : (
+                <p className="dashboard-empty-state">
+                  Belum ada data tren penjualan.
+                </p>
+              )}
+
+              <div className="dashboard-trend-labels">
+                {(summary?.daily_sales ?? []).map((item) => (
+                  <span key={item.date}>{item.date.slice(5)}</span>
+                ))}
               </div>
-            </div>
-
-            <div className="table-wrapper">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Produk</th>
-                    <th>Terjual</th>
-                    <th>Omzet</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {!summary || summary.top_products.length === 0 ? (
-                    <tr>
-                      <td colSpan={3}>Belum ada data produk terjual.</td>
-                    </tr>
-                  ) : (
-                    summary.top_products.map((product) => (
-                      <tr key={product.product_id}>
-                        <td>{product.product_name}</td>
-                        <td>{product.total_sold} Item</td>
-                        <td>{formatRupiah(product.total_revenue)}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
-
-          <section className="dashboard-card wide">
-            <div className="page-header">
-              <div>
-                <h2>Produk Stok Rendah</h2>
-                <p>Produk aktif dengan stok kurang dari atau sama dengan 10.</p>
-              </div>
-
-              <Link className="button secondary" to="/umkm/products">
-                Kelola Produk
-              </Link>
-            </div>
-
-            <div className="table-wrapper">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Produk</th>
-                    <th>Stok</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {!summary || summary.low_stock_products.length === 0 ? (
-                    <tr>
-                      <td colSpan={3}>Tidak ada produk stok rendah.</td>
-                    </tr>
-                  ) : (
-                    summary.low_stock_products.map((product) => (
-                      <tr key={product.product_id}>
-                        <td>{product.product_name}</td>
-                        <td>{product.stock}</td>
-                        <td>{product.status}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
             </div>
           </section>
         </div>
