@@ -105,10 +105,8 @@ export const partnershipsApi = {
     });
   },
 
-  approve: async (id: string, catatan?: string): Promise<SuccessResponse<void>> => {
-    return http.patch<SuccessResponse<void>>(`${API_BASE}/${id}/approve`, { 
-      catatan: catatan,
-    });
+  approve: async (id: string): Promise<SuccessResponse<void>> => {
+    return http.patch<SuccessResponse<void>>(`${API_BASE}/${id}/approve`, {});
   },
 
   reject: async (id: string, rejection_reason: string): Promise<SuccessResponse<void>> => {

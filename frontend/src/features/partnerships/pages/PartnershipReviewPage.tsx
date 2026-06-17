@@ -1,17 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { partnershipsApi } from "../api";
+import PartnershipSidebar from "../components/PartnershipSidebar";
 
 
 // ─── Logo Components ──────────────────────────────────────────────────────────
-
-const LogoUMKMTumbuh: React.FC<{ size?: number }> = ({ size = 40 }) => (
-  <svg width={size} height={size} viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect width="40" height="40" rx="8" fill="#F5A623" />
-    <path d="M8 28 L14 16 L20 22 L26 12 L32 28 Z" fill="#1A3A6B" strokeLinejoin="round" />
-    <circle cx="26" cy="12" r="3" fill="#1A3A6B" />
-  </svg>
-);
 
 const LogoKementrian: React.FC<{ size?: number }> = ({ size = 36 }) => (
   <svg width={size} height={size} viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -53,7 +46,7 @@ const CancelConfirmationModal: React.FC<CancelConfirmationModalProps> = ({
 
   const handleConfirm = () => {
     if (!selectedReason) {
-      setError("Silakan pilih alasan pembatalan");
+      setError("ERR-VAL-02: Alasan pembatalan wajib dipilih.");
       return;
     }
     setError("");
@@ -348,11 +341,12 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ fileName, fileSize, lastUpd
 
 interface UploadCardProps {
   onFileSelect: (file: File | null) => void;
+  onError?: (error: string | null) => void;
   fileName: string | null;
   error?: string;
 }
 
-const UploadCard: React.FC<UploadCardProps> = ({ onFileSelect, fileName, error }) => {
+const UploadCard: React.FC<UploadCardProps> = ({ onFileSelect, onError, fileName, error }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -360,15 +354,16 @@ const UploadCard: React.FC<UploadCardProps> = ({ onFileSelect, fileName, error }
     if (!file) return;
     
     if (file.type !== "application/pdf") {
-      alert("Hanya file PDF yang diperbolehkan");
+      if (onError) onError("ERR-FILE-02: Hanya file PDF yang diperbolehkan. Maksimal 10MB.");
       return;
     }
     
     if (file.size > 10 * 1024 * 1024) {
-      alert("File terlalu besar. Maksimal 10MB.");
+      if (onError) onError("ERR-FILE-02: File terlalu besar. Maksimal 10MB.");
       return;
     }
     
+    if (onError) onError(null);
     onFileSelect(file);
   };
 
@@ -554,6 +549,8 @@ const SignedDocumentCard: React.FC<SignedDocumentCardProps> = ({ document, onDow
 const PartnershipReviewPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isMitraRoute = location.pathname.includes("/mitra/");
   
   const [partnership, setPartnership] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
@@ -567,51 +564,13 @@ const PartnershipReviewPage: React.FC = () => {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
 
-  // Sidebar navigation items
-  const navItems = [
-    {
-      label: "Monitoring Perkembangan Usaha",
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-        </svg>
-      ),
-      path: "/dashboard",
-    },
-    {
-      label: "Pengajuan Kemitraan",
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-          <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-          <circle cx="9" cy="7" r="4" />
-          <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
-        </svg>
-      ),
-      path: "/partnerships/status",
-    },
-    {
-      label: "Kelola Informasi UMKM",
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-          <rect x="2" y="7" width="20" height="14" rx="2" />
-          <path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" />
-        </svg>
-      ),
-      path: "/umkm",
-    },
-  ];
-
-  useEffect(() => {
-    if (id) {
-      fetchPartnership(id);
-    }
-  }, [id]);
+  const sidebarWidth = isMitraRoute ? 260 : 220;
 
   const fetchPartnership = async (partnershipId: string) => {
     setLoading(true);
     try {
       const response = await partnershipsApi.getDetail(partnershipId);
-      if (response.status === "success" && response.data) {
+      if (response.success === true && response.data) {
         const data = response.data as any;
         setPartnership(data);
         if (data.status === "ACTIVE" || data.contract_signed_at) {
@@ -629,6 +588,12 @@ const PartnershipReviewPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (id) {
+      fetchPartnership(id);
+    }
+  }, [id]);
 
   const handleDownloadContract = () => {
     alert("Mengunduh draf kontrak...");
@@ -653,7 +618,7 @@ const PartnershipReviewPage: React.FC = () => {
 
   const handleSignAndApprove = async () => {
     if (!isSigned && !signedFile) {
-      setUploadError("Harap unggah dokumen kontrak yang sudah ditandatangani");
+      setUploadError("ERR-FILE-01: Harap unggah dokumen kontrak yang sudah ditandatangani.");
       return;
     }
     
@@ -667,8 +632,14 @@ const PartnershipReviewPage: React.FC = () => {
         await partnershipsApi.sign(id, base64);
       }
 
-      // Setujui kemitraan
-      await partnershipsApi.approve(id, "Dokumen telah ditandatangani dan disetujui");
+      // For MITRA route, navigate to approve page after signing
+      if (isMitraRoute) {
+        navigate(`/mitra/partnerships/approve/${id}`);
+        return;
+      }
+
+      // For UMKM route, approve directly
+      await partnershipsApi.approve(id);
       
       setIsSigned(true);
       setSignedDocument({
@@ -697,8 +668,11 @@ const PartnershipReviewPage: React.FC = () => {
       
       await partnershipsApi.reject(id, rejection_reason);
       setShowCancelModal(false);
-      alert("Pengajuan berhasil ditolak.");
-      navigate(`/partnerships/${id}`);
+      if (isMitraRoute) {
+        navigate("/mitra/partnerships/inbox", { state: { toast: "Pengajuan berhasil ditolak." } });
+      } else {
+        navigate(`/umkm/partnerships/${id}`);
+      }
     } catch (error: any) {
       alert(`Terjadi kesalahan: ${error.message || "Gagal menolak pengajuan"}`);
     } finally {
@@ -754,83 +728,11 @@ const PartnershipReviewPage: React.FC = () => {
         isSubmitting={isRejecting}
       />
 
-      {/* Sidebar */}
-      <aside style={{
-        width: 200,
-        minWidth: 200,
-        background: "#1A3A6B",
-        display: "flex",
-        flexDirection: "column",
-        position: "fixed",
-        top: 0,
-        left: 0,
-        height: "100vh",
-        zIndex: 100,
-      }}>
-        <div style={{ padding: "24px 20px", borderBottom: "1px solid rgba(255,255,255,0.12)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <LogoUMKMTumbuh size={36} />
-            <span style={{ color: "#F5A623", fontWeight: 700, fontSize: 15, lineHeight: 1.2 }}>
-              UMKM<br />Tumbuh
-            </span>
-          </div>
-        </div>
-
-        <nav style={{ flex: 1, padding: "20px 0" }}>
-          {navItems.map((item) => (
-            <button
-              key={item.path}
-              onClick={() => navigate(item.path)}
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                gap: 10,
-                width: "100%",
-                padding: "10px 20px",
-                background: "transparent",
-                border: "none",
-                color: "rgba(255,255,255,0.75)",
-                fontSize: 13,
-                fontWeight: 400,
-                cursor: "pointer",
-                textAlign: "left",
-                lineHeight: 1.4,
-              }}
-            >
-              <span style={{ marginTop: 1, flexShrink: 0 }}>{item.icon}</span>
-              {item.label}
-            </button>
-          ))}
-        </nav>
-
-        <div style={{ padding: "20px", borderTop: "1px solid rgba(255,255,255,0.12)" }}>
-          <button
-            onClick={() => navigate("/login")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              background: "none",
-              border: "none",
-              color: "#E24B4A",
-              fontSize: 13,
-              cursor: "pointer",
-              padding: 0,
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
-              <polyline points="16 17 21 12 16 7" />
-              <line x1="21" y1="12" x2="9" y2="12" />
-            </svg>
-            Keluar
-          </button>
-        </div>
-      </aside>
+      <PartnershipSidebar />
 
       {/* Main Content */}
       <main style={{
-        marginLeft: 200,
+        marginLeft: sidebarWidth,
         flex: 1,
         display: "flex",
         flexDirection: "column",
@@ -1068,6 +970,7 @@ const PartnershipReviewPage: React.FC = () => {
                     setSignedFile(file);
                     setUploadError(null);
                   }}
+                  onError={(err) => setUploadError(err)}
                   fileName={signedFile?.name || null}
                   error={uploadError ?? undefined}
                 />
