@@ -1,4 +1,3 @@
--- +goose Down
 
 DROP TABLE IF EXISTS training.transaksi_sertifikatpelatihan CASCADE;
 DROP TABLE IF EXISTS training.transaksi_submissionassignment CASCADE;

@@ -6,10 +6,17 @@ import { publicRoutes } from "../features/public/routes";
 import { authRoutes } from "../features/auth/routes";
 import { adminRoutes } from "../features/admin/routes";
 import { umkmDashboardRoutes, mitraDashboardRoutes } from "../features/dashboard/routes";
+<<<<<<< HEAD
 import { userRoutes } from "../features/users/routes";
 import { productRoutes } from "../features/products/routes";
 import { salesRoutes } from "../features/sales/routes";
 import { umkmPartnershipRoutes, mitraPartnershipRoutes } from "../features/partnerships/routes";
+=======
+import { userRoutes, mitraUserRoutes } from "../features/users/routes";
+import { productRoutes } from "../features/products/routes";
+import { salesRoutes } from "../features/sales/routes";
+import { publicPartnershipRoutes, umkmPartnershipRoutes, mitraPartnershipRoutes } from "../features/partnerships/routes";
+>>>>>>> origin/dev
 import { documentRoutes } from "../features/documents/routes";
 import { trainingRoutes } from "../features/trainings/routes";
 import { certificateRoutes } from "../features/certificates/routes";
@@ -46,7 +53,7 @@ const routes: RouteObject[] = [
     element: <RequireAuth allowedRole="MITRA" />,
     children: [
       ...mitraDashboardRoutes,
-      ...userRoutes,
+      ...mitraUserRoutes,
       ...mitraPartnershipRoutes,
       ...documentRoutes,
       ...notificationRoutes,

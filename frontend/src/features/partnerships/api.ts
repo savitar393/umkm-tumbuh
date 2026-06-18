@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // frontend/src/features/partnerships/api.ts
 
 import { httpPartnerships } from "../../shared/api/partnershipHttp";
@@ -15,6 +16,18 @@ interface SuccessResponse<T> {
   message?: string;
   data: T;
 }
+=======
+import { partnershipHttp as http } from "../../shared/api/partnershipHttp";
+import type { CreatePartnershipRequest, PartnershipStatus } from "./types";
+
+
+interface SuccessResponse<T> {
+  status: "success";
+  message?: string;
+  data: T;
+}
+
+>>>>>>> origin/dev
 
 export interface PartnershipStatusResponse {
   pengajuan: Array<{
@@ -48,6 +61,7 @@ export interface IncomingPartnershipsResponse {
   };
 }
 
+<<<<<<< HEAD
 export interface PartnerListItem {
   id: string;
   name: string;
@@ -99,6 +113,9 @@ export interface MitraDetail {
   address: string;
   products: string;
 }
+=======
+const API_BASE = "/partnerships";
+>>>>>>> origin/dev
 
 export const partnershipsApi = {
   // POST /api/v1/partnerships

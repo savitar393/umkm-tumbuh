@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "5b7fdb79-umkm-current-progress-try2",
     "name": "UMKM Tumbuh Backend - Current Progress Try 2",
-    "description": "Newman/Postman collection aligned with feat/frontend-sales-reporting current backend routes: auth, admin registration approval, profile, products, and sales.",
+    "description": "Newman/Postman collection aligned with the integrated dev milestone: auth, admin registration approval, profile, products, sales, and UMKM dashboard summary.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "event": [
@@ -1048,6 +1048,300 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Excessive quantity rejected', () => pm.response.to.have.status(400));",
+                  "pm.response.to.be.json;"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06 - UMKM Dashboard Summary",
+      "item": [
+        {
+          "name": "HP-DASHBOARD-001 UMKM summary today",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{umkm_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{user_base_url}}/api/v1/dashboard/umkm/summary?range=today",
+              "host": [
+                "{{user_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dashboard",
+                "umkm",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "today"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.response.to.be.json;",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.summary, 'summary').to.be.an('object');",
+                  "pm.expect(json.summary.period, 'period').to.be.an('object');",
+                  "pm.expect(json.summary.metrics, 'metrics').to.be.an('object');",
+                  "pm.test('Range is today', () => pm.expect(json.summary.period.range).to.eql('today'));",
+                  "pm.expect(json.summary.period.from, 'period.from').to.be.a('string').and.not.empty;",
+                  "pm.expect(json.summary.period.to, 'period.to').to.be.a('string').and.not.empty;",
+                  "pm.expect(json.summary.metrics.total_omzet, 'total_omzet').to.be.a('number');",
+                  "pm.expect(json.summary.metrics.total_profit, 'total_profit').to.be.a('number');",
+                  "pm.expect(json.summary.metrics.total_item, 'total_item').to.be.a('number');",
+                  "pm.expect(json.summary.metrics.transaction_count, 'transaction_count').to.be.a('number');",
+                  "pm.expect(json.summary.metrics.average_order, 'average_order').to.be.a('number');",
+                  "pm.expect(json.summary.metrics.active_products, 'active_products').to.be.a('number');",
+                  "pm.expect(json.summary.metrics.total_stock, 'total_stock').to.be.a('number');",
+                  "pm.expect(json.summary.metrics.low_stock_count, 'low_stock_count').to.be.a('number');",
+                  "pm.expect(json.summary.recent_sales, 'recent_sales').to.be.an('array');",
+                  "pm.expect(json.summary.top_products, 'top_products').to.be.an('array');",
+                  "pm.expect(json.summary.daily_sales, 'daily_sales').to.be.an('array');",
+                  "pm.expect(json.summary.low_stock_products, 'low_stock_products').to.be.an('array');",
+                  "pm.test('Daily sales length is 1', () => pm.expect(json.summary.daily_sales.length).to.eql(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HP-DASHBOARD-002 UMKM summary 7 days",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{umkm_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{user_base_url}}/api/v1/dashboard/umkm/summary?range=7d",
+              "host": [
+                "{{user_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dashboard",
+                "umkm",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "7d"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.response.to.be.json;",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.summary, 'summary').to.be.an('object');",
+                  "pm.expect(json.summary.period, 'period').to.be.an('object');",
+                  "pm.expect(json.summary.metrics, 'metrics').to.be.an('object');",
+                  "pm.test('Range is 7d', () => pm.expect(json.summary.period.range).to.eql('7d'));",
+                  "pm.expect(json.summary.period.from, 'period.from').to.be.a('string').and.not.empty;",
+                  "pm.expect(json.summary.period.to, 'period.to').to.be.a('string').and.not.empty;",
+                  "pm.expect(json.summary.metrics.total_omzet, 'total_omzet').to.be.a('number');",
+                  "pm.expect(json.summary.metrics.total_profit, 'total_profit').to.be.a('number');",
+                  "pm.expect(json.summary.metrics.total_item, 'total_item').to.be.a('number');",
+                  "pm.expect(json.summary.metrics.transaction_count, 'transaction_count').to.be.a('number');",
+                  "pm.expect(json.summary.metrics.average_order, 'average_order').to.be.a('number');",
+                  "pm.expect(json.summary.metrics.active_products, 'active_products').to.be.a('number');",
+                  "pm.expect(json.summary.metrics.total_stock, 'total_stock').to.be.a('number');",
+                  "pm.expect(json.summary.metrics.low_stock_count, 'low_stock_count').to.be.a('number');",
+                  "pm.expect(json.summary.recent_sales, 'recent_sales').to.be.an('array');",
+                  "pm.expect(json.summary.top_products, 'top_products').to.be.an('array');",
+                  "pm.expect(json.summary.daily_sales, 'daily_sales').to.be.an('array');",
+                  "pm.expect(json.summary.low_stock_products, 'low_stock_products').to.be.an('array');",
+                  "pm.test('Daily sales length is 7', () => pm.expect(json.summary.daily_sales.length).to.eql(7));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HP-DASHBOARD-003 UMKM summary 30 days",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{umkm_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{user_base_url}}/api/v1/dashboard/umkm/summary?range=30d",
+              "host": [
+                "{{user_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dashboard",
+                "umkm",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "30d"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.response.to.be.json;",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.summary, 'summary').to.be.an('object');",
+                  "pm.expect(json.summary.period, 'period').to.be.an('object');",
+                  "pm.expect(json.summary.metrics, 'metrics').to.be.an('object');",
+                  "pm.test('Range is 30d', () => pm.expect(json.summary.period.range).to.eql('30d'));",
+                  "pm.expect(json.summary.period.from, 'period.from').to.be.a('string').and.not.empty;",
+                  "pm.expect(json.summary.period.to, 'period.to').to.be.a('string').and.not.empty;",
+                  "pm.expect(json.summary.metrics.total_omzet, 'total_omzet').to.be.a('number');",
+                  "pm.expect(json.summary.metrics.total_profit, 'total_profit').to.be.a('number');",
+                  "pm.expect(json.summary.metrics.total_item, 'total_item').to.be.a('number');",
+                  "pm.expect(json.summary.metrics.transaction_count, 'transaction_count').to.be.a('number');",
+                  "pm.expect(json.summary.metrics.average_order, 'average_order').to.be.a('number');",
+                  "pm.expect(json.summary.metrics.active_products, 'active_products').to.be.a('number');",
+                  "pm.expect(json.summary.metrics.total_stock, 'total_stock').to.be.a('number');",
+                  "pm.expect(json.summary.metrics.low_stock_count, 'low_stock_count').to.be.a('number');",
+                  "pm.expect(json.summary.recent_sales, 'recent_sales').to.be.an('array');",
+                  "pm.expect(json.summary.top_products, 'top_products').to.be.an('array');",
+                  "pm.expect(json.summary.daily_sales, 'daily_sales').to.be.an('array');",
+                  "pm.expect(json.summary.low_stock_products, 'low_stock_products').to.be.an('array');",
+                  "pm.test('Daily sales length is 30', () => pm.expect(json.summary.daily_sales.length).to.eql(30));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HP-DASHBOARD-004 UMKM summary current month",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{umkm_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{user_base_url}}/api/v1/dashboard/umkm/summary?range=month",
+              "host": [
+                "{{user_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dashboard",
+                "umkm",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "month"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', () => pm.response.to.have.status(200));",
+                  "pm.response.to.be.json;",
+                  "const json = pm.response.json();",
+                  "pm.expect(json.summary, 'summary').to.be.an('object');",
+                  "pm.expect(json.summary.period, 'period').to.be.an('object');",
+                  "pm.expect(json.summary.metrics, 'metrics').to.be.an('object');",
+                  "pm.test('Range is month', () => pm.expect(json.summary.period.range).to.eql('month'));",
+                  "pm.expect(json.summary.period.from, 'period.from').to.be.a('string').and.not.empty;",
+                  "pm.expect(json.summary.period.to, 'period.to').to.be.a('string').and.not.empty;",
+                  "pm.expect(json.summary.metrics.total_omzet, 'total_omzet').to.be.a('number');",
+                  "pm.expect(json.summary.metrics.total_profit, 'total_profit').to.be.a('number');",
+                  "pm.expect(json.summary.metrics.total_item, 'total_item').to.be.a('number');",
+                  "pm.expect(json.summary.metrics.transaction_count, 'transaction_count').to.be.a('number');",
+                  "pm.expect(json.summary.metrics.average_order, 'average_order').to.be.a('number');",
+                  "pm.expect(json.summary.metrics.active_products, 'active_products').to.be.a('number');",
+                  "pm.expect(json.summary.metrics.total_stock, 'total_stock').to.be.a('number');",
+                  "pm.expect(json.summary.metrics.low_stock_count, 'low_stock_count').to.be.a('number');",
+                  "pm.expect(json.summary.recent_sales, 'recent_sales').to.be.an('array');",
+                  "pm.expect(json.summary.top_products, 'top_products').to.be.an('array');",
+                  "pm.expect(json.summary.daily_sales, 'daily_sales').to.be.an('array');",
+                  "pm.expect(json.summary.low_stock_products, 'low_stock_products').to.be.an('array');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "AP-DASHBOARD-005 UMKM summary requires auth",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{user_base_url}}/api/v1/dashboard/umkm/summary?range=7d",
+              "host": [
+                "{{user_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "dashboard",
+                "umkm",
+                "summary"
+              ],
+              "query": [
+                {
+                  "key": "range",
+                  "value": "7d"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Request without token is rejected', () => pm.expect([401,403]).to.include(pm.response.code));",
                   "pm.response.to.be.json;"
                 ]
               }

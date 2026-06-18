@@ -1,4 +1,5 @@
 import { userHttp as http } from "../../shared/api/userHttp";
+import { documentHttp } from "../../shared/api/documentHttp";
 
 export type Product = {
   id: string;
@@ -47,6 +48,25 @@ export type UpdateStockPayload = {
   note?: string;
 };
 
+export type DocumentUploadResponse = {
+  message: string;
+  document: {
+    id: string;
+    uploader_akun_id: string;
+    uploader_role: string;
+    kategori_dokumen: string;
+    bucket_name: string;
+    object_key: string;
+    original_filename: string;
+    content_type: string;
+    size_bytes: number;
+    public_url?: string | null;
+    status: string;
+    created_at: string;
+    updated_at: string;
+  };
+};
+
 export function getProducts(params?: { q?: string; status?: string }) {
   const search = new URLSearchParams();
 
@@ -89,16 +109,28 @@ export function deleteProduct(id: string) {
   });
 }
 
-export function uploadProductThumbnail(id: string, file: File) {
+export async function uploadProductThumbnail(id: string, file: File) {
   const formData = new FormData();
-  formData.append("thumbnail", file);
+  formData.append("category", "PRODUCT_IMAGE");
+  formData.append("file", file);
 
-  return http<{ message: string; filename: string; product: Product }>(
-    `/products/${id}/thumbnail`,
+  const uploadResponse = await documentHttp<DocumentUploadResponse>(
+    "/documents/upload",
     {
       method: "POST",
       body: formData,
       skipJsonContentType: true,
-    }
+    },
   );
+
+  return http<{ message: string; product: Product }>(`/products/${id}/thumbnail`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      document_id: uploadResponse.document.id,
+      object_key: uploadResponse.document.object_key,
+      public_url: uploadResponse.document.public_url,
+      content_type: uploadResponse.document.content_type,
+      size_bytes: uploadResponse.document.size_bytes,
+    }),
+  });
 }

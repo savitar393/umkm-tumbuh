@@ -21,3 +21,69 @@ export function rejectRegistration(userID: string, rejectionReason: string) {
     }),
   });
 }
+
+// ─── Certificate API ─────────────────────────────────────────────────────
+
+export interface Certificate {
+  sertifikat_id: number;
+  pendaftaran_pelatihan_id: string;
+  nomor_sertifikat: string | null;
+  tanggal_pengajuan: string | null;
+  tanggal_terbit: string | null;
+  status_sertifikat_id: string;
+  nama_status_sertifikat: string;
+  dokumen_id: string | null;
+  dokumen_url: string | null;
+  catatan_validasi: string | null;
+  pelatihan_id: string;
+  judul_pelatihan: string;
+  jenis_pelatihan: string;
+  tanggal_selesai_pelatihan: string | null;
+  progress_persen: number;
+  umkm_id: string;
+  nama_umkm: string;
+  pelaku_nama: string;
+}
+
+export interface CertificateStats {
+  diajukan: number;
+  terbit: number;
+  ditolak: number;
+}
+
+export interface ListCertificatesResponse {
+  certificates: Certificate[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export function getCertificateStats() {
+  return http<CertificateStats>(`/certificates/stats`, { service: "certificate" });
+}
+
+export function listCertificates(status = "", page = 1, limit = 20, search = "", sortBy = "tanggal_pengajuan", sortOrder = "desc") {
+  const params = new URLSearchParams();
+  if (status) params.set("status", status);
+  if (search) params.set("search", search);
+  params.set("page", String(page));
+  params.set("limit", String(limit));
+  params.set("sort_by", sortBy);
+  params.set("sort_order", sortOrder);
+  return http<ListCertificatesResponse>(`/certificates/list?${params.toString()}`, { service: "certificate" });
+}
+
+export function approveCertificate(sertifikatId: number) {
+  return http<{ message: string; certificate: Certificate }>(`/certificates/${sertifikatId}/approve`, {
+    method: "POST",
+    service: "certificate",
+  });
+}
+
+export function rejectCertificate(sertifikatId: number, catatanValidasi: string) {
+  return http<{ message: string; certificate: Certificate }>(`/certificates/${sertifikatId}/reject`, {
+    method: "POST",
+    service: "certificate",
+    body: JSON.stringify({ catatan_validasi: catatanValidasi }),
+  });
+}
