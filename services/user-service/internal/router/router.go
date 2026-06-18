@@ -69,6 +69,7 @@ func New(db *pgxpool.Pool, frontendURL string, jwtSecret string) http.Handler {
 			r.Route("/dashboard", func(r chi.Router) {
 				r.Get("/umkm/summary", dashboardHandler.UMKMSummary)
 				r.Get("/umkm", dashboardHandler.GetUMKMDashboard)
+				r.Get("/mitra", dashboardHandler.GetMitraDashboard)
 			})
 		})
 

@@ -416,3 +416,24 @@ func (h *Handler) GetUMKMDashboard(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, data)
 }
+
+// GetMitraDashboard — GET /api/v1/dashboard/mitra?umkm_id=...
+func (h *Handler) GetMitraDashboard(w http.ResponseWriter, r *http.Request) {
+	user, ok := currentUMKMUser(w, r)
+	if !ok {
+		return
+	}
+
+	selectedUMKMID := r.URL.Query().Get("umkm_id")
+
+	repo := NewRepository(h.DB)
+	svc := NewService(repo)
+
+	data, err := svc.GetMitraDashboard(r.Context(), user.ID, selectedUMKMID)
+	if err != nil {
+		handleError(w, err, "Gagal memuat data dashboard mitra.")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, data)
+}

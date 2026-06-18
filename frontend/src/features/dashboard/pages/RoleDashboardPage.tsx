@@ -165,6 +165,7 @@ export default function RoleDashboardPage(_props: RoleDashboardPageProps) {
   if (!user) return <Navigate to="/login" replace />;
 
   if (user.role === "UMKM") {
+    const isEmpty = data && !loading && !error && labaRows.length === 0 && trendData.length === 0;
     return (
       <UmkmLayout title="" subtitle="">
         <div className="umkm-dashboard-polish">
@@ -172,12 +173,8 @@ export default function RoleDashboardPage(_props: RoleDashboardPageProps) {
             <div>
               <span>Ringkasan Bisnis</span>
               <h1>Ringkasan Bisnis</h1>
-              <p>
-                Selamat datang kembali, berikut performa toko Anda hari ini.
-              </p>
+              <p>Selamat datang kembali, berikut performa toko Anda hari ini.</p>
             </div>
-
-
           </header>
 
           {/* ── Filter ─────────────────────────────────── */}
@@ -196,124 +193,105 @@ export default function RoleDashboardPage(_props: RoleDashboardPageProps) {
           </div>
 
           {error ? <div className="error-message">{error}</div> : null}
+          {isEmpty && <div className="error-message">Tidak ada data untuk periode ini. Silakan pilih bulan/tahun lain.</div>}
 
-          <section className="umkm-dashboard-polish__summary">
-            <article className="umkm-dashboard-polish__omzet-card">
-              <span>Total Omzet Hari Ini</span>
-              <strong>{formatRupiah(data?.total_omzet_hari_ini ?? 0)}</strong>
-              <small>{data?.persen_vs_kemarin != null ? `${data.persen_vs_kemarin >= 0 ? "+" : ""}${data.persen_vs_kemarin.toFixed(1)}% vs kemarin` : ""}</small>
-            </article>
+          {!loading && data && (
+            <>
+              <section className="umkm-dashboard-polish__summary">
+                <article className="umkm-dashboard-polish__omzet-card">
+                  <span>Total Omzet Hari Ini</span>
+                  <strong>{formatRupiah(data.total_omzet_hari_ini)}</strong>
+                  <small>{data.persen_vs_kemarin != null ? `${data.persen_vs_kemarin >= 0 ? "+" : ""}${data.persen_vs_kemarin.toFixed(1)}% vs kemarin` : ""}</small>
+                </article>
+                <article className="umkm-dashboard-polish__metric-card">
+                  <div className="umkm-dashboard-polish__icon-badge"><ShoppingCart size={22} /></div>
+                  <span>Total Item Terjual</span>
+                  <strong>{data.total_item_terjual} Item</strong>
+                </article>
+                <article className="umkm-dashboard-polish__metric-card">
+                  <div className="umkm-dashboard-polish__icon-badge blue"><ReceiptText size={22} /></div>
+                  <span>Rata-rata/Item</span>
+                  <strong>{formatRupiah(data.rata_rata_per_item)}</strong>
+                </article>
+              </section>
 
-            <article className="umkm-dashboard-polish__metric-card">
-              <div className="umkm-dashboard-polish__icon-badge">
-                <ShoppingCart size={22} />
-              </div>
-              <span>Total Item Terjual</span>
-              <strong>{data?.total_item_terjual ?? 0} Item</strong>
-            </article>
-
-            <article className="umkm-dashboard-polish__metric-card">
-              <div className="umkm-dashboard-polish__icon-badge blue">
-                <ReceiptText size={22} />
-              </div>
-              <span>Rata-rata/Item</span>
-              <strong>{formatRupiah(data?.rata_rata_per_item ?? 0)}</strong>
-            </article>
-          </section>
-
-          <section className="umkm-dashboard-polish__card">
-            <div className="umkm-dashboard-polish__card-header">
-              <div>
-                <h2>Rincian Laba Harian ({MONTHS[bulan]} {tahun})</h2>
-                <p>Rekap laba bersih dan item terjual pada periode terpilih.</p>
-              </div>
-            </div>
-
-            {loading ? (
-              <p className="umkm-dashboard-polish__empty">Memuat laporan...</p>
-            ) : (
-              <div className="umkm-dashboard-polish__table">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Tanggal</th>
-                      <th>Laba Bersih</th>
-                      <th>Item Terjual</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {labaRows.length === 0 ? (
-                      <tr>
-                        <td colSpan={3}>Belum ada laporan penjualan.</td>
-                      </tr>
-                    ) : (
-                      labaRows.map((item) => (
-                        <tr key={item.tanggal}>
-                          <td>{formatDate(item.tanggal)}</td>
-                          <td>
-                            <span className="umkm-dashboard-polish__profit">
-                              {formatRupiah(item.laba_bersih)}
-                            </span>
-                          </td>
-                          <td>{item.jumlah_produk} Item</td>
-                        </tr>
-                      ))
+              <section className="umkm-dashboard-polish__card">
+                <div className="umkm-dashboard-polish__card-header">
+                  <div>
+                    <h2>Rincian Laba Harian ({MONTHS[bulan]} {tahun})</h2>
+                    <p>Rekap laba bersih dan item terjual pada periode terpilih.</p>
+                  </div>
+                </div>
+                {labaRows.length === 0 ? (
+                  <p className="umkm-dashboard-polish__empty">Belum ada laporan penjualan untuk periode ini.</p>
+                ) : (
+                  <div className="umkm-dashboard-polish__table">
+                    <table>
+                      <thead><tr><th>Tanggal</th><th>Laba Bersih</th><th>Item Terjual</th></tr></thead>
+                      <tbody>
+                        {labaRows.map((item) => (
+                          <tr key={item.tanggal}>
+                            <td>{formatDate(item.tanggal)}</td>
+                            <td><span className="umkm-dashboard-polish__profit">{formatRupiah(item.laba_bersih)}</span></td>
+                            <td>{item.jumlah_produk} Item</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {totalPages > 1 && (
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
+                        <span>Menampilkan {Math.min(PAGE_SIZE, (data.laba_harian?.length ?? 0) - page * PAGE_SIZE)} dari {data.laba_harian?.length ?? 0} hari</span>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button className="umkm-dashboard-polish__secondary-action" disabled={page === 0} onClick={() => setPage(p => p - 1)}>Sebelumnya</button>
+                          <button className="umkm-dashboard-polish__secondary-action" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>Berikutnya</button>
+                        </div>
+                      </div>
                     )}
-                  </tbody>
-                </table>
-                {totalPages > 1 && (
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
-                    <span>Menampilkan {Math.min(PAGE_SIZE, (data?.laba_harian?.length ?? 0) - page * PAGE_SIZE)} dari {data?.laba_harian?.length ?? 0} hari</span>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      <button className="umkm-dashboard-polish__secondary-action" disabled={page === 0} onClick={() => setPage(p => p - 1)}>Sebelumnya</button>
-                      <button className="umkm-dashboard-polish__secondary-action" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>Berikutnya</button>
-                    </div>
                   </div>
                 )}
-              </div>
-            )}
-          </section>
+              </section>
 
-          <section className="umkm-dashboard-polish__card">
-            <div className="umkm-dashboard-polish__card-header">
-              <div>
-                <h2>Tren Penjualan Mingguan</h2>
-                <p>Laba harian berdasarkan periode.</p>
-              </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                {([7, 14, 30, 90] as TrendRange[]).map(r => (
-                  <button key={r} className={`umkm-dashboard-polish__range-badge ${trendRange === r ? "active" : ""}`}
-                    onClick={() => setTrendRange(r)} style={{ cursor: "pointer", border: 0, ...trendRange === r ? { background: "#3767df", color: "#fff" } : {} }}>
-                    {r} Hari
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="umkm-dashboard-polish__chart-card">
-              {trendData.length > 0 ? (
-                <>
-                  <svg className="umkm-dashboard-polish__chart" viewBox="0 0 700 220" role="img" aria-label="Tren laba harian" preserveAspectRatio="none">
-                    <defs>
-                      <linearGradient id="umkmDashboardArea" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#3767df" stopOpacity="0.62" />
-                        <stop offset="100%" stopColor="#3767df" stopOpacity="0.08" />
-                      </linearGradient>
-                    </defs>
-                    <path d={chart.area} fill="url(#umkmDashboardArea)" />
-                    <path d={chart.line} fill="none" stroke="#3767df" strokeWidth="4" strokeLinejoin="round" strokeLinecap="round" />
-                  </svg>
-                  <div className="umkm-dashboard-polish__chart-labels">
-                    {chart.points.map((point) => (
-                      <span key={point.label}>{point.label}</span>
+              <section className="umkm-dashboard-polish__card">
+                <div className="umkm-dashboard-polish__card-header">
+                  <div>
+                    <h2>Tren Penjualan Mingguan</h2>
+                    <p>Laba harian berdasarkan periode.</p>
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {([7, 14, 30, 90] as TrendRange[]).map(r => (
+                      <button key={r} className={`umkm-dashboard-polish__range-badge ${trendRange === r ? "active" : ""}`}
+                        onClick={() => setTrendRange(r)} style={{ cursor: "pointer", border: 0, ...trendRange === r ? { background: "#3767df", color: "#fff" } : {} }}>
+                        {r} Hari
+                      </button>
                     ))}
                   </div>
-                </>
-              ) : (
-                <p className="umkm-dashboard-polish__empty">Belum ada data tren.</p>
-              )}
-            </div>
-          </section>
+                </div>
+                <div className="umkm-dashboard-polish__chart-card">
+                  {trendData.length > 0 ? (
+                    <>
+                      <svg className="umkm-dashboard-polish__chart" viewBox="0 0 700 220" role="img" aria-label="Tren laba harian" preserveAspectRatio="none">
+                        <defs>
+                          <linearGradient id="umkmDashboardArea" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#3767df" stopOpacity="0.62" />
+                            <stop offset="100%" stopColor="#3767df" stopOpacity="0.08" />
+                          </linearGradient>
+                        </defs>
+                        <path d={chart.area} fill="url(#umkmDashboardArea)" />
+                        <path d={chart.line} fill="none" stroke="#3767df" strokeWidth="4" strokeLinejoin="round" strokeLinecap="round" />
+                      </svg>
+                      <div className="umkm-dashboard-polish__chart-labels">
+                        {chart.points.map((point) => (<span key={point.label}>{point.label}</span>))}
+                      </div>
+                    </>
+                  ) : (
+                    <p className="umkm-dashboard-polish__empty">Belum ada data tren penjualan.</p>
+                  )}
+                </div>
+              </section>
+            </>
+          )}
+
+          {loading && <p className="umkm-dashboard-polish__empty">Memuat data...</p>}
         </div>
       </UmkmLayout>
     );
