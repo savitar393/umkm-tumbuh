@@ -259,7 +259,7 @@ export default function TrainingDashboardPage() {
             </div>
             <div style={{ marginTop: 14, background: "rgba(255,255,255,0.25)", borderRadius: 99, height: 5 }}>
               <div style={{
-                width: `${dashboard?.total_pelatihan ? (completed.length / dashboard.total_pelatihan) * 100 : 0}%`,
+                width: `${dashboard?.total_pelatihan ? Math.min(100, (completed.length / dashboard.total_pelatihan) * 100) : 0}%`,
                 background: "#fff", borderRadius: 99, height: 5, transition: "width 0.7s ease"
               }} />
             </div>

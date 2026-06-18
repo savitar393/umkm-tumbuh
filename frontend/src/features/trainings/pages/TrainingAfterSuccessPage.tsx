@@ -56,7 +56,7 @@ export default function TrainingAfterSuccessPage() {
 
   const cert = (certificates || []).find((c) => c.pelatihan_id === id);
   const enrollment = (enrollments || []).find((e) => e.pelatihan_id === id);
-  const progress = enrollment?.progress_persen || 65;
+  const progress = enrollment?.progress_persen ?? 65;
   const timelineSteps = getTimelineSteps(cert?.status_sertifikat_id, cert?.tanggal_terbit || undefined, cert?.catatan_validasi || undefined);
 
   useEffect(() => {
