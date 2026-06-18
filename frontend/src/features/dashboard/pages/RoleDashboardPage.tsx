@@ -76,9 +76,44 @@ function buildAreaChart(data: { hari: string; total_laba: number }[]) {
   return { area, line, points };
 }
 
+type MitraDashboardData = {
+  totalPartnerships: number;
+  activePartnerships: number;
+  totalUmkm: number;
+  incomingPartnerships: { umkm_id: string; umkm_nama?: string; status: string; tanggal: string }[];
+};
+
 export default function RoleDashboardPage(_props: RoleDashboardPageProps) {
   const user = useMemo(() => getCurrentUser(), []);
   const navigate = useNavigate();
+  const [dashboardData, setDashboardData] = useState<MitraDashboardData | null>(null);
+
+  useEffect(() => {
+    if (user?.role !== "MITRA") return;
+    async function loadMitraDashboard() {
+      try {
+        const { http } = await import("../../../shared/api/http");
+        const resp = await http.get<any>("/partnerships/incoming?page=1&limit=5", { service: "partnership" });
+        const rawItems = resp?.data?.data || resp?.data || [];
+        const items = Array.isArray(rawItems) ? rawItems : [];
+        const incoming = items.slice(0, 5).map((p: any) => ({
+          umkm_id: p.umkm_id || p.pengaju_umkm_id || "",
+          umkm_nama: p.umkm_nama || p.nama_umkm || "",
+          status: p.status_pengajuan_id || p.status || "",
+          tanggal: p.tanggal_pengajuan || p.created_at || "",
+        }));
+        setDashboardData({
+          totalPartnerships: resp?.total || items.length,
+          activePartnerships: incoming.filter((p) => p.status === "AKTIF" || p.status === "DISETUJUI").length,
+          totalUmkm: incoming.length,
+          incomingPartnerships: incoming,
+        });
+      } catch {
+        setDashboardData({ totalPartnerships: 0, activePartnerships: 0, totalUmkm: 0, incomingPartnerships: [] });
+      }
+    }
+    loadMitraDashboard();
+  }, [user]);
   const now = new Date();
   const [bulan, setBulan] = useState(now.getMonth());
   const [tahun, setTahun] = useState(now.getFullYear());
@@ -329,17 +364,57 @@ export default function RoleDashboardPage(_props: RoleDashboardPageProps) {
           <div className="umkm-dashboard-polish">
             <section className="umkm-dashboard-polish__summary">
               <article className="umkm-dashboard-polish__omzet-card">
-                <span>Status Akun</span>
-                <strong>{user?.status ?? "—"}</strong>
-                <small>Terdaftar sebagai Mitra</small>
+                <span>Total Kemitraan</span>
+                <strong>{dashboardData?.totalPartnerships ?? "—"}</strong>
+                <small>Pengajuan keseluruhan</small>
               </article>
               <article className="umkm-dashboard-polish__metric-card">
                 <div className="umkm-dashboard-polish__icon-badge">
                   <Handshake size={22} />
                 </div>
-                <span>Role</span>
-                <strong>Mitra</strong>
+                <span>Aktif</span>
+                <strong>{dashboardData?.activePartnerships ?? 0}</strong>
               </article>
+              <article className="umkm-dashboard-polish__metric-card">
+                <div className="umkm-dashboard-polish__icon-badge blue">
+                  <Building2 size={22} />
+                </div>
+                <span>Total UMKM</span>
+                <strong>{dashboardData?.totalUmkm ?? 0}</strong>
+              </article>
+            </section>
+
+            <section className="umkm-dashboard-polish__card">
+              <div className="umkm-dashboard-polish__card-header">
+                <div>
+                  <h2>Pengajuan Kemitraan Masuk</h2>
+                  <p>Daftar permintaan kemitraan dari pelaku UMKM.</p>
+                </div>
+              </div>
+              <div className="umkm-dashboard-polish__table">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>UMKM</th>
+                      <th>Status</th>
+                      <th>Tanggal</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dashboardData?.incomingPartnerships && dashboardData.incomingPartnerships.length > 0 ? (
+                      dashboardData.incomingPartnerships.map((p, i) => (
+                        <tr key={i}>
+                          <td>{p.umkm_nama || `UMKM #${p.umkm_id?.slice(-6) ?? i}`}</td>
+                          <td><span className="umkm-dashboard-polish__profit">{p.status}</span></td>
+                          <td>{p.tanggal ? new Date(p.tanggal).toLocaleDateString("id-ID") : "—"}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr><td colSpan={3}>Belum ada pengajuan kemitraan.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </section>
           </div>
         </div>
