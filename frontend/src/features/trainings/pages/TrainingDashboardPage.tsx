@@ -1,12 +1,14 @@
 import { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../../../shared/components/Sidebar";
 import backgroundImg from "../../../assets/background1.png";
 import { useTrainingStore } from "../store";
 import { useCertificateDashboard, useUserCertificates, useRequestCertificate } from "../../certificates/hooks";
+import { useCertificateDashboard, useUserCertificates, useRequestCertificate } from "../../certificates/hooks";
 import { useUserEnrollments } from "../hooks";
 import { getTrainingDetail } from "../api";
-import { getCertificateDownloadUrl } from "../../certificates/api";
+import { downloadCertificate } from "../../certificates/api";
 import { getMyProfile } from "../../../shared/api/profile";
 
 function IconTrendingUp({ size = 13, color = "#16a34a" }) {
@@ -102,6 +104,18 @@ export default function TrainingDashboardPage() {
     (e) => e.status_pendaftaran === "SELESAI" || e.tanggal_selesai
   );
   const certList = certificates || [];
+  const requestCertMutation = useRequestCertificate();
+  const requestedRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!completed.length) return;
+    completed.forEach((enrollment) => {
+      if (!requestedRef.current.has(enrollment.pendaftaran_pelatihan_id)) {
+        requestedRef.current.add(enrollment.pendaftaran_pelatihan_id);
+        requestCertMutation.mutate(enrollment.pendaftaran_pelatihan_id);
+      }
+    });
+  }, [completed.length]);
   const requestCertMutation = useRequestCertificate();
   const requestedRef = useRef<Set<string>>(new Set());
 
@@ -242,7 +256,7 @@ export default function TrainingDashboardPage() {
             </div>
             <div style={{ marginTop: 14, background: "rgba(255,255,255,0.25)", borderRadius: 99, height: 5 }}>
               <div style={{
-                width: `${dashboard?.total_pelatihan ? (completed.length / dashboard.total_pelatihan) * 100 : 0}%`,
+                width: `${dashboard?.total_pelatihan ? Math.min(100, (completed.length / dashboard.total_pelatihan) * 100) : 0}%`,
                 background: "#fff", borderRadius: 99, height: 5, transition: "width 0.7s ease"
               }} />
             </div>
@@ -288,6 +302,15 @@ export default function TrainingDashboardPage() {
                     <div
                       key={e.pendaftaran_pelatihan_id}
                       className={`hover-card anim-t${i}`}
+                      onClick={async () => {
+                        try {
+                          const detail = await getTrainingDetail(e.pelatihan_id);
+                          const nextModule = detail.modules[e.modul_selesai] || detail.modules[0];
+                          navigate(`/umkm/trainings/${e.pelatihan_id}/lesson/${nextModule.modul_id}`);
+                        } catch {
+                          navigate(`/umkm/trainings/${e.pelatihan_id}`);
+                        }
+                      }}
                       onClick={async () => {
                         try {
                           const detail = await getTrainingDetail(e.pelatihan_id);
@@ -425,7 +448,7 @@ export default function TrainingDashboardPage() {
                       <button
                         className="btn-dl"
                         title={c.nomor_sertifikat || "Download Sertifikat"}
-                        onClick={() => window.open(getCertificateDownloadUrl(c.sertifikat_id), "_blank")}
+                        onClick={() => downloadCertificate(c.sertifikat_id)}
                       >
                         <IconDownload />
                       </button>
