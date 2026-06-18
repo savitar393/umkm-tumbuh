@@ -30,6 +30,14 @@ const CERTIFICATE_API_BASE_URL =
   import.meta.env.VITE_CERTIFICATE_API_URL ??
   TRAINING_API_BASE_URL;
 
+// ⭐ EXPORT base URL sebagai string — dipakai langsung di template literal
+// oleh file-file seperti documents.ts: `${USER_API}/profile/...`
+export const USER_API = USER_API_BASE_URL;
+export const PARTNERSHIP_API = PARTNERSHIP_API_BASE_URL;
+export const DOCUMENT_API = DOCUMENT_API_BASE_URL;
+export const TRAINING_API = TRAINING_API_BASE_URL;
+export const CERTIFICATE_API = CERTIFICATE_API_BASE_URL;
+
 export type ServiceName =
   | "default"
   | "auth"

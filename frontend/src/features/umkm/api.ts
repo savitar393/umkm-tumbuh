@@ -1,4 +1,4 @@
-import { httpUser } from "../../shared/api/http";
+import { http } from "../../shared/api/http";
 
 export type UmkmProfile = {
   id: string;
@@ -29,13 +29,14 @@ export type UmkmProfilePayload = {
 };
 
 export function getProfile() {
-  return httpUser<{ profile: UmkmProfile }>("/profiles/me");
+  return http<{ profile: UmkmProfile }>("/profiles/me", { service: "user" });
 }
 
 export function updateProfile(payload: UmkmProfilePayload) {
-  return httpUser<{ profile: UmkmProfile }>("/profiles/me", {
+  return http<{ profile: UmkmProfile }>("/profiles/me", {
     method: "PUT",
     body: JSON.stringify(payload),
+    service: "user",
   });
 }
 
@@ -61,25 +62,28 @@ export type ProductPayload = {
 };
 
 export function getProducts() {
-  return httpUser<{ products: Product[] }>("/products");
+  return http<{ products: Product[] }>("/products", { service: "user" });
 }
 
 export function createProduct(payload: ProductPayload) {
-  return httpUser<{ message: string; id: string }>("/products", {
+  return http<{ message: string; id: string }>("/products", {
     method: "POST",
     body: JSON.stringify(payload),
+    service: "user",
   });
 }
 
 export function updateProduct(id: string, payload: ProductPayload) {
-  return httpUser<{ message: string }>("/products/" + id, {
+  return http<{ message: string }>("/products/" + id, {
     method: "PUT",
     body: JSON.stringify(payload),
+    service: "user",
   });
 }
 
 export function deleteProduct(id: string) {
-  return httpUser<{ message: string }>("/products/" + id, {
+  return http<{ message: string }>("/products/" + id, {
     method: "DELETE",
+    service: "user",
   });
 }

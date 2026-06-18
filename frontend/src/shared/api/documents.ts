@@ -1,4 +1,4 @@
-import { httpUser, USER_API } from "../../shared/api/http";
+import { http, USER_API } from "../../shared/api/http";
 
 export type DocumentType = "NIB" | "NPWP" | "SIUP" | "SERTIFIKASI_HALAL" | "LEGALITAS" | "SURAT_KOMITMEN" | "PROFIL_PERUSAHAAN" | "LOGO" | "FOTO_USAHA";
 
@@ -67,7 +67,7 @@ export function uploadMitraDocument(file: File, documentType: DocumentType) {
 }
 
 export function getMyDocuments() {
-  return httpUser<{ documents: DocumentItem[]; checklist: ChecklistItem[] }>("/documents/");
+  return http<{ documents: DocumentItem[]; checklist: ChecklistItem[] }>("/documents/", { service: "user" });
 }
 
 // Fetches document via authenticated request → creates a blob URL → opens in new tab.
@@ -118,7 +118,8 @@ export async function downloadDocument(docID: string, fileName = "dokumen"): Pro
 }
 
 export function deleteDocument(docID: string) {
-  return httpUser<{ status: string; message: string }>(`/documents/${docID}`, {
+  return http<{ status: string; message: string }>(`/documents/${docID}`, {
     method: "DELETE",
+    service: "user",
   });
 }

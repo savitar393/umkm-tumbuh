@@ -1,4 +1,4 @@
-import { httpUser } from "../../shared/api/http";
+import { http } from "../../shared/api/http";
 
 export type MitraProfile = {
   id: string;
@@ -27,12 +27,13 @@ export type MitraProfilePayload = {
 };
 
 export function getProfile() {
-  return httpUser<{ profile: MitraProfile }>("/profiles/me");
+  return http<{ profile: MitraProfile }>("/profiles/me", { service: "user" });
 }
 
 export function updateProfile(payload: MitraProfilePayload) {
-  return httpUser<{ profile: MitraProfile }>("/profiles/me", {
+  return http<{ profile: MitraProfile }>("/profiles/me", {
     method: "PUT",
     body: JSON.stringify(payload),
+    service: "user",
   });
 }
