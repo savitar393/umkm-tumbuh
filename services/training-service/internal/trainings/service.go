@@ -81,6 +81,9 @@ func (s *Service) UpdateProgress(ctx context.Context, req UpdateProgressRequest)
 	if req.ModulSelesai < 0 {
 		return apperror.New(http.StatusBadRequest, "Modul selesai tidak boleh negatif")
 	}
+	if req.ModulSelesai > req.TotalModul {
+		return apperror.New(http.StatusBadRequest, "Modul selesai tidak boleh melebihi total modul")
+	}
 	if req.TotalModul <= 0 {
 		return apperror.New(http.StatusBadRequest, "Total modul harus lebih dari 0")
 	}

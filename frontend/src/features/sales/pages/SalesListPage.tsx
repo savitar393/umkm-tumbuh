@@ -12,6 +12,61 @@ function formatRupiah(value: number) {
   }).format(value);
 }
 
+const MOCK_SALES: SaleSummary[] = [
+  {
+    id: "mock-s1",
+    umkm_id: "mock",
+    transaction_number: "TRX-20260601-001",
+    transaction_date: "2026-06-01T00:00:00Z",
+    total_omzet: 1750000,
+    total_profit: 450000,
+    total_item: 23,
+    note: "Penjualan pasar mingguan",
+    status: "SELESAI",
+    created_at: "2026-06-01T10:00:00Z",
+    updated_at: "2026-06-01T10:00:00Z",
+  },
+  {
+    id: "mock-s2",
+    umkm_id: "mock",
+    transaction_number: "TRX-20260602-001",
+    transaction_date: "2026-06-02T00:00:00Z",
+    total_omzet: 920000,
+    total_profit: 210000,
+    total_item: 12,
+    note: "Pesanan online",
+    status: "SELESAI",
+    created_at: "2026-06-02T14:30:00Z",
+    updated_at: "2026-06-02T14:30:00Z",
+  },
+  {
+    id: "mock-s3",
+    umkm_id: "mock",
+    transaction_number: "TRX-20260603-001",
+    transaction_date: "2026-06-03T00:00:00Z",
+    total_omzet: 3100000,
+    total_profit: 780000,
+    total_item: 45,
+    note: "Restock agen",
+    status: "SELESAI",
+    created_at: "2026-06-03T09:15:00Z",
+    updated_at: "2026-06-03T09:15:00Z",
+  },
+  {
+    id: "mock-s4",
+    umkm_id: "mock",
+    transaction_number: "TRX-20260604-001",
+    transaction_date: "2026-06-04T00:00:00Z",
+    total_omzet: 550000,
+    total_profit: 125000,
+    total_item: 8,
+    note: null,
+    status: "SELESAI",
+    created_at: "2026-06-04T16:00:00Z",
+    updated_at: "2026-06-04T16:00:00Z",
+  },
+];
+
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("id-ID", {
     day: "2-digit",
@@ -26,6 +81,7 @@ export default function SalesListPage() {
   const [to, setTo] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [useMock, setUseMock] = useState(false);
 
   const totalOmzet = useMemo(
     () => sales.reduce((sum, sale) => sum + sale.total_omzet, 0),
@@ -49,8 +105,10 @@ export default function SalesListPage() {
     try {
       const response = await getSales(params);
       setSales(response.sales);
+      setUseMock(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Gagal memuat catatan transaksi.");
+      setUseMock(true);
+      setSales(MOCK_SALES);
     } finally {
       setLoading(false);
     }
@@ -76,6 +134,7 @@ export default function SalesListPage() {
     >
       <div className="feature-page">
         {error ? <div className="error-message">{error}</div> : null}
+        {useMock ? <div className="error-message" style={{ background: "#fff3cd", color: "#856404", border: "1px solid #ffeeba" }}>Mode offline — menampilkan data contoh. Backend tidak terhubung.</div> : null}
 
         <section className="stat-cards-grid sales-stat-grid">
           <article className="stat-card stat-card--blue">

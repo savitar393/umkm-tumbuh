@@ -39,22 +39,37 @@ export default function TrainingLessonPage() {
 
   const completedModules = useTrainingStore((s) => s.lessonState.completedModules);
   const markModuleCompleted = useTrainingStore((s) => s.markModuleCompleted);
+  const setCompletedModules = useTrainingStore((s) => s.setCompletedModules);
+
+  useEffect(() => {
+    if (completedModules.length === 0 && enrollment && enrollment.modul_selesai > 0 && modules.length > 0) {
+      const hydated = modules.slice(0, enrollment.modul_selesai).map((m) => m.modul_id);
+      setCompletedModules(hydated);
+    }
+  }, [enrollment, modules, completedModules.length, setCompletedModules]);
 
   const handleComplete = () => {
     if (!currentModule || !enrollment) return;
-    const newCompleted = [...new Set([...completedModules, currentModule.modul_id])];
-    markModuleCompleted(currentModule.modul_id);
-    updateProgress.mutate({
-      pendaftaran_pelatihan_id: enrollment.pendaftaran_pelatihan_id,
-      modul_selesai: newCompleted.length,
-      total_modul: modules.length,
-    });
+    const moduleId = currentModule.modul_id;
+    const newCompleted = [...new Set([...completedModules, moduleId])];
+    updateProgress.mutate(
+      {
+        pendaftaran_pelatihan_id: enrollment.pendaftaran_pelatihan_id,
+        modul_selesai: newCompleted.length,
+        total_modul: modules.length,
+      },
+      {
+        onSuccess: () => {
+          markModuleCompleted(moduleId);
+        },
+      }
+    );
   };
 
   const isCompleted = (moduleId: string) => completedModules.includes(moduleId);
   const isCurrent = (moduleId: string) => moduleId === (lessonId || modules[0]?.modul_id);
 
-  const progressPercent = modules.length > 0 ? Math.round((completedModules.length / modules.length) * 100) : 0;
+  const progressPercent = modules.length > 0 ? Math.min(100, Math.round((completedModules.length / modules.length) * 100)) : 0;
 
   if (isLoading) {
     return (

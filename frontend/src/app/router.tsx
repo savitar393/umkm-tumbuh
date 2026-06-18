@@ -1,7 +1,5 @@
 import { Navigate, useRoutes, type RouteObject } from "react-router-dom";
 import { RequireAuth } from "../shared/auth/RequireAuth";
-
-
 import { publicRoutes } from "../features/public/routes";
 import { authRoutes } from "../features/auth/routes";
 import { adminRoutes } from "../features/admin/routes";
@@ -14,20 +12,15 @@ import { documentRoutes } from "../features/documents/routes";
 import { trainingRoutes } from "../features/trainings/routes";
 import { certificateRoutes } from "../features/certificates/routes";
 import { notificationRoutes } from "../features/notifications/routes";
-
 const routes: RouteObject[] = [
   ...publicRoutes,
   ...authRoutes,
-
-  // Public partnerships routes (tanpa login)
   ...publicPartnershipRoutes,
-
   {
     path: "/admin",
     element: <RequireAuth allowedRole="ADMIN" />,
     children: adminRoutes,
   },
-
   {
     path: "/umkm",
     element: <RequireAuth allowedRole="UMKM" />,
@@ -43,7 +36,6 @@ const routes: RouteObject[] = [
       ...notificationRoutes,
     ],
   },
-
   {
     path: "/mitra",
     element: <RequireAuth allowedRole="MITRA" />,
@@ -55,13 +47,11 @@ const routes: RouteObject[] = [
       ...notificationRoutes,
     ],
   },
-
   {
     path: "*",
     element: <Navigate to="/" replace />,
   },
 ];
-
 export function AppRouter() {
   return useRoutes(routes);
 }

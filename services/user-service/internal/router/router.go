@@ -45,6 +45,8 @@ func New(db *pgxpool.Pool, frontendURL string, jwtSecret string) http.Handler {
 			r.Route("/profiles", func(r chi.Router) {
 				r.Get("/me", profileHandler.GetMe)
 				r.Put("/me", profileHandler.UpsertMe)
+				r.Get("/mitra", profileHandler.ListMitra)
+				r.Get("/umkm", profileHandler.ListUMKM)
 			})
 
 			r.Route("/products", func(r chi.Router) {

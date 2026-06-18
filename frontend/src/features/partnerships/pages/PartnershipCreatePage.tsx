@@ -1,28 +1,15 @@
-import React, { useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useRef, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { partnershipsApi } from "../api";
 import type { CreatePartnershipRequest } from "../types";
+import PartnershipSidebar from "../components/PartnershipSidebar";
+import { getCurrentUser } from "../../../shared/auth/currentUser";
 
-// ─── SVG Logo Components ──────────────────────────────────────────────────────
+// ─── SVG Logo Components (tetap sama) ─────────────────────────────────────────
 
-const LogoUMKMTumbuh: React.FC<{ size?: number }> = ({ size = 40 }) => (
-  <svg width={size} height={size} viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect width="40" height="40" rx="8" fill="#F5A623" />
-    <path d="M8 28 L14 16 L20 22 L26 12 L32 28 Z" fill="#1A3A6B" strokeLinejoin="round" />
-    <circle cx="26" cy="12" r="3" fill="#1A3A6B" />
-  </svg>
-);
 
-const LogoKementrian: React.FC<{ size?: number }> = ({ size = 36 }) => (
-  <svg width={size} height={size} viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="18" cy="18" r="17" stroke="white" strokeWidth="1.5" fill="none" />
-    <path d="M18 6 L20 13 L27 13 L21.5 17.5 L23.5 24.5 L18 20 L12.5 24.5 L14.5 17.5 L9 13 L16 13 Z"
-      fill="white" />
-    <text x="18" y="32" textAnchor="middle" fill="white" fontSize="5" fontFamily="serif" fontWeight="bold">KEMENKOP</text>
-  </svg>
-);
 
-// ─── Upload Card ───────────────────────────────────────────────────────────────
+// ─── Upload Card (tetap sama) ─────────────────────────────────────────────────
 
 interface UploadCardProps {
   label: string;
@@ -40,13 +27,12 @@ const UploadCard: React.FC<UploadCardProps> = ({ label, hint, optional, icon, va
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      onChange(null, "File terlalu besar. Maks 2MB.");
+    if (file.size > 10 * 1024 * 1024) {
+      onChange(null, "ERR-FILE-02: File terlalu besar. Maksimal 10MB.");
       return;
     }
-    const valid = ["image/jpeg", "image/jpg", "image/png", "application/pdf"];
-    if (!valid.includes(file.type)) {
-      onChange(null, "Format tidak didukung.");
+    if (!["application/pdf", "image/jpeg", "image/png"].includes(file.type)) {
+      onChange(null, "ERR-FILE-02: Hanya file PDF, JPG, dan PNG yang diperbolehkan.");
       return;
     }
     onChange(file.name);
@@ -78,7 +64,7 @@ const UploadCard: React.FC<UploadCardProps> = ({ label, hint, optional, icon, va
       <input
         ref={inputRef}
         type="file"
-        accept=".jpg,.jpeg,.png,.pdf"
+        accept=".pdf,.jpg,.jpeg,.png"
         style={{ display: "none" }}
         onChange={handleFile}
       />
@@ -110,12 +96,7 @@ const IconDoc = () => (
   </svg>
 );
 
-// const IconBadge = () => (
-//   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-//     <circle cx="12" cy="8" r="6" />
-//     <path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11" />
-//   </svg>
-// );
+
 
 const IconCert = () => (
   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -128,6 +109,14 @@ const IconCert = () => (
 
 const PartnershipCreatePage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const user = getCurrentUser();
+  const basePath = user?.role === "MITRA" ? "/mitra/partnerships" : "/umkm/partnerships";
+  
+  // State untuk daftar mitra dari backend
+  const [mitraList, setMitraList] = useState<Array<{ id: string; name: string }>>([]);
+  const [loadingMitra, setLoadingMitra] = useState(true);
+  const [mitraError, setMitraError] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     receiver_id: "",
@@ -151,6 +140,45 @@ const PartnershipCreatePage: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Fetch daftar mitra/umkm dari backend saat component mount
+  useEffect(() => {
+    const fetchPartnerList = async () => {
+      setLoadingMitra(true);
+      setMitraError(null);
+      try {
+        if (user?.role === "MITRA") {
+          // MITRA melihat daftar UMKM
+          const response = await partnershipsApi.listUMKM({ page: 1, limit: 100 });
+          if (response.umkm && response.umkm.length > 0) {
+            setMitraList(response.umkm.map(m => ({ id: m.id, name: m.name })));
+          }
+        } else {
+          // UMKM melihat daftar MITRA
+          const response = await partnershipsApi.listMitra({ page: 1, limit: 100 });
+          if (response.mitra && response.mitra.length > 0) {
+            setMitraList(response.mitra.map(m => ({ id: m.id, name: m.name })));
+          }
+        }
+      } catch (error: any) {
+        setMitraError(error.message || "Gagal memuat daftar mitra/UMKM");
+        console.error("Error fetching partner list:", error);
+      } finally {
+        setLoadingMitra(false);
+      }
+    };
+    
+    fetchPartnerList();
+  }, [user?.role]);
+
+  // Cek URL params untuk pre-select mitra (dropdown only)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const receiverId = params.get("receiver_id");
+    if (receiverId) {
+      setFormData(prev => ({ ...prev, receiver_id: receiverId }));
+    }
+  }, [location]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -184,20 +212,63 @@ const PartnershipCreatePage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
+    
     setLoading(true);
     try {
       const attachments = [files.nib_ktp, files.pdf_kemitraan, files.sertifikat].filter(Boolean) as string[];
+      
       const apiData: CreatePartnershipRequest = {
         receiver_id: formData.receiver_id,
         proposal_title: `Pengajuan Kemitraan - ${formData.business_name}`,
         proposal_description: `${formData.product_description}\n\nAlasan Bermitra: ${formData.reason_for_partnership}`,
         attachment_files: attachments,
       };
+      
+      console.log("=== DEBUG SUBMIT ===");
+      console.log("receiver_id:", apiData.receiver_id);
+      console.log("proposal_title:", apiData.proposal_title);
+      console.log("proposal_description length:", apiData.proposal_description.length);
+      console.log("attachment_files:", apiData.attachment_files);
+      console.log("Full data:", JSON.stringify(apiData, null, 2));
+      
+      // Validasi dokumen wajib
+      if (!files.nib_ktp) {
+        throw new Error("ERR-FILE-01: Dokumen NIB/KTP wajib diunggah.");
+      }
+      if (!files.pdf_kemitraan) {
+        throw new Error("ERR-FILE-01: Dokumen PDF Pengajuan Kemitraan wajib diunggah.");
+      }
+
+      // Validasi tambahan
+      if (!apiData.receiver_id) {
+        throw new Error("receiver_id tidak boleh kosong");
+      }
+      if (apiData.proposal_title.length < 10) {
+        throw new Error("proposal_title minimal 10 karakter");
+      }
+      if (apiData.proposal_description.length < 30) {
+        throw new Error("proposal_description minimal 30 karakter");
+      }
+      
       const response = await partnershipsApi.create(apiData);
-      if (response.status === "success") navigate("/partnerships/success");
-      else alert(`Gagal: ${response.message}`);
-    } catch {
-      alert("Terjadi kesalahan saat mengirim pengajuan");
+      console.log("=== CREATE RESPONSE FULL ===");
+      console.log("Raw response:", JSON.stringify(response));
+      console.log("response.success:", response.success);
+      console.log("response.message:", response.message);
+      console.log("response.data:", JSON.stringify(response.data));
+      
+      if (response.success === true && response.data?.pengajuanID) {
+        console.log("SUCCESS PATH: redirecting to success page with pengajuanID:", response.data.pengajuanID);
+        navigate(`${basePath}/success?id=${response.data.pengajuanID}`, {
+          state: { pengajuanID: response.data.pengajuanID },
+        });
+      } else {
+        console.error("FAILURE PATH: response.success is not true or missing pengajuanID:", JSON.stringify(response));
+        alert(`Gagal: ${response.message || "Terjadi kesalahan"}`);
+      }
+    } catch (error: any) {
+      console.error("Error submitting form:", error);
+      alert(`Terjadi kesalahan: ${error.message || "Gagal mengirim pengajuan"}`);
     } finally {
       setLoading(false);
     }
@@ -205,7 +276,7 @@ const PartnershipCreatePage: React.FC = () => {
 
   const handleCancel = () => {
     if (window.confirm("Batalkan pengajuan? Data yang sudah diisi akan hilang.")) {
-      navigate("/partnerships");
+      navigate(basePath);
     }
   };
 
@@ -242,162 +313,14 @@ const PartnershipCreatePage: React.FC = () => {
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'Segoe UI', sans-serif", background: "#F5F4F0" }}>
+    <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'Segoe UI', Roboto, sans-serif", position: "relative" }}>
+      <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundImage: "url(/background.png)", backgroundSize: "cover", backgroundPosition: "center", zIndex: 0, opacity: 0.7 }} />
+      <div style={{ position: "relative", zIndex: 1, display: "flex", width: "100%" }}>
+      <PartnershipSidebar />
+      <main style={{ marginLeft: 260, flex: 1, display: "flex", justifyContent: "center" }}>
+        <div style={{ width: "100%", maxWidth: 860, padding: "40px" }}>
+        <div style={{ background: "white", borderRadius: 16, padding: "32px 36px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
 
-      {/* ── Sidebar ─────────────────────────────────────────────────────────── */}
-      <aside style={{
-        width: 200,
-        minWidth: 200,
-        background: "#1A3A6B",
-        display: "flex",
-        flexDirection: "column",
-        padding: "24px 0",
-        position: "fixed",
-        top: 0,
-        left: 0,
-        height: "100vh",
-        zIndex: 100,
-      }}>
-        {/* Logo area */}
-        <div style={{ padding: "0 20px 24px", borderBottom: "1px solid rgba(255,255,255,0.12)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-            <LogoUMKMTumbuh size={36} />
-            <span style={{ color: "#F5A623", fontWeight: 700, fontSize: 15, lineHeight: 1.2 }}>
-              UMKM<br />Tumbuh
-            </span>
-          </div>
-        </div>
-
-        {/* Nav items */}
-        <nav style={{ flex: 1, padding: "16px 0" }}>
-          {[
-            {
-              label: "Monitoring Perkembangan Usaha",
-              icon: (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-                </svg>
-              ),
-              active: false,
-              path: "/dashboard",
-            },
-            {
-              label: "Pengajuan Kemitraan",
-              icon: (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                  <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
-                </svg>
-              ),
-              active: true,
-              path: "/partnerships/create",
-            },
-            {
-              label: "Kelola Informasi UMKM",
-              icon: (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                  <rect x="2" y="7" width="20" height="14" rx="2" />
-                  <path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" />
-                </svg>
-              ),
-              active: false,
-              path: "/umkm",
-            },
-          ].map((item) => (
-            <button
-              key={item.path}
-              onClick={() => navigate(item.path)}
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                gap: 10,
-                width: "100%",
-                padding: "10px 20px",
-                background: item.active ? "#F5A623" : "transparent",
-                border: "none",
-                borderRadius: item.active ? "0 20px 20px 0" : 0,
-                marginRight: item.active ? 12 : 0,
-                color: item.active ? "#1A3A6B" : "rgba(255,255,255,0.75)",
-                fontSize: 13,
-                fontWeight: item.active ? 700 : 400,
-                cursor: "pointer",
-                textAlign: "left",
-                lineHeight: 1.4,
-                transition: "background 0.15s, color 0.15s",
-              }}
-            >
-              <span style={{ marginTop: 1, flexShrink: 0 }}>{item.icon}</span>
-              {item.label}
-            </button>
-          ))}
-        </nav>
-
-        {/* Logout */}
-        <div style={{ padding: "16px 20px", borderTop: "1px solid rgba(255,255,255,0.12)" }}>
-          <button
-            onClick={() => navigate("/logout")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              background: "none",
-              border: "none",
-              color: "#E24B4A",
-              fontSize: 13,
-              cursor: "pointer",
-              padding: 0,
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
-              <polyline points="16 17 21 12 16 7" />
-              <line x1="21" y1="12" x2="9" y2="12" />
-            </svg>
-            Keluar
-          </button>
-        </div>
-      </aside>
-
-      {/* ── Main Content ──────────────────────────────────────────────────────── */}
-      <main style={{ marginLeft: 200, flex: 1, display: "flex", flexDirection: "column" }}>
-
-        {/* Top Bar */}
-        <header style={{
-          background: "white",
-          borderBottom: "1px solid #E8E7E2",
-          padding: "0 32px",
-          height: 60,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "flex-end",
-          gap: 16,
-          position: "sticky",
-          top: 0,
-          zIndex: 50,
-        }}>
-          {/* Notification */}
-          <button style={{ background: "none", border: "none", cursor: "pointer", color: "#888780", padding: 4 }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
-              <path d="M13.73 21a2 2 0 01-3.46 0" />
-            </svg>
-          </button>
-
-          {/* Profile chip */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ textAlign: "right" }}>
-              <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#2C2C2A" }}>Nusantara Ventures</p>
-              <p style={{ margin: 0, fontSize: 11, color: "#888780" }}>MITRA</p>
-            </div>
-            <LogoKementrian size={34} />
-          </div>
-        </header>
-
-        {/* Form Area */}
-        <div style={{ padding: "32px 40px", maxWidth: 860, width: "100%" }}>
-
-          {/* Page heading */}
           <div style={{ marginBottom: 28, textAlign: "center" }}>
             <h1 style={{ margin: "0 0 8px", fontSize: 28, fontWeight: 700, color: "#1A3A6B" }}>
               Formulir Pengajuan Kemitraan
@@ -407,7 +330,6 @@ const PartnershipCreatePage: React.FC = () => {
             </p>
           </div>
 
-          {/* Card form */}
           <form
             onSubmit={handleSubmit}
             style={{
@@ -417,7 +339,6 @@ const PartnershipCreatePage: React.FC = () => {
               border: "1px solid #E8E7E2",
             }}
           >
-            {/* Row 1: Nama Usaha + Kontak Person */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
               <div>
                 <label style={labelStyle}>Nama Usaha</label>
@@ -445,24 +366,29 @@ const PartnershipCreatePage: React.FC = () => {
               </div>
             </div>
 
-            {/* Pilih Mitra */}
+            {/* Pilih Mitra - Menggunakan data dari backend */}
             <div style={{ marginBottom: 20 }}>
               <label style={labelStyle}>Pilih Mitra/UMKM Tujuan</label>
               <select
                 name="receiver_id"
                 value={formData.receiver_id}
                 onChange={handleChange}
+                disabled={loadingMitra || !!mitraError}
                 style={{ ...inputStyle(!!errors.receiver_id), color: formData.receiver_id ? "#2C2C2A" : "#888780" }}
               >
-                <option value="">-- Pilih Mitra/UMKM --</option>
-                <option value="mitra1">PT. Mitra Sejahtera</option>
-                <option value="mitra2">Koperasi Makmur Jaya</option>
-                <option value="mitra3">PT. Food Station</option>
+                <option value="">
+                  {loadingMitra ? "Memuat data..." : mitraError ? "Gagal memuat data" : "-- Pilih Mitra/UMKM --"}
+                </option>
+                {mitraList.map((mitra) => (
+                  <option key={mitra.id} value={mitra.id}>
+                    {mitra.name}
+                  </option>
+                ))}
               </select>
+              {mitraError && <p style={errorStyle}>{mitraError}</p>}
               {errors.receiver_id && <p style={errorStyle}>{errors.receiver_id}</p>}
             </div>
 
-            {/* Deskripsi Produk */}
             <div style={{ marginBottom: 20 }}>
               <label style={labelStyle}>Deskripsi Produk</label>
               <textarea
@@ -476,7 +402,6 @@ const PartnershipCreatePage: React.FC = () => {
               {errors.product_description && <p style={errorStyle}>{errors.product_description}</p>}
             </div>
 
-            {/* Alasan Bermitra */}
             <div style={{ marginBottom: 28 }}>
               <label style={labelStyle}>Alasan Ingin Bermitra</label>
               <textarea
@@ -490,7 +415,6 @@ const PartnershipCreatePage: React.FC = () => {
               {errors.reason_for_partnership && <p style={errorStyle}>{errors.reason_for_partnership}</p>}
             </div>
 
-            {/* Upload Dokumen */}
             <div style={{ marginBottom: 32 }}>
               <label style={{ ...labelStyle, marginBottom: 14 }}>
                 Upload Legalitas / Dokumen Pendukung
@@ -498,7 +422,7 @@ const PartnershipCreatePage: React.FC = () => {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
                 <UploadCard
                   label="NIB / KTP"
-                  hint="Format: PDF, JPG (Max 2MB)"
+                  hint="PDF, JPG, PNG (Max 10MB)"
                   icon={<IconDoc />}
                   value={files.nib_ktp}
                   onChange={handleFileChange("nib_ktp")}
@@ -506,7 +430,7 @@ const PartnershipCreatePage: React.FC = () => {
                 />
                 <UploadCard
                   label="PDF Pengajuan Kemitraan"
-                  hint="Format: PDF, JPG (Max 2MB)"
+                  hint="PDF, JPG, PNG (Max 10MB)"
                   icon={<IconDoc />}
                   value={files.pdf_kemitraan}
                   onChange={handleFileChange("pdf_kemitraan")}
@@ -524,7 +448,6 @@ const PartnershipCreatePage: React.FC = () => {
               </div>
             </div>
 
-            {/* Action buttons */}
             <div style={{
               display: "flex",
               justifyContent: "space-between",
@@ -570,7 +493,9 @@ const PartnershipCreatePage: React.FC = () => {
             </div>
           </form>
         </div>
+        </div>
       </main>
+      </div>
     </div>
   );
 };
