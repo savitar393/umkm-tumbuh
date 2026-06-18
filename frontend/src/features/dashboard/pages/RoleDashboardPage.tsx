@@ -1,16 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { Navigate, NavLink, useNavigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import {
   Building2,
   CalendarDays,
-  Gauge,
   Handshake,
-  LogOut,
   ReceiptText,
   ShoppingCart,
 } from "lucide-react";
 import UmkmLayout from "../../umkm/components/UmkmLayout";
-import { clearAuthStorage, getCurrentUser } from "../../../shared/auth/currentUser";
+import UserLayout from "../components/UserLayout";
+import { getCurrentUser } from "../../../shared/auth/currentUser";
 import {
   getUMKMDashboard,
   type UMKMDashboardData,
@@ -85,7 +84,6 @@ type MitraDashboardData = {
 
 export default function RoleDashboardPage(_props: RoleDashboardPageProps) {
   const user = useMemo(() => getCurrentUser(), []);
-  const navigate = useNavigate();
   const [dashboardData, setDashboardData] = useState<MitraDashboardData | null>(null);
 
   useEffect(() => {
@@ -322,103 +320,63 @@ export default function RoleDashboardPage(_props: RoleDashboardPageProps) {
   }
 
   return (
-    <div className="umkm-shell">
-      <aside className="umkm-sidebar">
-        <div className="umkm-brand">
-          <img src="/tumbuh.png" alt="UMKM Tumbuh" />
-          <span>UMKM Tumbuh</span>
-        </div>
-        <nav className="umkm-nav">
-          <NavLink to="/mitra" end className={({ isActive }) => `umkm-nav-link ${isActive ? "active" : ""}`}>
-            <Gauge size={18} /><span>Dashboard</span>
-          </NavLink>
-          <NavLink to="/mitra/partnerships" className={({ isActive }) => `umkm-nav-link ${isActive ? "active" : ""}`}>
-            <Handshake size={18} /><span>Kemitraan</span>
-          </NavLink>
-          <NavLink to="/mitra/profile" className={({ isActive }) => `umkm-nav-link ${isActive ? "active" : ""}`}>
-            <Building2 size={18} /><span>Kelola Informasi</span>
-          </NavLink>
-        </nav>
-        <button className="umkm-logout" onClick={() => { clearAuthStorage(); navigate("/login"); }}>
-          <LogOut size={18} /><span>Keluar</span>
-        </button>
-      </aside>
-      <section className="umkm-main">
-        <header className="umkm-topbar">
-          <div>
-            <div className="umkm-breadcrumb">Dashboard Mitra</div>
-            <h1>Dashboard Mitra</h1>
-            <p>Selamat datang, {user?.full_name ?? "Mitra"}.</p>
-          </div>
-          <div className="umkm-topbar-right">
-            <div className="umkm-user-chip">
-              <div>
-                <strong>{user?.full_name ?? "User"}</strong>
-                <span>Mitra</span>
-              </div>
-              <div className="umkm-avatar">{user?.full_name?.[0]?.toUpperCase() ?? "U"}</div>
+    <UserLayout role="MITRA" title="Dashboard Mitra" subtitle="Selamat datang, lihat perkembangan kemitraan Anda.">
+      <div className="umkm-dashboard-polish">
+        <section className="umkm-dashboard-polish__summary">
+          <article className="umkm-dashboard-polish__omzet-card">
+            <span>Total Kemitraan</span>
+            <strong>{dashboardData?.totalPartnerships ?? "—"}</strong>
+            <small>Pengajuan keseluruhan</small>
+          </article>
+          <article className="umkm-dashboard-polish__metric-card">
+            <div className="umkm-dashboard-polish__icon-badge">
+              <Handshake size={22} />
+            </div>
+            <span>Aktif</span>
+            <strong>{dashboardData?.activePartnerships ?? 0}</strong>
+          </article>
+          <article className="umkm-dashboard-polish__metric-card">
+            <div className="umkm-dashboard-polish__icon-badge blue">
+              <Building2 size={22} />
+            </div>
+            <span>Total UMKM</span>
+            <strong>{dashboardData?.totalUmkm ?? 0}</strong>
+          </article>
+        </section>
+
+        <section className="umkm-dashboard-polish__card">
+          <div className="umkm-dashboard-polish__card-header">
+            <div>
+              <h2>Pengajuan Kemitraan Masuk</h2>
+              <p>Daftar permintaan kemitraan dari pelaku UMKM.</p>
             </div>
           </div>
-        </header>
-        <div className="umkm-content">
-          <div className="umkm-dashboard-polish">
-            <section className="umkm-dashboard-polish__summary">
-              <article className="umkm-dashboard-polish__omzet-card">
-                <span>Total Kemitraan</span>
-                <strong>{dashboardData?.totalPartnerships ?? "—"}</strong>
-                <small>Pengajuan keseluruhan</small>
-              </article>
-              <article className="umkm-dashboard-polish__metric-card">
-                <div className="umkm-dashboard-polish__icon-badge">
-                  <Handshake size={22} />
-                </div>
-                <span>Aktif</span>
-                <strong>{dashboardData?.activePartnerships ?? 0}</strong>
-              </article>
-              <article className="umkm-dashboard-polish__metric-card">
-                <div className="umkm-dashboard-polish__icon-badge blue">
-                  <Building2 size={22} />
-                </div>
-                <span>Total UMKM</span>
-                <strong>{dashboardData?.totalUmkm ?? 0}</strong>
-              </article>
-            </section>
-
-            <section className="umkm-dashboard-polish__card">
-              <div className="umkm-dashboard-polish__card-header">
-                <div>
-                  <h2>Pengajuan Kemitraan Masuk</h2>
-                  <p>Daftar permintaan kemitraan dari pelaku UMKM.</p>
-                </div>
-              </div>
-              <div className="umkm-dashboard-polish__table">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>UMKM</th>
-                      <th>Status</th>
-                      <th>Tanggal</th>
+          <div className="umkm-dashboard-polish__table">
+            <table>
+              <thead>
+                <tr>
+                  <th>UMKM</th>
+                  <th>Status</th>
+                  <th>Tanggal</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dashboardData?.incomingPartnerships && dashboardData.incomingPartnerships.length > 0 ? (
+                  dashboardData.incomingPartnerships.map((p, i) => (
+                    <tr key={i}>
+                      <td>{p.umkm_nama || `UMKM #${p.umkm_id?.slice(-6) ?? i}`}</td>
+                      <td><span className="umkm-dashboard-polish__profit">{p.status}</span></td>
+                      <td>{p.tanggal ? new Date(p.tanggal).toLocaleDateString("id-ID") : "—"}</td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {dashboardData?.incomingPartnerships && dashboardData.incomingPartnerships.length > 0 ? (
-                      dashboardData.incomingPartnerships.map((p, i) => (
-                        <tr key={i}>
-                          <td>{p.umkm_nama || `UMKM #${p.umkm_id?.slice(-6) ?? i}`}</td>
-                          <td><span className="umkm-dashboard-polish__profit">{p.status}</span></td>
-                          <td>{p.tanggal ? new Date(p.tanggal).toLocaleDateString("id-ID") : "—"}</td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr><td colSpan={3}>Belum ada pengajuan kemitraan.</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </section>
+                  ))
+                ) : (
+                  <tr><td colSpan={3}>Belum ada pengajuan kemitraan.</td></tr>
+                )}
+              </tbody>
+            </table>
           </div>
-        </div>
-      </section>
-    </div>
+        </section>
+      </div>
+    </UserLayout>
   );
 }
