@@ -2,6 +2,7 @@ import { Navigate } from "react-router-dom";
 import type { RouteObject } from "react-router-dom";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import AdminRegistrationsPage from "./pages/AdminRegistrationsPage";
+import AdminUsersPage from "./pages/AdminUsersPage";
 import AdminCertificatesPage from "./pages/AdminCertificatesPage";
 import ComingSoon from "./components/ComingSoon";
 
@@ -13,6 +14,10 @@ export const adminRoutes: RouteObject[] = [
   {
     path: "registrations",
     element: <AdminRegistrationsPage />,
+  },
+  {
+    path: "users",
+    element: <AdminUsersPage />,
   },
   {
     path: "training",

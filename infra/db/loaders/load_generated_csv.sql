@@ -1,13 +1,5 @@
-<<<<<<< HEAD
 -- Load all CSV data with robust conflict handling
 \set ON_ERROR_STOP on
-=======
--- Run this with psql from the generator output directory that contains csv/*.csv.
--- Example:
---   psql "$DATABASE_URL" -f infra/db/loaders/load_mandat_generated_csv.sql
-
-\set ON_ERROR_STOP off
->>>>>>> origin/dev
 
 -- =============================================================================
 -- REFERENCE TABLES
