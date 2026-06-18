@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import type { ReactNode } from "react";
+import { LogOut } from "lucide-react";
 import { getCurrentUser, clearAuthStorage } from "../../../shared/auth/currentUser";
 
 const navItems = [
@@ -43,9 +44,13 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         {/* Kanan: User info */}
         <div className="navbar-right">
           <span className="navbar-username">Halo, {user?.full_name ?? "Admin"}</span>
-          <div className="navbar-avatar" onClick={logout} title="Logout">
+          <div className="navbar-avatar" title={user?.full_name ?? "Admin"}>
             {user?.full_name?.[0]?.toUpperCase() ?? "A"}
           </div>
+          <button className="navbar-logout-btn" onClick={logout} title="Keluar">
+            <LogOut size={18} />
+            <span>Keluar</span>
+          </button>
         </div>
       </header>
 

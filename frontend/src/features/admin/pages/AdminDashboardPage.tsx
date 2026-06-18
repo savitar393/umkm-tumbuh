@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertCircle, Banknote, Handshake, Search, Store, TrendingUp } from "lucide-react";
+import { AlertCircle, Banknote, Handshake, Search, Store } from "lucide-react";
 import AdminLayout from "../components/AdminLayout";
 import StatCard from "../components/StatCard";
 import IndonesiaMap from "../components/IndoMaps";
@@ -24,8 +24,19 @@ const PROVINSI_LIST = [
 ];
 
 const MONTHS = [
-  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+  { label: "Semua Bulan", value: -1 },
+  { label: "Januari", value: 0 },
+  { label: "Februari", value: 1 },
+  { label: "Maret", value: 2 },
+  { label: "April", value: 3 },
+  { label: "Mei", value: 4 },
+  { label: "Juni", value: 5 },
+  { label: "Juli", value: 6 },
+  { label: "Agustus", value: 7 },
+  { label: "September", value: 8 },
+  { label: "Oktober", value: 9 },
+  { label: "November", value: 10 },
+  { label: "Desember", value: 11 },
 ];
 
 const YEARS = [2026, 2025, 2024, 2023];
@@ -44,28 +55,33 @@ function formatNumber(value: number): string {
 }
 
 export default function AdminDashboardPage() {
-  const now = new Date();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   // Filter state
   const [provinsi, setProvinsi] = useState("Seluruh Indonesia");
-  const [bulan, setBulan] = useState(now.getMonth());
-  const [tahun, setTahun] = useState(now.getFullYear());
+  const [bulan, setBulan] = useState(-1);
+  const [tahun, setTahun] = useState(new Date().getFullYear());
   const [statusUmkm, setStatusUmkm] = useState("Semua Status");
+
+  function buildFilterParams() {
+    const params = new URLSearchParams();
+    if (provinsi !== "Seluruh Indonesia") params.set("provinsi", provinsi);
+    if (bulan >= 0) {
+      const monthStr = `${tahun}-${String(bulan + 1).padStart(2, "0")}`;
+      params.set("bulan", monthStr);
+    }
+    params.set("tahun", String(tahun));
+    if (statusUmkm !== "Semua Status") params.set("status_umkm", statusUmkm);
+    return params;
+  }
 
   function fetchDashboard() {
     setLoading(true);
     setError("");
 
-    const params = new URLSearchParams();
-    if (provinsi !== "Seluruh Indonesia") params.set("provinsi", provinsi);
-    const monthStr = `${tahun}-${String(bulan + 1).padStart(2, "0")}`;
-    params.set("bulan", monthStr);
-    params.set("tahun", String(tahun));
-    if (statusUmkm !== "Semua Status") params.set("status_umkm", statusUmkm);
-
+    const params = buildFilterParams();
     const qs = params.toString() ? `?${params.toString()}` : "";
 
     getDashboard(qs)
@@ -81,12 +97,7 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     let ignore = false;
-    const params = new URLSearchParams();
-    if (provinsi !== "Seluruh Indonesia") params.set("provinsi", provinsi);
-    const monthStr = `${tahun}-${String(bulan + 1).padStart(2, "0")}`;
-    params.set("bulan", monthStr);
-    params.set("tahun", String(tahun));
-    if (statusUmkm !== "Semua Status") params.set("status_umkm", statusUmkm);
+    const params = buildFilterParams();
     const qs = params.toString() ? `?${params.toString()}` : "";
 
     getDashboard(qs)
@@ -120,16 +131,12 @@ export default function AdminDashboardPage() {
       sub: "Status aktif saat ini", color: "green" as const,
     },
     {
-      icon: TrendingUp, label: "UMKM Berkembang", value: s ? formatNumber(s.total_umkm_berkembang) : "—",
-      sub: "Tren naik / ekspansi", color: "yellow" as const,
-    },
-    {
       icon: AlertCircle, label: "UMKM Tidak Aktif", value: s ? formatNumber(s.total_umkm_tidak_aktif) : "—",
       sub: "Nonaktif / suspend / arsip", color: "purple" as const,
     },
     {
-      icon: Banknote, label: "Total Laba", value: s ? formatRupiah(s.total_laba) : "—",
-      sub: "Akumulasi laba tercatat", color: "orange" as const,
+      icon: Banknote, label: "Total Omzet", value: s ? formatRupiah(s.total_laba) : "—",
+      sub: "Akumulasi omzet tercatat", color: "orange" as const,
     },
   ];
 
@@ -148,8 +155,8 @@ export default function AdminDashboardPage() {
         <div className="filter-group">
           <label className="filter-label">BULAN</label>
           <select className="filter-select" value={bulan} onChange={(e) => setBulan(Number(e.target.value))}>
-            {MONTHS.map((m, i) => (
-              <option key={i} value={i}>{m}</option>
+            {MONTHS.map((m) => (
+              <option key={m.value} value={m.value}>{m.label}</option>
             ))}
           </select>
         </div>
@@ -200,24 +207,6 @@ export default function AdminDashboardPage() {
         <CategoryBarChart data={data?.kategori_performa ?? []} />
       </div>
 
-      <div className="charts-row">
-        <div className="info-card">
-          <div className="chart-card__title">Tren Pertumbuhan</div>
-          <p>
-            {data
-              ? `Total ${formatNumber(data.summary.total_umkm)} UMKM terdaftar dengan ${formatNumber(data.summary.total_umkm_aktif)} aktif. Terdapat ${formatNumber(data.summary.total_umkm_berkembang)} UMKM dalam tren berkembang.`
-              : "Memuat data pertumbuhan..."}
-          </p>
-        </div>
-        <div className="info-card warning">
-          <div className="chart-card__title">Atensi Khusus</div>
-          <p>
-            {data?.atensi
-              ? `Terdapat ${formatNumber(data.atensi.total_umkm_perlu_atensi)} UMKM perlu perhatian dan ${formatNumber(data.atensi.total_umkm_berisiko)} UMKM berisiko di ${formatNumber(data.atensi.total_provinsi_terdampak)} provinsi.`
-              : "Memuat data atensi..."}
-          </p>
-        </div>
-      </div>
     </AdminLayout>
   );
 }
