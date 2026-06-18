@@ -26,6 +26,30 @@ export default defineConfig({
         target: "http://localhost:8081",
         changeOrigin: true,
       },
+      "/api/v1/partnerships": {
+        target: "http://localhost:8082",
+        changeOrigin: true,
+      },
+      "/api/v1/mitra": {
+        target: "http://localhost:8082",
+        changeOrigin: true,
+      },
+      "/api/v1/umkm": {
+        target: "http://localhost:8082",
+        changeOrigin: true,
+      },
+      "/api/v1/sales": {
+        target: "http://localhost:8081",
+        changeOrigin: true,
+      },
+      "/api/v1/products": {
+        target: "http://localhost:8081",
+        changeOrigin: true,
+      },
+      "/api/v1/documents": {
+        target: "http://localhost:8083",
+        changeOrigin: true,
+      },
     },
   },
 });

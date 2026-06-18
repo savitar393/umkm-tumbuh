@@ -1,10 +1,8 @@
 import { useEffect, useRef } from "react";
-import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../../../shared/components/Sidebar";
 import backgroundImg from "../../../assets/background1.png";
 import { useTrainingStore } from "../store";
-import { useCertificateDashboard, useUserCertificates, useRequestCertificate } from "../../certificates/hooks";
 import { useCertificateDashboard, useUserCertificates, useRequestCertificate } from "../../certificates/hooks";
 import { useUserEnrollments } from "../hooks";
 import { getTrainingDetail } from "../api";
@@ -104,18 +102,6 @@ export default function TrainingDashboardPage() {
     (e) => e.status_pendaftaran === "SELESAI" || e.tanggal_selesai
   );
   const certList = certificates || [];
-  const requestCertMutation = useRequestCertificate();
-  const requestedRef = useRef<Set<string>>(new Set());
-
-  useEffect(() => {
-    if (!completed.length) return;
-    completed.forEach((enrollment) => {
-      if (!requestedRef.current.has(enrollment.pendaftaran_pelatihan_id)) {
-        requestedRef.current.add(enrollment.pendaftaran_pelatihan_id);
-        requestCertMutation.mutate(enrollment.pendaftaran_pelatihan_id);
-      }
-    });
-  }, [completed.length]);
   const requestCertMutation = useRequestCertificate();
   const requestedRef = useRef<Set<string>>(new Set());
 
@@ -302,15 +288,6 @@ export default function TrainingDashboardPage() {
                     <div
                       key={e.pendaftaran_pelatihan_id}
                       className={`hover-card anim-t${i}`}
-                      onClick={async () => {
-                        try {
-                          const detail = await getTrainingDetail(e.pelatihan_id);
-                          const nextModule = detail.modules[e.modul_selesai] || detail.modules[0];
-                          navigate(`/umkm/trainings/${e.pelatihan_id}/lesson/${nextModule.modul_id}`);
-                        } catch {
-                          navigate(`/umkm/trainings/${e.pelatihan_id}`);
-                        }
-                      }}
                       onClick={async () => {
                         try {
                           const detail = await getTrainingDetail(e.pelatihan_id);

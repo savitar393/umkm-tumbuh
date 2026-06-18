@@ -4,11 +4,10 @@ export {
   mitraPartnershipRoutes,
 } from "./routes";
 
+export { partnershipsApi } from "./api";
+
 export type {
-  PartnershipRequest,
   CreatePartnershipRequest,
-  UpdatePartnershipStatus,
-  SignPartnershipRequest,
   PartnershipStatus,
   UserRole,
   PartnerCandidate,
@@ -18,3 +17,10 @@ export type {
   SuccessResponse,
   ErrorResponse,
 } from "./types";
+
+export type {
+  PartnerListItem,
+  PartnerListResponse,
+  PartnershipStatusResponse,
+  IncomingPartnershipsResponse,
+} from "./api";

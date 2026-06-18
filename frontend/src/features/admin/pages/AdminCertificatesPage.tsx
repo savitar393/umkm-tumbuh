@@ -44,7 +44,7 @@ const s = {
     backdropFilter: active ? "none" : "blur(4px)",
     boxShadow: active ? "0 2px 8px rgba(0,0,0,0.12)" : "none",
   }),
-  card: (color: string, icon: string): React.CSSProperties => ({
+  card: (color: string, _icon: string): React.CSSProperties => ({
     flex: 1, padding: "18px 22px", borderRadius: 14,
     background: "rgba(255,255,255,0.92)",
     backdropFilter: "blur(8px)",
