@@ -1,30 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { partnershipsApi } from "../api";
-<<<<<<< HEAD
 import PartnershipSidebar from "../components/PartnershipSidebar";
-import { getCurrentUser } from "../../../shared/auth/currentUser";
-=======
->>>>>>> origin/dev
 
 
-<<<<<<< HEAD
-=======
-const LogoUMKMTumbuh: React.FC<{ size?: number }> = ({ size = 36 }) => (
-  <svg width={size} height={size} viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect width="40" height="40" rx="8" fill="#F5A623" />
-    <path d="M8 28 L14 16 L20 22 L26 12 L32 28 Z" fill="#1A3A6B" strokeLinejoin="round" />
-    <circle cx="26" cy="12" r="3" fill="#1A3A6B" />
-  </svg>
-);
 
-// const LogoKementrian: React.FC<{ size?: number }> = ({ size = 34 }) => (
-//   <svg width={size} height={size} viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-//     <circle cx="18" cy="18" r="17" stroke="white" strokeWidth="1.5" fill="none" />
-//     <path d="M18 6 L20 13 L27 13 L21.5 17.5 L23.5 24.5 L18 20 L12.5 24.5 L14.5 17.5 L9 13 L16 13 Z" fill="white" />
-//     <text x="18" y="32" textAnchor="middle" fill="white" fontSize="5" fontFamily="serif" fontWeight="bold">KEMENKOP</text>
-//   </svg>
-// );
->>>>>>> origin/dev
+
 
 // ─── Avatar helpers ───────────────────────────────────────────────────────────
 
@@ -94,15 +74,10 @@ const TopBar: React.FC = () => {
 };
 
 const PartnershipStatusPage: React.FC = () => {
-  const user = getCurrentUser();
   const [statusData, setStatusData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-<<<<<<< HEAD
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<{ bermitra: number; menunggu: number; ditolak: number } | null>(null);
-=======
-  const [, setFetchError] = useState<string | null>(null);
->>>>>>> origin/dev
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -412,7 +387,7 @@ const PartnershipStatusPage: React.FC = () => {
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#FAFAF8" }}>
-                    {["MITRA UMKM", "ID PENGAJUAN", "TANGGAL", "STATUS"].map((h, i) => (
+                    {["MITRA UMKM", "ID PENGAJUAN", "TANGGAL", "STATUS"].map((h) => (
                       <th key={h} style={{
                         padding: "11px 20px",
                         textAlign: "left",

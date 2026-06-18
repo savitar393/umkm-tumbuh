@@ -1,5 +1,4 @@
 import { useEffect, useRef } from "react";
-import { useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import Header from "../../../shared/components/Header";
@@ -55,20 +54,10 @@ export default function TrainingAfterSuccessPage() {
   const requestCertMutation = useRequestCertificate();
   const requestedRef = useRef(false);
 
-  const requestCertMutation = useRequestCertificate();
-  const requestedRef = useRef(false);
-
   const cert = (certificates || []).find((c) => c.pelatihan_id === id);
   const enrollment = (enrollments || []).find((e) => e.pelatihan_id === id);
   const progress = enrollment?.progress_persen ?? 65;
   const timelineSteps = getTimelineSteps(cert?.status_sertifikat_id, cert?.tanggal_terbit || undefined, cert?.catatan_validasi || undefined);
-
-  useEffect(() => {
-    if (!requestedRef.current && enrollment && enrollment.status_pendaftaran === "SELESAI") {
-      requestedRef.current = true;
-      requestCertMutation.mutate(enrollment.pendaftaran_pelatihan_id);
-    }
-  }, [enrollment]);
 
   useEffect(() => {
     if (!requestedRef.current && enrollment && enrollment.status_pendaftaran === "SELESAI") {
@@ -93,23 +82,10 @@ export default function TrainingAfterSuccessPage() {
                   ) : (
                     <Icon icon="mdi:clock-outline" style={{ fontSize: 40, color: "#d97706" }} />
                   )}
-                  <div style={{ width: 80, height: 80, borderRadius: "50%", background: requestCertMutation.isPending ? "#e0e7ff" : "#fef3c7", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
-                    {requestCertMutation.isPending ? (
-                      <Icon icon="mdi:loading" style={{ fontSize: 40, color: "#1a3fa4" }} />
-                    ) : cert?.status_sertifikat_id === "TERBIT" ? (
-                      <Icon icon="mdi:check-circle" style={{ fontSize: 40, color: "#16a34a" }} />
-                    ) : (
-                      <Icon icon="mdi:clock-outline" style={{ fontSize: 40, color: "#d97706" }} />
-                    )}
-                  </div>
-                  <h2 style={{ fontSize: 20, fontWeight: 800, color: "#0f172a", margin: "0 0 8px" }}>
-                    {requestCertMutation.isPending ? "Menerbitkan Sertifikat..." : cert?.status_sertifikat_id === "TERBIT" ? "Sertifikat Terbit" : "Menunggu Verifikasi"}
-                  </h2>
                   <h2 style={{ fontSize: 20, fontWeight: 800, color: "#0f172a", margin: "0 0 8px" }}>
                     {requestCertMutation.isPending ? "Menerbitkan Sertifikat..." : cert?.status_sertifikat_id === "TERBIT" ? "Sertifikat Terbit" : "Menunggu Verifikasi"}
                   </h2>
                   <p style={{ fontSize: 14, color: "#64748b", margin: 0 }}>
-                    {requestCertMutation.isPending ? "Mohon tunggu, sertifikat sedang diproses..." : cert?.status_sertifikat_id === "TERBIT" ? "Selamat! Sertifikat Anda telah diterbitkan." : "Evaluasi Anda sedang dalam proses review oleh tim kurator"}
                     {requestCertMutation.isPending ? "Mohon tunggu, sertifikat sedang diproses..." : cert?.status_sertifikat_id === "TERBIT" ? "Selamat! Sertifikat Anda telah diterbitkan." : "Evaluasi Anda sedang dalam proses review oleh tim kurator"}
                   </p>
                 </div>
@@ -189,11 +165,7 @@ export default function TrainingAfterSuccessPage() {
                 )}
                 {cert?.status_sertifikat_id === "TERBIT" && (
                   <button
-<<<<<<< HEAD
                     onClick={() => downloadCertificate(cert.sertifikat_id)}
-=======
-                  onClick={() => window.open(getCertificateDownloadUrl(cert.sertifikat_id), "_blank")}
->>>>>>> origin/dev
                     style={{
                       marginTop: 12, width: "100%", padding: "10px 16px",
                       background: "linear-gradient(135deg, #1a3fa4, #1e3a8a)", color: "#fff",
@@ -244,6 +216,7 @@ export default function TrainingAfterSuccessPage() {
               ))}
             </div>
           </section>
+        </div>
       </main>
       <Footer />
     </div>

@@ -1,37 +1,26 @@
 import { Navigate, useRoutes, type RouteObject } from "react-router-dom";
 import { RequireAuth } from "../shared/auth/RequireAuth";
-
-
 import { publicRoutes } from "../features/public/routes";
 import { authRoutes } from "../features/auth/routes";
 import { adminRoutes } from "../features/admin/routes";
 import { umkmDashboardRoutes, mitraDashboardRoutes } from "../features/dashboard/routes";
-<<<<<<< HEAD
-import { userRoutes } from "../features/users/routes";
-import { productRoutes } from "../features/products/routes";
-import { salesRoutes } from "../features/sales/routes";
-import { umkmPartnershipRoutes, mitraPartnershipRoutes } from "../features/partnerships/routes";
-=======
 import { userRoutes, mitraUserRoutes } from "../features/users/routes";
 import { productRoutes } from "../features/products/routes";
 import { salesRoutes } from "../features/sales/routes";
 import { publicPartnershipRoutes, umkmPartnershipRoutes, mitraPartnershipRoutes } from "../features/partnerships/routes";
->>>>>>> origin/dev
 import { documentRoutes } from "../features/documents/routes";
 import { trainingRoutes } from "../features/trainings/routes";
 import { certificateRoutes } from "../features/certificates/routes";
 import { notificationRoutes } from "../features/notifications/routes";
-
 const routes: RouteObject[] = [
   ...publicRoutes,
   ...authRoutes,
-
+  ...publicPartnershipRoutes,
   {
     path: "/admin",
     element: <RequireAuth allowedRole="ADMIN" />,
     children: adminRoutes,
   },
-
   {
     path: "/umkm",
     element: <RequireAuth allowedRole="UMKM" />,
@@ -47,7 +36,6 @@ const routes: RouteObject[] = [
       ...notificationRoutes,
     ],
   },
-
   {
     path: "/mitra",
     element: <RequireAuth allowedRole="MITRA" />,
@@ -59,13 +47,11 @@ const routes: RouteObject[] = [
       ...notificationRoutes,
     ],
   },
-
   {
     path: "*",
     element: <Navigate to="/" replace />,
   },
 ];
-
 export function AppRouter() {
   return useRoutes(routes);
 }

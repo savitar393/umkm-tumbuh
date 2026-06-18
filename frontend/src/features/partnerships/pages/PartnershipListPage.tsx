@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { partnershipsApi } from "../api";
@@ -6,10 +5,6 @@ import type { PartnerListItem } from "../api";
 import { getCurrentUser } from "../../../shared/auth/currentUser";
 import PartnershipSidebar from "../components/PartnershipSidebar";
 import PartnershipMitraInboxPage from "./PartnershipMitraInboxPage";
-=======
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
->>>>>>> origin/dev
 
 const base = (user: any) => user?.role === "MITRA" ? "/mitra/partnerships" : "/umkm/partnerships";
 
