@@ -1,8 +1,10 @@
 import { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../../../shared/components/Sidebar";
 import backgroundImg from "../../../assets/background1.png";
 import { useTrainingStore } from "../store";
+import { useCertificateDashboard, useUserCertificates, useRequestCertificate } from "../../certificates/hooks";
 import { useCertificateDashboard, useUserCertificates, useRequestCertificate } from "../../certificates/hooks";
 import { useUserEnrollments } from "../hooks";
 import { getTrainingDetail } from "../api";
@@ -22,13 +24,6 @@ function IconCheckCircle({ size = 13, color = "#1565c0" }) {
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
       <polyline points="22 4 12 14.01 9 11.01" />
-    </svg>
-  );
-}
-function IconClock() {
-  return (
-    <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
     </svg>
   );
 }
@@ -62,16 +57,6 @@ function IconBox({ size = 28, color = "#0369a1" }) {
       <path d="M12 2L2 7l10 5 10-5-10-5z" opacity="0.4" />
       <path d="M2 17l10 5 10-5M2 12l10 5 10-5" />
       <path fillRule="evenodd" d="M3.5 7.75L12 12.5l8.5-4.75V17L12 21.5 3.5 17V7.75z" fill={color} />
-    </svg>
-  );
-}
-function IconUsers({ size = 28, color = "#1d4ed8" }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
-      <circle cx="9" cy="7" r="3" opacity="0.5" />
-      <path d="M3 21v-1a6 6 0 0 1 6-6h0a6 6 0 0 1 6 6v1" opacity="0.5" />
-      <circle cx="17" cy="7" r="2.5" />
-      <path d="M19.5 21v-1a5 5 0 0 0-5-5" />
     </svg>
   );
 }
@@ -119,6 +104,18 @@ export default function TrainingDashboardPage() {
     (e) => e.status_pendaftaran === "SELESAI" || e.tanggal_selesai
   );
   const certList = certificates || [];
+  const requestCertMutation = useRequestCertificate();
+  const requestedRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!completed.length) return;
+    completed.forEach((enrollment) => {
+      if (!requestedRef.current.has(enrollment.pendaftaran_pelatihan_id)) {
+        requestedRef.current.add(enrollment.pendaftaran_pelatihan_id);
+        requestCertMutation.mutate(enrollment.pendaftaran_pelatihan_id);
+      }
+    });
+  }, [completed.length]);
   const requestCertMutation = useRequestCertificate();
   const requestedRef = useRef<Set<string>>(new Set());
 
@@ -305,6 +302,15 @@ export default function TrainingDashboardPage() {
                     <div
                       key={e.pendaftaran_pelatihan_id}
                       className={`hover-card anim-t${i}`}
+                      onClick={async () => {
+                        try {
+                          const detail = await getTrainingDetail(e.pelatihan_id);
+                          const nextModule = detail.modules[e.modul_selesai] || detail.modules[0];
+                          navigate(`/umkm/trainings/${e.pelatihan_id}/lesson/${nextModule.modul_id}`);
+                        } catch {
+                          navigate(`/umkm/trainings/${e.pelatihan_id}`);
+                        }
+                      }}
                       onClick={async () => {
                         try {
                           const detail = await getTrainingDetail(e.pelatihan_id);

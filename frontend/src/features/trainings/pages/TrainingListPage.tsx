@@ -1,4 +1,5 @@
-import { useState, useEffect, CSSProperties } from "react";
+import { useState, useEffect } from "react";
+import type { CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../../../shared/components/Header";
 import Footer from "../../../shared/components/Footer";
