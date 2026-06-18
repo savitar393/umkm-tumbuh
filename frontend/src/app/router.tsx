@@ -12,6 +12,10 @@ import { documentRoutes } from "../features/documents/routes";
 import { trainingRoutes } from "../features/trainings/routes";
 import { certificateRoutes } from "../features/certificates/routes";
 import { notificationRoutes } from "../features/notifications/routes";
+import EditUmkmProfilePage from "../features/umkm/pages/EditUmkmProfilePage";
+import UmkmProfilePage from "../features/umkm/pages/UmkmProfilePage";
+import EditMitraProfilePage from "../features/mitra/pages/EditMitraProfilePage";
+import MitraProfilePage from "../features/mitra/pages/MitraProfilePage";
 const routes: RouteObject[] = [
   ...publicRoutes,
   ...authRoutes,
@@ -34,6 +38,8 @@ const routes: RouteObject[] = [
       ...trainingRoutes,
       ...certificateRoutes,
       ...notificationRoutes,
+      { path: "profile", element: <EditUmkmProfilePage /> },
+      { path: "profile/view", element: <UmkmProfilePage /> },
     ],
   },
   {
@@ -45,6 +51,19 @@ const routes: RouteObject[] = [
       ...mitraPartnershipRoutes,
       ...documentRoutes,
       ...notificationRoutes,
+      { path: "profile", element: <EditMitraProfilePage /> },
+      { path: "profile/view", element: <MitraProfilePage /> },
+    ],
+  },
+  {
+    path: "/profile/mitra",
+    element: <RequireAuth allowedRole="MITRA" />,
+    children: [
+      { index: true, element: <MitraProfilePage /> },
+      { path: "group", element: <MitraProfilePage /> },
+      { path: "pic", element: <MitraProfilePage /> },
+      { path: "bidang", element: <MitraProfilePage /> },
+      { path: "docs", element: <MitraProfilePage /> },
     ],
   },
   {

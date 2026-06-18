@@ -93,6 +93,12 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-umkm_user}:${POSTGRES_PASSWORD:-umkm_password}@postgres:5432/${POSTGRES_DB:-umkm_tumbuh}?sslmode=disable
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-1440}
+      USER_SERVICE_URL: http://user-service:8081
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM: ${SMTP_FROM}
     ports:
       - "8080:8080"
     depends_on:
@@ -114,8 +120,11 @@ services:
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       DATABASE_URL: postgres://${POSTGRES_USER:-umkm_user}:${POSTGRES_PASSWORD:-umkm_password}@postgres:5432/${POSTGRES_DB:-umkm_tumbuh}?sslmode=disable
       JWT_SECRET: ${JWT_SECRET}
+      UPLOAD_DIR: /app/uploads
     ports:
       - "8081:8081"
+    volumes:
+      - uploads_data:/app/uploads
     depends_on:
       db-migrate:
         condition: service_completed_successfully
@@ -219,6 +228,7 @@ services:
 
 volumes:
   postgres_data:
+  uploads_data:
 
 networks:
   umkm_network:
