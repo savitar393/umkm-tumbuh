@@ -36,10 +36,13 @@ func NewRouter(
 			r.Get("/me", authHandler.Me)
 		})
 
-		r.Route("/admin", func(r chi.Router) {
-			r.Get("/registrations", adminHandler.ListRegistrations)
-			r.Patch("/registrations/{userID}/approve", adminHandler.ApproveRegistration)
-			r.Patch("/registrations/{userID}/reject", adminHandler.RejectRegistration)
+		r.Route("/users", func(r chi.Router) {
+			r.Get("/stats", adminHandler.GetUsersStats)
+			r.Get("/", adminHandler.ListUsers)
+			r.Get("/{userID}", adminHandler.GetUserDetail)
+			r.Patch("/{userID}/approve", adminHandler.ApproveUser)
+			r.Patch("/{userID}/reject", adminHandler.RejectUser)
+			r.Patch("/{userID}/deactivate", adminHandler.DeactivateAccount)
 		})
 	})
 

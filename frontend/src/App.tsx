@@ -3,6 +3,13 @@ import type { ReactNode } from "react";
 import LoginPage from "./features/auth/pages/LoginPage";
 import RegisterPage from "./features/auth/pages/RegisterPage";
 import AdminRegistrationsPage from "./features/admin/pages/AdminRegistrationsPage";
+import RegistrationDetailPage from "./features/admin/pages/RegistrationDetailPage";
+import EditMitraProfilePage from "./features/mitra/pages/EditMitraProfilePage";
+import MitraProfilePage from "./features/mitra/pages/MitraProfilePage";
+import EditUmkmProfilePage from "./features/umkm/pages/EditUmkmProfilePage";
+import UmkmProfilePage from "./features/umkm/pages/UmkmProfilePage";
+import UmkmEditPage from "./features/umkm/pages/UmkmEditPage";
+import UmkmProductsPage from "./features/umkm/pages/UmkmProductsPage";
 import "./App.css";
 
 type CurrentUser = {
@@ -98,6 +105,28 @@ function DashboardPage({ title }: { title: string }) {
           </Link>
         )}
 
+        {user.role === "MITRA" && (
+          <>
+            <Link className="button" to="/profile/mitra">
+              Profil Mitra
+            </Link>
+            <Link className="button" to="/mitra/profile">
+              Edit Profil (Legacy)
+            </Link>
+          </>
+        )}
+
+        {user.role === "UMKM" && (
+          <>
+            <Link className="button" to="/profile/umkm">
+              Profil UMKM
+            </Link>
+            <Link className="button" to="/umkm/profile">
+              Edit Profil (Legacy)
+            </Link>
+          </>
+        )}
+
         <button onClick={logout}>Logout</button>
       </section>
     </main>
@@ -121,6 +150,24 @@ export default function App() {
       />
 
       <Route
+        path="/admin/users/:id"
+        element={
+          <RequireAuth allowedRole="ADMIN">
+            <RegistrationDetailPage />
+          </RequireAuth>
+        }
+      />
+
+      <Route
+        path="/admin/registrations/:id"
+        element={
+          <RequireAuth allowedRole="ADMIN">
+            <RegistrationDetailPage />
+          </RequireAuth>
+        }
+      />
+
+      <Route
         path="/admin/registrations"
         element={
           <RequireAuth allowedRole="ADMIN">
@@ -130,6 +177,39 @@ export default function App() {
       />
 
       <Route
+        path="/profile/umkm/edit"
+        element={
+          <RequireAuth allowedRole="UMKM">
+            <UmkmEditPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/profile/umkm"
+        element={
+          <RequireAuth allowedRole="UMKM">
+            <UmkmProfilePage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/profile/umkm/products"
+        element={
+          <RequireAuth allowedRole="UMKM">
+            <UmkmProductsPage />
+          </RequireAuth>
+        }
+      />
+
+      <Route
+        path="/umkm/profile"
+        element={
+          <RequireAuth allowedRole="UMKM">
+            <EditUmkmProfilePage />
+          </RequireAuth>
+        }
+      />
+      <Route
         path="/umkm"
         element={
           <RequireAuth allowedRole="UMKM">
@@ -138,6 +218,35 @@ export default function App() {
         }
       />
 
+      <Route
+        path="/profile/mitra/group"
+        element={<RequireAuth allowedRole="MITRA"><MitraProfilePage /></RequireAuth>}
+      />
+      <Route
+        path="/profile/mitra/pic"
+        element={<RequireAuth allowedRole="MITRA"><MitraProfilePage /></RequireAuth>}
+      />
+      <Route
+        path="/profile/mitra/bidang"
+        element={<RequireAuth allowedRole="MITRA"><MitraProfilePage /></RequireAuth>}
+      />
+      <Route
+        path="/profile/mitra/docs"
+        element={<RequireAuth allowedRole="MITRA"><MitraProfilePage /></RequireAuth>}
+      />
+      <Route
+        path="/profile/mitra"
+        element={<RequireAuth allowedRole="MITRA"><MitraProfilePage /></RequireAuth>}
+      />
+
+      <Route
+        path="/mitra/profile"
+        element={
+          <RequireAuth allowedRole="MITRA">
+            <EditMitraProfilePage />
+          </RequireAuth>
+        }
+      />
       <Route
         path="/mitra"
         element={

@@ -300,3 +300,32 @@ button.danger {
   display: grid;
   gap: 12px;
 }
+
+.quick-login {
+  margin-top: 24px;
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+}
+
+.quick-login-label {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+
+.quick-login-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.quick-login-buttons button {
+  flex: 1;
+  min-width: 160px;
+  min-height: 42px;
+  font-size: 14px;
+}

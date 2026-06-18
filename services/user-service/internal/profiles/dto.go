@@ -1,10 +1,11 @@
 package profiles
 
 type UpsertProfileRequest struct {
-	BusinessName        string `json:"business_name"`
-	BusinessCategory    string `json:"business_category"`
-	BusinessDescription string `json:"business_description"`
-	OwnerName           string `json:"owner_name"`
+	BusinessName        string   `json:"business_name"`
+	BusinessCategory    string   `json:"business_category"`
+	BusinessDescription string   `json:"business_description"`
+	OwnerName           string   `json:"owner_name"`
+	Omzet               *float64 `json:"omzet"`
 
 	OrganizationName string `json:"organization_name"`
 	OrganizationType string `json:"organization_type"`

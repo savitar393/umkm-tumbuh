@@ -3,6 +3,8 @@ package users
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -47,7 +49,8 @@ func (r *Repository) FindByEmail(ctx context.Context, email string) (*User, erro
 		SELECT
 			id, full_name, email, phone_number, nik,
 			password_hash, role, status, rejection_reason,
-			is_active, created_at, updated_at
+			is_active, submitted_at, reviewed_at, reviewed_by,
+			catatan_validasi, created_at, updated_at
 		FROM users
 		WHERE email = $1
 		LIMIT 1
@@ -61,7 +64,8 @@ func (r *Repository) FindByID(ctx context.Context, id string) (*User, error) {
 		SELECT
 			id, full_name, email, phone_number, nik,
 			password_hash, role, status, rejection_reason,
-			is_active, created_at, updated_at
+			is_active, submitted_at, reviewed_at, reviewed_by,
+			catatan_validasi, created_at, updated_at
 		FROM users
 		WHERE id = $1
 		LIMIT 1
@@ -80,7 +84,8 @@ func (r *Repository) FindDuplicate(
 		SELECT
 			id, full_name, email, phone_number, nik,
 			password_hash, role, status, rejection_reason,
-			is_active, created_at, updated_at
+			is_active, submitted_at, reviewed_at, reviewed_by,
+			catatan_validasi, created_at, updated_at
 		FROM users
 		WHERE email = $1
 		   OR ($2::text IS NOT NULL AND phone_number = $2)
@@ -100,40 +105,123 @@ func (r *Repository) FindDuplicate(
 	return user, nil
 }
 
-func (r *Repository) ListRegistrations(ctx context.Context, statusFilter string) ([]User, error) {
-	query := `
+type ListRegistrationsResult struct {
+	Users      []User
+	TotalCount int
+}
+
+func (r *Repository) ListRegistrations(
+	ctx context.Context,
+	statusFilter string,
+	search string,
+	roleFilter string,
+	page int,
+	limit int,
+) (*ListRegistrationsResult, error) {
+	args := []any{}
+	argIdx := 1
+
+	where := "WHERE role <> 'ADMIN'"
+
+	if statusFilter != "" {
+		where += fmt.Sprintf(" AND status = $%d", argIdx)
+		args = append(args, statusFilter)
+		argIdx++
+	}
+
+	if roleFilter != "" {
+		where += fmt.Sprintf(" AND role = $%d", argIdx)
+		args = append(args, roleFilter)
+		argIdx++
+	}
+
+	if search != "" {
+		where += fmt.Sprintf(" AND (LOWER(full_name) LIKE LOWER($%d) OR LOWER(email) LIKE LOWER($%d))", argIdx, argIdx+1)
+		searchPattern := "%" + strings.TrimSpace(search) + "%"
+		args = append(args, searchPattern, searchPattern)
+		argIdx += 2
+	}
+
+	var totalCount int
+	countQuery := "SELECT COUNT(*) FROM users " + where
+	if err := r.DB.QueryRow(ctx, countQuery, args...).Scan(&totalCount); err != nil {
+		return nil, err
+	}
+
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 10
+	}
+	offset := (page - 1) * limit
+
+	dataQuery := fmt.Sprintf(`
 		SELECT
 			id, full_name, email, phone_number, nik,
 			password_hash, role, status, rejection_reason,
-			is_active, created_at, updated_at
+			is_active, submitted_at, reviewed_at, reviewed_by,
+			catatan_validasi, created_at, updated_at
 		FROM users
-		WHERE role <> 'ADMIN'
-	`
+		%s
+		ORDER BY created_at DESC
+		LIMIT $%d OFFSET $%d
+	`, where, argIdx, argIdx+1)
 
-	args := []any{}
+	args = append(args, limit, offset)
 
-	if statusFilter != "" {
-		args = append(args, statusFilter)
-		query += " AND status = $1"
-	}
-
-	query += " ORDER BY created_at DESC"
-
-	rows, err := r.DB.Query(ctx, query, args...)
+	rows, err := r.DB.Query(ctx, dataQuery, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
 	result := []User{}
-
 	for rows.Next() {
 		user, err := scanUser(rows)
 		if err != nil {
 			return nil, err
 		}
-
 		result = append(result, *user)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return &ListRegistrationsResult{
+		Users:      result,
+		TotalCount: totalCount,
+	}, nil
+}
+
+type StatusCount struct {
+	Status string `json:"status"`
+	Count  int    `json:"count"`
+}
+
+func (r *Repository) CountByStatus(ctx context.Context) ([]StatusCount, error) {
+	query := `
+		SELECT status, COUNT(*) AS count
+		FROM users
+		WHERE role <> 'ADMIN'
+		GROUP BY status
+		ORDER BY status
+	`
+
+	rows, err := r.DB.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := []StatusCount{}
+	for rows.Next() {
+		var sc StatusCount
+		if err := rows.Scan(&sc.Status, &sc.Count); err != nil {
+			return nil, err
+		}
+		result = append(result, sc)
 	}
 
 	if err := rows.Err(); err != nil {
@@ -148,22 +236,53 @@ func (r *Repository) UpdateRegistrationStatus(
 	id string,
 	status string,
 	rejectionReason *string,
+	catatanValidasi *string,
+	reviewedBy string,
 ) (*User, error) {
+	isActive := status == StatusApproved
+
 	query := `
 		UPDATE users
 		SET
 			status = $2,
 			rejection_reason = $3,
+			catatan_validasi = $4,
+			reviewed_at = NOW(),
+			reviewed_by = $5,
+			is_active = $6,
 			updated_at = NOW()
 		WHERE id = $1
 		  AND role <> 'ADMIN'
 		RETURNING
 			id, full_name, email, phone_number, nik,
 			password_hash, role, status, rejection_reason,
-			is_active, created_at, updated_at
+			is_active, submitted_at, reviewed_at, reviewed_by,
+			catatan_validasi, created_at, updated_at
 	`
 
-	return scanUser(r.DB.QueryRow(ctx, query, id, status, rejectionReason))
+	return scanUser(r.DB.QueryRow(ctx, query, id, status, rejectionReason, catatanValidasi, reviewedBy, isActive))
+}
+
+func (r *Repository) UpdateAccountStatus(
+	ctx context.Context,
+	id string,
+	isActive bool,
+) (*User, error) {
+	query := `
+		UPDATE users
+		SET
+			is_active = $2,
+			updated_at = NOW()
+		WHERE id = $1
+		  AND role <> 'ADMIN'
+		RETURNING
+			id, full_name, email, phone_number, nik,
+			password_hash, role, status, rejection_reason,
+			is_active, submitted_at, reviewed_at, reviewed_by,
+			catatan_validasi, created_at, updated_at
+	`
+
+	return scanUser(r.DB.QueryRow(ctx, query, id, isActive))
 }
 
 type userScanner interface {
@@ -184,6 +303,10 @@ func scanUser(row userScanner) (*User, error) {
 		&user.Status,
 		&user.RejectionReason,
 		&user.IsActive,
+		&user.SubmittedAt,
+		&user.ReviewedAt,
+		&user.ReviewedBy,
+		&user.CatatanValidasi,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)

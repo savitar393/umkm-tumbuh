@@ -104,7 +104,7 @@ func (h *Handler) UpsertMe(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) getUMKMProfile(r *http.Request, userID string) (map[string]any, error) {
 	row := h.DB.QueryRow(r.Context(), `
 		SELECT id, user_id, business_name, business_category, business_description,
-		       owner_name, phone_number, address, city, province, created_at, updated_at
+		       owner_name, phone_number, address, city, province, omzet, created_at, updated_at
 		FROM user_service.umkm_profiles
 		WHERE user_id = $1
 	`, userID)
@@ -115,7 +115,7 @@ func (h *Handler) getUMKMProfile(r *http.Request, userID string) (map[string]any
 func (h *Handler) getMitraProfile(r *http.Request, userID string) (map[string]any, error) {
 	row := h.DB.QueryRow(r.Context(), `
 		SELECT id, user_id, organization_name, organization_type, description,
-		       contact_person, phone_number, address, city, province, created_at, updated_at
+		       contact_person, phone_number, address, city, province, NULL as omzet, created_at, updated_at
 		FROM user_service.mitra_profiles
 		WHERE user_id = $1
 	`, userID)
@@ -129,9 +129,9 @@ func (h *Handler) upsertUMKMProfile(r *http.Request, userID string, req UpsertPr
 	row := h.DB.QueryRow(r.Context(), `
 		INSERT INTO user_service.umkm_profiles (
 			id, user_id, business_name, business_category, business_description,
-			owner_name, phone_number, address, city, province
+			owner_name, phone_number, address, city, province, omzet
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		ON CONFLICT (user_id)
 		DO UPDATE SET
 			business_name = EXCLUDED.business_name,
@@ -142,9 +142,10 @@ func (h *Handler) upsertUMKMProfile(r *http.Request, userID string, req UpsertPr
 			address = EXCLUDED.address,
 			city = EXCLUDED.city,
 			province = EXCLUDED.province,
+			omzet = EXCLUDED.omzet,
 			updated_at = NOW()
 		RETURNING id, user_id, business_name, business_category, business_description,
-		          owner_name, phone_number, address, city, province, created_at, updated_at
+		          owner_name, phone_number, address, city, province, omzet, created_at, updated_at
 	`,
 		profileID,
 		userID,
@@ -156,6 +157,7 @@ func (h *Handler) upsertUMKMProfile(r *http.Request, userID string, req UpsertPr
 		trim(req.Address),
 		trim(req.City),
 		trim(req.Province),
+		req.Omzet,
 	)
 
 	return scanProfile(row)
@@ -182,7 +184,7 @@ func (h *Handler) upsertMitraProfile(r *http.Request, userID string, req UpsertP
 			province = EXCLUDED.province,
 			updated_at = NOW()
 		RETURNING id, user_id, organization_name, organization_type, description,
-		          contact_person, phone_number, address, city, province, created_at, updated_at
+		          contact_person, phone_number, address, city, province, NULL as omzet, created_at, updated_at
 	`,
 		profileID,
 		userID,
@@ -215,6 +217,7 @@ func scanProfile(row scanner) (map[string]any, error) {
 		address   *string
 		city      *string
 		province  *string
+		omzet     *float64
 		createdAt any
 		updatedAt any
 	)
@@ -230,6 +233,7 @@ func scanProfile(row scanner) (map[string]any, error) {
 		&address,
 		&city,
 		&province,
+		&omzet,
 		&createdAt,
 		&updatedAt,
 	); err != nil {
@@ -247,6 +251,7 @@ func scanProfile(row scanner) (map[string]any, error) {
 		"address":      address,
 		"city":         city,
 		"province":     province,
+		"omzet":        omzet,
 		"created_at":   createdAt,
 		"updated_at":   updatedAt,
 	}, nil
