@@ -71,7 +71,8 @@ export function useUserEnrollments(umkmId: string) {
     queryKey: trainingKeys.userEnrollments(umkmId),
     queryFn: () => getUserEnrollments(umkmId),
     enabled: !!umkmId,
-    staleTime: 2 * 60 * 1000, // 2 minutes (lebih sering refresh untuk data user)
+    staleTime: 2 * 60 * 1000,
+    refetchOnMount: "always",
   });
 }
 
@@ -85,10 +86,10 @@ export function useEnrollTraining() {
 
   return useMutation({
     mutationFn: (data: EnrollRequest) => enrollTraining(data),
-    onSuccess: (_, variables) => {
-      // Invalidate user enrollments query untuk refresh data
+    onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: trainingKeys.userEnrollments(variables.umkm_id),
+        queryKey: trainingKeys.enrollments(),
+        refetchType: "all",
       });
     },
   });

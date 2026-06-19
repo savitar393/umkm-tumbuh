@@ -105,13 +105,17 @@ export default function TrainingDashboardPage() {
   const requestedRef = useRef<Set<string>>(new Set());
 
   const ITEMS_PER_PAGE = 3;
+  const CERT_ITEMS_PER_PAGE = 5;
   const [ongoingPage, setOngoingPage] = useState(1);
   const [completedPage, setCompletedPage] = useState(1);
+  const [certPage, setCertPage] = useState(1);
   const ongoingTotalPages = Math.max(1, Math.ceil(ongoing.length / ITEMS_PER_PAGE));
   const completedTotalPages = Math.max(1, Math.ceil(completed.length / ITEMS_PER_PAGE));
+  const certTotalPages = Math.max(1, Math.ceil(certList.length / CERT_ITEMS_PER_PAGE));
 
   useEffect(() => { setOngoingPage(1); }, [ongoing.length]);
   useEffect(() => { setCompletedPage(1); }, [completed.length]);
+  useEffect(() => { setCertPage(1); }, [certList.length]);
 
   function Pagination({ page, totalPages, onChange }: { page: number; totalPages: number; onChange: (p: number) => void }) {
     if (totalPages <= 1) return null;
@@ -479,7 +483,7 @@ export default function TrainingDashboardPage() {
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {certList.slice(0, 5).map((c, i) => (
+                {certList.slice((certPage - 1) * CERT_ITEMS_PER_PAGE, certPage * CERT_ITEMS_PER_PAGE).map((c, i) => (
                   <div
                     key={c.sertifikat_id}
                     className="hover-lift"
@@ -521,9 +525,10 @@ export default function TrainingDashboardPage() {
                       </button>
                     )}
                   </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+              <Pagination page={certPage} totalPages={certTotalPages} onChange={setCertPage} />
           </section>
         </div>
       </div>

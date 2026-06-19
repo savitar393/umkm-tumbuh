@@ -33,65 +33,63 @@ func (s *Service) GenerateCertificatePDF(cert *CertificateResponse) (string, err
 	// Top accent line
 	pdf.SetDrawColor(200, 170, 110)
 	pdf.SetLineWidth(0.3)
-	pdf.Line(40, 40, 257, 40)
+	pdf.Line(40, 35, 257, 35)
 
 	// Title
-	pdf.SetY(50)
-	pdf.SetFont("Arial", "B", 28)
+	pdf.SetY(46)
+	pdf.SetFont("Arial", "B", 22)
 	pdf.SetTextColor(25, 35, 110)
-	pdf.CellFormat(w, 18, "SERTIFIKAT KELULUSAN", "", 1, "C", false, 0, "")
+	pdf.CellFormat(w, 12, "SERTIFIKAT KELULUSAN", "", 1, "C", false, 0, "")
 
 	// Subtitle
-	pdf.SetFont("Arial", "", 12)
+	pdf.SetFont("Arial", "", 10)
 	pdf.SetTextColor(100, 100, 100)
-	pdf.CellFormat(w, 8, "Program Pengembangan Kapasitas UMKM", "", 1, "C", false, 0, "")
+	pdf.CellFormat(w, 6, "Program Pengembangan Kapasitas UMKM", "", 1, "C", false, 0, "")
 
 	// Award text
-	pdf.SetY(90)
-	pdf.SetFont("Arial", "", 13)
+	pdf.SetY(72)
+	pdf.SetFont("Arial", "", 11)
 	pdf.SetTextColor(60, 60, 60)
-	pdf.CellFormat(w, 10, "Diberikan kepada:", "", 1, "C", false, 0, "")
+	pdf.CellFormat(w, 7, "Diberikan kepada:", "", 1, "C", false, 0, "")
 
 	// User name
-	pdf.SetFont("Arial", "B", 22)
+	pdf.SetFont("Arial", "B", 18)
 	pdf.SetTextColor(0, 0, 0)
-	pdf.CellFormat(w, 16, cert.PelakuNama, "", 1, "C", false, 0, "")
+	pdf.CellFormat(w, 12, cert.PelakuNama, "", 1, "C", false, 0, "")
 
 	// Completion text
-	pdf.SetFont("Arial", "", 12)
+	pdf.SetFont("Arial", "", 11)
 	pdf.SetTextColor(60, 60, 60)
-	pdf.CellFormat(w, 10, "Telah menyelesaikan program pelatihan:", "", 1, "C", false, 0, "")
+	pdf.CellFormat(w, 7, "Telah menyelesaikan program pelatihan:", "", 1, "C", false, 0, "")
 
 	// Training name
-	pdf.SetFont("Arial", "B", 16)
+	pdf.SetFont("Arial", "B", 13)
 	pdf.SetTextColor(25, 35, 110)
-	pdf.CellFormat(w, 14, cert.JudulPelatihan, "", 1, "C", false, 0, "")
+	pdf.CellFormat(w, 10, cert.JudulPelatihan, "", 1, "C", false, 0, "")
 
 	// Details
-	pdf.SetY(155)
-	pdf.SetFont("Arial", "", 10)
+	pdf.SetY(122)
+	pdf.SetFont("Arial", "", 9)
 	pdf.SetTextColor(80, 80, 80)
 	if cert.NomorSertifikat != nil {
-		pdf.CellFormat(w, 7, "Nomor Sertifikat: "+*cert.NomorSertifikat, "", 1, "C", false, 0, "")
+		pdf.CellFormat(w, 6, "Nomor Sertifikat: "+*cert.NomorSertifikat, "", 1, "C", false, 0, "")
 	}
 	dateStr := ""
 	if cert.TanggalTerbit != nil {
 		dateStr = cert.TanggalTerbit.Format("2 January 2006")
 	}
-	pdf.CellFormat(w, 7, "Tanggal Terbit: "+dateStr, "", 1, "C", false, 0, "")
+	pdf.CellFormat(w, 6, "Tanggal Terbit: "+dateStr, "", 1, "C", false, 0, "")
 
-	// Bottom accent line
+	// Bottom accent line above signatures
 	pdf.SetDrawColor(200, 170, 110)
 	pdf.SetLineWidth(0.3)
+	pdf.Line(40, 139, 257, 139)
 
 	// Signatures at bottom
 	leftSigX := 55.0
 	rightSigX := 177.0
 	sigWidth := 70.0
-	sigY := 178.0
-
-	// Bottom accent line above signatures
-	pdf.Line(40, 170, 257, 170)
+	sigY := 145.0
 
 	// Left signature line
 	pdf.SetDrawColor(50, 50, 50)
