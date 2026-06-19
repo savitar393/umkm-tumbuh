@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { partnershipsApi } from "../api";
 import type { PartnershipRequest } from "../types";
+import PartnershipSidebar from "../components/PartnershipSidebar";
 
 // ─── Logo Components ──────────────────────────────────────────────────────────
 
@@ -27,13 +28,13 @@ const LogoNusantara: React.FC<{ size?: number }> = ({ size = 48 }) => (
 const StarRating: React.FC<{ rating: number }> = ({ rating }) => {
   const fullStars = Math.floor(rating);
   const hasHalfStar = rating % 1 >= 0.5;
-  
+
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
       {[...Array(5)].map((_, i) => (
-        <span key={i} style={{ 
-          color: i < fullStars ? "#F5A623" : (i === fullStars && hasHalfStar ? "#F5A623" : "#E8E7E2"), 
-          fontSize: 16 
+        <span key={i} style={{
+          color: i < fullStars ? "#F5A623" : (i === fullStars && hasHalfStar ? "#F5A623" : "#E8E7E2"),
+          fontSize: 16
         }}>
           {i < fullStars ? "★" : (i === fullStars && hasHalfStar ? "½" : "☆")}
         </span>
@@ -48,11 +49,13 @@ const StarRating: React.FC<{ rating: number }> = ({ rating }) => {
 const PartnershipDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  
-  const [partnership, setPartnership] = useState<PartnershipRequest | null>(null);
+  const user = getCurrentUser();
+  const isMitra = user?.role === "MITRA";
+  const basePath = isMitra ? "/mitra/partnerships" : "/umkm/partnerships";
+
+  const [detail, setDetail] = useState<UMKMDetail | MitraDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showDownloadAlert, setShowDownloadAlert] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -63,10 +66,10 @@ const PartnershipDetailPage: React.FC = () => {
   const fetchPartnership = async (partnershipId: string) => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const response = await partnershipsApi.getDetail(partnershipId);
-      
+
       if (response.status === "success" && response.data) {
         setPartnership(response.data as PartnershipRequest);
       } else {
@@ -75,7 +78,7 @@ const PartnershipDetailPage: React.FC = () => {
     } catch (err) {
       console.error("Error fetching partnership:", err);
       setError("Terjadi kesalahan saat memuat data");
-      
+
       // Mock data for demo
       setPartnership({
         id: partnershipId,
@@ -113,381 +116,301 @@ const PartnershipDetailPage: React.FC = () => {
   };
 
   const handleAjukanKemitraan = () => {
-    navigate(`/partnerships/create?receiver_id=${partnership?.receiver_id || id}&receiver_name=Nusantara%20Ventures`);
+    navigate(`${basePath}/create?receiver_id=${id}`);
   };
 
-  const handleBack = () => {
-    navigate("/partnerships");
+  const downloadTemplate = () => {
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Template Pengajuan Kemitraan UMKM Tumbuh</title>
+<style>
+  body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; margin: 2.5cm; line-height: 1.5; }
+  h1 { text-align: center; font-size: 16pt; margin-bottom: 30pt; }
+  h2 { font-size: 14pt; margin-top: 20pt; }
+  table { width: 100%; border-collapse: collapse; margin: 10pt 0; }
+  td { padding: 6pt 10pt; border: 1px solid #000; vertical-align: top; }
+  .label { font-weight: bold; width: 35%; }
+  .field { min-height: 20pt; color: #888; }
+  ol { margin-top: 0; }
+</style>
+</head>
+<body>
+
+<h1>SURAT PENGAJUAN KEMITRAAN<br>UMKM Tumbuh</h1>
+
+<table>
+  <tr><td class="label">Nama Usaha</td><td class="field">............................</td></tr>
+  <tr><td class="label">Nama Pemilik</td><td class="field">............................</td></tr>
+  <tr><td class="label">Jenis Usaha</td><td class="field">............................</td></tr>
+  <tr><td class="label">Alamat</td><td class="field">............................</td></tr>
+  <tr><td class="label">Kota/Kabupaten</td><td class="field">............................</td></tr>
+  <tr><td class="label">Provinsi</td><td class="field">............................</td></tr>
+  <tr><td class="label">No. Telepon/WhatsApp</td><td class="field">............................</td></tr>
+  <tr><td class="label">Email</td><td class="field">............................</td></tr>
+  <tr><td class="label">Tahun Berdiri</td><td class="field">............................</td></tr>
+  <tr><td class="label">NIB (jika ada)</td><td class="field">............................</td></tr>
+</table>
+
+<h2>Deskripsi Usaha</h2>
+<p>............................<br>............................<br>............................</p>
+
+<h2>Produk Unggulan</h2>
+<ol>
+  <li>............................</li>
+  <li>............................</li>
+  <li>............................</li>
+</ol>
+
+<h2>Alasan Bermitra</h2>
+<p>............................<br>............................<br>............................</p>
+
+<h2>Bentuk Dukungan yang Diharapkan</h2>
+<p>............................<br>............................<br>............................</p>
+
+<br><br>
+<table>
+  <tr>
+    <td style="border: none; width: 50%; text-align: center;">
+      <br><br><br>
+      (............................)<br>
+      <em>Tanda Tangan &amp; Nama Lengkap</em>
+    </td>
+    <td style="border: none; width: 50%; text-align: center;">
+      <br><br><br>
+      (............................)<br>
+      <em>Tanggal</em>
+    </td>
+  </tr>
+</table>
+
+</body>
+</html>`;
+    const blob = new Blob([html], { type: "application/msword" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "Template_Pengajuan_Kemitraan.doc";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
+
+  const d = detail as UMKMDetail & MitraDetail;
+  const hasDescription = d?.description && d.description.trim().length > 0;
+  const hasYear = typeof d?.year_established === "number" && d.year_established > 0;
+  const bgLayers = (
+    <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundImage: "url(/background.png)", backgroundSize: "cover", backgroundPosition: "center", zIndex: 0, opacity: 0.7 }} />
+  );
 
   if (loading) {
     return (
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: "100vh",
-        background: "#F5F4F0",
-      }}>
-        <div style={{ textAlign: "center" }}>
-          <div style={{
-            display: "inline-block",
-            width: 40,
-            height: 40,
-            borderRadius: "50%",
-            border: "3px solid #E8E7E2",
-            borderTopColor: "#1A3A6B",
-            animation: "spin 0.8s linear infinite",
-          }} />
-          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-          <p style={{ marginTop: 16, color: "#888780" }}>Memuat detail mitra...</p>
+      <div style={{ display: "flex", minHeight: "100vh", position: "relative" }}>
+        {bgLayers}
+        <div style={{ position: "relative", zIndex: 1, display: "flex", width: "100%" }}>
+          <PartnershipSidebar />
+          <main style={{ marginLeft: 260, flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ textAlign: "center" }}>
+              <div style={{ display: "inline-block", width: 40, height: 40, borderRadius: "50%", border: "3px solid #E8E7E2", borderTopColor: "#1A3A6B", animation: "spin 0.8s linear infinite" }} />
+              <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+              <p style={{ marginTop: 16, color: "#888780" }}>Memuat detail...</p>
+            </div>
+          </main>
         </div>
       </div>
     );
   }
 
-  if (error || !partnership) {
+  if (error || !detail) {
     return (
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: "100vh",
-        background: "#F5F4F0",
-      }}>
-        <div style={{
-          background: "white",
-          borderRadius: 16,
-          padding: "40px",
-          textAlign: "center",
-          maxWidth: 400,
-        }}>
-          <div style={{
-            width: 64,
-            height: 64,
-            background: "#FEF2F2",
-            borderRadius: "50%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            margin: "0 auto 20px",
-          }}>
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#E24B4A" strokeWidth="2">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </div>
-          <h3 style={{ margin: "0 0 8px", fontSize: 20, color: "#2C2C2A" }}>Data Tidak Ditemukan</h3>
-          <p style={{ margin: "0 0 24px", color: "#888780" }}>{error || "Detail kemitraan tidak tersedia"}</p>
-          <button
-            onClick={handleBack}
-            style={{
-              padding: "10px 24px",
-              background: "#1A3A6B",
-              border: "none",
-              borderRadius: 8,
-              color: "white",
-              cursor: "pointer",
-            }}
-          >
-            Kembali
-          </button>
+      <div style={{ display: "flex", minHeight: "100vh", position: "relative" }}>
+        {bgLayers}
+        <div style={{ position: "relative", zIndex: 1, display: "flex", width: "100%" }}>
+          <PartnershipSidebar />
+          <main style={{ marginLeft: 260, flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ background: "white", borderRadius: 16, padding: "40px", textAlign: "center", maxWidth: 400 }}>
+              <div style={{ width: 64, height: 64, background: "#FEF2F2", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#E24B4A" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10" /><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </div>
+              <h3 style={{ margin: "0 0 8px", fontSize: 20, color: "#2C2C2A" }}>{isMitra ? "UMKM Tidak Ditemukan" : "Mitra Tidak Ditemukan"}</h3>
+              <p style={{ margin: "0 0 24px", color: "#888780" }}>{error || "Data tidak tersedia"}</p>
+              <button onClick={() => navigate(basePath)} style={{ padding: "10px 24px", background: "#1A3A6B", border: "none", borderRadius: 8, color: "white", cursor: "pointer" }}>Kembali</button>
+            </div>
+          </main>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{
-      maxWidth: 1200,
-      margin: "0 auto",
-      padding: "40px 24px",
-      fontFamily: "'Segoe UI', Roboto, sans-serif",
-      background: "#F5F4F0",
-      minHeight: "100vh",
-    }}>
-      {/* Download Alert Toast */}
-      {showDownloadAlert && (
-        <div style={{
-          position: "fixed",
-          top: 80,
-          right: 24,
-          background: "#1D9E75",
-          color: "white",
-          padding: "12px 20px",
-          borderRadius: 12,
-          fontSize: 14,
-          zIndex: 1000,
-          animation: "slideIn 0.3s ease",
-        }}>
-          <style>{`
-            @keyframes slideIn {
-              from { transform: translateX(100%); opacity: 0; }
-              to { transform: translateX(0); opacity: 1; }
-            }
-          `}</style>
-          📄 Template pengajuan sedang diunduh...
-        </div>
-      )}
+    <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'Segoe UI', Roboto, sans-serif", position: "relative" }}>
+      {bgLayers}
+      <div style={{ position: "relative", zIndex: 1, display: "flex", width: "100%" }}>
+        <PartnershipSidebar />
+        <main style={{ marginLeft: 260, flex: 1, display: "flex", justifyContent: "center", padding: "32px 40px", boxSizing: "border-box" }}>
+          <div style={{ width: "100%", maxWidth: 1400 }}>
 
-      {/* Back Button */}
-      <button
-        onClick={handleBack}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          background: "none",
-          border: "none",
-          color: "#1A3A6B",
-          cursor: "pointer",
-          marginBottom: 24,
-          fontSize: 14,
-        }}
-      >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M19 12H5M12 19l-7-7 7-7" />
-        </svg>
-        Kembali ke Daftar
-      </button>
-
-      {/* Main Content - Two Columns */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 360px",
-        gap: 32,
-      }}>
-        {/* LEFT COLUMN - Company Profile */}
-        <div>
-          {/* Header with Logo and Company Name */}
-          <div style={{
-            background: "white",
-            borderRadius: 20,
-            padding: "32px",
-            marginBottom: 24,
-            boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 20, marginBottom: 24 }}>
-              <LogoNusantara size={64} />
-              <div>
-                <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700, color: "#1A3A6B" }}>
-                  Nusantara Ventures
-                </h1>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8 }}>
-                  <StarRating rating={4.8} />
-                  <span style={{ fontSize: 13, color: "#888780" }}>• 120+ Kemitraan</span>
-                  <span style={{ fontSize: 13, color: "#1D9E75" }}>• 85% Sukses</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Description */}
-            <p style={{
-              fontSize: 15,
-              lineHeight: 1.6,
-              color: "#5F5E5A",
-              marginBottom: 24,
-            }}>
-              Nusantara Ventures adalah perusahaan modal ventura terkemuka yang berdedikasi untuk 
-              memberdayakan UMKM pengrajin dan kreatif di Indonesia. Kami tidak hanya memberikan 
-              pendanaan, tetapi juga ekosistem pendukung yang kuat untuk membantu bisnis Anda 
-              naik kelas ke pasar internasional.
-            </p>
-
-            <p style={{
-              fontSize: 15,
-              lineHeight: 1.6,
-              color: "#5F5E5A",
-              marginBottom: 24,
-            }}>
-              Memiliki lebih dari 120+ kerja sama dengan pasar internasional maupun nasional. 
-              Memiliki tingkat kesuksesan 85% dalam bermitra. Kami lebih berfokus pada produk 
-              kriya dan fashion, kuliner olahan berkelanjutan dan teknologi rantai pasok.
-            </p>
-
-            {/* Criteria Section */}
-            <div style={{
-              background: "#F0FAF6",
-              borderRadius: 16,
-              padding: "20px",
-              marginBottom: 24,
-            }}>
-              <h3 style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 700, color: "#1D9E75" }}>
-                Kriteria Bermitra
-              </h3>
-              <ul style={{ margin: 0, paddingLeft: 20, color: "#5F5E5A", fontSize: 14, lineHeight: 1.8 }}>
-                <li>Beroperasi minimal 12 bulan</li>
-                <li>Memiliki laporan keuangan dasar</li>
-                <li>Potensi skalabilitas tinggi</li>
-              </ul>
-            </div>
-
-            {/* Benefits Section */}
-            <div>
-              <h3 style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 700, color: "#1A3A6B" }}>
-                Keuntungan Bermitra
-              </h3>
-              <ul style={{ margin: 0, paddingLeft: 20, color: "#5F5E5A", fontSize: 14, lineHeight: 1.8 }}>
-                <li>Akses pendanaan</li>
-                <li>Mentoring dari para ahli</li>
-                <li>Jejaring global</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        {/* RIGHT COLUMN - Action Card */}
-        <div>
-          {/* Ajukan Kemitraan Card */}
-          <div style={{
-            background: "white",
-            borderRadius: 20,
-            padding: "28px",
-            marginBottom: 24,
-            boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-            position: "sticky",
-            top: 24,
-          }}>
-            <h2 style={{
-              margin: "0 0 8px",
-              fontSize: 22,
-              fontWeight: 700,
-              color: "#1A3A6B",
-            }}>
-              Ajukan Kemitraan
-            </h2>
-            <p style={{
-              fontSize: 13,
-              color: "#888780",
-              marginBottom: 24,
-            }}>
-              Bergabung dengan ekosistem kami
-            </p>
-
-            {/* Download Template Button */}
-            <button
-              onClick={handleDownloadTemplate}
-              style={{
-                width: "100%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 10,
-                padding: "14px 0",
-                background: "#F5F4F0",
-                border: "1px solid #E8E7E2",
-                borderRadius: 12,
-                fontSize: 14,
-                fontWeight: 500,
-                color: "#1A3A6B",
-                cursor: "pointer",
-                marginBottom: 20,
-                transition: "background 0.15s",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "#E8E7E2")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "#F5F4F0")}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-              Unduh Template Pengajuan Kemitraan (PDF)
+            {/* Breadcrumb */}
+            <button onClick={() => navigate(basePath)}
+              style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "none", border: "none", color: "#1A3A6B", cursor: "pointer", marginBottom: 24, fontSize: 14, padding: "6px 12px", whiteSpace: "nowrap", borderRadius: 8 }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+              Kembali ke Daftar
             </button>
 
-            {/* Divider */}
-            <div style={{
-              height: 1,
-              background: "#E8E7E2",
-              margin: "20px 0",
-            }} />
+            {/* Two-column layout */}
+            <div style={{ display: "flex", gap: 32, alignItems: "flex-start" }}>
 
-            {/* Ajukan Sekarang Button */}
-            <button
-              onClick={handleAjukanKemitraan}
-              style={{
-                width: "100%",
-                padding: "14px 0",
-                background: "#1A3A6B",
-                border: "none",
-                borderRadius: 12,
-                fontSize: 14,
-                fontWeight: 600,
-                color: "white",
-                cursor: "pointer",
-                marginBottom: 24,
-                transition: "background 0.15s",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "#2A5DA8")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "#1A3A6B")}
-            >
-              Ajukan Sekarang
-            </button>
+              {/* ── LEFT COLUMN: Profile ─────────────────────────────────────────── */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ background: "white", borderRadius: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.05)", padding: 32 }}>
+                  {/* Avatar + Name Header */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 20, marginBottom: 24 }}>
+                    <div style={{ width: 80, height: 80, borderRadius: 20, background: "#1A3A6B", display: "flex", alignItems: "center", justifyContent: "center", color: "#F5A623", fontWeight: "bold", fontSize: 32, flexShrink: 0 }}>
+                      {d.name.charAt(0)}
+                    </div>
+                    <div>
+                      <h1 style={{ margin: "0 0 4px", fontSize: 28, fontWeight: 700, color: "#1A3A6B" }}>{d.name}</h1>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                        {d.type && <span style={{ fontSize: 12, color: "#1D9E75", background: "#E8F5F0", padding: "3px 12px", borderRadius: 20, fontWeight: 600 }}>{d.type}</span>}
+                        {(d.city || d.province) && <span style={{ fontSize: 13, color: "#888780" }}>{d.city}{d.city && d.province ? `, ${d.province}` : d.province}</span>}
+                        {hasYear && <span style={{ fontSize: 13, color: "#888780" }}>• Berdiri {d.year_established}</span>}
+                      </div>
+                    </div>
+                  </div>
 
-            {/* Contact Info */}
-            <div>
-              <h3 style={{
-                margin: "0 0 12px",
-                fontSize: 14,
-                fontWeight: 600,
-                color: "#2C2C2A",
-              }}>
-                Informasi Kontak
-              </h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <a
-                  href="mailto:partnership@nusantara.vc"
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    fontSize: 13,
-                    color: "#1A3A6B",
-                    textDecoration: "none",
-                  }}
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                    <rect x="2" y="4" width="20" height="16" rx="2" />
-                    <path d="m22 7-10 7L2 7" />
-                  </svg>
-                  partnership@nusantara.vc
-                </a>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: "#5F5E5A" }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                    <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.362 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0122 16.92z" />
-                  </svg>
-                  +62 21 555 0123
+                  {/* Description */}
+                  {hasDescription && (
+                    <>
+                      <h2 style={{ fontSize: 16, fontWeight: 700, color: "#1A3A6B", margin: "0 0 12px", paddingBottom: 8, borderBottom: "2px solid #F5A623", display: "inline-block" }}>
+                        Deskripsi {isMitra ? "UMKM" : "Mitra"}
+                      </h2>
+                      <p style={{ fontSize: 14, lineHeight: 1.7, color: "#5F5E5A", margin: "0 0 20px", whiteSpace: "pre-wrap" }}>{d.description}</p>
+                    </>
+                  )}
+
+
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* Stats Card */}
-          <div style={{
-            background: "linear-gradient(135deg, #1A3A6B 0%, #2A5DA8 100%)",
-            borderRadius: 20,
-            padding: "24px",
-            color: "white",
-          }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
-              <div>
-                <p style={{ margin: 0, fontSize: 11, opacity: 0.7 }}>TOTAL KEMITRAAN</p>
-                <p style={{ margin: "4px 0 0", fontSize: 28, fontWeight: 700 }}>120+</p>
+              {/* ── RIGHT COLUMN: Action Card ──────────────────────────────────── */}
+              <div style={{ width: 340, flexShrink: 0 }}>
+                <div style={{
+                  background: "white",
+                  borderRadius: 16,
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                  overflow: "hidden",
+                  border: "1px solid #E8E7E2"
+                }}>
+                  {/* Header */}
+                  <div style={{ padding: "20px 24px", borderBottom: "1px solid #E8E7E2", textAlign: "center", background: "#FAFAF8" }}>
+                    <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#1A3A6B" }}>Ajukan Kemitraan</h3>
+                  </div>
+
+                  {/* Download Template */}
+                  <div style={{ padding: "16px 24px", borderBottom: "1px solid #E8E7E2" }}>
+                    <button
+                      onClick={downloadTemplate}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        width: "100%",
+                        color: "#1A3A6B",
+                        fontSize: 13,
+                        fontWeight: 600,
+                        textDecoration: "none",
+                        cursor: "pointer",
+                        padding: "10px 14px",
+                        borderRadius: 8,
+                        background: "#F5F4F0",
+                        border: "none",
+                        transition: "all 0.2s",
+                        justifyContent: "center"
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = "#EDEBE4"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = "#F5F4F0"; }}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                      </svg>
+                      Download Template Pengajuan
+                    </button>
+                  </div>
+
+                  {/* Informasi Kemitraan */}
+                  <div style={{ padding: "20px 24px", borderBottom: "1px solid #E8E7E2" }}>
+                    <h4 style={{ margin: "0 0 14px", fontSize: 12, fontWeight: 700, color: "#888780", letterSpacing: 0.5, textTransform: "uppercase" }}>
+                      Informasi Kemitraan
+                    </h4>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: 13, color: "#888780" }}>Jenis</span>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: "#2C2C2A" }}>{d.type || "-"}</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: 13, color: "#888780" }}>Lokasi</span>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: "#2C2C2A", textAlign: "right" }}>
+                          {d.city || "-"}{d.city && d.province ? `, ${d.province}` : d.province ? d.province : ""}
+                        </span>
+                      </div>
+                      {hasYear && (
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span style={{ fontSize: 13, color: "#888780" }}>Berdiri</span>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: "#2C2C2A" }}>{d.year_established}</span>
+                        </div>
+                      )}
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: 13, color: "#888780" }}>Status</span>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "#1D9E75", background: "#E8F5F0", padding: "2px 10px", borderRadius: 12 }}>Terverifikasi</span>
+                      </div>
+                    </div>
+                  </div>
+
+
+
+                  {/* Ajukan Button */}
+                  <div style={{ padding: "16px 24px 20px" }}>
+                    <button
+                      onClick={handleAjukanKemitraan}
+                      style={{
+                        width: "100%",
+                        padding: "14px 0",
+                        background: "#1D9E75",
+                        border: "none",
+                        borderRadius: 10,
+                        fontSize: 15,
+                        fontWeight: 600,
+                        color: "white",
+                        cursor: "pointer",
+                        transition: "all 0.2s",
+                        boxShadow: "0 4px 14px rgba(29, 158, 117, 0.3)"
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "#0F6E56";
+                        e.currentTarget.style.transform = "translateY(-2px)";
+                        e.currentTarget.style.boxShadow = "0 6px 20px rgba(29, 158, 117, 0.4)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "#1D9E75";
+                        e.currentTarget.style.transform = "translateY(0)";
+                        e.currentTarget.style.boxShadow = "0 4px 14px rgba(29, 158, 117, 0.3)";
+                      }}
+                    >
+                      Ajukan Kemitraan
+                    </button>
+                  </div>
+                </div>
               </div>
-              <div>
-                <p style={{ margin: 0, fontSize: 11, opacity: 0.7 }}>TINGKAT SUKSES</p>
-                <p style={{ margin: "4px 0 0", fontSize: 28, fontWeight: 700 }}>85%</p>
-              </div>
+
             </div>
-            <div style={{ height: 4, background: "rgba(255,255,255,0.2)", borderRadius: 2, overflow: "hidden" }}>
-              <div style={{ width: "85%", height: "100%", background: "#F5A623", borderRadius: 2 }} />
-            </div>
-            <p style={{ margin: "16px 0 0", fontSize: 12, opacity: 0.8, textAlign: "center" }}>
-              Bergabung dengan 120+ mitra UMKM lainnya
-            </p>
           </div>
-        </div>
+        </main>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { partnershipsApi } from "../api";
 import type { PartnershipRequest } from "../types";
+import PartnershipSidebar from "../components/PartnershipSidebar";
 
 function formatOptionalDate(value: unknown) {
   if (typeof value !== "string" && typeof value !== "number" && !(value instanceof Date)) {
@@ -18,14 +19,6 @@ function formatOptionalDate(value: unknown) {
 }
 
 // ─── Logo Components ──────────────────────────────────────────────────────────
-
-const LogoUMKMTumbuh: React.FC<{ size?: number }> = ({ size = 40 }) => (
-  <svg width={size} height={size} viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect width="40" height="40" rx="8" fill="#F5A623" />
-    <path d="M8 28 L14 16 L20 22 L26 12 L32 28 Z" fill="#1A3A6B" strokeLinejoin="round" />
-    <circle cx="26" cy="12" r="3" fill="#1A3A6B" />
-  </svg>
-);
 
 const LogoKementrian: React.FC<{ size?: number }> = ({ size = 36 }) => (
   <svg width={size} height={size} viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -581,40 +574,6 @@ const PartnershipReviewPage: React.FC = () => {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [isRejecting, setIsRejecting] = useState(false);
 
-  // Sidebar navigation items
-  const navItems = [
-    {
-      label: "Monitoring Perkembangan Usaha",
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-        </svg>
-      ),
-      path: "/dashboard",
-    },
-    {
-      label: "Pengajuan Kemitraan",
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-          <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-          <circle cx="9" cy="7" r="4" />
-          <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
-        </svg>
-      ),
-      path: "/partnerships/status",
-    },
-    {
-      label: "Kelola Informasi UMKM",
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-          <rect x="2" y="7" width="20" height="14" rx="2" />
-          <path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" />
-        </svg>
-      ),
-      path: "/umkm",
-    },
-  ];
-
   useEffect(() => {
     if (id) {
       fetchPartnership(id);
@@ -783,79 +742,7 @@ const PartnershipReviewPage: React.FC = () => {
         isSubmitting={isRejecting}
       />
 
-      {/* Sidebar */}
-      <aside style={{
-        width: 200,
-        minWidth: 200,
-        background: "#1A3A6B",
-        display: "flex",
-        flexDirection: "column",
-        position: "fixed",
-        top: 0,
-        left: 0,
-        height: "100vh",
-        zIndex: 100,
-      }}>
-        <div style={{ padding: "24px 20px", borderBottom: "1px solid rgba(255,255,255,0.12)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <LogoUMKMTumbuh size={36} />
-            <span style={{ color: "#F5A623", fontWeight: 700, fontSize: 15, lineHeight: 1.2 }}>
-              UMKM<br />Tumbuh
-            </span>
-          </div>
-        </div>
-
-        <nav style={{ flex: 1, padding: "20px 0" }}>
-          {navItems.map((item) => (
-            <button
-              key={item.path}
-              onClick={() => navigate(item.path)}
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                gap: 10,
-                width: "100%",
-                padding: "10px 20px",
-                background: "transparent",
-                border: "none",
-                color: "rgba(255,255,255,0.75)",
-                fontSize: 13,
-                fontWeight: 400,
-                cursor: "pointer",
-                textAlign: "left",
-                lineHeight: 1.4,
-              }}
-            >
-              <span style={{ marginTop: 1, flexShrink: 0 }}>{item.icon}</span>
-              {item.label}
-            </button>
-          ))}
-        </nav>
-
-        <div style={{ padding: "20px", borderTop: "1px solid rgba(255,255,255,0.12)" }}>
-          <button
-            onClick={() => navigate("/login")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              background: "none",
-              border: "none",
-              color: "#E24B4A",
-              fontSize: 13,
-              cursor: "pointer",
-              padding: 0,
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
-              <polyline points="16 17 21 12 16 7" />
-              <line x1="21" y1="12" x2="9" y2="12" />
-            </svg>
-            Keluar
-          </button>
-        </div>
-      </aside>
+      <PartnershipSidebar />
 
       {/* Main Content */}
       <main style={{

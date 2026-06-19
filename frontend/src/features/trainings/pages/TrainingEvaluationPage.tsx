@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import Footer from "../../../shared/components/Footer";
 import { useCompleteTraining, useUserEnrollments } from "../hooks";
+import { uploadEvaluationDocument } from "../api";
 import { useTrainingStore } from "../store";
 import { useRequestCertificate } from "../../certificates/hooks";
 import { getCurrentUser, clearAuthStorage } from "../../../shared/auth/currentUser";
@@ -84,20 +85,43 @@ export default function TrainingEvaluationPage() {
 
   const allChecked = checkboxes.original && checkboxes.allData && checkboxes.curator;
   const canSubmit = selectedFile && allChecked;
+  const [uploading, setUploading] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!canSubmit || !enrollment) return;
-    completeMutation.mutate(
-      { pendaftaran_pelatihan_id: enrollment.pendaftaran_pelatihan_id },
-      {
-        onSuccess: () => {
-          requestCertMutation.mutate(enrollment.pendaftaran_pelatihan_id, {
-            onSuccess: () => navigate(`/umkm/trainings/${id}/verification`),
-            onError: () => navigate(`/umkm/trainings/${id}/verification`),
-          });
+    setUploading(true);
+
+    try {
+      const dokumenEvaluasiId = await uploadEvaluationDocument(selectedFile!);
+
+      completeMutation.mutate(
+        {
+          pendaftaran_pelatihan_id: enrollment.pendaftaran_pelatihan_id,
+          dokumen_evaluasi_id: dokumenEvaluasiId,
         },
-      }
-    );
+        {
+          onSuccess: () => {
+            requestCertMutation.mutate(enrollment.pendaftaran_pelatihan_id, {
+              onSuccess: () => {
+                alert("Selamat! Pelatihan berhasil diselesaikan. Silakan cek histori pelatihan untuk melihat hasil dan menunggu pengajuan sertifikat.");
+                navigate("/umkm/trainings");
+              },
+              onError: () => {
+                alert("Selamat! Pelatihan berhasil diselesaikan. Silakan cek histori pelatihan untuk melihat hasil dan menunggu pengajuan sertifikat.");
+                navigate("/umkm/trainings");
+              },
+            });
+          },
+          onError: (err: Error) => {
+            alert(`Gagal menyelesaikan pelatihan: ${err.message}`);
+          },
+        }
+      );
+    } catch (err: any) {
+      alert(`Gagal mengunggah file evaluasi: ${err?.message || err}`);
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -299,24 +323,24 @@ export default function TrainingEvaluationPage() {
 
           <button
             onClick={handleSubmit}
-            disabled={!canSubmit || completeMutation.isPending}
+            disabled={!canSubmit || uploading || completeMutation.isPending}
             style={{
               padding: "16px 40px",
-              background: canSubmit && !completeMutation.isPending ? "linear-gradient(135deg, #1a3fa4 0%, #1e3a8a 100%)" : "#e2e8f0",
+              background: canSubmit && !uploading && !completeMutation.isPending ? "linear-gradient(135deg, #1a3fa4 0%, #1e3a8a 100%)" : "#e2e8f0",
               border: "none",
               borderRadius: "12px",
               fontSize: "16px",
               fontWeight: "700",
-              color: canSubmit && !completeMutation.isPending ? "#fff" : "#94a3b8",
-              cursor: canSubmit && !completeMutation.isPending ? "pointer" : "not-allowed",
+              color: canSubmit && !uploading && !completeMutation.isPending ? "#fff" : "#94a3b8",
+              cursor: canSubmit && !uploading && !completeMutation.isPending ? "pointer" : "not-allowed",
               display: "flex",
               alignItems: "center",
               gap: "10px",
-              boxShadow: canSubmit && !completeMutation.isPending ? "0 4px 14px rgba(26,63,164,0.35)" : "none",
+              boxShadow: canSubmit && !uploading && !completeMutation.isPending ? "0 4px 14px rgba(26,63,164,0.35)" : "none",
               transition: "all 0.2s",
             }}
           >
-            {completeMutation.isPending ? "Mengirim..." : "Kirim Evaluasi Akhir"}
+            {uploading ? "Mengupload..." : completeMutation.isPending ? "Menyelesaikan..." : "Kirim Evaluasi Akhir"}
             <Icon icon="mdi:send" style={{ fontSize: "20px" }} />
           </button>
         </div>

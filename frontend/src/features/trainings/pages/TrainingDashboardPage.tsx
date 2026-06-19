@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import Sidebar from "../../../shared/components/Sidebar";
-import backgroundImg from "../../../assets/background1.png";
+import UmkmLayout from "../../umkm/components/UmkmLayout";
 import { useTrainingStore } from "../store";
 import { useCertificateDashboard, useUserCertificates, useRequestCertificate } from "../../certificates/hooks";
 import { useUserEnrollments } from "../hooks";
@@ -116,8 +115,14 @@ export default function TrainingDashboardPage() {
   }, [completed.length]);
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'Plus Jakarta Sans','Segoe UI',sans-serif", position: "relative" }}>
+    <UmkmLayout>
       <style>{`
+        .training-dash-wrap {
+          font-family: 'Plus Jakarta Sans','Segoe UI',sans-serif;
+          position: relative;
+          padding: 36px 40px;
+          min-height: 100vh;
+        }
         @keyframes fadeSlideDown {
           from { opacity: 0; transform: translateY(-14px); }
           to   { opacity: 1; transform: translateY(0); }
@@ -174,18 +179,7 @@ export default function TrainingDashboardPage() {
         .hover-card:hover .img-zoom { transform: scale(1.08); }
       `}</style>
 
-      <div style={{
-        position: "fixed", inset: 0, zIndex: 0,
-        backgroundImage: `url(${backgroundImg})`,
-        backgroundSize: "cover", backgroundPosition: "center top", backgroundRepeat: "no-repeat",
-      }} />
-      <div style={{ position: "fixed", inset: 0, zIndex: 1, background: "rgba(240,244,255,0.25)", pointerEvents: "none" }} />
-
-      <div style={{ position: "relative", zIndex: 10 }}>
-        <Sidebar activeLabel="Pelatihan Saya" />
-      </div>
-
-      <main style={{ marginLeft: 230, flex: 1, padding: "36px 40px", minHeight: "100vh", position: "relative", zIndex: 5 }}>
+      <div className="training-dash-wrap">
         <div className="anim-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 32 }}>
           <div>
             <h1 style={{ fontSize: 28, fontWeight: 800, color: "#0d1b6e", margin: 0, letterSpacing: -0.5 }}>
@@ -209,6 +203,41 @@ export default function TrainingDashboardPage() {
             <IconPlus /> Mulai Pelatihan Baru
           </button>
         </div>
+
+        {completed.length > 0 && certList.filter(c => c.status_sertifikat_id === "DIAJUKAN").length > 0 && (
+          <div className="anim-s0" style={{
+            ...card, padding: "16px 24px", marginBottom: 24,
+            display: "flex", alignItems: "center", gap: 14,
+            borderLeft: "4px solid #f59e0b",
+          }}>
+            <div style={{
+              width: 40, height: 40, borderRadius: "50%", flexShrink: 0,
+              background: "#fef3c7", display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+              </svg>
+            </div>
+            <div style={{ flex: 1 }}>
+              <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: "#0d1b6e" }}>
+                Sertifikat Menunggu Verifikasi
+              </p>
+              <p style={{ margin: "2px 0 0", fontSize: 13, color: "#64748b" }}>
+                {certList.filter(c => c.status_sertifikat_id === "DIAJUKAN").length} sertifikat sedang dalam proses review oleh admin.
+              </p>
+            </div>
+            <button
+              onClick={() => navigate("/umkm/trainings")}
+              style={{
+                padding: "8px 18px", borderRadius: 8, border: "none",
+                background: "#f59e0b", color: "#fff", fontWeight: 700, fontSize: 13,
+                cursor: "pointer", whiteSpace: "nowrap",
+              }}
+            >
+              Lihat Status
+            </button>
+          </div>
+        )}
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 20, marginBottom: 36 }}>
           <div className="hover-card anim-s0" style={{ ...card, borderRadius: 18, padding: "24px 28px" }}>
@@ -436,7 +465,7 @@ export default function TrainingDashboardPage() {
             )}
           </section>
         </div>
-      </main>
-    </div>
+      </div>
+    </UmkmLayout>
   );
 }

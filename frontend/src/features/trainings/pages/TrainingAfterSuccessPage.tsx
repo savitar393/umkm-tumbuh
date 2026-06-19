@@ -155,7 +155,7 @@ export default function TrainingAfterSuccessPage() {
                 <div>
                   <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#0f172a" }}>Sertifikat</p>
                   <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748b" }}>
-                    {cert?.nomor_sertifikat ? `No: ${cert.nomor_sertifikat}` : "Terbit otomatis via Blockchain"}
+                    {cert?.nomor_sertifikat ? `No: ${cert.nomor_sertifikat}` : "Menunggu verifikasi admin"}
                   </p>
                 </div>
               </div>

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/jung-kurt/gofpdf"
 )
@@ -101,7 +102,12 @@ func (s *Service) GenerateCertificatePDF(cert *CertificateResponse) (string, err
 	pdf.SetFont("Arial", "", 10)
 	pdf.SetTextColor(50, 50, 50)
 	pdf.SetXY(leftSigX, sigY+2)
-	pdf.CellFormat(sigWidth, 6, "Mentor", "", 0, "C", false, 0, "")
+	pdf.CellFormat(sigWidth, 6, cert.MentorNama, "", 0, "C", false, 0, "")
+
+	pdf.SetFont("Arial", "", 8)
+	pdf.SetTextColor(120, 120, 120)
+	pdf.SetXY(leftSigX, sigY+8)
+	pdf.CellFormat(sigWidth, 5, "Mentor", "", 0, "C", false, 0, "")
 
 	// Right signature line
 	pdf.SetDrawColor(50, 50, 50)
@@ -112,10 +118,17 @@ func (s *Service) GenerateCertificatePDF(cert *CertificateResponse) (string, err
 	pdf.SetFont("Arial", "", 10)
 	pdf.SetTextColor(50, 50, 50)
 	pdf.SetXY(rightSigX, sigY+2)
-	pdf.CellFormat(sigWidth, 6, "Direktur Utama", "", 0, "C", false, 0, "")
+	pdf.CellFormat(sigWidth, 6, "Rambat Ungu Aryati", "", 0, "C", false, 0, "")
 
-	// Generate filename and save
-	fileName := fmt.Sprintf("cert_%d.pdf", cert.SertifikatID)
+	pdf.SetFont("Arial", "", 8)
+	pdf.SetTextColor(120, 120, 120)
+	pdf.SetXY(rightSigX, sigY+8)
+	pdf.CellFormat(sigWidth, 5, "Direktur UMKM Tumbuh", "", 0, "C", false, 0, "")
+
+	// Generate filename with training name and user name
+	safeTitle := sanitizeFilename(cert.JudulPelatihan)
+	safeName := sanitizeFilename(cert.PelakuNama)
+	fileName := fmt.Sprintf("sertifikat_%s_%s.pdf", safeTitle, safeName)
 	filePath := filepath.Join(s.certDir, fileName)
 
 	if err := pdf.OutputFileAndClose(filePath); err != nil {
@@ -123,4 +136,25 @@ func (s *Service) GenerateCertificatePDF(cert *CertificateResponse) (string, err
 	}
 
 	return filePath, nil
+}
+
+func sanitizeFilename(s string) string {
+	s = strings.TrimSpace(s)
+	s = strings.ReplaceAll(s, " ", "_")
+	s = strings.ReplaceAll(s, "/", "_")
+	s = strings.ReplaceAll(s, "\\", "_")
+	s = strings.ReplaceAll(s, ":", "_")
+	s = strings.ReplaceAll(s, ".", "_")
+	s = strings.ReplaceAll(s, ",", "_")
+	s = strings.ReplaceAll(s, "\"", "")
+	s = strings.ReplaceAll(s, "'", "")
+	s = strings.ReplaceAll(s, "?", "")
+	s = strings.ReplaceAll(s, "*", "")
+	s = strings.ReplaceAll(s, "<", "")
+	s = strings.ReplaceAll(s, ">", "")
+	s = strings.ReplaceAll(s, "|", "")
+	if len(s) > 80 {
+		s = s[:80]
+	}
+	return s
 }

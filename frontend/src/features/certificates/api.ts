@@ -30,36 +30,42 @@ export async function requestCertificate(pendaftaranPelatihanId: string): Promis
   return RequestCertificateResponseSchema.parse(response);
 }
 
+function getCertificateBaseUrl(): string {
+  return import.meta.env.VITE_CERTIFICATE_API_BASE_URL ?? import.meta.env.VITE_TRAINING_API_BASE_URL ?? "http://localhost:8084/api/v1";
+}
+
 export function getCertificateDownloadUrl(certId: number): string {
-  const baseUrl = import.meta.env.VITE_TRAINING_API_URL ?? "http://localhost:8083/api/v1";
-  return `${baseUrl}/certificates/${certId}/download`;
+  return `${getCertificateBaseUrl()}/certificates/${certId}/download`;
 }
 
 export async function downloadCertificate(certId: number): Promise<void> {
   const url = getCertificateDownloadUrl(certId);
-  const token = getAccessTokenFromStorage();
+  const token = getAccessToken();
   const response = await fetch(url, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
-  if (!response.ok) throw new Error("Gagal mengunduh sertifikat");
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(`Gagal mengunduh sertifikat (${response.status})${text ? `: ${text}` : ""}`);
+  }
   const blob = await response.blob();
   const blobUrl = URL.createObjectURL(blob);
+
+  const disposition = response.headers.get("Content-Disposition");
+  let fileName = `sertifikat_${certId}.pdf`;
+  if (disposition) {
+    const match = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^"'\n;]+)["']?/i);
+    if (match) fileName = decodeURIComponent(match[1]);
+  }
+
   const a = document.createElement("a");
   a.href = blobUrl;
-  a.download = `sertifikat_${certId}.pdf`;
+  a.download = fileName;
   document.body.appendChild(a);
   a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(blobUrl);
-}
 
-function getAccessTokenFromStorage(): string | null {
-  try {
-    const raw = localStorage.getItem("auth-storage");
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return parsed?.state?.accessToken || null;
-  } catch {
-    return null;
-  }
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(blobUrl);
+  }, 100);
 }

@@ -3,14 +3,12 @@ package trainings
 import (
 	"context"
 	"errors"
-	"net/http"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/savitar393/umkm-tumbuh/services/training-service/internal/apperror"
 )
 
 type Repository struct {
@@ -334,28 +332,24 @@ func (r *Repository) UpdateProgress(ctx context.Context, pendaftaranID string, m
 }
 
 // MarkTrainingComplete - tandai pelatihan selesai
-// Hanya bisa jika semua modul sudah dikerjakan
-func (r *Repository) MarkTrainingComplete(ctx context.Context, pendaftaranID string) error {
+func (r *Repository) MarkTrainingComplete(ctx context.Context, pendaftaranID string, dokumenEvaluasiID *string) error {
 	query := `
 		UPDATE training.transaksi_pendaftaranpelatihan
 		SET tanggal_selesai = NOW(),
 		    progress_persen = 100,
 		    modul_selesai = total_modul_snapshot,
-		    status_pendaftaran_pelatihan_id = 'SELESAI'
+		    status_pendaftaran_pelatihan_id = 'SELESAI',
+		    dokumen_evaluasi_id = $2
 		WHERE pendaftaran_pelatihan_id = $1
-		  AND modul_selesai >= total_modul_snapshot
 	`
 
-	res, err := r.DB.Exec(ctx, query, pendaftaranID)
-	if err != nil {
-		return err
+	var err error
+	if dokumenEvaluasiID != nil {
+		_, err = r.DB.Exec(ctx, query, pendaftaranID, *dokumenEvaluasiID)
+	} else {
+		_, err = r.DB.Exec(ctx, query, pendaftaranID, nil)
 	}
-
-	if res.RowsAffected() == 0 {
-		return apperror.New(http.StatusBadRequest, "pelatihan belum dapat diselesaikan, selesaikan semua modul terlebih dahulu")
-	}
-
-	return nil
+	return err
 }
 
 // generateID - buat ID dengan prefix, bebas dash
