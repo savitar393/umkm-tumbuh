@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import Footer from "../../../shared/components/Footer";
+import { toast } from "sonner";
 import { useCompleteTraining, useUserEnrollments } from "../hooks";
 import { uploadEvaluationDocument } from "../api";
 import { useTrainingStore } from "../store";
@@ -100,25 +101,25 @@ export default function TrainingEvaluationPage() {
           dokumen_evaluasi_id: dokumenEvaluasiId,
         },
         {
-          onSuccess: () => {
-            requestCertMutation.mutate(enrollment.pendaftaran_pelatihan_id, {
               onSuccess: () => {
-                alert("Selamat! Pelatihan berhasil diselesaikan. Silakan cek histori pelatihan untuk melihat hasil dan menunggu pengajuan sertifikat.");
-                navigate("/umkm/trainings");
-              },
-              onError: () => {
-                alert("Selamat! Pelatihan berhasil diselesaikan. Silakan cek histori pelatihan untuk melihat hasil dan menunggu pengajuan sertifikat.");
-                navigate("/umkm/trainings");
-              },
-            });
+                requestCertMutation.mutate(enrollment.pendaftaran_pelatihan_id, {
+                  onSuccess: () => {
+                    toast.success("Selamat! Pelatihan berhasil diselesaikan. Silakan cek histori pelatihan.");
+                    navigate("/umkm/trainings");
+                  },
+                  onError: () => {
+                    toast.success("Selamat! Pelatihan berhasil diselesaikan. Silakan cek histori pelatihan.");
+                    navigate("/umkm/trainings");
+                  },
+                });
           },
           onError: (err: Error) => {
-            alert(`Gagal menyelesaikan pelatihan: ${err.message}`);
+            toast.error("Gagal menyelesaikan pelatihan", { description: err.message });
           },
         }
       );
     } catch (err: any) {
-      alert(`Gagal mengunggah file evaluasi: ${err?.message || err}`);
+      toast.error("Gagal mengunggah file evaluasi", { description: err?.message || err });
     } finally {
       setUploading(false);
     }

@@ -1,6 +1,6 @@
 // frontend/src/features/partnerships/api.ts
 
-import { partnershipHttp as httpPartnerships } from "../../shared/api/partnershipHttp";
+import { httpPartnerships } from "../../shared/api/partnershipHttp";
 import { getAccessToken, getCurrentUser } from "../../shared/auth/currentUser";
 import type { CreatePartnershipRequest, PartnershipStatus } from "./types";
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import UmkmLayout from "../../umkm/components/UmkmLayout";
 import { useTrainingStore } from "../store";
@@ -103,6 +103,64 @@ export default function TrainingDashboardPage() {
   const certList = certificates || [];
   const requestCertMutation = useRequestCertificate();
   const requestedRef = useRef<Set<string>>(new Set());
+
+  const ITEMS_PER_PAGE = 3;
+  const [ongoingPage, setOngoingPage] = useState(1);
+  const [completedPage, setCompletedPage] = useState(1);
+  const ongoingTotalPages = Math.max(1, Math.ceil(ongoing.length / ITEMS_PER_PAGE));
+  const completedTotalPages = Math.max(1, Math.ceil(completed.length / ITEMS_PER_PAGE));
+
+  useEffect(() => { setOngoingPage(1); }, [ongoing.length]);
+  useEffect(() => { setCompletedPage(1); }, [completed.length]);
+
+  function Pagination({ page, totalPages, onChange }: { page: number; totalPages: number; onChange: (p: number) => void }) {
+    if (totalPages <= 1) return null;
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 16 }}>
+        <button
+          disabled={page === 1}
+          onClick={() => onChange(page - 1)}
+          style={{
+            padding: "6px 12px", borderRadius: 8, border: "1px solid #e2e8f0",
+            background: page === 1 ? "#f1f5f9" : "#fff", color: page === 1 ? "#cbd5e1" : "#475569",
+            cursor: page === 1 ? "default" : "pointer", fontSize: 12, fontWeight: 600,
+            transition: "all 0.15s",
+          }}
+        >
+          ‹
+        </button>
+        {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+          <button
+            key={p}
+            onClick={() => onChange(p)}
+            style={{
+              minWidth: 32, height: 32, borderRadius: 8, border: "none",
+              background: p === page ? "#1565c0" : "rgba(255,255,255,0.8)",
+              color: p === page ? "#fff" : "#475569",
+              fontWeight: p === page ? 700 : 500, fontSize: 12, cursor: "pointer",
+              transition: "all 0.15s",
+              boxShadow: p === page ? "0 2px 8px rgba(21,101,192,0.3)" : "0 1px 3px rgba(0,0,0,0.06)",
+            }}
+          >
+            {p}
+          </button>
+        ))}
+        <button
+          disabled={page === totalPages}
+          onClick={() => onChange(page + 1)}
+          style={{
+            padding: "6px 12px", borderRadius: 8, border: "1px solid #e2e8f0",
+            background: page === totalPages ? "#f1f5f9" : "#fff",
+            color: page === totalPages ? "#cbd5e1" : "#475569",
+            cursor: page === totalPages ? "default" : "pointer", fontSize: 12, fontWeight: 600,
+            transition: "all 0.15s",
+          }}
+        >
+          ›
+        </button>
+      </div>
+    );
+  }
 
   useEffect(() => {
     if (!completed.length) return;
@@ -313,7 +371,7 @@ export default function TrainingDashboardPage() {
                 </div>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                  {ongoing.slice(0, 3).map((e, i) => (
+                  {ongoing.slice((ongoingPage - 1) * ITEMS_PER_PAGE, ongoingPage * ITEMS_PER_PAGE).map((e, i) => (
                     <div
                       key={e.pendaftaran_pelatihan_id}
                       className={`hover-card anim-t${i}`}
@@ -366,6 +424,7 @@ export default function TrainingDashboardPage() {
                   ))}
                 </div>
               )}
+              <Pagination page={ongoingPage} totalPages={ongoingTotalPages} onChange={setOngoingPage} />
             </section>
 
             <section>
@@ -378,7 +437,7 @@ export default function TrainingDashboardPage() {
                 </div>
               ) : (
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-                  {completed.slice(0, 4).map((e) => (
+                  {completed.slice((completedPage - 1) * ITEMS_PER_PAGE, completedPage * ITEMS_PER_PAGE).map((e) => (
                     <div
                       key={e.pendaftaran_pelatihan_id}
                       className="hover-card"
@@ -405,7 +464,9 @@ export default function TrainingDashboardPage() {
                   ))}
                 </div>
               )}
+              <Pagination page={completedPage} totalPages={completedTotalPages} onChange={setCompletedPage} />
             </section>
+
           </div>
 
           <section className="anim-right">

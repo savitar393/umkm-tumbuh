@@ -1,5 +1,6 @@
 import { http } from "../../shared/api/http";
 import type { User, UserStatus } from "../auth/api";
+import type { Certificate } from "../certificates/types";
 
 export type RegistrationStatusFilter = UserStatus | "ALL";
 
@@ -225,27 +226,6 @@ export function getDashboard(queryString?: string) {
 }
 
 // ─── Certificate API ─────────────────────────────────────────────────────
-
-export interface Certificate {
-  sertifikat_id: number;
-  pendaftaran_pelatihan_id: string;
-  nomor_sertifikat: string | null;
-  tanggal_pengajuan: string | null;
-  tanggal_terbit: string | null;
-  status_sertifikat_id: string;
-  nama_status_sertifikat: string;
-  dokumen_id: string | null;
-  dokumen_url: string | null;
-  catatan_validasi: string | null;
-  pelatihan_id: string;
-  judul_pelatihan: string;
-  jenis_pelatihan: string;
-  tanggal_selesai_pelatihan: string | null;
-  progress_persen: number;
-  umkm_id: string;
-  nama_umkm: string;
-  pelaku_nama: string;
-}
 
 export interface CertificateStats {
   diajukan: number;
