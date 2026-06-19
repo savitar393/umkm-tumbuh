@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -134,35 +135,119 @@ func (r *Repository) FindDuplicate(
 	return user, nil
 }
 
-func (r *Repository) ListRegistrations(ctx context.Context, statusFilter string) ([]User, error) {
-	query := userSelectQuery() + `
-		WHERE a.peran_id <> 'ADMIN'
-	`
+type ListRegistrationsResult struct {
+	Users      []User
+	TotalCount int
+}
 
+func (r *Repository) ListRegistrations(
+	ctx context.Context,
+	statusFilter string,
+	search string,
+	roleFilter string,
+	page int,
+	limit int,
+) (*ListRegistrationsResult, error) {
 	args := []any{}
+	argIdx := 1
+
+	whereClauses := []string{"a.peran_id <> 'ADMIN'"}
 
 	if statusFilter != "" {
+		whereClauses = append(whereClauses, fmt.Sprintf("COALESCE(reg.status_verifikasi_id, 'APPROVED') = $%d", argIdx))
 		args = append(args, statusFilter)
-		query += " AND COALESCE(reg.status_verifikasi_id, 'APPROVED') = $1"
+		argIdx++
 	}
 
-	query += " ORDER BY a.created_at DESC"
+	if roleFilter != "" {
+		whereClauses = append(whereClauses, fmt.Sprintf("a.peran_id = $%d", argIdx))
+		args = append(args, roleFilter)
+		argIdx++
+	}
 
-	rows, err := r.DB.Query(ctx, query, args...)
+	if search != "" {
+		whereClauses = append(whereClauses, fmt.Sprintf("(LOWER(a.nama_lengkap) LIKE LOWER($%d) OR LOWER(a.email::text) LIKE LOWER($%d))", argIdx, argIdx+1))
+		searchPattern := "%" + strings.TrimSpace(search) + "%"
+		args = append(args, searchPattern, searchPattern)
+		argIdx += 2
+	}
+
+	where := strings.Join(whereClauses, " AND ")
+
+	var totalCount int
+	countQuery := "SELECT COUNT(*) FROM auth.master_akunpengguna a LEFT JOIN user_mgmt.master_pelakuumkm p ON p.akun_id = a.akun_id LEFT JOIN user_mgmt.transaksi_registrasipengguna reg ON reg.akun_id = a.akun_id WHERE " + where
+	if err := r.DB.QueryRow(ctx, countQuery, args...).Scan(&totalCount); err != nil {
+		return nil, err
+	}
+
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 10
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	offset := (page - 1) * limit
+
+	dataQuery := userSelectQuery() + " WHERE " + where + " ORDER BY a.created_at DESC LIMIT $%d OFFSET $%d"
+	dataQuery = fmt.Sprintf(dataQuery, argIdx, argIdx+1)
+	args = append(args, limit, offset)
+
+	rows, err := r.DB.Query(ctx, dataQuery, args...)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
 	result := []User{}
-
 	for rows.Next() {
 		user, err := scanUser(rows)
 		if err != nil {
 			return nil, err
 		}
-
 		result = append(result, *user)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return &ListRegistrationsResult{
+		Users:      result,
+		TotalCount: totalCount,
+	}, nil
+}
+
+type StatusCount struct {
+	Status string `json:"status"`
+	Count  int    `json:"count"`
+}
+
+func (r *Repository) CountByStatus(ctx context.Context) ([]StatusCount, error) {
+	query := `
+		SELECT COALESCE(reg.status_verifikasi_id, 'DISETUJUI') AS status, COUNT(*) AS count
+		FROM auth.master_akunpengguna a
+		LEFT JOIN user_mgmt.transaksi_registrasipengguna reg ON reg.akun_id = a.akun_id
+		WHERE a.peran_id <> 'ADMIN'
+		GROUP BY COALESCE(reg.status_verifikasi_id, 'DISETUJUI')
+		ORDER BY status
+	`
+
+	rows, err := r.DB.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := []StatusCount{}
+	for rows.Next() {
+		var sc StatusCount
+		if err := rows.Scan(&sc.Status, &sc.Count); err != nil {
+			return nil, err
+		}
+		result = append(result, sc)
 	}
 
 	if err := rows.Err(); err != nil {
@@ -177,6 +262,8 @@ func (r *Repository) UpdateRegistrationStatus(
 	id string,
 	status string,
 	rejectionReason *string,
+	catatanValidasi *string,
+	reviewedBy string,
 ) (*User, error) {
 	tx, err := r.DB.Begin(ctx)
 	if err != nil {
@@ -199,7 +286,11 @@ func (r *Repository) UpdateRegistrationStatus(
 	`
 
 	var accountID string
-	if err := tx.QueryRow(ctx, query, id, status, rejectionReason).Scan(&accountID); err != nil {
+	catatan := ""
+	if catatanValidasi != nil {
+		catatan = *catatanValidasi
+	}
+	if err := tx.QueryRow(ctx, query, id, status, catatan).Scan(&accountID); err != nil {
 		return nil, err
 	}
 
@@ -226,6 +317,29 @@ func (r *Repository) UpdateRegistrationStatus(
 	}
 
 	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+
+	return r.FindByID(ctx, id)
+}
+
+func (r *Repository) UpdateAccountStatus(
+	ctx context.Context,
+	id string,
+	isActive bool,
+) (*User, error) {
+	query := `
+		UPDATE auth.master_akunpengguna
+		SET
+			status_aktif = $2,
+			updated_at = NOW()
+		WHERE akun_id = $1
+		  AND peran_id <> 'ADMIN'
+		RETURNING akun_id
+	`
+
+	var accountID string
+	if err := r.DB.QueryRow(ctx, query, id, isActive).Scan(&accountID); err != nil {
 		return nil, err
 	}
 

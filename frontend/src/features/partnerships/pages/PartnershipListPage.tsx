@@ -1,151 +1,22 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { partnershipsApi } from "../api";
+import type { PartnerListItem } from "../api";
+import { getCurrentUser } from "../../../shared/auth/currentUser";
 import PartnershipSidebar from "../components/PartnershipSidebar";
+import PartnershipMitraInboxPage from "./PartnershipMitraInboxPage";
 
-// ─── Logo Components ──────────────────────────────────────────────────────────
+const base = (user: any) => user?.role === "MITRA" ? "/mitra/partnerships" : "/umkm/partnerships";
 
-const LogoUMKMTumbuh: React.FC<{ size?: number }> = ({ size = 40 }) => (
-  <svg width={size} height={size} viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect width="40" height="40" rx="8" fill="#F5A623" />
-    <path d="M8 28 L14 16 L20 22 L26 12 L32 28 Z" fill="#1A3A6B" strokeLinejoin="round" />
-    <circle cx="26" cy="12" r="3" fill="#1A3A6B" />
-  </svg>
-);
+const dummyUser = {
+  id: "user1",
+  role: "MITRA" as const,
+  fullName: "Nusantara Ventures",
+};
 
-const LogoKementrian: React.FC<{ size?: number }> = ({ size = 36 }) => (
-  <svg width={size} height={size} viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="18" cy="18" r="17" stroke="white" strokeWidth="1.5" fill="none" />
-    <path d="M18 6 L20 13 L27 13 L21.5 17.5 L23.5 24.5 L18 20 L12.5 24.5 L14.5 17.5 L9 13 L16 13 Z" fill="white" />
-    <text x="18" y="32" textAnchor="middle" fill="white" fontSize="5" fontFamily="serif" fontWeight="bold">KEMENKOP</text>
-  </svg>
-);
+const UMKM_TYPES = ["all", "Agribisnis", "Digital", "Edukasi", "Fashion", "Jasa", "Kecantikan", "Kerajinan", "Kesehatan", "Kriya", "Kuliner", "Otomotif", "Perdagangan", "Usaha Mikro, Kecil, dan Menengah"];
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface MitraProfile {
-  id: string;
-  name: string;
-  category: string;
-  description: string;
-  location: string;
-  totalPartnership: number;
-  successRate: number;
-  imageInitials: string;
-}
-
-// ─── Mock Data ────────────────────────────────────────────────────────────────
-
-const MOCK_MITRA_LIST: MitraProfile[] = [
-  {
-    id: "1",
-    name: "Bank Mandiri UMKM",
-    category: "Perbankan",
-    description: "Solusi permodalan KUR dan Kredit Usaha Mikro dengan bunga kompetitif serta pendampingan bisnis untuk UMKM naik kelas.",
-    location: "Jakarta",
-    totalPartnership: 5000,
-    successRate: 92,
-    imageInitials: "BM",
-  },
-  {
-    id: "2",
-    name: "Nusantara Ventures",
-    category: "Ventura Capital",
-    description: "Modal ventura yang fokus pada pendanaan tahap awal untuk UMKM kreatif dan inovatif di Indonesia.",
-    location: "Surabaya",
-    totalPartnership: 120,
-    successRate: 85,
-    imageInitials: "NV",
-  },
-  {
-    id: "3",
-    name: "Bank CIMB Niaga",
-    category: "Perbankan",
-    description: "Solusi perbankan lengkap dengan produk KUR, pembiayaan modal kerja, dan layanan ekspor impor untuk UMKM.",
-    location: "Jakarta",
-    totalPartnership: 3500,
-    successRate: 88,
-    imageInitials: "CN",
-  },
-  {
-    id: "4",
-    name: "PT Jaya Wijaya",
-    category: "Distribusi",
-    description: "Mitra distribusi nasional yang fokus pada pendanaan tahap awal untuk UMKM kreatif dan inovatif di Indonesia.",
-    location: "Surabaya",
-    totalPartnership: 250,
-    successRate: 78,
-    imageInitials: "JW",
-  },
-  {
-    id: "5",
-    name: "JNE International",
-    category: "Logistik",
-    description: "Mitra pengiriman ekspor terpercaya dengan tarif khusus bagi pelaku UMKM yang ingin go international.",
-    location: "Jakarta",
-    totalPartnership: 10000,
-    successRate: 95,
-    imageInitials: "JI",
-  },
-  {
-    id: "6",
-    name: "Pusat Kreatif Nusantara",
-    category: "Inkubator",
-    description: "Program inkubasi 6 bulan yang membekali pengrajin dengan skills digital marketing dan ekspor.",
-    location: "Bandung",
-    totalPartnership: 89,
-    successRate: 82,
-    imageInitials: "PK",
-  },
-  {
-    id: "7",
-    name: "Tokopedia",
-    category: "E-commerce",
-    description: "Platform marketplace terbesar di Indonesia dengan program khusus untuk onboarding UMKM naik kelas.",
-    location: "Jakarta",
-    totalPartnership: 12000,
-    successRate: 90,
-    imageInitials: "TK",
-  },
-  {
-    id: "8",
-    name: "Shopee Indonesia",
-    category: "E-commerce",
-    description: "Platform belanja online dengan fitur Shopee UMKM Campus dan akses pasar ekspor.",
-    location: "Jakarta",
-    totalPartnership: 15000,
-    successRate: 88,
-    imageInitials: "SI",
-  },
-  {
-    id: "9",
-    name: "Gojek",
-    category: "Teknologi",
-    description: "Super app dengan program Gojek Wirausaha untuk membantu UMKM go digital.",
-    location: "Jakarta",
-    totalPartnership: 8000,
-    successRate: 87,
-    imageInitials: "GJ",
-  },
-];
-
-// ─── Avatar Color Helper ──────────────────────────────────────────────────────
-
-const AVATAR_COLORS = [
-  { bg: "#1A3A6B", text: "white" },
-  { bg: "#1D9E75", text: "white" },
-  { bg: "#F5A623", text: "#1A3A6B" },
-  { bg: "#E24B4A", text: "white" },
-  { bg: "#5F5E5A", text: "white" },
-  { bg: "#2A5DA8", text: "white" },
-];
-
-function getAvatarColor(name: string) {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-}
-
-// ─── Main Page ────────────────────────────────────────────────────────────────
+const MITRA_TYPES = ["all", "BUMN", "Inkubator Bisnis", "Komunitas", "Komunitas Bisnis", "Koperasi", "Lainnya", "Lembaga Keuangan", "Lembaga Pelatihan", "Lembaga Pendidikan", "Logistik", "Marketplace", "Media Promosi", "Pemerintah", "Pemerintah Daerah", "Perguruan Tinggi", "Perusahaan", "Perusahaan Swasta"];
 
 const PartnershipListPage: React.FC = () => {
   const navigate = useNavigate();

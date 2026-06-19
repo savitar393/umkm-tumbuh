@@ -1,5 +1,4 @@
 import { http } from "../../shared/api/http";
-import { getAccessToken } from "../../shared/auth/currentUser";
 import {
   CertificateSchema,
   CertificateDashboardSchema,

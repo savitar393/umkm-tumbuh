@@ -119,7 +119,6 @@ export const partnershipsApi = {
     if (params?.page) queryParams.append("page", params.page.toString());
     if (params?.limit) queryParams.append("limit", params.limit.toString());
     if (params?.status) queryParams.append("status", params.status);
-
     const url = `/partnerships/status${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
     return httpPartnerships.get<SuccessResponse<PartnershipStatusResponse>>(url);
   },
@@ -134,7 +133,6 @@ export const partnershipsApi = {
     if (params?.page) queryParams.append("page", params.page.toString());
     if (params?.limit) queryParams.append("limit", params.limit.toString());
     if (params?.status) queryParams.append("status", params.status);
-
     const url = `/partnerships/incoming${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
     return httpPartnerships.get<SuccessResponse<IncomingPartnershipsResponse>>(url);
   },

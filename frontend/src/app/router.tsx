@@ -1,7 +1,5 @@
 import { Navigate, useRoutes, type RouteObject } from "react-router-dom";
 import { RequireAuth } from "../shared/auth/RequireAuth";
-
-
 import { publicRoutes } from "../features/public/routes";
 import { authRoutes } from "../features/auth/routes";
 import { adminRoutes } from "../features/admin/routes";
@@ -14,20 +12,19 @@ import { documentRoutes } from "../features/documents/routes";
 import { trainingRoutes } from "../features/trainings/routes";
 import { certificateRoutes } from "../features/certificates/routes";
 import { notificationRoutes } from "../features/notifications/routes";
-
+import EditUmkmProfilePage from "../features/umkm/pages/EditUmkmProfilePage";
+import UmkmProfilePage from "../features/umkm/pages/UmkmProfilePage";
+import EditMitraProfilePage from "../features/mitra/pages/EditMitraProfilePage";
+import MitraProfilePage from "../features/mitra/pages/MitraProfilePage";
 const routes: RouteObject[] = [
   ...publicRoutes,
   ...authRoutes,
-
-  // Public partnerships routes (tanpa login)
   ...publicPartnershipRoutes,
-
   {
     path: "/admin",
     element: <RequireAuth allowedRole="ADMIN" />,
     children: adminRoutes,
   },
-
   {
     path: "/umkm",
     element: <RequireAuth allowedRole="UMKM" />,
@@ -41,9 +38,10 @@ const routes: RouteObject[] = [
       ...trainingRoutes,
       ...certificateRoutes,
       ...notificationRoutes,
+      { path: "profile", element: <EditUmkmProfilePage /> },
+      { path: "profile/view", element: <UmkmProfilePage /> },
     ],
   },
-
   {
     path: "/mitra",
     element: <RequireAuth allowedRole="MITRA" />,
@@ -53,15 +51,26 @@ const routes: RouteObject[] = [
       ...mitraPartnershipRoutes,
       ...documentRoutes,
       ...notificationRoutes,
+      { path: "profile", element: <EditMitraProfilePage /> },
+      { path: "profile/view", element: <MitraProfilePage /> },
     ],
   },
-
+  {
+    path: "/profile/mitra",
+    element: <RequireAuth allowedRole="MITRA" />,
+    children: [
+      { index: true, element: <MitraProfilePage /> },
+      { path: "group", element: <MitraProfilePage /> },
+      { path: "pic", element: <MitraProfilePage /> },
+      { path: "bidang", element: <MitraProfilePage /> },
+      { path: "docs", element: <MitraProfilePage /> },
+    ],
+  },
   {
     path: "*",
     element: <Navigate to="/" replace />,
   },
 ];
-
 export function AppRouter() {
   return useRoutes(routes);
 }

@@ -5,9 +5,11 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -877,6 +879,198 @@ func scanMitraProfile(row scanner) (map[string]any, error) {
 		"created_at":           createdAt,
 		"updated_at":           updatedAt,
 	}, nil
+}
+
+func (h *Handler) ListMitra(w http.ResponseWriter, r *http.Request) {
+	searchQuery := strings.TrimSpace(r.URL.Query().Get("q"))
+
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page < 1 {
+		page = 1
+	}
+
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit < 1 || limit > 50 {
+		limit = 9
+	}
+
+	offset := (page - 1) * limit
+
+	query := `
+		SELECT
+			m.mitra_id,
+			m.nama_mitra,
+			j.nama_jenis_mitra,
+			l.kabupaten_kota,
+			l.provinsi,
+			m.deskripsi_dukungan,
+			m.wilayah_operasional,
+			COUNT(*) OVER() as total_count
+		FROM user_mgmt.master_mitra m
+		JOIN user_mgmt.master_lokasi l ON l.lokasi_id = m.lokasi_id
+		JOIN ref.ref_jenismitra j ON j.jenis_mitra_id = m.jenis_mitra_id
+		WHERE m.is_deleted = FALSE
+	`
+
+	var args []interface{}
+	argIndex := 1
+
+	if searchQuery != "" {
+		query += fmt.Sprintf(
+			" AND (m.nama_mitra ILIKE $%d OR j.nama_jenis_mitra ILIKE $%d)",
+			argIndex, argIndex,
+		)
+		args = append(args, "%"+searchQuery+"%")
+		argIndex++
+	}
+
+	query += fmt.Sprintf(
+		" ORDER BY m.nama_mitra ASC LIMIT $%d OFFSET $%d",
+		argIndex, argIndex+1,
+	)
+	args = append(args, limit, offset)
+
+	rows, err := h.DB.Query(r.Context(), query, args...)
+	if err != nil {
+		log.Printf("failed to query mitra list: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "Gagal mengambil daftar mitra."})
+		return
+	}
+	defer rows.Close()
+
+	type mitraItem struct {
+		ID               string  `json:"id"`
+		Name             string  `json:"name"`
+		Type             string  `json:"type"`
+		City             string  `json:"city"`
+		Province         string  `json:"province"`
+		Description      *string `json:"description"`
+		OperationalArea  *string `json:"operational_area"`
+	}
+
+	var mitraList []mitraItem
+	var totalCount int
+
+	for rows.Next() {
+		var item mitraItem
+		if err := rows.Scan(
+			&item.ID, &item.Name, &item.Type,
+			&item.City, &item.Province,
+			&item.Description, &item.OperationalArea,
+			&totalCount,
+		); err != nil {
+			log.Printf("failed to scan mitra row: %v", err)
+			continue
+		}
+		mitraList = append(mitraList, item)
+	}
+
+	totalPages := (totalCount + limit - 1) / limit
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"mitra": mitraList,
+		"pagination": map[string]int{
+			"page":       page,
+			"limit":      limit,
+			"total":      totalCount,
+			"totalPages": totalPages,
+		},
+	})
+}
+
+func (h *Handler) ListUMKM(w http.ResponseWriter, r *http.Request) {
+	searchQuery := strings.TrimSpace(r.URL.Query().Get("q"))
+
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page < 1 {
+		page = 1
+	}
+
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit < 1 || limit > 50 {
+		limit = 9
+	}
+
+	offset := (page - 1) * limit
+
+	query := `
+		SELECT
+			u.umkm_id,
+			u.nama_umkm,
+			k.nama_kategori_usaha,
+			l.kabupaten_kota,
+			l.provinsi,
+			u.deskripsi_usaha,
+			COUNT(*) OVER() as total_count
+		FROM user_mgmt.master_umkm u
+		JOIN user_mgmt.master_lokasi l ON l.lokasi_id = u.lokasi_id
+		JOIN ref.ref_kategoriusaha k ON k.kategori_usaha_id = u.kategori_usaha_id
+		WHERE u.is_deleted = FALSE
+	`
+
+	var args []interface{}
+	argIndex := 1
+
+	if searchQuery != "" {
+		query += fmt.Sprintf(
+			" AND (u.nama_umkm ILIKE $%d OR k.nama_kategori_usaha ILIKE $%d)",
+			argIndex, argIndex,
+		)
+		args = append(args, "%"+searchQuery+"%")
+		argIndex++
+	}
+
+	query += fmt.Sprintf(
+		" ORDER BY u.nama_umkm ASC LIMIT $%d OFFSET $%d",
+		argIndex, argIndex+1,
+	)
+	args = append(args, limit, offset)
+
+	rows, err := h.DB.Query(r.Context(), query, args...)
+	if err != nil {
+		log.Printf("failed to query umkm list: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "Gagal mengambil daftar UMKM."})
+		return
+	}
+	defer rows.Close()
+
+	type umkmItem struct {
+		ID          string  `json:"id"`
+		Name        string  `json:"name"`
+		Type        string  `json:"type"`
+		City        string  `json:"city"`
+		Province    string  `json:"province"`
+		Description *string `json:"description"`
+	}
+
+	var umkmList []umkmItem
+	var totalCount int
+
+	for rows.Next() {
+		var item umkmItem
+		if err := rows.Scan(
+			&item.ID, &item.Name, &item.Type,
+			&item.City, &item.Province,
+			&item.Description,
+			&totalCount,
+		); err != nil {
+			log.Printf("failed to scan umkm row: %v", err)
+			continue
+		}
+		umkmList = append(umkmList, item)
+	}
+
+	totalPages := (totalCount + limit - 1) / limit
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"umkm": umkmList,
+		"pagination": map[string]int{
+			"page":       page,
+			"limit":      limit,
+			"total":      totalCount,
+			"totalPages": totalPages,
+		},
+	})
 }
 
 func handleProfileError(w http.ResponseWriter, err error) {

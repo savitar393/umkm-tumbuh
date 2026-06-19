@@ -2,7 +2,6 @@ package dashboard
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
@@ -396,8 +395,45 @@ func handleError(w http.ResponseWriter, err error, fallback string) {
 	writeJSON(w, http.StatusInternalServerError, map[string]string{"error": fallback})
 }
 
-func writeJSON(w http.ResponseWriter, statusCode int, payload any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	_ = json.NewEncoder(w).Encode(payload)
+// GetUMKMDashboard — GET /api/v1/dashboard/umkm?from=YYYY-MM-DD&to=YYYY-MM-DD
+func (h *Handler) GetUMKMDashboard(w http.ResponseWriter, r *http.Request) {
+	user, ok := currentUMKMUser(w, r)
+	if !ok {
+		return
+	}
+
+	dateFrom := r.URL.Query().Get("from")
+	dateTo := r.URL.Query().Get("to")
+
+	repo := NewRepository(h.DB)
+	svc := NewService(repo)
+
+	data, err := svc.GetUMKMDashboard(r.Context(), user.ID, dateFrom, dateTo)
+	if err != nil {
+		handleError(w, err, "Gagal memuat data dashboard.")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, data)
+}
+
+// GetMitraDashboard — GET /api/v1/dashboard/mitra?umkm_id=...
+func (h *Handler) GetMitraDashboard(w http.ResponseWriter, r *http.Request) {
+	user, ok := currentUMKMUser(w, r)
+	if !ok {
+		return
+	}
+
+	selectedUMKMID := r.URL.Query().Get("umkm_id")
+
+	repo := NewRepository(h.DB)
+	svc := NewService(repo)
+
+	data, err := svc.GetMitraDashboard(r.Context(), user.ID, selectedUMKMID)
+	if err != nil {
+		handleError(w, err, "Gagal memuat data dashboard mitra.")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, data)
 }

@@ -96,12 +96,7 @@ const IconDoc = () => (
   </svg>
 );
 
-// const IconBadge = () => (
-//   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-//     <circle cx="12" cy="8" r="6" />
-//     <path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11" />
-//   </svg>
-// );
+
 
 const IconCert = () => (
   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
@@ -117,7 +112,6 @@ const PartnershipCreatePage: React.FC = () => {
   const location = useLocation();
   const user = getCurrentUser();
   const basePath = user?.role === "MITRA" ? "/mitra/partnerships" : "/umkm/partnerships";
-  const isMitra = user?.role === "MITRA";
 
   // State untuk daftar mitra dari backend
   const [mitraList, setMitraList] = useState<Array<{ id: string; name: string }>>([]);
@@ -358,6 +352,7 @@ const PartnershipCreatePage: React.FC = () => {
                     />
                     {errors.business_name && <p style={errorStyle}>{errors.business_name}</p>}
                   </div>
+
                   <div>
                     <label style={labelStyle}>Kontak Person (WhatsApp/Email)</label>
                     <input

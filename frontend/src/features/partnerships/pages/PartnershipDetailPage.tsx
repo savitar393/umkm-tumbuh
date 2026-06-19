@@ -1,50 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { partnershipsApi } from "../api";
-import type { PartnershipRequest } from "../types";
+import type { UMKMDetail, MitraDetail } from "../api";
+import { getCurrentUser } from "../../../shared/auth/currentUser";
 import PartnershipSidebar from "../components/PartnershipSidebar";
-
-// ─── Logo Components ──────────────────────────────────────────────────────────
-
-const LogoNusantara: React.FC<{ size?: number }> = ({ size = 48 }) => (
-  <div style={{
-    width: size,
-    height: size,
-    background: "#1A3A6B",
-    borderRadius: 12,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: "#F5A623",
-    fontWeight: "bold",
-    fontSize: size * 0.4,
-  }}>
-    NV
-  </div>
-);
-
-// ─── Star Rating Component ────────────────────────────────────────────────────
-
-const StarRating: React.FC<{ rating: number }> = ({ rating }) => {
-  const fullStars = Math.floor(rating);
-  const hasHalfStar = rating % 1 >= 0.5;
-
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-      {[...Array(5)].map((_, i) => (
-        <span key={i} style={{
-          color: i < fullStars ? "#F5A623" : (i === fullStars && hasHalfStar ? "#F5A623" : "#E8E7E2"),
-          fontSize: 16
-        }}>
-          {i < fullStars ? "★" : (i === fullStars && hasHalfStar ? "½" : "☆")}
-        </span>
-      ))}
-      <span style={{ fontSize: 13, color: "#888780", marginLeft: 6 }}>{rating.toFixed(1)}</span>
-    </div>
-  );
-};
-
-// ─── Main Page ────────────────────────────────────────────────────────────────
 
 const PartnershipDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -58,62 +17,34 @@ const PartnershipDetailPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (id) {
-      fetchPartnership(id);
-    }
-  }, [id]);
-
-  const fetchPartnership = async (partnershipId: string) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await partnershipsApi.getDetail(partnershipId);
-
-      if (response.status === "success" && response.data) {
-        setPartnership(response.data as PartnershipRequest);
-      } else {
-        setError(response.message || "Gagal memuat detail kemitraan");
+    if (!id) return;
+    const fetchDetail = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        if (isMitra) {
+          const resp = await partnershipsApi.getUMKMDetail(id);
+          if (resp.success === true && resp.data?.umkm) {
+            setDetail(resp.data.umkm);
+          } else {
+            setError("UMKM tidak ditemukan");
+          }
+        } else {
+          const resp = await partnershipsApi.getMitraDetail(id);
+          if (resp.success === true && resp.data?.mitra) {
+            setDetail(resp.data.mitra);
+          } else {
+            setError("Mitra tidak ditemukan");
+          }
+        }
+      } catch {
+        setError("Gagal memuat data");
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error("Error fetching partnership:", err);
-      setError("Terjadi kesalahan saat memuat data");
-
-      // Mock data for demo
-      setPartnership({
-        id: partnershipId,
-        request_code: "PKS-2026-00000001",
-        requester_id: "user1",
-        receiver_id: "mitra1",
-        requester_role: "UMKM",
-        receiver_role: "MITRA",
-        category: "Pendanaan",
-        proposal_title: "Pengajuan Kerjasama Pendanaan",
-        proposal_description: "Mengajukan kerjasama pendanaan untuk pengembangan produk",
-        business_name: "UMKM Sari Roti",
-        contact_person: "+628123456789",
-        product_description: "Produk roti tradisional",
-        reason_for_partnership: "Membutuhkan modal pengembangan",
-        nib_ktp_file: "nib.pdf",
-        proposal_file: "proposal.pdf",
-        status: "SUBMITTED",
-        submitted_at: "2026-06-08T10:00:00Z",
-        created_at: "2026-06-08T10:00:00Z",
-        updated_at: "2026-06-08T10:00:00Z",
-        requester_name: "UMKM Sari Roti",
-        receiver_name: "Nusantara Ventures",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-
-  const handleDownloadTemplate = () => {
-    setShowDownloadAlert(true);
-    setTimeout(() => setShowDownloadAlert(false), 3000);
-    // In production: window.open('/template/pengajuan-kemitraan.pdf', '_blank');
-  };
+    };
+    fetchDetail();
+  }, [id, isMitra]);
 
   const handleAjukanKemitraan = () => {
     navigate(`${basePath}/create?receiver_id=${id}`);
