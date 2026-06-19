@@ -62,6 +62,9 @@ export default function TrainingLessonPage() {
         onSuccess: () => {
           markModuleCompleted(moduleId);
         },
+        onError: () => {
+          alert("Gagal menyimpan progress. Silakan coba lagi.");
+        },
       }
     );
   };

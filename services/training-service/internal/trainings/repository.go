@@ -3,12 +3,14 @@ package trainings
 import (
 	"context"
 	"errors"
+	"net/http"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/savitar393/umkm-tumbuh/services/training-service/internal/apperror"
 )
 
 type Repository struct {
@@ -324,11 +326,16 @@ func (r *Repository) UpdateProgress(ctx context.Context, pendaftaranID string, m
 		    progress_persen = $3,
 		    terakhir_diakses_at = NOW()
 		WHERE pendaftaran_pelatihan_id = $1
-		  AND $2 <= total_modul_snapshot
 	`
 
-	_, err := r.DB.Exec(ctx, query, pendaftaranID, modulSelesai, progressPersen)
-	return err
+	tag, err := r.DB.Exec(ctx, query, pendaftaranID, modulSelesai, progressPersen)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return apperror.New(http.StatusNotFound, "Pendaftaran pelatihan tidak ditemukan")
+	}
+	return nil
 }
 
 // MarkTrainingComplete - tandai pelatihan selesai
@@ -349,7 +356,10 @@ func (r *Repository) MarkTrainingComplete(ctx context.Context, pendaftaranID str
 	} else {
 		_, err = r.DB.Exec(ctx, query, pendaftaranID, nil)
 	}
-	return err
+	if err != nil {
+		return apperror.New(http.StatusInternalServerError, err.Error())
+	}
+	return nil
 }
 
 // generateID - buat ID dengan prefix, bebas dash
