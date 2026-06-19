@@ -5,10 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-<<<<<<< HEAD
 	"os"
-=======
->>>>>>> origin/dev
 	"path/filepath"
 
 	"github.com/jackc/pgx/v5"
@@ -158,8 +155,7 @@ func (s *Service) GetCertificatePDFPath(ctx context.Context, sertifikatID int64)
 	if err != nil {
 		return "", err
 	}
-<<<<<<< HEAD
-	if cert.StatusSertifikatID != "TERBIT" {
+if cert.StatusSertifikatID != "TERBIT" {
 		return "", apperror.New(http.StatusBadRequest, "Sertifikat belum diterbitkan")
 	}
 
@@ -171,10 +167,5 @@ func (s *Service) GetCertificatePDFPath(ctx context.Context, sertifikatID int64)
 			return "", err
 		}
 	}
-
-=======
-	fileName := fmt.Sprintf("cert_%d.pdf", cert.SertifikatID)
-	filePath := filepath.Join(s.certDir, fileName)
->>>>>>> origin/dev
 	return filePath, nil
 }
