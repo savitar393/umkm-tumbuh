@@ -1,4 +1,5 @@
 import { http } from "../../shared/api/http";
+import { documentHttp } from "../../shared/api/documentHttp";
 import {
   TrainingProgramSchema,
   TrainingDetailSchema,
@@ -94,4 +95,21 @@ export async function updateProgress(data: UpdateProgressRequest): Promise<{ mes
 export async function completeTraining(data: CompleteTrainingRequest): Promise<{ message: string }> {
   const response = await http.patch(`${ENROLLMENT_BASE}/complete`, data, { service: "training" });
   return CompleteTrainingResponseSchema.parse(response);
+}
+
+export async function uploadEvaluationDocument(file: File): Promise<string> {
+  const formData = new FormData();
+  formData.append("category", "GENERAL_DOCUMENT");
+  formData.append("file", file);
+
+  const response = await documentHttp<{ message: string; document: { id: string } }>(
+    "/documents/upload",
+    {
+      method: "POST",
+      body: formData,
+      skipJsonContentType: true,
+    },
+  );
+
+  return response.document.id;
 }

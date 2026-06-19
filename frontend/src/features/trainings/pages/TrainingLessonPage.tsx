@@ -41,17 +41,24 @@ export default function TrainingLessonPage() {
   const markModuleCompleted = useTrainingStore((s) => s.markModuleCompleted);
   const setCompletedModules = useTrainingStore((s) => s.setCompletedModules);
 
+  const trainingModuleIds = modules.map((m) => m.modul_id);
+  const trainingCompleted = completedModules.filter((id) => trainingModuleIds.includes(id));
+
   useEffect(() => {
-    if (completedModules.length === 0 && enrollment && enrollment.modul_selesai > 0 && modules.length > 0) {
-      const hydated = modules.slice(0, enrollment.modul_selesai).map((m) => m.modul_id);
-      setCompletedModules(hydated);
+    if (enrollment && enrollment.modul_selesai > 0 && modules.length > 0) {
+      const apiModuleIds = modules.slice(0, enrollment.modul_selesai).map((m) => m.modul_id);
+      const otherModuleIds = completedModules.filter((id) => !trainingModuleIds.includes(id));
+      const merged = [...new Set([...otherModuleIds, ...apiModuleIds])];
+      if (merged.length !== completedModules.length || !merged.every((id) => completedModules.includes(id))) {
+        setCompletedModules(merged);
+      }
     }
-  }, [enrollment, modules, completedModules.length, setCompletedModules]);
+  }, [enrollment, modules, completedModules, setCompletedModules, trainingModuleIds]);
 
   const handleComplete = () => {
     if (!currentModule || !enrollment) return;
     const moduleId = currentModule.modul_id;
-    const newCompleted = [...new Set([...completedModules, moduleId])];
+    const newCompleted = [...new Set([...trainingCompleted, moduleId])];
     updateProgress.mutate(
       {
         pendaftaran_pelatihan_id: enrollment.pendaftaran_pelatihan_id,
@@ -62,14 +69,17 @@ export default function TrainingLessonPage() {
         onSuccess: () => {
           markModuleCompleted(moduleId);
         },
+        onError: () => {
+          alert("Gagal menyimpan progress. Silakan coba lagi.");
+        },
       }
     );
   };
 
-  const isCompleted = (moduleId: string) => completedModules.includes(moduleId);
+  const isCompleted = (moduleId: string) => trainingCompleted.includes(moduleId);
   const isCurrent = (moduleId: string) => moduleId === (lessonId || modules[0]?.modul_id);
 
-  const progressPercent = modules.length > 0 ? Math.min(100, Math.round((completedModules.length / modules.length) * 100)) : 0;
+  const progressPercent = modules.length > 0 ? Math.min(100, Math.round((trainingCompleted.length / modules.length) * 100)) : 0;
 
   if (isLoading) {
     return (

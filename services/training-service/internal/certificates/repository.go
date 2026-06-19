@@ -62,15 +62,24 @@ func (r *Repository) GetUserCertificateDashboard(ctx context.Context, umkmID str
 func (r *Repository) GetUserCertificates(ctx context.Context, umkmID string) ([]CertificateResponse, error) {
 	query := `
 		SELECT
-			sertifikat_id, pendaftaran_pelatihan_id, nomor_sertifikat,
-			tanggal_pengajuan, tanggal_terbit, status_sertifikat_id,
-			nama_status_sertifikat, dokumen_id, dokumen_url, catatan_validasi,
-			pelatihan_id, judul_pelatihan, jenis_pelatihan,
-			tanggal_selesai, progress_persen,
-			umkm_id, nama_umkm, pelaku_nama
-		FROM training.v_certificate_details
-		WHERE umkm_id = $1
-		ORDER BY tanggal_pengajuan DESC NULLS LAST
+			ts.sertifikat_id, ts.pendaftaran_pelatihan_id, ts.nomor_sertifikat,
+			ts.tanggal_pengajuan, ts.tanggal_terbit, ts.status_sertifikat_id,
+			rss.nama_status_sertifikat, ts.dokumen_id, tdu.public_url, ts.catatan_validasi,
+			mpp.pelatihan_id, mpp.judul_pelatihan,
+			rjp.nama_jenis_pelatihan,
+			tp.tanggal_selesai, tp.progress_persen,
+			tp.umkm_id, mu.nama_umkm, mpu.nama_pelaku,
+			COALESCE(mpp.mentor_nama, 'Mentor') AS mentor_nama
+		FROM training.transaksi_sertifikatpelatihan ts
+		JOIN training.transaksi_pendaftaranpelatihan tp ON ts.pendaftaran_pelatihan_id = tp.pendaftaran_pelatihan_id
+		JOIN training.master_programpelatihan mpp ON tp.pelatihan_id = mpp.pelatihan_id
+		JOIN ref.ref_statussertifikat rss ON ts.status_sertifikat_id = rss.status_sertifikat_id
+		JOIN ref.ref_jenispelatihan rjp ON mpp.jenis_pelatihan_id = rjp.jenis_pelatihan_id
+		JOIN user_mgmt.master_umkm mu ON tp.umkm_id = mu.umkm_id
+		JOIN user_mgmt.master_pelakuumkm mpu ON mu.pelaku_umkm_id = mpu.pelaku_umkm_id
+		LEFT JOIN document.transaksi_dokumenterunggah tdu ON ts.dokumen_id = tdu.dokumen_id
+		WHERE tp.umkm_id = $1
+		ORDER BY ts.tanggal_pengajuan DESC NULLS LAST
 	`
 
 	rows, err := r.DB.Query(ctx, query, umkmID)
@@ -89,6 +98,7 @@ func (r *Repository) GetUserCertificates(ctx context.Context, umkmID string) ([]
 			&cert.PelatihanID, &cert.JudulPelatihan, &cert.JenisPelatihan,
 			&cert.TanggalSelesai, &cert.ProgressPersen,
 			&cert.UMKMID, &cert.NamaUMKM, &cert.PelakuNama,
+			&cert.MentorNama,
 		)
 		if err != nil {
 			return nil, err
@@ -102,14 +112,23 @@ func (r *Repository) GetUserCertificates(ctx context.Context, umkmID string) ([]
 func (r *Repository) GetCertificateByID(ctx context.Context, sertifikatID int64) (*CertificateResponse, error) {
 	query := `
 		SELECT
-			sertifikat_id, pendaftaran_pelatihan_id, nomor_sertifikat,
-			tanggal_pengajuan, tanggal_terbit, status_sertifikat_id,
-			nama_status_sertifikat, dokumen_id, dokumen_url, catatan_validasi,
-			pelatihan_id, judul_pelatihan, jenis_pelatihan,
-			tanggal_selesai, progress_persen,
-			umkm_id, nama_umkm, pelaku_nama
-		FROM training.v_certificate_details
-		WHERE sertifikat_id = $1
+			ts.sertifikat_id, ts.pendaftaran_pelatihan_id, ts.nomor_sertifikat,
+			ts.tanggal_pengajuan, ts.tanggal_terbit, ts.status_sertifikat_id,
+			rss.nama_status_sertifikat, ts.dokumen_id, tdu.public_url, ts.catatan_validasi,
+			mpp.pelatihan_id, mpp.judul_pelatihan,
+			rjp.nama_jenis_pelatihan,
+			tp.tanggal_selesai, tp.progress_persen,
+			tp.umkm_id, mu.nama_umkm, mpu.nama_pelaku,
+			COALESCE(mpp.mentor_nama, 'Mentor') AS mentor_nama
+		FROM training.transaksi_sertifikatpelatihan ts
+		JOIN training.transaksi_pendaftaranpelatihan tp ON ts.pendaftaran_pelatihan_id = tp.pendaftaran_pelatihan_id
+		JOIN training.master_programpelatihan mpp ON tp.pelatihan_id = mpp.pelatihan_id
+		JOIN ref.ref_statussertifikat rss ON ts.status_sertifikat_id = rss.status_sertifikat_id
+		JOIN ref.ref_jenispelatihan rjp ON mpp.jenis_pelatihan_id = rjp.jenis_pelatihan_id
+		JOIN user_mgmt.master_umkm mu ON tp.umkm_id = mu.umkm_id
+		JOIN user_mgmt.master_pelakuumkm mpu ON mu.pelaku_umkm_id = mpu.pelaku_umkm_id
+		LEFT JOIN document.transaksi_dokumenterunggah tdu ON ts.dokumen_id = tdu.dokumen_id
+		WHERE ts.sertifikat_id = $1
 	`
 
 	var cert CertificateResponse
@@ -120,6 +139,7 @@ func (r *Repository) GetCertificateByID(ctx context.Context, sertifikatID int64)
 		&cert.PelatihanID, &cert.JudulPelatihan, &cert.JenisPelatihan,
 		&cert.TanggalSelesai, &cert.ProgressPersen,
 		&cert.UMKMID, &cert.NamaUMKM, &cert.PelakuNama,
+		&cert.MentorNama,
 	)
 
 	if err != nil {
@@ -174,14 +194,23 @@ func (r *Repository) ListCertificatesByStatus(ctx context.Context, status, searc
 
 	query := fmt.Sprintf(`
 		SELECT
-			sertifikat_id, pendaftaran_pelatihan_id, nomor_sertifikat,
-			tanggal_pengajuan, tanggal_terbit, status_sertifikat_id,
-			nama_status_sertifikat, dokumen_id, dokumen_url, catatan_validasi,
-			pelatihan_id, judul_pelatihan, jenis_pelatihan,
-			tanggal_selesai, progress_persen,
-			umkm_id, nama_umkm, pelaku_nama
-		FROM training.v_certificate_details
-		WHERE ($1 = '' OR status_sertifikat_id = $1)
+			ts.sertifikat_id, ts.pendaftaran_pelatihan_id, ts.nomor_sertifikat,
+			ts.tanggal_pengajuan, ts.tanggal_terbit, ts.status_sertifikat_id,
+			rss.nama_status_sertifikat, ts.dokumen_id, tdu.public_url, ts.catatan_validasi,
+			mpp.pelatihan_id, mpp.judul_pelatihan,
+			rjp.nama_jenis_pelatihan,
+			tp.tanggal_selesai, tp.progress_persen,
+			tp.umkm_id, mu.nama_umkm, mpu.nama_pelaku,
+			COALESCE(mpp.mentor_nama, 'Mentor') AS mentor_nama
+		FROM training.transaksi_sertifikatpelatihan ts
+		JOIN training.transaksi_pendaftaranpelatihan tp ON ts.pendaftaran_pelatihan_id = tp.pendaftaran_pelatihan_id
+		JOIN training.master_programpelatihan mpp ON tp.pelatihan_id = mpp.pelatihan_id
+		JOIN ref.ref_statussertifikat rss ON ts.status_sertifikat_id = rss.status_sertifikat_id
+		JOIN ref.ref_jenispelatihan rjp ON mpp.jenis_pelatihan_id = rjp.jenis_pelatihan_id
+		JOIN user_mgmt.master_umkm mu ON tp.umkm_id = mu.umkm_id
+		JOIN user_mgmt.master_pelakuumkm mpu ON mu.pelaku_umkm_id = mpu.pelaku_umkm_id
+		LEFT JOIN document.transaksi_dokumenterunggah tdu ON ts.dokumen_id = tdu.dokumen_id
+		WHERE ($1 = '' OR ts.status_sertifikat_id = $1)
 		%s
 		%s
 		LIMIT $%d OFFSET $%d
@@ -203,6 +232,7 @@ func (r *Repository) ListCertificatesByStatus(ctx context.Context, status, searc
 			&cert.PelatihanID, &cert.JudulPelatihan, &cert.JenisPelatihan,
 			&cert.TanggalSelesai, &cert.ProgressPersen,
 			&cert.UMKMID, &cert.NamaUMKM, &cert.PelakuNama,
+			&cert.MentorNama,
 		)
 		if err != nil {
 			return nil, err

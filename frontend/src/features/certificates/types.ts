@@ -19,6 +19,7 @@ export const CertificateSchema = z.object({
   umkm_id: z.string(),
   nama_umkm: z.string(),
   pelaku_nama: z.string(),
+  mentor_nama: z.string(),
 });
 
 export const CertificateDashboardSchema = z.object({

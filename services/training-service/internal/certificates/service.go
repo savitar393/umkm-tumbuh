@@ -5,10 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-<<<<<<< HEAD
 	"os"
-=======
->>>>>>> origin/dev
 	"path/filepath"
 
 	"github.com/jackc/pgx/v5"
@@ -94,6 +91,12 @@ func (s *Service) ApproveCertificate(ctx context.Context, sertifikatID int64) (*
 	if cert.StatusSertifikatID == "TERBIT" {
 		return cert, nil
 	}
+	if cert.StatusSertifikatID != "DIAJUKAN" {
+		return nil, apperror.New(http.StatusBadRequest, "Hanya sertifikat dengan status DIAJUKAN yang dapat disetujui")
+	}
+	if cert.ProgressPersen < 100 {
+		return nil, apperror.New(http.StatusBadRequest, "Sertifikat hanya dapat diterbitkan untuk pelatihan dengan progress 100%")
+	}
 
 	if err := s.Repo.ApproveCertificate(ctx, sertifikatID); err != nil {
 		return nil, err
@@ -158,12 +161,13 @@ func (s *Service) GetCertificatePDFPath(ctx context.Context, sertifikatID int64)
 	if err != nil {
 		return "", err
 	}
-<<<<<<< HEAD
 	if cert.StatusSertifikatID != "TERBIT" {
 		return "", apperror.New(http.StatusBadRequest, "Sertifikat belum diterbitkan")
 	}
 
-	fileName := fmt.Sprintf("cert_%d.pdf", cert.SertifikatID)
+	safeTitle := sanitizeFilename(cert.JudulPelatihan)
+	safeName := sanitizeFilename(cert.PelakuNama)
+	fileName := fmt.Sprintf("sertifikat_%s_%s.pdf", safeTitle, safeName)
 	filePath := filepath.Join(s.certDir, fileName)
 
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
@@ -172,9 +176,5 @@ func (s *Service) GetCertificatePDFPath(ctx context.Context, sertifikatID int64)
 		}
 	}
 
-=======
-	fileName := fmt.Sprintf("cert_%d.pdf", cert.SertifikatID)
-	filePath := filepath.Join(s.certDir, fileName)
->>>>>>> origin/dev
 	return filePath, nil
 }

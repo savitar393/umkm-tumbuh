@@ -122,7 +122,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       UPLOAD_DIR: /app/uploads
     ports:
-      - "8081:8081"
+      - "${USER_SERVICE_PORT:-8082}:${USER_SERVICE_PORT:-8082}"
     volumes:
       - uploads_data:/app/uploads
     depends_on:
@@ -148,7 +148,7 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-umkm_user}:${POSTGRES_PASSWORD:-umkm_password}@postgres:5432/${POSTGRES_DB:-umkm_tumbuh}?sslmode=disable
       JWT_SECRET: ${JWT_SECRET}
     ports:
-      - "8084:8084"
+      - "${TRAINING_SERVICE_PORT:-8085}:${TRAINING_SERVICE_PORT:-8085}"
     depends_on:
       db-migrate:
         condition: service_completed_successfully
@@ -181,15 +181,30 @@ services:
     environment:
       APP_ENV: ${APP_ENV:-development}
       SERVER_HOST: 0.0.0.0
-      SERVER_PORT: 8082
+      SERVER_PORT: ${PARTNERSHIP_SERVICE_PORT:-8083}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       DATABASE_URL: postgres://${POSTGRES_USER:-umkm_user}:${POSTGRES_PASSWORD:-umkm_password}@postgres:5432/${POSTGRES_DB:-umkm_tumbuh}?sslmode=disable
       JWT_SECRET: ${JWT_SECRET}
     ports:
-      - "8082:8082"
+      - "${PARTNERSHIP_SERVICE_PORT:-8083}:${PARTNERSHIP_SERVICE_PORT:-8083}"
     depends_on:
       db-migrate:
         condition: service_completed_successfully
+    networks:
+      - umkm_network
+
+  garage-bootstrap:
+    image: alpine:latest
+    container_name: umkm_garage_bootstrap
+    restart: "no"
+    depends_on:
+      garage:
+        condition: service_started
+    volumes:
+      - ./garage/bootstrap.sh:/bootstrap.sh:ro
+    command: [ "sh", "/bootstrap.sh" ]
+    environment:
+      GARAGE_ADMIN_TOKEN: CHANGE_ME_LOCAL_GARAGE_ADMIN_TOKEN
     networks:
       - umkm_network
 
@@ -202,7 +217,7 @@ services:
     environment:
       APP_ENV: ${APP_ENV:-development}
       DOCUMENT_SERVICE_HOST: 0.0.0.0
-      DOCUMENT_SERVICE_PORT: 8083
+      DOCUMENT_SERVICE_PORT: ${DOCUMENT_SERVICE_PORT:-8084}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       DATABASE_URL: postgres://${POSTGRES_USER:-umkm_user}:${POSTGRES_PASSWORD:-umkm_password}@postgres:5432/${POSTGRES_DB:-umkm_tumbuh}?sslmode=disable
       JWT_SECRET: ${JWT_SECRET}
@@ -217,12 +232,14 @@ services:
       OBJECT_STORAGE_BUCKET_PRODUCT_IMAGES: ${OBJECT_STORAGE_BUCKET_PRODUCT_IMAGES:-product-images}
       OBJECT_STORAGE_BUCKET_PARTNERSHIP_FILES: ${OBJECT_STORAGE_BUCKET_PARTNERSHIP_FILES:-partnership-files}
     ports:
-      - "8083:8083"
+      - "${DOCUMENT_SERVICE_PORT:-8084}:${DOCUMENT_SERVICE_PORT:-8084}"
     depends_on:
       db-migrate:
         condition: service_completed_successfully
       garage:
         condition: service_started
+      garage-bootstrap:
+        condition: service_completed_successfully
     networks:
       - umkm_network
 

@@ -4,8 +4,6 @@ import PartnershipSidebar from "../components/PartnershipSidebar";
 
 
 
-
-
 // ─── Avatar helpers ───────────────────────────────────────────────────────────
 
 const AVATAR_COLORS = [
@@ -99,8 +97,8 @@ const PartnershipStatusPage: React.FC = () => {
     setError(null);
 
     try {
-      const response = await partnershipsApi.getStatus({ 
-        page: currentPage, 
+      const response = await partnershipsApi.getStatus({
+        page: currentPage,
         limit: itemsPerPage,
         status: statusFilter || undefined,
       });

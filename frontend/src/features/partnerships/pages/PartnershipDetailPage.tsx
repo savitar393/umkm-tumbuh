@@ -229,10 +229,10 @@ const PartnershipDetailPage: React.FC = () => {
 
               {/* ── RIGHT COLUMN: Action Card ──────────────────────────────────── */}
               <div style={{ width: 340, flexShrink: 0 }}>
-                <div style={{ 
-                  background: "white", 
-                  borderRadius: 16, 
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.05)", 
+                <div style={{
+                  background: "white",
+                  borderRadius: 16,
+                  boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
                   overflow: "hidden",
                   border: "1px solid #E8E7E2"
                 }}>
@@ -243,20 +243,20 @@ const PartnershipDetailPage: React.FC = () => {
 
                   {/* Download Template */}
                   <div style={{ padding: "16px 24px", borderBottom: "1px solid #E8E7E2" }}>
-                    <button 
+                    <button
                       onClick={downloadTemplate}
-                      style={{ 
-                        display: "flex", 
-                        alignItems: "center", 
-                        gap: 10, 
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
                         width: "100%",
-                        color: "#1A3A6B", 
-                        fontSize: 13, 
-                        fontWeight: 600, 
-                        textDecoration: "none", 
-                        cursor: "pointer", 
-                        padding: "10px 14px", 
-                        borderRadius: 8, 
+                        color: "#1A3A6B",
+                        fontSize: 13,
+                        fontWeight: 600,
+                        textDecoration: "none",
+                        cursor: "pointer",
+                        padding: "10px 14px",
+                        borderRadius: 8,
                         background: "#F5F4F0",
                         border: "none",
                         transition: "all 0.2s",
@@ -309,26 +309,26 @@ const PartnershipDetailPage: React.FC = () => {
                   <div style={{ padding: "16px 24px 20px" }}>
                     <button
                       onClick={handleAjukanKemitraan}
-                      style={{ 
-                        width: "100%", 
-                        padding: "14px 0", 
-                        background: "#1D9E75", 
-                        border: "none", 
-                        borderRadius: 10, 
-                        fontSize: 15, 
-                        fontWeight: 600, 
-                        color: "white", 
+                      style={{
+                        width: "100%",
+                        padding: "14px 0",
+                        background: "#1D9E75",
+                        border: "none",
+                        borderRadius: 10,
+                        fontSize: 15,
+                        fontWeight: 600,
+                        color: "white",
                         cursor: "pointer",
                         transition: "all 0.2s",
                         boxShadow: "0 4px 14px rgba(29, 158, 117, 0.3)"
                       }}
-                      onMouseEnter={(e) => { 
-                        e.currentTarget.style.background = "#0F6E56"; 
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "#0F6E56";
                         e.currentTarget.style.transform = "translateY(-2px)";
                         e.currentTarget.style.boxShadow = "0 6px 20px rgba(29, 158, 117, 0.4)";
                       }}
-                      onMouseLeave={(e) => { 
-                        e.currentTarget.style.background = "#1D9E75"; 
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "#1D9E75";
                         e.currentTarget.style.transform = "translateY(0)";
                         e.currentTarget.style.boxShadow = "0 4px 14px rgba(29, 158, 117, 0.3)";
                       }}

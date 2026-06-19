@@ -45,8 +45,8 @@ const UploadCard: React.FC<UploadCardProps> = ({ label, hint, optional, icon, va
         border: error
           ? "1.5px dashed #E24B4A"
           : value
-          ? "1.5px dashed #1D9E75"
-          : "1.5px dashed #B4B2A9",
+            ? "1.5px dashed #1D9E75"
+            : "1.5px dashed #B4B2A9",
         borderRadius: 12,
         padding: "20px 12px",
         textAlign: "center",
@@ -112,7 +112,7 @@ const PartnershipCreatePage: React.FC = () => {
   const location = useLocation();
   const user = getCurrentUser();
   const basePath = user?.role === "MITRA" ? "/mitra/partnerships" : "/umkm/partnerships";
-  
+
   // State untuk daftar mitra dari backend
   const [mitraList, setMitraList] = useState<Array<{ id: string; name: string }>>([]);
   const [loadingMitra, setLoadingMitra] = useState(true);
@@ -167,7 +167,7 @@ const PartnershipCreatePage: React.FC = () => {
         setLoadingMitra(false);
       }
     };
-    
+
     fetchPartnerList();
   }, [user?.role]);
 
@@ -212,25 +212,25 @@ const PartnershipCreatePage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-    
+
     setLoading(true);
     try {
       const attachments = [files.nib_ktp, files.pdf_kemitraan, files.sertifikat].filter(Boolean) as string[];
-      
+
       const apiData: CreatePartnershipRequest = {
         receiver_id: formData.receiver_id,
         proposal_title: `Pengajuan Kemitraan - ${formData.business_name}`,
         proposal_description: `${formData.product_description}\n\nAlasan Bermitra: ${formData.reason_for_partnership}`,
         attachment_files: attachments,
       };
-      
+
       console.log("=== DEBUG SUBMIT ===");
       console.log("receiver_id:", apiData.receiver_id);
       console.log("proposal_title:", apiData.proposal_title);
       console.log("proposal_description length:", apiData.proposal_description.length);
       console.log("attachment_files:", apiData.attachment_files);
       console.log("Full data:", JSON.stringify(apiData, null, 2));
-      
+
       // Validasi dokumen wajib
       if (!files.nib_ktp) {
         throw new Error("ERR-FILE-01: Dokumen NIB/KTP wajib diunggah.");
@@ -249,14 +249,14 @@ const PartnershipCreatePage: React.FC = () => {
       if (apiData.proposal_description.length < 30) {
         throw new Error("proposal_description minimal 30 karakter");
       }
-      
+
       const response = await partnershipsApi.create(apiData);
       console.log("=== CREATE RESPONSE FULL ===");
       console.log("Raw response:", JSON.stringify(response));
       console.log("response.success:", response.success);
       console.log("response.message:", response.message);
       console.log("response.data:", JSON.stringify(response.data));
-      
+
       if (response.success === true && response.data?.pengajuanID) {
         console.log("SUCCESS PATH: redirecting to success page with pengajuanID:", response.data.pengajuanID);
         navigate(`${basePath}/success?id=${response.data.pengajuanID}`, {
@@ -316,185 +316,186 @@ const PartnershipCreatePage: React.FC = () => {
     <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'Segoe UI', Roboto, sans-serif", position: "relative" }}>
       <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundImage: "url(/background.png)", backgroundSize: "cover", backgroundPosition: "center", zIndex: 0, opacity: 0.7 }} />
       <div style={{ position: "relative", zIndex: 1, display: "flex", width: "100%" }}>
-      <PartnershipSidebar />
-      <main style={{ marginLeft: 260, flex: 1, display: "flex", justifyContent: "center" }}>
-        <div style={{ width: "100%", maxWidth: 860, padding: "40px" }}>
-        <div style={{ background: "white", borderRadius: 16, padding: "32px 36px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
+        <PartnershipSidebar />
+        <main style={{ marginLeft: 260, flex: 1, display: "flex", justifyContent: "center" }}>
+          <div style={{ width: "100%", maxWidth: 860, padding: "40px" }}>
+            <div style={{ background: "white", borderRadius: 16, padding: "32px 36px", boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
 
-          <div style={{ marginBottom: 28, textAlign: "center" }}>
-            <h1 style={{ margin: "0 0 8px", fontSize: 28, fontWeight: 700, color: "#1A3A6B" }}>
-              Formulir Pengajuan Kemitraan
-            </h1>
-            <p style={{ margin: 0, fontSize: 14, color: "#5F5E5A", maxWidth: 520, marginLeft: "auto", marginRight: "auto" }}>
-              Bergabunglah dengan ekosistem kami untuk memperluas jangkauan pasar dan meningkatkan kualitas produk artisan Anda.
-            </p>
+              <div style={{ marginBottom: 28, textAlign: "center" }}>
+                <h1 style={{ margin: "0 0 8px", fontSize: 28, fontWeight: 700, color: "#1A3A6B" }}>
+                  Formulir Pengajuan Kemitraan
+                </h1>
+                <p style={{ margin: 0, fontSize: 14, color: "#5F5E5A", maxWidth: 520, marginLeft: "auto", marginRight: "auto" }}>
+                  Bergabunglah dengan ekosistem kami untuk memperluas jangkauan pasar dan meningkatkan kualitas produk artisan Anda.
+                </p>
+              </div>
+
+              <form
+                onSubmit={handleSubmit}
+                style={{
+                  background: "white",
+                  borderRadius: 16,
+                  padding: "32px 36px",
+                  border: "1px solid #E8E7E2",
+                }}
+              >
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
+                  <div>
+                    <label style={labelStyle}>Nama Usaha</label>
+                    <input
+                      type="text"
+                      name="business_name"
+                      value={formData.business_name}
+                      onChange={handleChange}
+                      placeholder="Masukkan nama brand atau toko Anda"
+                      style={inputStyle(!!errors.business_name)}
+                    />
+                    {errors.business_name && <p style={errorStyle}>{errors.business_name}</p>}
+                  </div>
+
+                  <div>
+                    <label style={labelStyle}>Kontak Person (WhatsApp/Email)</label>
+                    <input
+                      type="text"
+                      name="contact_person"
+                      value={formData.contact_person}
+                      onChange={handleChange}
+                      placeholder="e.g. 0812-3456-7890 atau email@usaha.com"
+                      style={inputStyle(!!errors.contact_person)}
+                    />
+                    {errors.contact_person && <p style={errorStyle}>{errors.contact_person}</p>}
+                  </div>
+                </div>
+
+                {/* Pilih Mitra - Menggunakan data dari backend */}
+                <div style={{ marginBottom: 20 }}>
+                  <label style={labelStyle}>Pilih Mitra/UMKM Tujuan</label>
+                  <select
+                    name="receiver_id"
+                    value={formData.receiver_id}
+                    onChange={handleChange}
+                    disabled={loadingMitra || !!mitraError}
+                    style={{ ...inputStyle(!!errors.receiver_id), color: formData.receiver_id ? "#2C2C2A" : "#888780" }}
+                  >
+                    <option value="">
+                      {loadingMitra ? "Memuat data..." : mitraError ? "Gagal memuat data" : "-- Pilih Mitra/UMKM --"}
+                    </option>
+                    {mitraList.map((mitra) => (
+                      <option key={mitra.id} value={mitra.id}>
+                        {mitra.name}
+                      </option>
+                    ))}
+                  </select>
+                  {mitraError && <p style={errorStyle}>{mitraError}</p>}
+                  {errors.receiver_id && <p style={errorStyle}>{errors.receiver_id}</p>}
+                </div>
+
+                <div style={{ marginBottom: 20 }}>
+                  <label style={labelStyle}>Deskripsi Produk</label>
+                  <textarea
+                    name="product_description"
+                    value={formData.product_description}
+                    onChange={handleChange}
+                    rows={4}
+                    placeholder="Ceritakan keunikan produk artisan Anda, bahan baku yang digunakan, dan proses produksinya..."
+                    style={{ ...inputStyle(!!errors.product_description), resize: "vertical", lineHeight: 1.6 }}
+                  />
+                  {errors.product_description && <p style={errorStyle}>{errors.product_description}</p>}
+                </div>
+
+                <div style={{ marginBottom: 28 }}>
+                  <label style={labelStyle}>Alasan Ingin Bermitra</label>
+                  <textarea
+                    name="reason_for_partnership"
+                    value={formData.reason_for_partnership}
+                    onChange={handleChange}
+                    rows={3}
+                    placeholder="Apa harapan Anda setelah menjadi bagian dari UMKM Artisan?"
+                    style={{ ...inputStyle(!!errors.reason_for_partnership), resize: "vertical", lineHeight: 1.6 }}
+                  />
+                  {errors.reason_for_partnership && <p style={errorStyle}>{errors.reason_for_partnership}</p>}
+                </div>
+
+                <div style={{ marginBottom: 32 }}>
+                  <label style={{ ...labelStyle, marginBottom: 14 }}>
+                    Upload Legalitas / Dokumen Pendukung
+                  </label>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+                    <UploadCard
+                      label="NIB / KTP"
+                      hint="PDF, JPG, PNG (Max 10MB)"
+                      icon={<IconDoc />}
+                      value={files.nib_ktp}
+                      onChange={handleFileChange("nib_ktp")}
+                      error={fileErrors.nib_ktp}
+                    />
+                    <UploadCard
+                      label="PDF Pengajuan Kemitraan"
+                      hint="PDF, JPG, PNG (Max 10MB)"
+                      icon={<IconDoc />}
+                      value={files.pdf_kemitraan}
+                      onChange={handleFileChange("pdf_kemitraan")}
+                      error={fileErrors.pdf_kemitraan}
+                    />
+                    <UploadCard
+                      label="Sertifikat Halal/PIRT"
+                      hint="Opsional, jika ada"
+                      optional
+                      icon={<IconCert />}
+                      value={files.sertifikat}
+                      onChange={handleFileChange("sertifikat")}
+                      error={fileErrors.sertifikat}
+                    />
+                  </div>
+                </div>
+
+                <div style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  borderTop: "1px solid #E8E7E2",
+                  paddingTop: 24,
+                }}>
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    style={{
+                      padding: "10px 28px",
+                      background: "none",
+                      border: "none",
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: "#5F5E5A",
+                      cursor: "pointer",
+                      borderRadius: 8,
+                      transition: "color 0.15s",
+                    }}
+                  >
+                    Batalkan
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    style={{
+                      padding: "11px 36px",
+                      background: loading ? "#888780" : "#1A3A6B",
+                      border: "none",
+                      borderRadius: 10,
+                      color: "white",
+                      fontSize: 14,
+                      fontWeight: 700,
+                      cursor: loading ? "not-allowed" : "pointer",
+                      transition: "background 0.15s",
+                      letterSpacing: 0.3,
+                    }}
+                  >
+                    {loading ? "Mengirim..." : "Kirim Pengajuan"}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-
-          <form
-            onSubmit={handleSubmit}
-            style={{
-              background: "white",
-              borderRadius: 16,
-              padding: "32px 36px",
-              border: "1px solid #E8E7E2",
-            }}
-          >
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
-              <div>
-                <label style={labelStyle}>Nama Usaha</label>
-                <input
-                  type="text"
-                  name="business_name"
-                  value={formData.business_name}
-                  onChange={handleChange}
-                  placeholder="Masukkan nama brand atau toko Anda"
-                  style={inputStyle(!!errors.business_name)}
-                />
-                {errors.business_name && <p style={errorStyle}>{errors.business_name}</p>}
-              </div>
-              <div>
-                <label style={labelStyle}>Kontak Person (WhatsApp/Email)</label>
-                <input
-                  type="text"
-                  name="contact_person"
-                  value={formData.contact_person}
-                  onChange={handleChange}
-                  placeholder="e.g. 0812-3456-7890 atau email@usaha.com"
-                  style={inputStyle(!!errors.contact_person)}
-                />
-                {errors.contact_person && <p style={errorStyle}>{errors.contact_person}</p>}
-              </div>
-            </div>
-
-            {/* Pilih Mitra - Menggunakan data dari backend */}
-            <div style={{ marginBottom: 20 }}>
-              <label style={labelStyle}>Pilih Mitra/UMKM Tujuan</label>
-              <select
-                name="receiver_id"
-                value={formData.receiver_id}
-                onChange={handleChange}
-                disabled={loadingMitra || !!mitraError}
-                style={{ ...inputStyle(!!errors.receiver_id), color: formData.receiver_id ? "#2C2C2A" : "#888780" }}
-              >
-                <option value="">
-                  {loadingMitra ? "Memuat data..." : mitraError ? "Gagal memuat data" : "-- Pilih Mitra/UMKM --"}
-                </option>
-                {mitraList.map((mitra) => (
-                  <option key={mitra.id} value={mitra.id}>
-                    {mitra.name}
-                  </option>
-                ))}
-              </select>
-              {mitraError && <p style={errorStyle}>{mitraError}</p>}
-              {errors.receiver_id && <p style={errorStyle}>{errors.receiver_id}</p>}
-            </div>
-
-            <div style={{ marginBottom: 20 }}>
-              <label style={labelStyle}>Deskripsi Produk</label>
-              <textarea
-                name="product_description"
-                value={formData.product_description}
-                onChange={handleChange}
-                rows={4}
-                placeholder="Ceritakan keunikan produk artisan Anda, bahan baku yang digunakan, dan proses produksinya..."
-                style={{ ...inputStyle(!!errors.product_description), resize: "vertical", lineHeight: 1.6 }}
-              />
-              {errors.product_description && <p style={errorStyle}>{errors.product_description}</p>}
-            </div>
-
-            <div style={{ marginBottom: 28 }}>
-              <label style={labelStyle}>Alasan Ingin Bermitra</label>
-              <textarea
-                name="reason_for_partnership"
-                value={formData.reason_for_partnership}
-                onChange={handleChange}
-                rows={3}
-                placeholder="Apa harapan Anda setelah menjadi bagian dari UMKM Artisan?"
-                style={{ ...inputStyle(!!errors.reason_for_partnership), resize: "vertical", lineHeight: 1.6 }}
-              />
-              {errors.reason_for_partnership && <p style={errorStyle}>{errors.reason_for_partnership}</p>}
-            </div>
-
-            <div style={{ marginBottom: 32 }}>
-              <label style={{ ...labelStyle, marginBottom: 14 }}>
-                Upload Legalitas / Dokumen Pendukung
-              </label>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
-                <UploadCard
-                  label="NIB / KTP"
-                  hint="PDF, JPG, PNG (Max 10MB)"
-                  icon={<IconDoc />}
-                  value={files.nib_ktp}
-                  onChange={handleFileChange("nib_ktp")}
-                  error={fileErrors.nib_ktp}
-                />
-                <UploadCard
-                  label="PDF Pengajuan Kemitraan"
-                  hint="PDF, JPG, PNG (Max 10MB)"
-                  icon={<IconDoc />}
-                  value={files.pdf_kemitraan}
-                  onChange={handleFileChange("pdf_kemitraan")}
-                  error={fileErrors.pdf_kemitraan}
-                />
-                <UploadCard
-                  label="Sertifikat Halal/PIRT"
-                  hint="Opsional, jika ada"
-                  optional
-                  icon={<IconCert />}
-                  value={files.sertifikat}
-                  onChange={handleFileChange("sertifikat")}
-                  error={fileErrors.sertifikat}
-                />
-              </div>
-            </div>
-
-            <div style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              borderTop: "1px solid #E8E7E2",
-              paddingTop: 24,
-            }}>
-              <button
-                type="button"
-                onClick={handleCancel}
-                style={{
-                  padding: "10px 28px",
-                  background: "none",
-                  border: "none",
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: "#5F5E5A",
-                  cursor: "pointer",
-                  borderRadius: 8,
-                  transition: "color 0.15s",
-                }}
-              >
-                Batalkan
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                style={{
-                  padding: "11px 36px",
-                  background: loading ? "#888780" : "#1A3A6B",
-                  border: "none",
-                  borderRadius: 10,
-                  color: "white",
-                  fontSize: 14,
-                  fontWeight: 700,
-                  cursor: loading ? "not-allowed" : "pointer",
-                  transition: "background 0.15s",
-                  letterSpacing: 0.3,
-                }}
-              >
-                {loading ? "Mengirim..." : "Kirim Pengajuan"}
-              </button>
-            </div>
-          </form>
-        </div>
-        </div>
-      </main>
+        </main>
       </div>
     </div>
   );

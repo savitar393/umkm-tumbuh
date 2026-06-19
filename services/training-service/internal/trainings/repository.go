@@ -326,35 +326,39 @@ func (r *Repository) UpdateProgress(ctx context.Context, pendaftaranID string, m
 		    progress_persen = $3,
 		    terakhir_diakses_at = NOW()
 		WHERE pendaftaran_pelatihan_id = $1
-		  AND $2 <= total_modul_snapshot
 	`
 
-	_, err := r.DB.Exec(ctx, query, pendaftaranID, modulSelesai, progressPersen)
-	return err
+	tag, err := r.DB.Exec(ctx, query, pendaftaranID, modulSelesai, progressPersen)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return apperror.New(http.StatusNotFound, "Pendaftaran pelatihan tidak ditemukan")
+	}
+	return nil
 }
 
 // MarkTrainingComplete - tandai pelatihan selesai
-// Hanya bisa jika semua modul sudah dikerjakan
-func (r *Repository) MarkTrainingComplete(ctx context.Context, pendaftaranID string) error {
+func (r *Repository) MarkTrainingComplete(ctx context.Context, pendaftaranID string, dokumenEvaluasiID *string) error {
 	query := `
 		UPDATE training.transaksi_pendaftaranpelatihan
 		SET tanggal_selesai = NOW(),
 		    progress_persen = 100,
 		    modul_selesai = total_modul_snapshot,
-		    status_pendaftaran_pelatihan_id = 'SELESAI'
+		    status_pendaftaran_pelatihan_id = 'SELESAI',
+		    dokumen_evaluasi_id = $2
 		WHERE pendaftaran_pelatihan_id = $1
-		  AND modul_selesai >= total_modul_snapshot
 	`
 
-	res, err := r.DB.Exec(ctx, query, pendaftaranID)
+	var err error
+	if dokumenEvaluasiID != nil {
+		_, err = r.DB.Exec(ctx, query, pendaftaranID, *dokumenEvaluasiID)
+	} else {
+		_, err = r.DB.Exec(ctx, query, pendaftaranID, nil)
+	}
 	if err != nil {
-		return err
+		return apperror.New(http.StatusInternalServerError, err.Error())
 	}
-
-	if res.RowsAffected() == 0 {
-		return apperror.New(http.StatusBadRequest, "pelatihan belum dapat diselesaikan, selesaikan semua modul terlebih dahulu")
-	}
-
 	return nil
 }
 

@@ -1,23 +1,18 @@
-export {
-  publicPartnershipRoutes,
-  umkmPartnershipRoutes,
-  mitraPartnershipRoutes,
-} from "./routes";
+// frontend/src/features/partnerships/index.ts
 
 export { partnershipsApi } from "./api";
-
+export { umkmPartnershipRoutes, mitraPartnershipRoutes } from "./routes";
 export type {
   CreatePartnershipRequest,
   PartnershipStatus,
   UserRole,
   PartnerCandidate,
   PartnerDetail,
-  PartnershipStatusData,
-  IncomingPartnershipsData,
   SuccessResponse,
   ErrorResponse,
+  PartnershipStatusData,
+  IncomingPartnershipsData,
 } from "./types";
-
 export type {
   PartnerListItem,
   PartnerListResponse,

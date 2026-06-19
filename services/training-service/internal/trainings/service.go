@@ -97,10 +97,10 @@ func (s *Service) UpdateProgress(ctx context.Context, req UpdateProgressRequest)
 }
 
 // CompleteTraining - tandai pelatihan selesai (progress = 100%)
-func (s *Service) CompleteTraining(ctx context.Context, pendaftaranID string) error {
+func (s *Service) CompleteTraining(ctx context.Context, pendaftaranID string, dokumenEvaluasiID *string) error {
 	if pendaftaranID == "" {
 		return apperror.New(http.StatusBadRequest, "Pendaftaran ID harus diisi")
 	}
 
-	return s.Repo.MarkTrainingComplete(ctx, pendaftaranID)
+	return s.Repo.MarkTrainingComplete(ctx, pendaftaranID, dokumenEvaluasiID)
 }

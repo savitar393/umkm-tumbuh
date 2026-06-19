@@ -70,7 +70,8 @@ type UpdateProgressRequest struct {
 
 // CompleteTrainingRequest - request body untuk menandai pelatihan selesai
 type CompleteTrainingRequest struct {
-	PendaftaranID string `json:"pendaftaran_pelatihan_id"`
+	PendaftaranID    string  `json:"pendaftaran_pelatihan_id"`
+	DokumenEvaluasiID *string `json:"dokumen_evaluasi_id"`
 }
 
 // TrainingDetailResponse - response detail pelatihan beserta modulnya

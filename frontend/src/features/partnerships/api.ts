@@ -1,3 +1,5 @@
+// frontend/src/features/partnerships/api.ts
+
 import { httpPartnerships } from "../../shared/api/partnershipHttp";
 import { getAccessToken, getCurrentUser } from "../../shared/auth/currentUser";
 import type { CreatePartnershipRequest, PartnershipStatus } from "./types";
@@ -117,7 +119,6 @@ export const partnershipsApi = {
     if (params?.page) queryParams.append("page", params.page.toString());
     if (params?.limit) queryParams.append("limit", params.limit.toString());
     if (params?.status) queryParams.append("status", params.status);
-    
     const url = `/partnerships/status${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
     return httpPartnerships.get<SuccessResponse<PartnershipStatusResponse>>(url);
   },
@@ -132,7 +133,6 @@ export const partnershipsApi = {
     if (params?.page) queryParams.append("page", params.page.toString());
     if (params?.limit) queryParams.append("limit", params.limit.toString());
     if (params?.status) queryParams.append("status", params.status);
-    
     const url = `/partnerships/incoming${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
     return httpPartnerships.get<SuccessResponse<IncomingPartnershipsResponse>>(url);
   },
@@ -193,10 +193,10 @@ export const partnershipsApi = {
     if (params?.filterType && params.filterType !== "all") queryParams.append("filterType", params.filterType);
     if (params?.page) queryParams.append("page", params.page.toString());
     if (params?.limit) queryParams.append("limit", params.limit.toString());
-    
+
     const url = `/mitra${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
     const response = await httpPartnerships.get<BackendResponse<{ mitra: PartnerListItem[]; pagination: any }>>(url);
-    
+
     return {
       mitra: response.data.mitra,
       pagination: response.data.pagination,
@@ -215,10 +215,10 @@ export const partnershipsApi = {
     if (params?.filterType && params.filterType !== "all") queryParams.append("filterType", params.filterType);
     if (params?.page) queryParams.append("page", params.page.toString());
     if (params?.limit) queryParams.append("limit", params.limit.toString());
-    
+
     const url = `/umkm${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
     const response = await httpPartnerships.get<BackendResponse<{ umkm: PartnerListItem[]; pagination: any }>>(url);
-    
+
     return {
       umkm: response.data.umkm,
       pagination: response.data.pagination,
