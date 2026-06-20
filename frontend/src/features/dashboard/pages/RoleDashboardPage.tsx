@@ -43,9 +43,21 @@ const MONTHS = [
 const YEARS = [2026, 2025, 2024, 2023];
 const PAGE_SIZE = 5;
 
+function shortDateLabel(value: string) {
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    month: "short",
+  }).format(new Date(`${value}T00:00:00`));
+}
+
 type TrendRange = 7 | 14 | 30 | 90;
 
-function buildAreaChart(data: { hari: string; total_laba: number }[]) {
+type ChartTrendItem = {
+  hari: string;
+  total_laba: number;
+};
+
+function buildAreaChart(data: ChartTrendItem[]) {
   const width = 700;
   const baseY = 188;
   const padX = 28;
@@ -158,7 +170,24 @@ export default function RoleDashboardPage(_props: RoleDashboardPageProps) {
 
   const totalPages = data ? Math.ceil((data.laba_harian?.length ?? 0) / PAGE_SIZE) : 0;
 
-  const trendData = data?.tren_mingguan?.slice(-trendRange) ?? [];
+  const trendData = useMemo<ChartTrendItem[]>(() => {
+    const weeklyTrend = data?.tren_mingguan ?? [];
+
+    if (weeklyTrend.length > 0) {
+      return weeklyTrend.slice(-trendRange);
+    }
+
+    const dailyRows = data?.laba_harian ?? [];
+
+    return dailyRows
+      .slice()
+      .reverse()
+      .slice(-trendRange)
+      .map((item) => ({
+        hari: shortDateLabel(item.tanggal),
+        total_laba: item.laba_bersih,
+      }));
+  }, [data, trendRange]);
 
   const chart = useMemo(() => buildAreaChart(trendData), [trendData]);
 
@@ -187,8 +216,12 @@ export default function RoleDashboardPage(_props: RoleDashboardPageProps) {
             <select value={tahun} onChange={(e) => setTahun(Number(e.target.value))}>
               {YEARS.map((y) => (<option key={y} value={y}>{y}</option>))}
             </select>
-            <button className="umkm-dashboard-polish__secondary-action" onClick={fetchDashboard}>
-              <CalendarDays size={16} /> Terapkan
+            <button
+              className="umkm-dashboard-polish__secondary-action"
+              onClick={fetchDashboard}
+              disabled={loading}
+            >
+              <CalendarDays size={16} /> {loading ? "Memuat..." : "Terapkan"}
             </button>
           </div>
 
