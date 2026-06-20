@@ -88,6 +88,43 @@ export interface PartnerDetail {
   telepon: string;
 }
 
+
+export interface PartnershipRequest {
+  id: string;
+  request_code?: string;
+  requester_id?: string;
+  receiver_id: string;
+  requester_role?: UserRole;
+  receiver_role?: UserRole;
+  category?: string;
+  proposal_title: string;
+  proposal_description: string;
+  business_name?: string;
+  contact_person?: string;
+  product_description?: string;
+  reason_for_partnership?: string;
+  nib_ktp_file?: string;
+  proposal_file?: string;
+  status: PartnershipStatus;
+  submitted_at?: string;
+  created_at: string;
+  updated_at: string;
+  requester_name?: string;
+  receiver_name?: string;
+  [key: string]: unknown;
+}
+
+export interface UpdatePartnershipStatus {
+  status: PartnershipStatus;
+  catatan?: string;
+  rejection_reason?: string;
+}
+
+export interface SignPartnershipRequest {
+  dokumen_kontrak: string;
+  tanda_tangan?: string;
+}
+
 // Success response
 export interface SuccessResponse {
   status: "success";

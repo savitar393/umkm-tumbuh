@@ -4,6 +4,20 @@ import { partnershipsApi } from "../api";
 import PartnershipSidebar from "../components/PartnershipSidebar";
 
 
+function formatOptionalDate(value: unknown) {
+  if (typeof value !== "string" && typeof value !== "number" && !(value instanceof Date)) {
+    return "-";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+
+  return date.toLocaleDateString("id-ID");
+}
+
 // ─── Logo Components ──────────────────────────────────────────────────────────
 
 const LogoKementrian: React.FC<{ size?: number }> = ({ size = 36 }) => (
@@ -578,7 +592,7 @@ const PartnershipReviewPage: React.FC = () => {
           setSignedDocument({
             name: "Dokumen_Persetujuan_Kemitraan.pdf",
             size: "2.4 MB",
-            uploadedAt: new Date(data.contract_signed_at || data.updated_at).toLocaleDateString('id-ID'),
+            uploadedAt: formatOptionalDate(data.contract_signed_at || data.updated_at),
           });
         }
       }

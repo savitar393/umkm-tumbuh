@@ -16,6 +16,7 @@ interface SuccessResponse<T> {
   data: T;
 }
 
+
 export interface PartnershipStatusResponse {
   pengajuan: Array<{
     pengajuanID: string;
