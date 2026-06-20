@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { ClipboardList, Plus, Search } from "lucide-react";
 import UmkmLayout from "../../umkm/components/UmkmLayout";
 import { getSales, type SaleSummary } from "../api";
@@ -76,9 +76,10 @@ function formatDate(value: string) {
 }
 
 export default function SalesListPage() {
+  const [searchParams] = useSearchParams();
   const [sales, setSales] = useState<SaleSummary[]>([]);
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const [from, setFrom] = useState(searchParams.get("from") ?? "");
+  const [to, setTo] = useState(searchParams.get("to") ?? "");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [useMock, setUseMock] = useState(false);
@@ -115,7 +116,10 @@ export default function SalesListPage() {
   }
 
   useEffect(() => {
-    loadSales();
+    loadSales({
+      from: searchParams.get("from") || undefined,
+      to: searchParams.get("to") || undefined,
+    });
   }, []);
 
   function handleFilter(event: FormEvent<HTMLFormElement>) {
@@ -129,8 +133,8 @@ export default function SalesListPage() {
 
   return (
     <UmkmLayout
-      title="Catatan Transaksi"
-      subtitle="Lihat laporan transaksi, omzet, laba, dan jumlah produk terjual."
+      title="Laporan Penjualan Harian"
+      subtitle="Pantau laporan harian omzet, laba, dan item terjual untuk perkembangan usaha."
     >
       <div className="feature-page">
         {error ? <div className="error-message">{error}</div> : null}
@@ -142,7 +146,7 @@ export default function SalesListPage() {
               <ClipboardList size={24} />
             </div>
             <div>
-              <div className="stat-card__label">Total Transaksi</div>
+              <div className="stat-card__label">Total Laporan</div>
               <div className="stat-card__value">{sales.length}</div>
               <div className="stat-card__sub">Dalam filter aktif</div>
             </div>
@@ -155,7 +159,7 @@ export default function SalesListPage() {
             <div>
               <div className="stat-card__label">Total Omzet</div>
               <div className="stat-card__value">{formatRupiah(totalOmzet)}</div>
-              <div className="stat-card__sub">Dari catatan transaksi</div>
+              <div className="stat-card__sub">Dari laporan harian</div>
             </div>
           </article>
 
@@ -185,13 +189,13 @@ export default function SalesListPage() {
         <section className="dashboard-card wide">
           <div className="page-header">
             <div>
-              <h2>Daftar Transaksi</h2>
-              <p>Filter berdasarkan tanggal transaksi untuk laporan harian atau bulanan.</p>
+              <h2>Riwayat Laporan Penjualan</h2>
+              <p>Filter laporan harian berdasarkan tanggal untuk melihat perkembangan usaha.</p>
             </div>
 
             <Link className="button" to="/umkm/sales/new">
               <Plus size={18} />
-              Catat Transaksi
+              Input Laporan Harian
             </Link>
           </div>
 
@@ -223,13 +227,13 @@ export default function SalesListPage() {
           </form>
 
           {loading ? (
-            <p>Memuat transaksi...</p>
+            <p>Memuat laporan...</p>
           ) : (
             <div className="table-wrapper">
               <table>
                 <thead>
                   <tr>
-                    <th>No. Transaksi</th>
+                    <th>No. Laporan</th>
                     <th>Tanggal</th>
                     <th>Total Omzet</th>
                     <th>Laba</th>
@@ -242,7 +246,7 @@ export default function SalesListPage() {
                 <tbody>
                   {sales.length === 0 ? (
                     <tr>
-                      <td colSpan={7}>Belum ada catatan transaksi.</td>
+                      <td colSpan={7}>Belum ada laporan penjualan harian.</td>
                     </tr>
                   ) : (
                     sales.map((sale) => (

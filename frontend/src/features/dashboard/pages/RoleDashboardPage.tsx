@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import {
   Building2,
   CalendarDays,
@@ -204,6 +204,15 @@ export default function RoleDashboardPage(_props: RoleDashboardPageProps) {
               <h1>Ringkasan Bisnis</h1>
               <p>Selamat datang kembali, berikut performa toko Anda hari ini.</p>
             </div>
+
+            <Link
+              className="button"
+              to="/umkm/sales/new"
+              style={{ marginLeft: "auto", alignSelf: "flex-start" }}
+            >
+              <ReceiptText size={18} />
+              Input Laporan Harian
+            </Link>
           </header>
 
           {/* ── Filter ─────────────────────────────────── */}
@@ -232,9 +241,18 @@ export default function RoleDashboardPage(_props: RoleDashboardPageProps) {
             <>
               <section className="umkm-dashboard-polish__summary">
                 <article className="umkm-dashboard-polish__omzet-card">
-                  <span>Total Omzet Hari Ini</span>
-                  <strong>{formatRupiah(data.total_omzet_hari_ini)}</strong>
-                  <small>{data.persen_vs_kemarin != null ? `${data.persen_vs_kemarin >= 0 ? "+" : ""}${data.persen_vs_kemarin.toFixed(1)}% vs kemarin` : ""}</small>
+                  <span>Omzet Bulan Ini</span>
+                  <strong>{formatRupiah(data.omzet_bulan_ini)}</strong>
+                  <small
+                    style={{
+                      background: data.persen_vs_bulan_lalu < 0 ? "rgba(239, 68, 68, 0.18)" : undefined,
+                      color: data.persen_vs_bulan_lalu < 0 ? "#dc2626" : undefined,
+                    }}
+                  >
+                    {data.persen_vs_bulan_lalu != null
+                      ? `${data.persen_vs_bulan_lalu >= 0 ? "+" : ""}${data.persen_vs_bulan_lalu.toFixed(1)}% vs bulan lalu`
+                      : ""}
+                  </small>
                 </article>
                 <article className="umkm-dashboard-polish__metric-card">
                   <div className="umkm-dashboard-polish__icon-badge"><ShoppingCart size={22} /></div>
@@ -260,13 +278,21 @@ export default function RoleDashboardPage(_props: RoleDashboardPageProps) {
                 ) : (
                   <div className="umkm-dashboard-polish__table">
                     <table>
-                      <thead><tr><th>Tanggal</th><th>Laba Bersih</th><th>Item Terjual</th></tr></thead>
+                      <thead><tr><th>Tanggal</th><th>Laba Bersih</th><th>Item Terjual</th><th>Detail</th></tr></thead>
                       <tbody>
                         {labaRows.map((item) => (
                           <tr key={item.tanggal}>
                             <td>{formatDate(item.tanggal)}</td>
                             <td><span className="umkm-dashboard-polish__profit">{formatRupiah(item.laba_bersih)}</span></td>
                             <td>{item.jumlah_produk} Item</td>
+                            <td>
+                              <Link
+                                className="button secondary table-link-button"
+                                to={`/umkm/sales?from=${item.tanggal}&to=${item.tanggal}`}
+                              >
+                                Lihat
+                              </Link>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
