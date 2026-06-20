@@ -18,8 +18,14 @@ export type User = {
   nik?: string | null;
   role: UserRole;
   status: UserStatus;
+  rejection_reason?: string;
+  catatan_validasi?: string;
   is_active: boolean;
+  submitted_at?: string;
+  reviewed_at?: string;
+  reviewed_by?: string;
   created_at: string;
+  updated_at: string;
 };
 
 export type RegisterPayload = {

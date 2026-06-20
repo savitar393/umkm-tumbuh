@@ -72,8 +72,10 @@ export default function ProfilePage() {
 
         if (ignore) return;
 
-        setProfile(response.profile);
-        setForm(mapProfileToForm(response.profile));
+        const profile = response.profile as UmkmProfile;
+
+        setProfile(profile);
+        setForm(mapProfileToForm(profile));
       } catch (err) {
         if (ignore) return;
 
@@ -133,8 +135,10 @@ export default function ProfilePage() {
 
     try {
       const response = await updateMyProfile(form);
-      setProfile(response.profile);
-      setForm(mapProfileToForm(response.profile));
+      const profile = response.profile as UmkmProfile;
+
+      setProfile(profile);
+      setForm(mapProfileToForm(profile));
       setMessage("Data berhasil diperbarui");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Gagal menyimpan profil.";

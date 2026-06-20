@@ -1,23 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, Navigate } from "react-router-dom";
-import { CalendarDays, ClipboardList, Plus, ReceiptText, ShoppingCart } from "lucide-react";
+import { Navigate } from "react-router-dom";
+import {
+  Building2,
+  CalendarDays,
+  Handshake,
+  ReceiptText,
+  ShoppingCart,
+} from "lucide-react";
 import UmkmLayout from "../../umkm/components/UmkmLayout";
+import UserLayout from "../components/UserLayout";
 import { getCurrentUser } from "../../../shared/auth/currentUser";
-import { getSales, type SaleSummary } from "../../sales/api";
+import {
+  getUMKMDashboard,
+  type UMKMDashboardData,
+} from "../api";
 
 type RoleDashboardPageProps = {
   title: string;
 };
-
-function today() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function sevenDaysAgo() {
-  const date = new Date();
-  date.setDate(date.getDate() - 6);
-  return date.toISOString().slice(0, 10);
-}
 
 function formatRupiah(value: number) {
   return new Intl.NumberFormat("id-ID", {
@@ -33,192 +33,328 @@ function formatDate(value: string) {
     day: "2-digit",
     month: "short",
     year: "numeric",
-  }).format(new Date(value));
+  }).format(new Date(`${value}T00:00:00`));
 }
 
-export default function RoleDashboardPage({ title }: RoleDashboardPageProps) {
-  const user = getCurrentUser();
-  const [sales, setSales] = useState<SaleSummary[]>([]);
+const MONTHS = [
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+];
+const YEARS = [2026, 2025, 2024, 2023];
+const PAGE_SIZE = 5;
+
+type TrendRange = 7 | 14 | 30 | 90;
+
+function buildAreaChart(data: { hari: string; total_laba: number }[]) {
+  const width = 700;
+  const baseY = 188;
+  const padX = 28;
+  const maxValue = Math.max(...data.map((item) => item.total_laba), 0);
+
+  if (data.length === 0) {
+    return { area: "", line: "", points: [] };
+  }
+
+  const points = data.map((item, index) => {
+    const x =
+      data.length === 1
+        ? width / 2
+        : padX + (index / (data.length - 1)) * (width - padX * 2);
+    const y = maxValue > 0 ? baseY - (item.total_laba / maxValue) * 130 : baseY;
+    return { x, y, label: item.hari };
+  });
+
+  const line = points
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
+    .join(" ");
+
+  const first = points[0];
+  const last = points[points.length - 1];
+  const area = `${line} L ${last.x.toFixed(2)} ${baseY} L ${first.x.toFixed(2)} ${baseY} Z`;
+
+  return { area, line, points };
+}
+
+type MitraDashboardData = {
+  totalPartnerships: number;
+  activePartnerships: number;
+  totalUmkm: number;
+  incomingPartnerships: { umkm_id: string; umkm_nama?: string; status: string; tanggal: string }[];
+};
+
+export default function RoleDashboardPage(_props: RoleDashboardPageProps) {
+  const user = useMemo(() => getCurrentUser(), []);
+  const [dashboardData, setDashboardData] = useState<MitraDashboardData | null>(null);
+
+  useEffect(() => {
+    if (user?.role !== "MITRA") return;
+    async function loadMitraDashboard() {
+      try {
+        const { http } = await import("../../../shared/api/http");
+        const resp = await http.get<any>("/partnerships/incoming?page=1&limit=5", { service: "partnership" });
+        const rawItems = resp?.data?.data || resp?.data || [];
+        const items = Array.isArray(rawItems) ? rawItems : [];
+        const incoming = items.slice(0, 5).map((p: any) => ({
+          umkm_id: p.umkm_id || p.pengaju_umkm_id || "",
+          umkm_nama: p.umkm_nama || p.nama_umkm || "",
+          status: p.status_pengajuan_id || p.status || "",
+          tanggal: p.tanggal_pengajuan || p.created_at || "",
+        }));
+        setDashboardData({
+          totalPartnerships: resp?.total || items.length,
+          activePartnerships: incoming.filter((p) => p.status === "AKTIF" || p.status === "DISETUJUI").length,
+          totalUmkm: incoming.length,
+          incomingPartnerships: incoming,
+        });
+      } catch {
+        setDashboardData({ totalPartnerships: 0, activePartnerships: 0, totalUmkm: 0, incomingPartnerships: [] });
+      }
+    }
+    loadMitraDashboard();
+  }, [user]);
+  const now = new Date();
+  const [bulan, setBulan] = useState(now.getMonth());
+  const [tahun, setTahun] = useState(now.getFullYear());
+  const [trendRange, setTrendRange] = useState<TrendRange>(7);
+  const [data, setData] = useState<UMKMDashboardData | null>(null);
+  const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const from = sevenDaysAgo();
-  const to = today();
+  function buildDateRange() {
+    const from = `${tahun}-${String(bulan + 1).padStart(2, "0")}-01`;
+    const lastDay = new Date(tahun, bulan + 1, 0).getDate();
+    const to = `${tahun}-${String(bulan + 1).padStart(2, "0")}-${lastDay}`;
+    return { from, to };
+  }
+
+  function fetchDashboard() {
+    if (!user || user.role !== "UMKM") return;
+    setLoading(true);
+    setError("");
+    setPage(0);
+    const { from, to } = buildDateRange();
+    getUMKMDashboard(from, to)
+      .then((d) => setData(d))
+      .catch((e) => setError(e instanceof Error ? e.message : "Gagal memuat data"))
+      .finally(() => setLoading(false));
+  }
 
   useEffect(() => {
-    async function loadSales() {
-      if (!user || user.role !== "UMKM") return;
+    if (!user || user.role !== "UMKM") return;
+    setLoading(true);
+    setError("");
+    const { from, to } = buildDateRange();
+    getUMKMDashboard(from, to)
+      .then((d) => setData(d))
+      .catch((e) => setError(e instanceof Error ? e.message : "Gagal memuat data"))
+      .finally(() => setLoading(false));
+  }, [user]);
 
-      setLoading(true);
-      setError("");
+  const labaRows = useMemo(() => {
+    if (!data?.laba_harian) return [];
+    return data.laba_harian.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
+  }, [data, page]);
 
-      try {
-        const response = await getSales({ from, to });
-        setSales(response.sales);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Gagal memuat ringkasan penjualan.");
-      } finally {
-        setLoading(false);
-      }
-    }
+  const totalPages = data ? Math.ceil((data.laba_harian?.length ?? 0) / PAGE_SIZE) : 0;
 
-    loadSales();
-  }, [user, from, to]);
+  const trendData = data?.tren_mingguan?.slice(-trendRange) ?? [];
 
-  const todaySales = useMemo(
-    () => sales.filter((sale) => sale.transaction_date === today()),
-    [sales],
-  );
-
-  const todayOmzet = todaySales.reduce((sum, sale) => sum + sale.total_omzet, 0);
-  const todayProfit = todaySales.reduce((sum, sale) => sum + sale.total_profit, 0);
-  const todayItem = todaySales.reduce((sum, sale) => sum + sale.total_item, 0);
-  const averagePerItem = todayItem > 0 ? todayOmzet / todayItem : 0;
-
-  const recentSales = [...sales]
-    .sort((a, b) => b.transaction_date.localeCompare(a.transaction_date))
-    .slice(0, 5);
+  const chart = useMemo(() => buildAreaChart(trendData), [trendData]);
 
   if (!user) return <Navigate to="/login" replace />;
 
   if (user.role === "UMKM") {
+    const isEmpty = data && !loading && !error && labaRows.length === 0 && trendData.length === 0;
     return (
-      <UmkmLayout
-        title=""
-        subtitle=""
-      >
-        <div className="umkm-report-dashboard">
-          <header className="report-dashboard-header">
+      <UmkmLayout title="" subtitle="">
+        <div className="umkm-dashboard-polish">
+          <header className="umkm-dashboard-polish__header">
             <div>
+              <span>Ringkasan Bisnis</span>
               <h1>Ringkasan Bisnis</h1>
               <p>Selamat datang kembali, berikut performa toko Anda hari ini.</p>
             </div>
-
-            <Link className="button report-dashboard-action" to="/umkm/sales/new">
-              <Plus size={18} />
-              Input Data Penjualan Baru
-            </Link>
           </header>
 
+          {/* ── Filter ─────────────────────────────────── */}
+          <div className="umkm-dashboard-polish__filter">
+            <label>Bulan</label>
+            <select value={bulan} onChange={(e) => setBulan(Number(e.target.value))}>
+              {MONTHS.map((m, i) => (<option key={i} value={i}>{m}</option>))}
+            </select>
+            <label>Tahun</label>
+            <select value={tahun} onChange={(e) => setTahun(Number(e.target.value))}>
+              {YEARS.map((y) => (<option key={y} value={y}>{y}</option>))}
+            </select>
+            <button className="umkm-dashboard-polish__secondary-action" onClick={fetchDashboard}>
+              <CalendarDays size={16} /> Terapkan
+            </button>
+          </div>
+
           {error ? <div className="error-message">{error}</div> : null}
+          {isEmpty && <div className="error-message">Tidak ada data untuk periode ini. Silakan pilih bulan/tahun lain.</div>}
 
-          <section className="report-summary-grid">
-            <article className="report-summary-primary">
-              <span>Total Omzet Hari Ini</span>
-              <strong>{formatRupiah(todayOmzet)}</strong>
-              <small>Update otomatis dari laporan penjualan.</small>
-            </article>
+          {!loading && data && (
+            <>
+              <section className="umkm-dashboard-polish__summary">
+                <article className="umkm-dashboard-polish__omzet-card">
+                  <span>Total Omzet Hari Ini</span>
+                  <strong>{formatRupiah(data.total_omzet_hari_ini)}</strong>
+                  <small>{data.persen_vs_kemarin != null ? `${data.persen_vs_kemarin >= 0 ? "+" : ""}${data.persen_vs_kemarin.toFixed(1)}% vs kemarin` : ""}</small>
+                </article>
+                <article className="umkm-dashboard-polish__metric-card">
+                  <div className="umkm-dashboard-polish__icon-badge"><ShoppingCart size={22} /></div>
+                  <span>Total Item Terjual</span>
+                  <strong>{data.total_item_terjual} Item</strong>
+                </article>
+                <article className="umkm-dashboard-polish__metric-card">
+                  <div className="umkm-dashboard-polish__icon-badge blue"><ReceiptText size={22} /></div>
+                  <span>Rata-rata/Item</span>
+                  <strong>{formatRupiah(data.rata_rata_per_item)}</strong>
+                </article>
+              </section>
 
-            <article className="report-summary-small">
-              <ReceiptText size={24} />
-              <span>Total Laba Hari Ini</span>
-              <strong>{formatRupiah(todayProfit)}</strong>
-            </article>
-
-            <article className="report-summary-small">
-              <ShoppingCart size={24} />
-              <span>Total Item Terjual</span>
-              <strong>{todayItem} Item</strong>
-            </article>
-
-            <article className="report-summary-small">
-              <ReceiptText size={24} />
-              <span>Rata-rata/Item</span>
-              <strong>{formatRupiah(averagePerItem)}</strong>
-            </article>
-          </section>
-
-          <section className="dashboard-card wide">
-            <div className="page-header">
-              <div>
-                <h2>Rincian Laporan Penjualan</h2>
-                <p>Menampilkan laporan penjualan dalam 7 hari terakhir.</p>
-              </div>
-
-              <Link className="button secondary" to="/umkm/sales">
-                <ClipboardList size={18} />
-                Lihat Semua
-              </Link>
-            </div>
-
-            {loading ? (
-              <p>Memuat laporan...</p>
-            ) : (
-              <div className="table-wrapper">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Tanggal</th>
-                      <th>Omzet</th>
-                      <th>Laba Bersih</th>
-                      <th>Item Terjual</th>
-                      <th>Detail</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {recentSales.length === 0 ? (
-                      <tr>
-                        <td colSpan={5}>Belum ada laporan penjualan.</td>
-                      </tr>
-                    ) : (
-                      recentSales.map((sale) => (
-                        <tr key={sale.id}>
-                          <td>{formatDate(sale.transaction_date)}</td>
-                          <td>{formatRupiah(sale.total_omzet)}</td>
-                          <td>
-                            <span className="profit-pill">
-                              {formatRupiah(sale.total_profit)}
-                            </span>
-                          </td>
-                          <td>{sale.total_item} Item</td>
-                          <td>
-                            <Link
-                              className="button secondary table-link-button"
-                              to={`/umkm/sales/${sale.id}`}
-                            >
-                              Detail
-                            </Link>
-                          </td>
-                        </tr>
-                      ))
+              <section className="umkm-dashboard-polish__card">
+                <div className="umkm-dashboard-polish__card-header">
+                  <div>
+                    <h2>Rincian Laba Harian ({MONTHS[bulan]} {tahun})</h2>
+                    <p>Rekap laba bersih dan item terjual pada periode terpilih.</p>
+                  </div>
+                </div>
+                {labaRows.length === 0 ? (
+                  <p className="umkm-dashboard-polish__empty">Belum ada laporan penjualan untuk periode ini.</p>
+                ) : (
+                  <div className="umkm-dashboard-polish__table">
+                    <table>
+                      <thead><tr><th>Tanggal</th><th>Laba Bersih</th><th>Item Terjual</th></tr></thead>
+                      <tbody>
+                        {labaRows.map((item) => (
+                          <tr key={item.tanggal}>
+                            <td>{formatDate(item.tanggal)}</td>
+                            <td><span className="umkm-dashboard-polish__profit">{formatRupiah(item.laba_bersih)}</span></td>
+                            <td>{item.jumlah_produk} Item</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {totalPages > 1 && (
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
+                        <span>Menampilkan {Math.min(PAGE_SIZE, (data.laba_harian?.length ?? 0) - page * PAGE_SIZE)} dari {data.laba_harian?.length ?? 0} hari</span>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button className="umkm-dashboard-polish__secondary-action" disabled={page === 0} onClick={() => setPage(p => p - 1)}>Sebelumnya</button>
+                          <button className="umkm-dashboard-polish__secondary-action" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>Berikutnya</button>
+                        </div>
+                      </div>
                     )}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
+                  </div>
+                )}
+              </section>
 
-          <section className="dashboard-card wide">
-            <div className="page-header">
-              <div>
-                <h2>Tren Penjualan Mingguan</h2>
-                <p>Visual awal berdasarkan laporan 7 hari terakhir.</p>
-              </div>
+              <section className="umkm-dashboard-polish__card">
+                <div className="umkm-dashboard-polish__card-header">
+                  <div>
+                    <h2>Tren Penjualan Mingguan</h2>
+                    <p>Laba harian berdasarkan periode.</p>
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {([7, 14, 30, 90] as TrendRange[]).map(r => (
+                      <button key={r} className={`umkm-dashboard-polish__range-badge ${trendRange === r ? "active" : ""}`}
+                        onClick={() => setTrendRange(r)} style={{ cursor: "pointer", border: 0, ...trendRange === r ? { background: "#3767df", color: "#fff" } : {} }}>
+                        {r} Hari
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="umkm-dashboard-polish__chart-card">
+                  {trendData.length > 0 ? (
+                    <>
+                      <svg className="umkm-dashboard-polish__chart" viewBox="0 0 700 220" role="img" aria-label="Tren laba harian" preserveAspectRatio="none">
+                        <defs>
+                          <linearGradient id="umkmDashboardArea" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#3767df" stopOpacity="0.62" />
+                            <stop offset="100%" stopColor="#3767df" stopOpacity="0.08" />
+                          </linearGradient>
+                        </defs>
+                        <path d={chart.area} fill="url(#umkmDashboardArea)" />
+                        <path d={chart.line} fill="none" stroke="#3767df" strokeWidth="4" strokeLinejoin="round" strokeLinecap="round" />
+                      </svg>
+                      <div className="umkm-dashboard-polish__chart-labels">
+                        {chart.points.map((point) => (<span key={point.label}>{point.label}</span>))}
+                      </div>
+                    </>
+                  ) : (
+                    <p className="umkm-dashboard-polish__empty">Belum ada data tren penjualan.</p>
+                  )}
+                </div>
+              </section>
+            </>
+          )}
 
-              <div className="sales-date-badge">
-                <CalendarDays size={16} />
-                7 Hari Terakhir
-              </div>
-            </div>
-
-            <div className="simple-trend-card">
-              <div className="simple-trend-fill" />
-            </div>
-          </section>
+          {loading && <p className="umkm-dashboard-polish__empty">Memuat data...</p>}
         </div>
       </UmkmLayout>
     );
   }
 
   return (
-    <main className="dashboard-page">
-      <section className="dashboard-card">
-        <h1>{title}</h1>
-        <p>Login sebagai: {user.full_name}</p>
-        <p>Role: {user.role}</p>
-        <p>Status: {user.status}</p>
-      </section>
-    </main>
+    <UserLayout role="MITRA" title="Dashboard Mitra" subtitle="Selamat datang, lihat perkembangan kemitraan Anda.">
+      <div className="umkm-dashboard-polish">
+        <section className="umkm-dashboard-polish__summary">
+          <article className="umkm-dashboard-polish__omzet-card">
+            <span>Total Kemitraan</span>
+            <strong>{dashboardData?.totalPartnerships ?? "—"}</strong>
+            <small>Pengajuan keseluruhan</small>
+          </article>
+          <article className="umkm-dashboard-polish__metric-card">
+            <div className="umkm-dashboard-polish__icon-badge">
+              <Handshake size={22} />
+            </div>
+            <span>Aktif</span>
+            <strong>{dashboardData?.activePartnerships ?? 0}</strong>
+          </article>
+          <article className="umkm-dashboard-polish__metric-card">
+            <div className="umkm-dashboard-polish__icon-badge blue">
+              <Building2 size={22} />
+            </div>
+            <span>Total UMKM</span>
+            <strong>{dashboardData?.totalUmkm ?? 0}</strong>
+          </article>
+        </section>
+
+        <section className="umkm-dashboard-polish__card">
+          <div className="umkm-dashboard-polish__card-header">
+            <div>
+              <h2>Pengajuan Kemitraan Masuk</h2>
+              <p>Daftar permintaan kemitraan dari pelaku UMKM.</p>
+            </div>
+          </div>
+          <div className="umkm-dashboard-polish__table">
+            <table>
+              <thead>
+                <tr>
+                  <th>UMKM</th>
+                  <th>Status</th>
+                  <th>Tanggal</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dashboardData?.incomingPartnerships && dashboardData.incomingPartnerships.length > 0 ? (
+                  dashboardData.incomingPartnerships.map((p, i) => (
+                    <tr key={i}>
+                      <td>{p.umkm_nama || `UMKM #${p.umkm_id?.slice(-6) ?? i}`}</td>
+                      <td><span className="umkm-dashboard-polish__profit">{p.status}</span></td>
+                      <td>{p.tanggal ? new Date(p.tanggal).toLocaleDateString("id-ID") : "—"}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr><td colSpan={3}>Belum ada pengajuan kemitraan.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </UserLayout>
   );
 }

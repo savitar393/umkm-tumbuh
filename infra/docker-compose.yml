@@ -93,6 +93,12 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-umkm_user}:${POSTGRES_PASSWORD:-umkm_password}@postgres:5432/${POSTGRES_DB:-umkm_tumbuh}?sslmode=disable
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-1440}
+      USER_SERVICE_URL: http://user-service:8081
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM: ${SMTP_FROM}
     ports:
       - "8080:8080"
     depends_on:
@@ -114,15 +120,35 @@ services:
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       DATABASE_URL: postgres://${POSTGRES_USER:-umkm_user}:${POSTGRES_PASSWORD:-umkm_password}@postgres:5432/${POSTGRES_DB:-umkm_tumbuh}?sslmode=disable
       JWT_SECRET: ${JWT_SECRET}
-      OBJECT_STORAGE_ENDPOINT: ${OBJECT_STORAGE_ENDPOINT:-http://garage:3900}
-      OBJECT_STORAGE_PUBLIC_ENDPOINT: ${OBJECT_STORAGE_PUBLIC_ENDPOINT:-http://localhost:3900}
-      OBJECT_STORAGE_REGION: ${OBJECT_STORAGE_REGION:-garage}
-      OBJECT_STORAGE_USE_SSL: ${OBJECT_STORAGE_USE_SSL:-false}
-      OBJECT_STORAGE_ACCESS_KEY: ${OBJECT_STORAGE_ACCESS_KEY:-umkm_garage_access_key}
-      OBJECT_STORAGE_SECRET_KEY: ${OBJECT_STORAGE_SECRET_KEY:-umkm_garage_secret_key}
-      OBJECT_STORAGE_BUCKET_PRODUCT_IMAGES: ${OBJECT_STORAGE_BUCKET_PRODUCT_IMAGES:-product-images}
+      UPLOAD_DIR: /app/uploads
     ports:
-      - "8081:8081"
+      - "${USER_SERVICE_PORT:-8082}:${USER_SERVICE_PORT:-8082}"
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+    networks:
+      - umkm_network
+
+  # ============================================================
+  # Training Service (merged with Certificate Service)
+  # ============================================================
+  training-service:
+    build:
+      context: ../services/training-service
+      dockerfile: Dockerfile
+    container_name: umkm_training_service
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      SERVER_HOST: 0.0.0.0
+      TRAINING_SERVICE_PORT: ${TRAINING_SERVICE_PORT:-8084}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      DATABASE_URL: postgres://${POSTGRES_USER:-umkm_user}:${POSTGRES_PASSWORD:-umkm_password}@postgres:5432/${POSTGRES_DB:-umkm_tumbuh}?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET}
+    ports:
+      - "${TRAINING_SERVICE_PORT:-8085}:${TRAINING_SERVICE_PORT:-8085}"
     depends_on:
       db-migrate:
         condition: service_completed_successfully
@@ -155,21 +181,71 @@ services:
     environment:
       APP_ENV: ${APP_ENV:-development}
       SERVER_HOST: 0.0.0.0
-      SERVER_PORT: 8082
+      SERVER_PORT: ${PARTNERSHIP_SERVICE_PORT:-8083}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       DATABASE_URL: postgres://${POSTGRES_USER:-umkm_user}:${POSTGRES_PASSWORD:-umkm_password}@postgres:5432/${POSTGRES_DB:-umkm_tumbuh}?sslmode=disable
       JWT_SECRET: ${JWT_SECRET}
     ports:
-      - "8082:8082"
+      - "${PARTNERSHIP_SERVICE_PORT:-8083}:${PARTNERSHIP_SERVICE_PORT:-8083}"
     depends_on:
       db-migrate:
         condition: service_completed_successfully
     networks:
       - umkm_network
 
+  garage-bootstrap:
+    image: alpine:latest
+    container_name: umkm_garage_bootstrap
+    restart: "no"
+    depends_on:
+      garage:
+        condition: service_started
+    volumes:
+      - ./garage/bootstrap.sh:/bootstrap.sh:ro
+    command: [ "sh", "/bootstrap.sh" ]
+    environment:
+      GARAGE_ADMIN_TOKEN: CHANGE_ME_LOCAL_GARAGE_ADMIN_TOKEN
+    networks:
+      - umkm_network
+
+  document-service:
+    build:
+      context: ../services/document-service
+      dockerfile: Dockerfile
+    container_name: umkm_document_service
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      DOCUMENT_SERVICE_HOST: 0.0.0.0
+      DOCUMENT_SERVICE_PORT: ${DOCUMENT_SERVICE_PORT:-8084}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      DATABASE_URL: postgres://${POSTGRES_USER:-umkm_user}:${POSTGRES_PASSWORD:-umkm_password}@postgres:5432/${POSTGRES_DB:-umkm_tumbuh}?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET}
+      OBJECT_STORAGE_ENDPOINT: ${OBJECT_STORAGE_ENDPOINT:-http://garage:3900}
+      OBJECT_STORAGE_PUBLIC_ENDPOINT: ${OBJECT_STORAGE_PUBLIC_ENDPOINT:-http://localhost:3900}
+      OBJECT_STORAGE_REGION: ${OBJECT_STORAGE_REGION:-garage}
+      OBJECT_STORAGE_USE_SSL: ${OBJECT_STORAGE_USE_SSL:-false}
+      OBJECT_STORAGE_ACCESS_KEY: ${OBJECT_STORAGE_ACCESS_KEY:-umkm_garage_access_key}
+      OBJECT_STORAGE_SECRET_KEY: ${OBJECT_STORAGE_SECRET_KEY:-umkm_garage_secret_key}
+      OBJECT_STORAGE_BUCKET_DOCUMENTS: ${OBJECT_STORAGE_BUCKET_DOCUMENTS:-documents}
+      OBJECT_STORAGE_BUCKET_CERTIFICATES: ${OBJECT_STORAGE_BUCKET_CERTIFICATES:-certificates}
+      OBJECT_STORAGE_BUCKET_PRODUCT_IMAGES: ${OBJECT_STORAGE_BUCKET_PRODUCT_IMAGES:-product-images}
+      OBJECT_STORAGE_BUCKET_PARTNERSHIP_FILES: ${OBJECT_STORAGE_BUCKET_PARTNERSHIP_FILES:-partnership-files}
+    ports:
+      - "${DOCUMENT_SERVICE_PORT:-8084}:${DOCUMENT_SERVICE_PORT:-8084}"
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+      garage:
+        condition: service_started
+      garage-bootstrap:
+        condition: service_completed_successfully
+    networks:
+      - umkm_network
+
 volumes:
   postgres_data:
-  garage_data:
+  uploads_data:
 
 networks:
   umkm_network:

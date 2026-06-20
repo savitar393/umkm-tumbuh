@@ -9,6 +9,21 @@ import PartnershipApprovalPage from "./pages/PartnershipApprovalPage";
 import PartnershipApprovalSuccessPage from "./pages/PartnershipApprovalSuccessPage";
 import PartnershipMitraInboxPage from "./pages/PartnershipMitraInboxPage";
 
+// Routes untuk akses publik (tanpa login)
+export const publicPartnershipRoutes: RouteObject[] = [
+  {
+    path: "partnerships",
+    children: [
+      { index: true, element: <PartnershipListPage /> },
+      { path: "create", element: <PartnershipCreatePage /> },
+      { path: "success", element: <PartnershipSuccessPage /> },
+      { path: "status", element: <PartnershipStatusPage /> },
+      { path: ":id", element: <PartnershipDetailPage /> },
+      { path: "review/:id", element: <PartnershipReviewPage /> },
+    ],
+  },
+];
+
 // Routes untuk UMKM (dengan prefix /umkm/)
 export const umkmPartnershipRoutes: RouteObject[] = [
   {

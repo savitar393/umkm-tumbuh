@@ -3,7 +3,6 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { partnershipsApi } from "../api";
 import PartnershipSidebar from "../components/PartnershipSidebar";
 
-
 function formatOptionalDate(value: unknown) {
   if (typeof value !== "string" && typeof value !== "number" && !(value instanceof Date)) {
     return "-";

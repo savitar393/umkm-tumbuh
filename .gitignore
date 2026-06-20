@@ -96,6 +96,7 @@ Thumbs.db
 *.temp
 *.swp
 *.swo
+*.md
 
 # =========================
 # Dummy data/credentials
