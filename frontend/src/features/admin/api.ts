@@ -1,6 +1,7 @@
 import { http } from "../../shared/api/http";
 import type { User, UserStatus } from "../auth/api";
 import type { Certificate } from "../certificates/types";
+export type { Certificate } from "../certificates/types";
 
 export type RegistrationStatusFilter = UserStatus | "ALL";
 

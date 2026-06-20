@@ -262,7 +262,7 @@ export default function ProfilePage() {
                 <label className="umkm-field-full">
                   Deskripsi Usaha
                   <textarea
-                    value={form.business_description}
+                    value={form.business_description ?? ""}
                     onChange={(e) => updateField("business_description", e.target.value)}
                     rows={4}
                   />
@@ -309,7 +309,7 @@ export default function ProfilePage() {
                   Email Bisnis
                   <input
                     type="email"
-                    value={form.business_email}
+                    value={form.business_email ?? ""}
                     onChange={(e) => updateField("business_email", e.target.value)}
                   />
                 </label>
@@ -345,7 +345,7 @@ export default function ProfilePage() {
                 <label>
                   Kecamatan
                   <input
-                    value={form.district}
+                    value={form.district ?? ""}
                     onChange={(e) => updateField("district", e.target.value)}
                   />
                 </label>
@@ -353,7 +353,7 @@ export default function ProfilePage() {
                 <label>
                   Kelurahan/Desa
                   <input
-                    value={form.village}
+                    value={form.village ?? ""}
                     onChange={(e) => updateField("village", e.target.value)}
                   />
                 </label>
@@ -361,7 +361,7 @@ export default function ProfilePage() {
                 <label>
                   Kode Pos
                   <input
-                    value={form.postal_code}
+                    value={form.postal_code ?? ""}
                     onChange={(e) => updateField("postal_code", e.target.value)}
                   />
                 </label>
@@ -369,7 +369,7 @@ export default function ProfilePage() {
                 <label>
                   Jam Operasional
                   <input
-                    value={form.operating_hours}
+                    value={form.operating_hours ?? ""}
                     onChange={(e) => updateField("operating_hours", e.target.value)}
                     placeholder="Contoh: Senin - Sabtu (08.00 - 17.00)"
                   />
@@ -378,7 +378,7 @@ export default function ProfilePage() {
                 <label className="umkm-field-full">
                   Media Sosial / Marketplace
                   <input
-                    value={form.social_media_marketplace}
+                    value={form.social_media_marketplace ?? ""}
                     onChange={(e) => updateField("social_media_marketplace", e.target.value)}
                     placeholder="Contoh: Instagram @usahaku | Shopee Usahaku"
                   />

@@ -11,7 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { clearAuthStorage, getCurrentUser } from "../auth/currentUser";
+import { clearAuthStorage } from "../auth/currentUser";
 
 const navItems = [
   { label: "Dashboard", to: "/umkm", icon: Gauge },
@@ -30,7 +30,6 @@ type SidebarProps = {
 
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const navigate = useNavigate();
-  const user = getCurrentUser();
 
   function logout() {
     clearAuthStorage();

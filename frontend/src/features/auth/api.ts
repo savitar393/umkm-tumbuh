@@ -53,6 +53,7 @@ export function register(payload: RegisterPayload) {
     method: "POST",
     body: JSON.stringify(payload),
     auth: false,
+    service: "auth",
   });
 }
 
@@ -61,9 +62,12 @@ export function login(payload: LoginPayload) {
     method: "POST",
     body: JSON.stringify(payload),
     auth: false,
+    service: "auth",
   });
 }
 
 export function getMe() {
-  return http<User>("/auth/me");
+  return http<User>("/auth/me", {
+    service: "auth",
+  });
 }

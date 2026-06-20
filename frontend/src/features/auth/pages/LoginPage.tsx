@@ -4,8 +4,21 @@ import { useNavigate, Link } from "react-router-dom";
 import { login } from "../api";
 
 const QUICK_LOGIN = {
-  admin: { email: "admin@example.com", password: "admin12345", label: "Admin" },
-  mitra: { email: "mitra@example.com", password: "mitra12345", label: "Mitra" },
+  admin: {
+    email: "admin@example.com",
+    password: "admin12345",
+    label: "Admin",
+  },
+  umkm: {
+    email: "rizqi.saputra57@mail.com",
+    password: "password123",
+    label: "UMKM",
+  },
+  mitra: {
+    email: "bahlilmeidiyana255@gmail.com",
+    password: "password123",
+    label: "Mitra",
+  },
 } as const;
 
 export default function LoginPage() {
@@ -51,7 +64,7 @@ export default function LoginPage() {
     }
   }
 
-  async function quickLogin(account: "admin" | "mitra") {
+  async function quickLogin(account: "admin" | "umkm" | "mitra") {
     const creds = QUICK_LOGIN[account];
     setEmail(creds.email);
     setPassword(creds.password);
@@ -141,6 +154,14 @@ export default function LoginPage() {
           <div className="quick-login">
             <p className="quick-login-label">Login Cepat (Development)</p>
             <div className="quick-login-buttons">
+              <button
+                type="button"
+                className="button secondary"
+                onClick={() => quickLogin("umkm")}
+                disabled={loading}
+              >
+                Login sebagai UMKM
+              </button>
               <button
                 type="button"
                 className="button secondary"
