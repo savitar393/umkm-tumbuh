@@ -65,18 +65,36 @@ export default function LoginPage() {
   }
 
   async function quickLogin(account: "admin" | "umkm" | "mitra") {
-    const creds = QUICK_LOGIN[account];
-    setEmail(creds.email);
-    setPassword(creds.password);
-    await new Promise((r) => setTimeout(r, 50));
-    const result = await login(creds);
+    setError("");
+    setLoading(true);
 
-    localStorage.setItem("access_token", result.access_token);
-    localStorage.setItem("current_user", JSON.stringify(result.user));
+    try {
+      const creds = QUICK_LOGIN[account];
+      setEmail(creds.email);
+      setPassword(creds.password);
 
-    if (result.user.role === "ADMIN") navigate("/admin");
-    else if (result.user.role === "MITRA") navigate("/mitra");
-    else navigate("/");
+      const result = await login({
+        email: creds.email,
+        password: creds.password,
+      });
+
+      localStorage.setItem("access_token", result.access_token);
+      localStorage.setItem("current_user", JSON.stringify(result.user));
+
+      if (result.user.role === "ADMIN") {
+        navigate("/admin", { replace: true });
+      } else if (result.user.role === "UMKM") {
+        navigate("/umkm", { replace: true });
+      } else if (result.user.role === "MITRA") {
+        navigate("/mitra", { replace: true });
+      } else {
+        navigate("/", { replace: true });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login cepat gagal");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
