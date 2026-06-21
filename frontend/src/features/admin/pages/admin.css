@@ -1136,3 +1136,347 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+/* ============================================================
+   INDONESIA MAP CARD (IndoMaps.tsx)
+   ============================================================ */
+
+.map-card-v2 {
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+}
+
+.map-card-v2__header {
+  padding: 24px 28px 16px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.map-card-v2__title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.02em;
+}
+
+.map-card-v2__sub {
+  font-size: 13px;
+  color: #6b7280;
+  margin-top: 4px;
+  line-height: 1.5;
+}
+
+.map-card-v2__body {
+  padding: 20px 24px;
+  min-height: 300px;
+}
+
+/* SVG / ComposableMap must fill container width */
+.map-card-v2__body svg.rsm-svg {
+  width: 100% !important;
+  height: auto !important;
+  display: block;
+  max-height: 550px;
+}
+
+/* Responsive map container */
+.map-card-v2__body {
+  position: relative;
+  padding: 20px 24px 60px !important;
+  min-height: 400px;
+  overflow: hidden;
+}
+
+/* Improve map visibility */
+.map-card-v2__body svg {
+  background-color: #f8fafc;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Better legend positioning */
+.map-legend-v2 {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: absolute;
+  bottom: 28px;
+  right: 28px;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px 16px;
+  min-width: 160px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  z-index: 10;
+}
+
+/* Better hint positioning */
+.map-hint {
+  position: absolute;
+  bottom: 28px;
+  left: 28px;
+  font-size: 12px;
+  color: #6b7280;
+  font-style: italic;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+}
+
+/* ── Legend ── */
+.map-legend-v2 {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: absolute;
+  bottom: 28px;
+  right: 28px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 12px 16px;
+  min-width: 140px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.map-legend-v2__label-top {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #6b7280;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.map-legend-v2__bar {
+  height: 10px;
+  border-radius: 4px;
+  background: linear-gradient(to right, #c8e4f4, #416ec4, #082869);
+  width: 100%;
+}
+
+.map-legend-v2__labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #9ca3af;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+.map-legend-v2__no-data {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: #9ca3af;
+  margin-top: 8px;
+  font-weight: 500;
+}
+
+.legend-gray-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #d1d5db;
+  flex-shrink: 0;
+}
+
+/* ── Hint ── */
+.map-hint {
+  position: absolute;
+  bottom: 28px;
+  left: 28px;
+  font-size: 11px;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+/* ── Tooltip ── */
+.map-tooltip {
+  background: #1e2a4a;
+  color: #fff;
+  border-radius: 10px;
+  padding: 12px 16px;
+  min-width: 200px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  font-size: 13px;
+}
+
+.map-tooltip__title {
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 8px;
+  color: #f3c94e;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+  padding-bottom: 6px;
+}
+
+.map-tooltip__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 3px 0;
+}
+
+.map-tooltip__row span {
+  color: rgba(255,255,255,0.65);
+}
+
+.map-tooltip__row strong {
+  color: #fff;
+  font-weight: 600;
+}
+
+.map-tooltip__empty {
+  font-size: 12px;
+  color: rgba(255,255,255,0.5);
+  font-style: italic;
+  margin-top: 6px;
+}
+
+/* ============================================================
+   DASHBOARD — FILTER BAR & MISC
+   ============================================================ */
+
+.dashboard-filter-bar-v2 {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 14px;
+  padding: 16px 20px;
+  align-items: flex-end;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 140px;
+}
+
+.filter-group--btn {
+  flex: 0 0 auto;
+}
+
+.filter-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.6);
+}
+
+.filter-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 20px;
+  background: #f59e0b;
+  color: #1a1a2e;
+  font-size: 13px;
+  font-weight: 700;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+  min-height: auto;
+  box-shadow: none;
+  font-family: 'Inter', sans-serif;
+  transition: background 0.15s;
+}
+
+.filter-btn:hover {
+  background: #d97706;
+  transform: none;
+  box-shadow: none;
+}
+
+.stat-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 900px) {
+  .stat-cards-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 500px) {
+  .stat-cards-grid { grid-template-columns: 1fr; }
+}
+
+.charts-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
+  .charts-row { grid-template-columns: 1fr; }
+}
+
+.dashboard-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 80px 0;
+  color: rgba(255,255,255,0.7);
+  font-size: 14px;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255,255,255,0.2);
+  border-top-color: #f59e0b;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.error-message {
+  background: rgba(239,68,68,0.15);
+  border: 1px solid rgba(239,68,68,0.3);
+  color: #fca5a5;
+  border-radius: 10px;
+  padding: 14px 18px;
+  font-size: 14px;
+}
+
+.dashboard-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  gap: 16px;
+  text-align: center;
+}
+
+.empty-icon { opacity: 0.5; }
+
+.empty-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: rgba(255,255,255,0.8);
+}
+
+.empty-sub {
+  font-size: 14px;
+  color: rgba(255,255,255,0.5);
+  max-width: 360px;
+  line-height: 1.6;
+}

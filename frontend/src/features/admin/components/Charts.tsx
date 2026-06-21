@@ -13,7 +13,18 @@ import type {
 
 // ─── Registration Trend ───────────────────────────────────────────────────────
 
+const EmptyChart = () => (
+  <div className="chart-empty">
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 3v18h18" /><path d="M7 16l4-8 4 4 4-6" />
+    </svg>
+    <p>Data tidak tersedia</p>
+  </div>
+);
+
 export function RegistrationTrendChart({ data }: { data: RegistrationTrendItem[] }) {
+  if (data.length === 0) return <div className="chart-card"><div className="chart-card__header"><div><div className="chart-card__title">Tren Pendaftaran UMKM Baru</div><div className="chart-card__sub">Jumlah pendaftaran tiap bulan</div></div><span className="chart-badge">+Rincian</span></div><EmptyChart /></div>;
+
   const chartData = data.map((d) => ({
     bulan: d.tanggal.slice(0, 7), // YYYY-MM
     total: d.total_pendaftaran,
@@ -63,6 +74,8 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export function StatusDonutChart({ data }: { data: StatusDistributionItem[] }) {
+  if (data.length === 0) return <div className="chart-card"><div className="chart-card__header"><div className="chart-card__title">Distribusi Status UMKM</div></div><EmptyChart /></div>;
+
   const chartData = data.map((d) => ({
     name: d.nama_status,
     value: d.total,
@@ -114,6 +127,8 @@ export function StatusDonutChart({ data }: { data: StatusDistributionItem[] }) {
 // ─── Laba / Omzet Trend ───────────────────────────────────────────────────────
 
 export function OmzetTrendChart({ data }: { data: LabaTimeseriesItem[] }) {
+  if (data.length === 0) return <div className="chart-card full-width"><div className="chart-card__header"><div><div className="chart-card__title">Tren Laba UMKM</div><div className="chart-card__sub">Total laba per bulan (dalam juta Rp)</div></div><span className="chart-badge">+Rincian</span></div><EmptyChart /></div>;
+
   const chartData = data.map((d) => ({
     bulan: d.tanggal.slice(0, 7),
     laba: Math.round(d.total_laba / 1_000_000), // dalam juta
@@ -157,6 +172,8 @@ export function OmzetTrendChart({ data }: { data: LabaTimeseriesItem[] }) {
 // ─── Region Bar ───────────────────────────────────────────────────────────────
 
 export function RegionBarChart({ data }: { data: TopWilayahItem[] }) {
+  if (data.length === 0) return <div className="chart-card"><div className="chart-card__header"><div className="chart-card__title">Top 5 Wilayah Berdasarkan Laba</div></div><EmptyChart /></div>;
+
   const chartData = data.map((d) => ({
     wilayah: d.kabupaten_kota.length > 12 ? d.kabupaten_kota.slice(0, 12) + "…" : d.kabupaten_kota,
     laba: Math.round(d.total_laba / 1_000_000),
@@ -193,6 +210,8 @@ export function RegionBarChart({ data }: { data: TopWilayahItem[] }) {
 // ─── Category Bar ─────────────────────────────────────────────────────────────
 
 export function CategoryBarChart({ data }: { data: KategoriPerformaItem[] }) {
+  if (data.length === 0) return <div className="chart-card"><div className="chart-card__header"><div className="chart-card__title">Analisis Performa Kategori</div></div><EmptyChart /></div>;
+
   const maxLaba = data.length > 0 ? Math.max(...data.map((d) => d.total_laba)) : 1;
 
   return (

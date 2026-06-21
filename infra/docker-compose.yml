@@ -246,6 +246,7 @@ services:
 volumes:
   postgres_data:
   uploads_data:
+  garage_data:
 
 networks:
   umkm_network:

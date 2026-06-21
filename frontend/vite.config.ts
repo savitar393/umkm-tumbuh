@@ -27,15 +27,15 @@ export default defineConfig({
         changeOrigin: true,
       },
       "/api/v1/partnerships": {
-        target: "http://localhost:8082",
+        target: "http://localhost:8083",
         changeOrigin: true,
       },
       "/api/v1/mitra": {
-        target: "http://localhost:8082",
+        target: "http://localhost:8083",
         changeOrigin: true,
       },
       "/api/v1/umkm": {
-        target: "http://localhost:8082",
+        target: "http://localhost:8083",
         changeOrigin: true,
       },
       "/api/v1/sales": {
@@ -47,7 +47,19 @@ export default defineConfig({
         changeOrigin: true,
       },
       "/api/v1/documents": {
-        target: "http://localhost:8083",
+        target: "http://localhost:8084",
+        changeOrigin: true,
+      },
+      "/api/v1/trainings": {
+        target: "http://localhost:8085",
+        changeOrigin: true,
+      },
+      "/api/v1/enrollments": {
+        target: "http://localhost:8085",
+        changeOrigin: true,
+      },
+      "/api/v1/certificates": {
+        target: "http://localhost:8085",
         changeOrigin: true,
       },
     },
