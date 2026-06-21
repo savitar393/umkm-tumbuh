@@ -288,7 +288,7 @@ export default function RoleDashboardPage(_props: RoleDashboardPageProps) {
                             <td>
                               <Link
                                 className="button secondary table-link-button"
-                                to={`/umkm/sales?from=${item.tanggal}&to=${item.tanggal}`}
+                                to={item.penjualan_id ? `/umkm/sales/${item.penjualan_id}` : `/umkm/sales?from=${item.tanggal}&to=${item.tanggal}`}
                               >
                                 Lihat
                               </Link>

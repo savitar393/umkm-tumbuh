@@ -78,6 +78,7 @@ export function getUMKMDashboardSummary(params?: {
 // ─── UMKM Dashboard Types ──────────────────────────────────────────────────
 
 export type LabaHarianItem = {
+  penjualan_id?: string;
   tanggal: string;
   nama_hari: string;
   laba_bersih: number;
