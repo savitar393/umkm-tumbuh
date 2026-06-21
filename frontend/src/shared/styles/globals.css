@@ -3100,3 +3100,103 @@ button.danger {
   color: #1d4ed8;
   font-weight: 800;
 }
+
+.sales-table-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 18px 0 12px;
+}
+
+.sales-table-toolbar > div {
+  display: grid;
+  gap: 3px;
+}
+
+.sales-table-toolbar strong {
+  color: #0f172a;
+  font-size: 15px;
+}
+
+.sales-table-toolbar span {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.sales-table-toolbar label {
+  display: grid;
+  gap: 6px;
+  min-width: 220px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sales-table-toolbar select {
+  height: 42px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #0f172a;
+  padding: 0 12px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.sales-date-muted {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #64748b;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  .sales-table-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .sales-table-toolbar label {
+    min-width: 100%;
+  }
+}
+
+/* Sales report history should use the available UMKM content width on desktop */
+.sales-history-card {
+  width: 100%;
+  max-width: none;
+  text-align: left;
+}
+
+.sales-history-card .page-header {
+  align-items: flex-start;
+  text-align: left;
+}
+
+.sales-history-card .table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.sales-history-card table {
+  min-width: 1280px;
+}
+
+.sales-history-card th,
+.sales-history-card td {
+  white-space: nowrap;
+}
+
+.sales-history-card td:first-child {
+  white-space: normal;
+  min-width: 210px;
+}
+
+.sales-history-card .sales-date-muted {
+  white-space: nowrap;
+}
