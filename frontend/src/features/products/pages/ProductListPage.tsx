@@ -7,6 +7,7 @@ import {
   PackageCheck,
   Pencil,
   Plus,
+  Power,
   RefreshCw,
   Save,
   Search,
@@ -381,9 +382,44 @@ export default function ProductListPage() {
     }
   }
 
+  async function handleToggleProductStatus(product: Product) {
+    const nextStatus: ProductStatus = product.status === "AKTIF" ? "NONAKTIF" : "AKTIF";
+    const actionLabel = nextStatus === "AKTIF" ? "aktifkan" : "nonaktifkan";
+
+    const confirmed = window.confirm(
+      `Yakin ingin ${actionLabel} produk "${product.name}"?`,
+    );
+
+    if (!confirmed) return;
+
+    setError("");
+    setMessage("");
+
+    try {
+      await updateProduct(product.id, {
+        name: product.name,
+        category_name: product.category_name,
+        description: product.description ?? undefined,
+        price: product.price,
+        status: nextStatus,
+        legalitas: product.legalitas ?? product.legality ?? undefined,
+      });
+
+      setMessage(
+        nextStatus === "AKTIF"
+          ? "Produk berhasil diaktifkan."
+          : "Produk berhasil dinonaktifkan. Produk tidak akan muncul pada input laporan baru.",
+      );
+
+      await loadProducts();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal mengubah status produk.");
+    }
+  }
+
   async function handleDeleteProduct(product: Product) {
     const confirmed = window.confirm(
-      `Hapus produk "${product.name}"?\n\nJika produk sudah pernah digunakan pada laporan penjualan, lebih aman ubah statusnya menjadi NONAKTIF agar riwayat tetap konsisten.`,
+      `Hapus permanen produk "${product.name}"?\n\nAksi ini hanya disarankan untuk produk yang belum pernah dipakai pada laporan penjualan. Jika ragu, gunakan status NONAKTIF.`,
     );
 
     if (!confirmed) return;
@@ -587,10 +623,18 @@ export default function ProductListPage() {
               {filteredProducts.map((product) => (
                 <article className="product-card" key={product.id}>
                   <div className="product-card__image">
-                    <img
-                      src={product.thumbnail_url || logoPlaceholder}
-                      alt={product.name}
-                    />
+                    {product.thumbnail_url ? (
+                      <img
+                        className="product-card__photo"
+                        src={product.thumbnail_url}
+                        alt={product.name}
+                      />
+                    ) : (
+                      <div className="product-card__placeholder">
+                        <img src={logoPlaceholder} alt="" aria-hidden="true" />
+                        <span>Belum ada foto</span>
+                      </div>
+                    )}
                     <span className={`product-status-badge ${product.status === "AKTIF" ? "active" : "inactive"}`}>
                       {product.status === "AKTIF" ? "Aktif" : "Nonaktif"}
                     </span>
@@ -621,11 +665,37 @@ export default function ProductListPage() {
                     </button>
                     <button type="button" className="button secondary" onClick={() => openStockModal(product)}>
                       <RefreshCw size={16} />
-                      Stok
+                      Restock
                     </button>
-                    <button type="button" className="danger" onClick={() => handleDeleteProduct(product)}>
-                      <Trash2 size={16} />
+                    <button
+                      type="button"
+                      className={`button secondary product-status-action ${
+                        product.status === "AKTIF" ? "warn" : "success"
+                      }`}
+                      onClick={() => handleToggleProductStatus(product)}
+                    >
+                      {product.status === "AKTIF" ? (
+                        <>
+                          <Power size={16} />
+                          Nonaktifkan
+                        </>
+                      ) : (
+                        <>
+                          <PackageCheck size={16} />
+                          Aktifkan
+                        </>
+                      )}
                     </button>
+                    {product.status !== "AKTIF" ? (
+                      <button
+                        type="button"
+                        className="danger product-delete-button"
+                        onClick={() => handleDeleteProduct(product)}
+                      >
+                        <Trash2 size={16} />
+                        Hapus permanen
+                      </button>
+                    ) : null}
                   </div>
                 </article>
               ))}
@@ -788,7 +858,7 @@ export default function ProductListPage() {
             <form className="product-stock-modal" onSubmit={handleStockUpdate}>
               <div className="product-modal__header">
                 <div>
-                  <h2>Update Stok</h2>
+                  <h2>Restock Produk</h2>
                   <p>{stockTarget.name}</p>
                 </div>
                 <button type="button" className="product-modal__close" onClick={closeStockModal}>
@@ -802,7 +872,7 @@ export default function ProductListPage() {
               </div>
 
               <label>
-                Jumlah Restock
+                Jumlah Stok Masuk
                 <input
                   type="text"
                   inputMode="numeric"
@@ -827,7 +897,7 @@ export default function ProductListPage() {
                 </button>
                 <button type="submit" disabled={saving}>
                   <Upload size={18} />
-                  {saving ? "Menyimpan..." : "Update Stok"}
+                  {saving ? "Menyimpan..." : "Simpan Restock"}
                 </button>
               </div>
             </form>
