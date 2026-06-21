@@ -410,15 +410,24 @@ func handleError(w http.ResponseWriter, err error, fallback string) {
 	writeJSON(w, http.StatusInternalServerError, map[string]string{"error": fallback})
 }
 
-// GetUMKMDashboard — GET /api/v1/dashboard/umkm?from=YYYY-MM-DD&to=YYYY-MM-DD
+// GetUMKMDashboard — GET /api/v1/dashboard/umkm?date_from=YYYY-MM-DD&date_to=YYYY-MM-DD
 func (h *Handler) GetUMKMDashboard(w http.ResponseWriter, r *http.Request) {
 	user, ok := currentUMKMUser(w, r)
 	if !ok {
 		return
 	}
 
-	dateFrom := r.URL.Query().Get("from")
-	dateTo := r.URL.Query().Get("to")
+	query := r.URL.Query()
+
+	dateFrom := strings.TrimSpace(query.Get("date_from"))
+	if dateFrom == "" {
+		dateFrom = strings.TrimSpace(query.Get("from"))
+	}
+
+	dateTo := strings.TrimSpace(query.Get("date_to"))
+	if dateTo == "" {
+		dateTo = strings.TrimSpace(query.Get("to"))
+	}
 
 	repo := NewRepository(h.DB)
 	svc := NewService(repo)
