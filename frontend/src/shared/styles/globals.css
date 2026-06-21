@@ -3200,3 +3200,53 @@ button.danger {
 .sales-history-card .sales-date-muted {
   white-space: nowrap;
 }
+
+/* Override .dashboard-card.wide max-width specifically for the sales history table */
+.dashboard-card.wide.sales-history-card {
+  width: 100%;
+  max-width: none;
+  justify-self: stretch;
+  text-align: left;
+}
+
+.feature-page:has(.sales-history-card) {
+  width: 100%;
+}
+
+.dashboard-card.wide.sales-history-card .table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.dashboard-card.wide.sales-history-card table {
+  min-width: 1280px;
+}
+
+.dashboard-card.wide.sales-history-card th,
+.dashboard-card.wide.sales-history-card td {
+  white-space: nowrap;
+}
+
+.dashboard-card.wide.sales-history-card td:first-child {
+  min-width: 230px;
+  white-space: normal;
+}
+
+/* Center KPI card contents on UMKM feature pages */
+.feature-page .stat-card {
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 150px;
+  text-align: center;
+}
+
+.feature-page .stat-card > div:last-child {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+}
+
+.feature-page .stat-card__icon-wrap {
+  margin-bottom: 8px;
+}
