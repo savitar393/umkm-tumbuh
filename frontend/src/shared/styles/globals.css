@@ -3825,3 +3825,68 @@ button.danger {
   margin: 0;
   box-shadow: 0 18px 44px rgba(15, 23, 42, 0.16);
 }
+
+/* Custom confirmation overlay for product actions */
+.product-confirm-modal {
+  width: min(460px, calc(100vw - 32px));
+  display: grid;
+  justify-items: center;
+  gap: 18px;
+  padding: 30px;
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: 0 32px 90px rgba(15, 23, 42, 0.28);
+  text-align: center;
+}
+
+.product-confirm-modal__icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+}
+
+.product-confirm-modal__icon.info {
+  background: #eff6ff;
+  color: #1f45b6;
+}
+
+.product-confirm-modal__icon.danger {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.product-confirm-modal__body {
+  display: grid;
+  gap: 10px;
+}
+
+.product-confirm-modal__body h2 {
+  color: #0f172a;
+  font-size: 24px;
+  line-height: 1.15;
+}
+
+.product-confirm-modal__body p {
+  color: #64748b;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.product-confirm-modal__body strong {
+  color: #0f172a;
+}
+
+.product-confirm-modal__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+  margin-top: 6px;
+}
+
+.product-confirm-modal__actions button {
+  min-height: 48px;
+  justify-content: center;
+}

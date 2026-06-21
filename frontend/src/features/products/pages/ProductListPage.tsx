@@ -1,5 +1,6 @@
 import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from "react";
 import {
+  AlertTriangle,
   Archive,
   Boxes,
   ImagePlus,
@@ -41,6 +42,18 @@ type ProductFormState = {
   legalitas: string;
   thumbnailFile: File | null;
 };
+
+type ConfirmAction =
+  | {
+      type: "toggle_status";
+      product: Product;
+      nextStatus: ProductStatus;
+    }
+  | {
+      type: "delete";
+      product: Product;
+    }
+  | null;
 
 const emptyForm: ProductFormState = {
   name: "",
@@ -173,6 +186,7 @@ export default function ProductListPage() {
   const [stockTarget, setStockTarget] = useState<Product | null>(null);
   const [stockQuantity, setStockQuantity] = useState("");
   const [stockNote, setStockNote] = useState("Restock dari halaman Kelola Produk");
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
 
   const totalProducts = products.length;
   const totalStock = useMemo(
@@ -382,16 +396,22 @@ export default function ProductListPage() {
     }
   }
 
-  async function handleToggleProductStatus(product: Product) {
-    const nextStatus: ProductStatus = product.status === "AKTIF" ? "NONAKTIF" : "AKTIF";
-    const actionLabel = nextStatus === "AKTIF" ? "aktifkan" : "nonaktifkan";
+  function requestToggleProductStatus(product: Product) {
+    setConfirmAction({
+      type: "toggle_status",
+      product,
+      nextStatus: product.status === "AKTIF" ? "NONAKTIF" : "AKTIF",
+    });
+  }
 
-    const confirmed = window.confirm(
-      `Yakin ingin ${actionLabel} produk "${product.name}"?`,
-    );
+  function requestDeleteProduct(product: Product) {
+    setConfirmAction({
+      type: "delete",
+      product,
+    });
+  }
 
-    if (!confirmed) return;
-
+  async function handleToggleProductStatus(product: Product, nextStatus: ProductStatus) {
     setError("");
     setMessage("");
 
@@ -418,12 +438,6 @@ export default function ProductListPage() {
   }
 
   async function handleDeleteProduct(product: Product) {
-    const confirmed = window.confirm(
-      `Hapus permanen produk "${product.name}"?\n\nAksi ini hanya disarankan untuk produk yang belum pernah dipakai pada laporan penjualan. Jika ragu, gunakan status NONAKTIF.`,
-    );
-
-    if (!confirmed) return;
-
     setError("");
     setMessage("");
 
@@ -433,6 +447,24 @@ export default function ProductListPage() {
       await loadProducts();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal menghapus produk.");
+    }
+  }
+
+  async function handleConfirmAction() {
+    if (!confirmAction) return;
+
+    setSaving(true);
+
+    try {
+      if (confirmAction.type === "toggle_status") {
+        await handleToggleProductStatus(confirmAction.product, confirmAction.nextStatus);
+      } else {
+        await handleDeleteProduct(confirmAction.product);
+      }
+
+      setConfirmAction(null);
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -686,7 +718,7 @@ export default function ProductListPage() {
                       className={`button secondary product-status-action ${
                         product.status === "AKTIF" ? "warn" : "success"
                       }`}
-                      onClick={() => handleToggleProductStatus(product)}
+                      onClick={() => requestToggleProductStatus(product)}
                     >
                       {product.status === "AKTIF" ? (
                         <>
@@ -704,7 +736,7 @@ export default function ProductListPage() {
                       <button
                         type="button"
                         className="danger product-delete-button"
-                        onClick={() => handleDeleteProduct(product)}
+                        onClick={() => requestDeleteProduct(product)}
                       >
                         <Trash2 size={16} />
                         Hapus permanen
@@ -864,6 +896,74 @@ export default function ProductListPage() {
                 </button>
               </div>
             </form>
+          </div>
+        ) : null}
+
+        {confirmAction ? (
+          <div className="product-modal-backdrop" role="dialog" aria-modal="true">
+            <div className="product-confirm-modal">
+              <div
+                className={`product-confirm-modal__icon ${
+                  confirmAction.type === "delete" ? "danger" : "info"
+                }`}
+              >
+                <AlertTriangle size={28} />
+              </div>
+
+              <div className="product-confirm-modal__body">
+                <h2>
+                  {confirmAction.type === "delete"
+                    ? "Hapus permanen produk?"
+                    : confirmAction.nextStatus === "AKTIF"
+                      ? "Aktifkan produk?"
+                      : "Nonaktifkan produk?"}
+                </h2>
+
+                <p>
+                  {confirmAction.type === "delete" ? (
+                    <>
+                      Produk <strong>{confirmAction.product.name}</strong> akan dihapus permanen.
+                      Aksi ini hanya disarankan untuk produk yang belum pernah dipakai pada laporan penjualan.
+                    </>
+                  ) : confirmAction.nextStatus === "AKTIF" ? (
+                    <>
+                      Produk <strong>{confirmAction.product.name}</strong> akan diaktifkan kembali
+                      dan dapat digunakan pada laporan penjualan baru.
+                    </>
+                  ) : (
+                    <>
+                      Produk <strong>{confirmAction.product.name}</strong> akan dinonaktifkan.
+                      Produk tidak akan muncul pada input laporan baru, tetapi riwayat laporan lama tetap aman.
+                    </>
+                  )}
+                </p>
+              </div>
+
+              <div className="product-confirm-modal__actions">
+                <button
+                  type="button"
+                  className="button secondary"
+                  onClick={() => setConfirmAction(null)}
+                  disabled={saving}
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  className={confirmAction.type === "delete" ? "danger" : ""}
+                  onClick={handleConfirmAction}
+                  disabled={saving}
+                >
+                  {saving
+                    ? "Memproses..."
+                    : confirmAction.type === "delete"
+                      ? "Hapus permanen"
+                      : confirmAction.nextStatus === "AKTIF"
+                        ? "Aktifkan"
+                        : "Nonaktifkan"}
+                </button>
+              </div>
+            </div>
           </div>
         ) : null}
 
