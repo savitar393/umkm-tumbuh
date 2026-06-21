@@ -488,8 +488,12 @@ export default function ProductListPage() {
       subtitle="Manajemen stok dan katalog produk UMKM Anda."
     >
       <div className="feature-page product-catalog-page">
-        {message ? <div className="success-message">{message}</div> : null}
-        {error ? <div className="error-message">{error}</div> : null}
+        {(message || error) ? (
+          <div className="product-feedback-toast">
+            {message ? <div className="success-message">{message}</div> : null}
+            {error ? <div className="error-message">{error}</div> : null}
+          </div>
+        ) : null}
         {useMock ? (
           <div
             className="error-message"

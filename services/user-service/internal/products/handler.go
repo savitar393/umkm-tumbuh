@@ -495,6 +495,30 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 
 	productID := chi.URLParam(r, "id")
 
+	var usedInReports bool
+	err = h.DB.QueryRow(r.Context(), `
+		SELECT EXISTS (
+			SELECT 1
+			FROM dashboard.transaksi_penjualan_item item
+			JOIN dashboard.transaksi_penjualan sale
+				ON sale.penjualan_id = item.penjualan_id
+			WHERE item.produk_id = $1
+			  AND sale.umkm_id = $2
+			LIMIT 1
+		)
+	`, productID, umkmID).Scan(&usedInReports)
+	if err != nil {
+		handleError(w, err, "Gagal memeriksa riwayat produk.")
+		return
+	}
+
+	if usedInReports {
+		writeJSON(w, http.StatusConflict, map[string]string{
+			"error": "Produk sudah digunakan pada laporan penjualan. Nonaktifkan produk agar riwayat laporan tetap aman.",
+		})
+		return
+	}
+
 	tag, err := h.DB.Exec(r.Context(), `
 		UPDATE user_mgmt.master_produkumkm
 		SET is_deleted = TRUE, deleted_at = NOW(), updated_at = NOW()
