@@ -103,9 +103,11 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       <nav className="umkm-nav">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isGroupActive =
-            location.pathname === item.to ||
-            location.pathname.startsWith(`${item.to}/`);
+          const isHomeItem = item.to === homePath;
+
+          const isGroupActive = isHomeItem
+            ? location.pathname === item.to
+            : location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
 
           return (
             <div
