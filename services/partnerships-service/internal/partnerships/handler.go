@@ -417,6 +417,45 @@ func (h *Handler) RejectPartnership(w http.ResponseWriter, r *http.Request) {
 	response.Success(w, http.StatusOK, nil, "Pengajuan ditolak.")
 }
 
+// CancelPartnership - PATCH /api/v1/partnerships/{id}/cancel
+func (h *Handler) CancelPartnership(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		response.Error(w, http.StatusBadRequest, "Invalid partnership ID", nil)
+		return
+	}
+
+	_ = extractUserIDFromRequest(r)
+
+	var req UpdatePartnershipStatus
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.Error(w, http.StatusBadRequest, "Invalid request body", nil)
+		return
+	}
+
+	req.Status = StatusCancelled
+
+	if err := h.service.UpdatePartnershipStatus(r.Context(), id, req); err != nil {
+		if appErr, ok := err.(*apperror.AppError); ok {
+			switch appErr.Code {
+			case http.StatusForbidden:
+				response.Error(w, http.StatusForbidden, appErr.Message, nil)
+				return
+			case http.StatusNotFound:
+				response.Error(w, http.StatusNotFound, appErr.Message, nil)
+				return
+			default:
+				response.Error(w, appErr.Code, appErr.Message, nil)
+				return
+			}
+		}
+		response.Error(w, http.StatusInternalServerError, "Failed to cancel partnership", nil)
+		return
+	}
+
+	response.Success(w, http.StatusOK, nil, "Pengajuan dibatalkan.")
+}
+
 // ============================================================
 // NEW HANDLERS FOR UMKM AND MITRA LISTS
 // ============================================================

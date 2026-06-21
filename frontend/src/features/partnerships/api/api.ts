@@ -94,7 +94,9 @@ export const partnershipsApi = {
     return http.get<SuccessResponse<IncomingPartnershipsResponse>>(url);
   },
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getDetail: async (id: string): Promise<SuccessResponse<any>> => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return http.get<SuccessResponse<any>>(`${API_BASE}/${id}`);
   },
 
@@ -132,6 +134,7 @@ export const partnershipsApi = {
     
     // http.get sudah mengembalikan response langsung dari backend
     // Backend mengembalikan: { success, message, data: { mitra, pagination } }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const response = await http.get<any>(url);
     
     console.log("listMitra raw response:", response);
@@ -168,6 +171,7 @@ export const partnershipsApi = {
     
     // http.get sudah mengembalikan response langsung dari backend
     // Backend mengembalikan: { success, message, data: { umkm, pagination } }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const response = await http.get<any>(url);
     
     console.log("listUMKM raw response:", response);

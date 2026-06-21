@@ -3,6 +3,7 @@ package partnerships
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -291,9 +292,16 @@ func (s *service) UpdatePartnershipStatus(
 	)
 
 	if err != nil {
+		code := 500
+		msg := err.Error()
+		if strings.Contains(msg, "not found") {
+			code = 404
+		} else if strings.Contains(msg, "violates check constraint") {
+			code = 409
+		}
 		return apperror.New(
-			500,
-			"failed to update partnership status: "+err.Error(),
+			code,
+			"failed to update partnership status: "+msg,
 		)
 	}
 

@@ -46,6 +46,7 @@ func NewRouter(
 		r.Patch("/partnerships/{id}/read", partnershipHandler.MarkAsRead)
 		r.Patch("/partnerships/{id}/approve", partnershipHandler.ApprovePartnership)
 		r.Patch("/partnerships/{id}/reject", partnershipHandler.RejectPartnership)
+		r.Patch("/partnerships/{id}/cancel", partnershipHandler.CancelPartnership)
 
 		// ============================================================
 		// NEW ENDPOINTS (untuk menampilkan list UMKM dan Mitra)
