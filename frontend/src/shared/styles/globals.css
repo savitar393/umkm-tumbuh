@@ -7780,3 +7780,41 @@ button.danger {
   width: 15px;
   height: 15px;
 }
+
+/* Sidebar nested partnership navigation */
+.umkm-nav-group {
+  display: grid;
+  gap: 6px;
+}
+
+.umkm-nav-sublist {
+  display: grid;
+  gap: 5px;
+  margin: -2px 0 4px 34px;
+  padding-left: 10px;
+  border-left: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.umkm-nav-sub-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+  box-shadow: none;
+}
+
+.umkm-nav-sub-link:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.umkm-nav-sub-link.active {
+  background: rgba(255, 201, 51, 0.18);
+  color: #ffffff;
+}

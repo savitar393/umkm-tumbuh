@@ -1,4 +1,4 @@
-import type { RouteObject } from "react-router-dom";
+import { Navigate, type RouteObject } from "react-router-dom";
 import PartnershipListPage from "./pages/PartnershipListPage";
 import PartnershipCreatePage from "./pages/PartnershipCreatePage";
 import PartnershipSuccessPage from "./pages/PartnershipSuccessPage";
@@ -30,7 +30,8 @@ export const umkmPartnershipRoutes: RouteObject[] = [
     path: "partnerships",
     children: [
       { index: true, element: <PartnershipListPage /> },
-      { path: "incoming", element: <PartnershipMitraInboxPage /> },
+      { path: "inbox", element: <PartnershipMitraInboxPage /> },
+      { path: "incoming", element: <Navigate to="/umkm/partnerships/inbox" replace /> },
       { path: "create", element: <PartnershipCreatePage /> },
       { path: "success", element: <PartnershipSuccessPage /> },
       { path: "status", element: <PartnershipStatusPage /> },
@@ -48,8 +49,8 @@ export const mitraPartnershipRoutes: RouteObject[] = [
     path: "partnerships",
     children: [
       { index: true, element: <PartnershipListPage /> },
-      { path: "incoming", element: <PartnershipMitraInboxPage /> },
       { path: "inbox", element: <PartnershipMitraInboxPage /> },
+      { path: "incoming", element: <Navigate to="/mitra/partnerships/inbox" replace /> },
       { path: "create", element: <PartnershipCreatePage /> },
       { path: "success", element: <PartnershipSuccessPage /> },
       { path: "status", element: <PartnershipStatusPage /> },
