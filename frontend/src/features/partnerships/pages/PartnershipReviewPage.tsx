@@ -196,7 +196,7 @@ export default function PartnershipReviewPage() {
   const status = getText(partnership, ["status", "statusPengajuan", "status_pengajuan"], "");
   const requesterName = getText(partnership, ["requester_name", "pengirim", "business_name", "nama_pengaju"], "Pengaju");
   const receiverName = getText(partnership, ["receiver_name", "mitraUmkmTujuan", "nama_penerima"], "Tujuan Kemitraan");
-  const proposalTitle = getText(partnership, ["proposal_title", "proposalTitle"], "Proposal kemitraan");
+  const proposalTitle = getText(partnership, ["proposal_title", "proposalTitle", "proposal_description", "proposalDescription"], "Proposal kemitraan");
   const proposalDescription = getText(partnership, ["proposal_description", "proposalDescription"], "");
   const requestCode = getText(partnership, ["request_code", "pengajuanID", "id"], id ?? "-");
   const contactPerson = getOptionalText(partnership, ["contact_person", "email", "phone_number"]);

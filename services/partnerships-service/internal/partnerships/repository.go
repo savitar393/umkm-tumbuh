@@ -69,7 +69,7 @@ func (r *repository) Create(ctx context.Context, req *PartnershipRequest) error 
 
 	_, err := r.db.Exec(ctx, query,
 		req.ID, req.RequestCode, umkmID, mitraID, req.RequesterID, req.ReceiverID,
-		req.Status, req.ProposalTitle, req.RejectionReason, req.ContractDocumentID,
+		req.Status, req.ProposalDescription, req.RejectionReason, req.ContractDocumentID,
 		req.SubmittedAt, req.DecidedAt, req.ContractSignedAt,
 		req.PartnershipStart, req.PartnershipEnd,
 	)
@@ -353,7 +353,7 @@ func (r *repository) GenerateRequestCode(ctx context.Context) (string, error) {
 // NEW IMPLEMENTATIONS FOR UMKM AND MITRA LISTS
 // ============================================================
 
-/// FindUMKMList retrieves a paginated list of verified UMKM
+// / FindUMKMList retrieves a paginated list of verified UMKM
 // Used by MITRA to find potential partners
 func (r *repository) FindUMKMList(ctx context.Context, search string, filterType string, limit, offset int) ([]UMKMListItem, int, error) {
 	var whereClause string

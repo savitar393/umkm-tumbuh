@@ -73,6 +73,17 @@ func extractBearerToken(authHeader string) string {
 	return parts[1]
 }
 
+func formatPartnershipListTitle(p PartnershipListResponse) string {
+	name := strings.TrimSpace(p.RequesterBusinessName)
+	if name == "" {
+		name = strings.TrimSpace(p.RequesterName)
+	}
+	if name == "" {
+		return "Pengajuan Kemitraan"
+	}
+	return "Pengajuan Kemitraan - " + name
+}
+
 // CreatePartnership - POST /api/v1/partnerships
 func (h *Handler) CreatePartnership(w http.ResponseWriter, r *http.Request) {
 	userID := extractUserIDFromRequest(r)
@@ -146,14 +157,14 @@ func (h *Handler) GetPartnershipStatus(w http.ResponseWriter, r *http.Request) {
 	var formattedData []map[string]interface{}
 	for _, p := range partnerships {
 		formattedData = append(formattedData, map[string]interface{}{
-			"pengajuanID":        p.ID,
-			"statusPengajuan":    p.Status,
-			"tanggalPengajuan":   p.SubmittedAt,
-			"mitraUmkmTujuan":    p.ReceiverName,
-			"mitraUmkmUsaha":     p.ReceiverBusinessName,
-			"pengirim":           p.RequesterName,
-			"pengirimUsaha":      p.RequesterBusinessName,
-			"proposalTitle":      p.ProposalTitle,
+			"pengajuanID":      p.ID,
+			"statusPengajuan":  p.Status,
+			"tanggalPengajuan": p.SubmittedAt,
+			"mitraUmkmTujuan":  p.ReceiverName,
+			"mitraUmkmUsaha":   p.ReceiverBusinessName,
+			"pengirim":         p.RequesterName,
+			"pengirimUsaha":    p.RequesterBusinessName,
+			"proposalTitle":    formatPartnershipListTitle(p),
 		})
 	}
 
@@ -235,7 +246,7 @@ func (h *Handler) GetIncomingPartnerships(w http.ResponseWriter, r *http.Request
 		formattedData = append(formattedData, map[string]interface{}{
 			"pengajuanID":      p.ID,
 			"pengirim":         p.RequesterName,
-			"proposal_title":   p.ProposalTitle,
+			"proposal_title":   formatPartnershipListTitle(p),
 			"tanggalPengajuan": p.SubmittedAt,
 			"status":           p.Status,
 		})
@@ -468,7 +479,7 @@ func (h *Handler) GetUMKMList(w http.ResponseWriter, r *http.Request) {
 	if page < 1 {
 		page = 1
 	}
-	
+
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	if limit < 1 {
 		limit = 10
@@ -476,17 +487,17 @@ func (h *Handler) GetUMKMList(w http.ResponseWriter, r *http.Request) {
 	if limit > 50 {
 		limit = 50
 	}
-	
+
 	search := r.URL.Query().Get("q")
 	filterType := r.URL.Query().Get("filterType")
-	
+
 	// Extract user role - hanya MITRA yang bisa melihat UMKM
 	userRole := extractUserRoleFromRequest(r)
 	if userRole != RoleMitra {
 		response.Error(w, http.StatusForbidden, "Hanya mitra yang dapat melihat daftar UMKM", nil)
 		return
 	}
-	
+
 	// Get UMKM list from service
 	umkmList, totalCount, err := h.service.GetUMKMList(r.Context(), search, filterType, page, limit)
 	if err != nil {
@@ -497,13 +508,13 @@ func (h *Handler) GetUMKMList(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, http.StatusInternalServerError, "Gagal mengambil daftar UMKM", nil)
 		return
 	}
-	
+
 	// Calculate total pages
 	totalPages := 0
 	if totalCount > 0 {
 		totalPages = (totalCount + limit - 1) / limit
 	}
-	
+
 	// Return success response
 	response.Success(w, http.StatusOK, map[string]interface{}{
 		"umkm": umkmList,
@@ -524,7 +535,7 @@ func (h *Handler) GetMitraList(w http.ResponseWriter, r *http.Request) {
 	if page < 1 {
 		page = 1
 	}
-	
+
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	if limit < 1 {
 		limit = 10
@@ -532,17 +543,17 @@ func (h *Handler) GetMitraList(w http.ResponseWriter, r *http.Request) {
 	if limit > 50 {
 		limit = 50
 	}
-	
+
 	search := r.URL.Query().Get("q")
 	filterType := r.URL.Query().Get("filterType")
-	
+
 	// Extract user role - hanya UMKM yang bisa melihat mitra
 	userRole := extractUserRoleFromRequest(r)
 	if userRole != RoleUMKM {
 		response.Error(w, http.StatusForbidden, "Hanya UMKM yang dapat melihat daftar mitra", nil)
 		return
 	}
-	
+
 	// Get Mitra list from service
 	mitraList, totalCount, err := h.service.GetMitraList(r.Context(), search, filterType, page, limit)
 	if err != nil {
@@ -553,13 +564,13 @@ func (h *Handler) GetMitraList(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, http.StatusInternalServerError, "Gagal mengambil daftar mitra", nil)
 		return
 	}
-	
+
 	// Calculate total pages
 	totalPages := 0
 	if totalCount > 0 {
 		totalPages = (totalCount + limit - 1) / limit
 	}
-	
+
 	// Return success response
 	response.Success(w, http.StatusOK, map[string]interface{}{
 		"mitra": mitraList,

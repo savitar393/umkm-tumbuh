@@ -146,7 +146,19 @@ export const partnershipsApi = {
 
   // GET /api/v1/partnerships/{id}
   getDetail: async (id: string): Promise<SuccessResponse<Record<string, unknown>>> => {
-    return httpPartnerships.get<SuccessResponse<Record<string, unknown>>>(`/partnerships/${id}`);
+    const response = await httpPartnerships.get<SuccessResponse<Record<string, unknown>>>(`/partnerships/${id}`);
+    const raw = response.data;
+    const maybePengajuan = raw?.pengajuan;
+
+    const data =
+      maybePengajuan && typeof maybePengajuan === "object" && !Array.isArray(maybePengajuan)
+        ? (maybePengajuan as Record<string, unknown>)
+        : raw;
+
+    return {
+      ...response,
+      data,
+    };
   },
 
   // GET /api/v1/partnerships/summary
