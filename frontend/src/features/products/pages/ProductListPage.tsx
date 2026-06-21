@@ -182,6 +182,7 @@ export default function ProductListPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [form, setForm] = useState<ProductFormState>(emptyForm);
   const [thumbnailPreview, setThumbnailPreview] = useState("");
+  const [thumbnailInputKey, setThumbnailInputKey] = useState(0);
 
   const [stockTarget, setStockTarget] = useState<Product | null>(null);
   const [stockQuantity, setStockQuantity] = useState("");
@@ -262,6 +263,7 @@ export default function ProductListPage() {
     setForm(emptyForm);
     setEditingProduct(null);
     setThumbnailPreview("");
+    setThumbnailInputKey((current) => current + 1);
   }
 
   function openCreateModal() {
@@ -319,6 +321,13 @@ export default function ProductListPage() {
     }
   }
 
+  function clearSelectedThumbnail() {
+    updateField("thumbnailFile", null);
+    setThumbnailPreview(editingProduct?.thumbnail_url ?? "");
+    setThumbnailInputKey((current) => current + 1);
+  }
+
+
   function validateProductForm() {
     if (!form.name.trim()) {
       return "Nama produk wajib diisi.";
@@ -367,11 +376,17 @@ export default function ProductListPage() {
       if (editingProduct) {
         await updateProduct(editingProduct.id, basePayload);
 
+        let thumbnailWarning = "";
+
         if (form.thumbnailFile) {
-          await uploadProductThumbnail(editingProduct.id, form.thumbnailFile);
+          try {
+            await uploadProductThumbnail(editingProduct.id, form.thumbnailFile);
+          } catch {
+            thumbnailWarning = " Namun, thumbnail gagal diunggah.";
+          }
         }
 
-        setMessage("Produk berhasil diperbarui.");
+        setMessage(`Produk berhasil diperbarui.${thumbnailWarning}`);
       } else {
         const createPayload: ProductPayload = {
           ...basePayload,
@@ -380,11 +395,17 @@ export default function ProductListPage() {
 
         const response = await createProduct(createPayload);
 
+        let thumbnailWarning = "";
+
         if (form.thumbnailFile) {
-          await uploadProductThumbnail(response.product.id, form.thumbnailFile);
+          try {
+            await uploadProductThumbnail(response.product.id, form.thumbnailFile);
+          } catch {
+            thumbnailWarning = " Namun, thumbnail gagal diunggah.";
+          }
         }
 
-        setMessage("Produk berhasil ditambahkan.");
+        setMessage(`Produk berhasil ditambahkan.${thumbnailWarning}`);
       }
 
       closeProductModal();
@@ -515,10 +536,7 @@ export default function ProductListPage() {
   }
 
   return (
-    <UmkmLayout
-      title="Kelola Produk"
-      subtitle="Manajemen stok dan katalog produk UMKM Anda."
-    >
+    <UmkmLayout>
       <div className="feature-page product-catalog-page">
         {(message || error) ? (
           <div className="product-feedback-toast">
@@ -779,12 +797,34 @@ export default function ProductListPage() {
                     )}
 
                     <input
+                      key={thumbnailInputKey}
                       type="file"
                       accept="image/png,image/jpeg,image/webp"
                       onChange={handleThumbnailSelect}
                       hidden
                     />
                   </label>
+
+                  <div className="product-image-actions">
+                    <label className="button secondary">
+                      <ImagePlus size={16} />
+                      {thumbnailPreview ? "Ganti foto" : "Pilih foto"}
+                      <input
+                        key={`button-${thumbnailInputKey}`}
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        onChange={handleThumbnailSelect}
+                        hidden
+                      />
+                    </label>
+
+                    {thumbnailPreview ? (
+                      <button type="button" className="button secondary" onClick={clearSelectedThumbnail}>
+                        <X size={16} />
+                        Batal pilih
+                      </button>
+                    ) : null}
+                  </div>
 
                   <small>Format JPG, PNG, atau WebP. Maksimal 5 MB.</small>
                 </div>

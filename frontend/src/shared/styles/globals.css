@@ -3890,3 +3890,23 @@ button.danger {
   min-height: 48px;
   justify-content: center;
 }
+
+/* Product thumbnail modal controls */
+.product-image-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.product-image-actions .button,
+.product-image-actions button {
+  min-height: 42px;
+  justify-content: center;
+  border-radius: 12px;
+  font-size: 13px;
+  box-shadow: none;
+}
+
+.product-image-actions .button:only-child {
+  grid-column: 1 / -1;
+}
