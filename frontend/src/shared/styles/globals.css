@@ -7756,3 +7756,27 @@ button.danger {
     text-align: center;
   }
 }
+
+/* Approval upload remove button: force perfect circle */
+.partnership-approval-upload > button[type="button"] {
+  box-sizing: border-box;
+  display: inline-grid;
+  width: 34px;
+  min-width: 34px;
+  max-width: 34px;
+  height: 34px;
+  min-height: 34px;
+  max-height: 34px;
+  padding: 0;
+  place-items: center;
+  border: 1px solid #e2e8f0;
+  border-radius: 9999px;
+  background: #ffffff;
+  color: #64748b;
+  line-height: 1;
+}
+
+.partnership-approval-upload > button[type="button"] svg {
+  width: 15px;
+  height: 15px;
+}

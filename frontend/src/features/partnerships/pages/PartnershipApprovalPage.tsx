@@ -211,7 +211,11 @@ export default function PartnershipApprovalPage() {
   const requestCode = getText(partnership, ["request_code", "pengajuanID", "id"], id ?? "-");
   const requesterName = getText(partnership, ["requester_name", "business_name", "pengirim"], "Pengaju");
   const receiverName = getText(partnership, ["receiver_name", "mitraUmkmTujuan"], "Tujuan Kemitraan");
-  const proposalTitle = getText(partnership, ["proposal_title", "proposalTitle", "proposal_description", "proposalDescription"], "Proposal kemitraan");
+  const rawProposalTitle = getText(partnership, ["proposal_title", "proposalTitle"], "");
+  const proposalTitle =
+    rawProposalTitle && !rawProposalTitle.includes("Alasan Bermitra:")
+      ? rawProposalTitle
+      : `Finalisasi Kemitraan ${requesterName} dan ${receiverName}`;
   const proposalDescription = getText(partnership, ["proposal_description", "proposalDescription"], "");
   const status = getText(partnership, ["status", "statusPengajuan", "status_pengajuan"], "");
   const submittedAt = partnership?.submitted_at ?? partnership?.tanggalPengajuan ?? partnership?.created_at;
