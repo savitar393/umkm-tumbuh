@@ -6409,3 +6409,157 @@ button.danger {
     width: 100%;
   }
 }
+
+/* ===================== PARTNERSHIP SUCCESS ===================== */
+
+.partnership-success-page {
+  display: grid;
+  place-items: center;
+  min-height: calc(100vh - 190px);
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.partnership-success-card {
+  display: grid;
+  justify-items: center;
+  gap: 18px;
+  width: 100%;
+  padding: 44px;
+  border: 1px solid #dbeafe;
+  border-radius: 34px;
+  background:
+    radial-gradient(circle at top right, rgba(255, 215, 0, 0.2), transparent 30%),
+    linear-gradient(135deg, #ffffff, #f8fbff);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
+  text-align: center;
+}
+
+.partnership-success-icon {
+  display: grid;
+  width: 92px;
+  height: 92px;
+  place-items: center;
+  border-radius: 999px;
+  background: #dcfce7;
+  color: #16a34a;
+  box-shadow: 0 18px 36px rgba(22, 163, 74, 0.16);
+}
+
+.partnership-success-card h1 {
+  color: #0f172a;
+  font-size: clamp(28px, 3vw, 42px);
+  line-height: 1.05;
+  letter-spacing: -0.05em;
+}
+
+.partnership-success-card > p {
+  max-width: 640px;
+  color: #64748b;
+  font-weight: 650;
+  line-height: 1.7;
+}
+
+.partnership-success-reference {
+  display: grid;
+  gap: 4px;
+  min-width: min(100%, 360px);
+  padding: 16px 20px;
+  border: 1px solid #bfdbfe;
+  border-radius: 18px;
+  background: #eff6ff;
+}
+
+.partnership-success-reference span {
+  color: #1e40af;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.partnership-success-reference strong {
+  color: #0f172a;
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+
+.partnership-success-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.partnership-success-steps article {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  min-height: 100px;
+  padding: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  background: #ffffff;
+  text-align: left;
+}
+
+.partnership-success-steps svg {
+  color: #1f45b6;
+  margin-top: 2px;
+}
+
+.partnership-success-steps article.done svg {
+  color: #16a34a;
+}
+
+.partnership-success-steps strong {
+  display: block;
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.partnership-success-steps span {
+  display: block;
+  margin-top: 5px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.partnership-success-actions {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.partnership-success-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 220px;
+  min-height: 52px;
+  border-radius: 999px;
+}
+
+@media (max-width: 820px) {
+  .partnership-success-card {
+    padding: 28px;
+  }
+
+  .partnership-success-steps {
+    grid-template-columns: 1fr;
+  }
+
+  .partnership-success-actions {
+    width: 100%;
+  }
+
+  .partnership-success-actions button {
+    width: 100%;
+  }
+}
