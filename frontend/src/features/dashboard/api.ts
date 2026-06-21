@@ -143,8 +143,14 @@ export type MitraDashboardData = {
 
 export function getUMKMDashboard(dateFrom: string, dateTo: string): Promise<UMKMDashboardData> {
   const params = new URLSearchParams();
+
+  // Keep both aliases for now because the legacy dashboard handler may read
+  // from/to while newer code uses date_from/date_to.
   params.set("date_from", dateFrom);
   params.set("date_to", dateTo);
+  params.set("from", dateFrom);
+  params.set("to", dateTo);
+
   return userHttp<UMKMDashboardData>(`/dashboard/umkm?${params.toString()}`);
 }
 

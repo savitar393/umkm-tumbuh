@@ -89,9 +89,6 @@ func (r *Repository) GetOmzetSummary(ctx context.Context, umkmID, dateFrom, date
 	return
 }
 
-// GetLabaHarian — laporan penjualan harian dalam rentang tanggal.
-// Sumber utama dashboard UMKM sekarang adalah dashboard.transaksi_penjualan,
-// karena baris ini punya penjualan_id untuk membuka detail laporan.
 func (r *Repository) GetLabaHarian(ctx context.Context, umkmID, dateFrom, dateTo string) ([]LabaHarianItem, error) {
 	log.Printf("[DEBUG] GetLabaHarian umkmID=%s dateFrom=%s dateTo=%s", umkmID, dateFrom, dateTo)
 
@@ -137,8 +134,8 @@ func (r *Repository) GetLabaHarian(ctx context.Context, umkmID, dateFrom, dateTo
 func (r *Repository) GetTrenMingguan(ctx context.Context, umkmID, dateFrom, dateTo string, days int) ([]TrenMingguan, error) {
 	rows, err := r.DB.Query(ctx, `
 		SELECT
-			TO_CHAR(tanggal_transaksi, 'DD Mon')      AS hari,
-			COALESCE(SUM(total_laba), 0)::float8     AS total_laba
+			TO_CHAR(tanggal_transaksi, 'DD Mon')    AS hari,
+			COALESCE(SUM(total_laba), 0)::float8   AS total_laba
 		FROM dashboard.transaksi_penjualan
 		WHERE umkm_id = $1
 		  AND status_transaksi <> 'CANCELLED'
@@ -168,9 +165,6 @@ func (r *Repository) GetTrenMingguan(ctx context.Context, umkmID, dateFrom, date
 	return result, rows.Err()
 }
 
-// ─── Mitra — daftar UMKM partner ─────────────────────────────────────────────
-
-// GetUMKMPartnersOfMitra — UMKM yang punya kerjasama aktif/selesai dengan mitra ini
 func (r *Repository) GetUMKMPartnersOfMitra(ctx context.Context, mitraID string) ([]UMKMMitraItem, error) {
 	rows, err := r.DB.Query(ctx, `
 		SELECT DISTINCT u.umkm_id, u.nama_umkm
@@ -263,7 +257,6 @@ func (r *Repository) GetOmzetBulanan(ctx context.Context, umkmID, dateFrom, date
 	return
 }
 
-// GetKategoriUsaha — ambil nama kategori usaha UMKM
 func (r *Repository) GetKategoriUsaha(ctx context.Context, umkmID string) (string, error) {
 	var nama string
 	err := r.DB.QueryRow(ctx, `
