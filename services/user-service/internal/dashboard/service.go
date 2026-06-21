@@ -45,7 +45,7 @@ func (s *Service) GetUMKMDashboard(ctx context.Context, accountID, dateFrom, dat
 	}
 
 	// 3. Omzet summary (2 hari terkini)
-	omzetHariIni, omzetKemarin, totalItem, tglTerkini, err := s.Repo.GetOmzetSummary(ctx, umkmID)
+	omzetHariIni, omzetKemarin, totalItem, tglTerkini, err := s.Repo.GetOmzetSummary(ctx, umkmID, dateFrom, dateTo)
 	if err != nil {
 		omzetHariIni, omzetKemarin, totalItem, tglTerkini = 0, 0, 0, ""
 	}
@@ -63,7 +63,7 @@ func (s *Service) GetUMKMDashboard(ctx context.Context, accountID, dateFrom, dat
 	}
 
 	// 6. Omzet bulanan
-	omzetBulanIni, omzetBulanLalu, _ := s.Repo.GetOmzetBulanan(ctx, umkmID)
+	omzetBulanIni, omzetBulanLalu, _ := s.Repo.GetOmzetBulanan(ctx, umkmID, dateFrom, dateTo)
 	var persenBulan float64
 	if omzetBulanLalu > 0 {
 		persenBulan = ((omzetBulanIni - omzetBulanLalu) / omzetBulanLalu) * 100
@@ -78,7 +78,7 @@ func (s *Service) GetUMKMDashboard(ctx context.Context, accountID, dateFrom, dat
 	}
 
 	// 8. Tren — pakai 7 hari default (frontend minta data, kita selalu kirim 90 hari biar bisa filter 7/14/30/90 di FE)
-	tren, err := s.Repo.GetTrenMingguan(ctx, umkmID, 90)
+	tren, err := s.Repo.GetTrenMingguan(ctx, umkmID, dateFrom, dateTo, 90)
 	if err != nil || tren == nil {
 		tren = []TrenMingguan{}
 	}
@@ -157,7 +157,7 @@ func (s *Service) GetMitraDashboard(ctx context.Context, accountID, selectedUMKM
 
 		kategoriUsaha, _ := s.Repo.GetKategoriUsaha(ctx, selectedUMKMID)
 
-		omzetHariIni, omzetKemarin, totalItem, tglTerkini, _ := s.Repo.GetOmzetSummary(ctx, selectedUMKMID)
+		omzetHariIni, omzetKemarin, totalItem, tglTerkini, _ := s.Repo.GetOmzetSummary(ctx, selectedUMKMID, dateFrom, dateTo)
 
 		var persen float64
 		if omzetKemarin > 0 {
@@ -169,7 +169,7 @@ func (s *Service) GetMitraDashboard(ctx context.Context, accountID, selectedUMKM
 			rataRata = omzetHariIni / float64(totalItem)
 		}
 
-		omzetBulanIni, omzetBulanLalu, _ := s.Repo.GetOmzetBulanan(ctx, selectedUMKMID)
+		omzetBulanIni, omzetBulanLalu, _ := s.Repo.GetOmzetBulanan(ctx, selectedUMKMID, dateFrom, dateTo)
 		var persenBulan float64
 		if omzetBulanLalu > 0 {
 			persenBulan = ((omzetBulanIni - omzetBulanLalu) / omzetBulanLalu) * 100
@@ -180,7 +180,7 @@ func (s *Service) GetMitraDashboard(ctx context.Context, accountID, selectedUMKM
 			labaHarian = []LabaHarianItem{}
 		}
 
-		tren, _ := s.Repo.GetTrenMingguan(ctx, selectedUMKMID, 90)
+		tren, _ := s.Repo.GetTrenMingguan(ctx, selectedUMKMID, dateFrom, dateTo, 90)
 		if tren == nil {
 			tren = []TrenMingguan{}
 		}

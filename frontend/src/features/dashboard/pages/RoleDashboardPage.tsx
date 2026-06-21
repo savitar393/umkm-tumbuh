@@ -127,27 +127,38 @@ export default function RoleDashboardPage(_props: RoleDashboardPageProps) {
   const now = new Date();
   const [bulan, setBulan] = useState(now.getMonth());
   const [tahun, setTahun] = useState(now.getFullYear());
+  const [appliedBulan, setAppliedBulan] = useState(now.getMonth());
+  const [appliedTahun, setAppliedTahun] = useState(now.getFullYear());
   const [trendRange, setTrendRange] = useState<TrendRange>(7);
   const [data, setData] = useState<UMKMDashboardData | null>(null);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  function buildDateRange() {
-    const from = `${tahun}-${String(bulan + 1).padStart(2, "0")}-01`;
-    const lastDay = new Date(tahun, bulan + 1, 0).getDate();
-    const to = `${tahun}-${String(bulan + 1).padStart(2, "0")}-${lastDay}`;
+  function buildDateRange(targetBulan = appliedBulan, targetTahun = appliedTahun) {
+    const from = `${targetTahun}-${String(targetBulan + 1).padStart(2, "0")}-01`;
+    const lastDay = new Date(targetTahun, targetBulan + 1, 0).getDate();
+    const to = `${targetTahun}-${String(targetBulan + 1).padStart(2, "0")}-${lastDay}`;
     return { from, to };
   }
 
   function fetchDashboard() {
     if (!user || user.role !== "UMKM") return;
+
+    const nextBulan = bulan;
+    const nextTahun = tahun;
+    const { from, to } = buildDateRange(nextBulan, nextTahun);
+
     setLoading(true);
     setError("");
     setPage(0);
-    const { from, to } = buildDateRange();
+
     getUMKMDashboard(from, to)
-      .then((d) => setData(d))
+      .then((d) => {
+        setData(d);
+        setAppliedBulan(nextBulan);
+        setAppliedTahun(nextTahun);
+      })
       .catch((e) => setError(e instanceof Error ? e.message : "Gagal memuat data"))
       .finally(() => setLoading(false));
   }
@@ -156,7 +167,7 @@ export default function RoleDashboardPage(_props: RoleDashboardPageProps) {
     if (!user || user.role !== "UMKM") return;
     setLoading(true);
     setError("");
-    const { from, to } = buildDateRange();
+    const { from, to } = buildDateRange(appliedBulan, appliedTahun);
     getUMKMDashboard(from, to)
       .then((d) => setData(d))
       .catch((e) => setError(e instanceof Error ? e.message : "Gagal memuat data"))
@@ -269,7 +280,7 @@ export default function RoleDashboardPage(_props: RoleDashboardPageProps) {
               <section className="umkm-dashboard-polish__card">
                 <div className="umkm-dashboard-polish__card-header">
                   <div>
-                    <h2>Rincian Laba Harian ({MONTHS[bulan]} {tahun})</h2>
+                    <h2>Rincian Laba Harian ({MONTHS[appliedBulan]} {appliedTahun})</h2>
                     <p>Rekap laba bersih dan item terjual pada periode terpilih.</p>
                   </div>
                 </div>

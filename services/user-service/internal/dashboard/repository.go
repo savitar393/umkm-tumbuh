@@ -50,27 +50,41 @@ func (r *Repository) GetMitraByAccount(ctx context.Context, accountID string) (m
 
 // GetOmzetSummary — omzet 2 hari terakhir dan item terjual hari ini
 // Karena data dummy mungkin tidak ada hari ini, ambil 2 hari terakhir yang ada datanya
-func (r *Repository) GetOmzetSummary(ctx context.Context, umkmID string) (omzetHariIni, omzetKemarin float64, totalItem int64, tglTerkini string, err error) {
+func (r *Repository) GetOmzetSummary(ctx context.Context, umkmID, dateFrom, dateTo string) (omzetPeriode, omzetPembanding float64, totalItem int64, tglTerkini string, err error) {
 	err = r.DB.QueryRow(ctx, `
-		WITH ranked AS (
+		WITH bounds AS (
 			SELECT
-				tanggal_transaksi AS tgl,
-				SUM(total_omzet) AS omzet,
-				SUM(total_item)::bigint AS item,
-				ROW_NUMBER() OVER (ORDER BY tanggal_transaksi DESC) AS rn
-			FROM dashboard.transaksi_penjualan
+				$2::date AS current_from,
+				$3::date AS current_to,
+				($2::date - (($3::date - $2::date + 1) * INTERVAL '1 day'))::date AS previous_from,
+				($2::date - INTERVAL '1 day')::date AS previous_to
+		),
+		current_data AS (
+			SELECT
+				COALESCE(SUM(total_omzet), 0) AS omzet,
+				COALESCE(SUM(total_item), 0)::bigint AS item,
+				MAX(tanggal_transaksi) AS tgl
+			FROM dashboard.transaksi_penjualan, bounds
 			WHERE umkm_id = $1
 			  AND status_transaksi <> 'CANCELLED'
-			GROUP BY tanggal_transaksi
+			  AND tanggal_transaksi >= bounds.current_from
+			  AND tanggal_transaksi <= bounds.current_to
+		),
+		previous_data AS (
+			SELECT COALESCE(SUM(total_omzet), 0) AS omzet
+			FROM dashboard.transaksi_penjualan, bounds
+			WHERE umkm_id = $1
+			  AND status_transaksi <> 'CANCELLED'
+			  AND tanggal_transaksi >= bounds.previous_from
+			  AND tanggal_transaksi <= bounds.previous_to
 		)
 		SELECT
-			COALESCE(MAX(CASE WHEN rn = 1 THEN omzet END), 0)::float8,
-			COALESCE(MAX(CASE WHEN rn = 2 THEN omzet END), 0)::float8,
-			COALESCE(MAX(CASE WHEN rn = 1 THEN item END), 0)::bigint,
-			COALESCE(MAX(CASE WHEN rn = 1 THEN TO_CHAR(tgl, 'YYYY-MM-DD') END), '')
-		FROM ranked
-		WHERE rn <= 2
-	`, umkmID).Scan(&omzetHariIni, &omzetKemarin, &totalItem, &tglTerkini)
+			current_data.omzet::float8,
+			previous_data.omzet::float8,
+			current_data.item::bigint,
+			COALESCE(TO_CHAR(current_data.tgl, 'YYYY-MM-DD'), '')
+		FROM current_data, previous_data
+	`, umkmID, dateFrom, dateTo).Scan(&omzetPeriode, &omzetPembanding, &totalItem, &tglTerkini)
 
 	return
 }
@@ -120,25 +134,19 @@ func (r *Repository) GetLabaHarian(ctx context.Context, umkmID, dateFrom, dateTo
 }
 
 // GetTrenMingguan — agregasi laba per hari untuk N hari terakhir berdasarkan data terbaru
-func (r *Repository) GetTrenMingguan(ctx context.Context, umkmID string, days int) ([]TrenMingguan, error) {
+func (r *Repository) GetTrenMingguan(ctx context.Context, umkmID, dateFrom, dateTo string, days int) ([]TrenMingguan, error) {
 	rows, err := r.DB.Query(ctx, `
-		WITH latest AS (
-			SELECT MAX(tanggal_transaksi) AS tgl_max
-			FROM dashboard.transaksi_penjualan
-			WHERE umkm_id = $1
-			  AND status_transaksi <> 'CANCELLED'
-		)
 		SELECT
-			TO_CHAR(p.tanggal_transaksi, 'Dy')        AS hari,
-			COALESCE(SUM(p.total_laba), 0)::float8   AS total_laba
-		FROM dashboard.transaksi_penjualan p, latest
-		WHERE p.umkm_id = $1
-		  AND p.status_transaksi <> 'CANCELLED'
-		  AND latest.tgl_max IS NOT NULL
-		  AND p.tanggal_transaksi > (latest.tgl_max - ($2 || ' days')::interval)
-		GROUP BY p.tanggal_transaksi
-		ORDER BY p.tanggal_transaksi ASC
-	`, umkmID, days)
+			TO_CHAR(tanggal_transaksi, 'DD Mon')      AS hari,
+			COALESCE(SUM(total_laba), 0)::float8     AS total_laba
+		FROM dashboard.transaksi_penjualan
+		WHERE umkm_id = $1
+		  AND status_transaksi <> 'CANCELLED'
+		  AND tanggal_transaksi >= $2::date
+		  AND tanggal_transaksi <= $3::date
+		GROUP BY tanggal_transaksi
+		ORDER BY tanggal_transaksi ASC
+	`, umkmID, dateFrom, dateTo)
 	if err != nil {
 		return nil, err
 	}
@@ -152,6 +160,11 @@ func (r *Repository) GetTrenMingguan(ctx context.Context, umkmID string, days in
 		}
 		result = append(result, item)
 	}
+
+	if len(result) > days {
+		result = result[len(result)-days:]
+	}
+
 	return result, rows.Err()
 }
 
@@ -218,26 +231,34 @@ func (r *Repository) GetDefaultDateRange(ctx context.Context, umkmID string) (mi
 }
 
 // GetOmzetBulanan — omzet bulan ini dan bulan lalu
-func (r *Repository) GetOmzetBulanan(ctx context.Context, umkmID string) (omzetBulanIni, omzetBulanLalu float64, err error) {
+func (r *Repository) GetOmzetBulanan(ctx context.Context, umkmID, dateFrom, dateTo string) (omzetBulanIni, omzetBulanLalu float64, err error) {
 	err = r.DB.QueryRow(ctx, `
-		WITH monthly AS (
+		WITH bounds AS (
 			SELECT
-				DATE_TRUNC('month', tanggal_transaksi) AS bulan,
-				SUM(total_omzet) AS total
-			FROM dashboard.transaksi_penjualan
+				$2::date AS current_from,
+				$3::date AS current_to,
+				DATE_TRUNC('month', $2::date - INTERVAL '1 month')::date AS previous_from,
+				(DATE_TRUNC('month', $2::date)::date - INTERVAL '1 day')::date AS previous_to
+		),
+		current_data AS (
+			SELECT COALESCE(SUM(total_omzet), 0) AS total
+			FROM dashboard.transaksi_penjualan, bounds
 			WHERE umkm_id = $1
 			  AND status_transaksi <> 'CANCELLED'
-			GROUP BY DATE_TRUNC('month', tanggal_transaksi)
-			ORDER BY bulan DESC
-			LIMIT 2
+			  AND tanggal_transaksi >= bounds.current_from
+			  AND tanggal_transaksi <= bounds.current_to
+		),
+		previous_data AS (
+			SELECT COALESCE(SUM(total_omzet), 0) AS total
+			FROM dashboard.transaksi_penjualan, bounds
+			WHERE umkm_id = $1
+			  AND status_transaksi <> 'CANCELLED'
+			  AND tanggal_transaksi >= bounds.previous_from
+			  AND tanggal_transaksi <= bounds.previous_to
 		)
-		SELECT
-			COALESCE(MAX(CASE WHEN rn = 1 THEN total END), 0)::float8,
-			COALESCE(MAX(CASE WHEN rn = 2 THEN total END), 0)::float8
-		FROM (
-			SELECT *, ROW_NUMBER() OVER (ORDER BY bulan DESC) AS rn FROM monthly
-		) sub
-	`, umkmID).Scan(&omzetBulanIni, &omzetBulanLalu)
+		SELECT current_data.total::float8, previous_data.total::float8
+		FROM current_data, previous_data
+	`, umkmID, dateFrom, dateTo).Scan(&omzetBulanIni, &omzetBulanLalu)
 
 	return
 }
