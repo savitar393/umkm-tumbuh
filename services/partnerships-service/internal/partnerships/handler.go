@@ -333,6 +333,45 @@ func (h *Handler) SignPartnership(w http.ResponseWriter, r *http.Request) {
 	response.Success(w, http.StatusOK, nil, "Dokumen berhasil diunggah. Pengajuan siap disetujui.")
 }
 
+func canDecidePartnership(status PartnershipStatus) bool {
+	switch status {
+	case StatusSubmitted, StatusReviewed:
+		return true
+	default:
+		return false
+	}
+}
+
+func (h *Handler) authorizeReceiverDecision(w http.ResponseWriter, r *http.Request, id string) (*PartnershipResponse, bool) {
+	userID := extractUserIDFromRequest(r)
+	if userID == "" {
+		response.Error(w, http.StatusUnauthorized, "User not authenticated", nil)
+		return nil, false
+	}
+
+	partnership, err := h.service.GetPartnershipByID(r.Context(), id)
+	if err != nil {
+		if appErr, ok := err.(*apperror.AppError); ok {
+			response.Error(w, appErr.Code, appErr.Message, nil)
+			return nil, false
+		}
+		response.Error(w, http.StatusNotFound, "Pengajuan kemitraan tidak ditemukan", nil)
+		return nil, false
+	}
+
+	if partnership.ReceiverID != userID {
+		response.Error(w, http.StatusForbidden, "Hanya penerima pengajuan yang dapat mengambil keputusan", nil)
+		return nil, false
+	}
+
+	if !canDecidePartnership(partnership.Status) {
+		response.Error(w, http.StatusConflict, "Pengajuan tidak berada pada status yang dapat diputuskan", nil)
+		return nil, false
+	}
+
+	return partnership, true
+}
+
 // MarkAsRead - PATCH /api/v1/partnerships/{id}/read
 func (h *Handler) MarkAsRead(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
@@ -351,13 +390,13 @@ func (h *Handler) ApprovePartnership(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get user info from JWT - TODO: use for authorization
-	_ = extractUserIDFromRequest(r)
+	if _, ok := h.authorizeReceiverDecision(w, r, id); !ok {
+		return
+	}
 
 	var req UpdatePartnershipStatus
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.Error(w, http.StatusBadRequest, "Invalid request body", nil)
-		return
+	if r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&req)
 	}
 
 	// Set status to AKTIF (Active)
@@ -392,7 +431,9 @@ func (h *Handler) RejectPartnership(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_ = extractUserIDFromRequest(r)
+	if _, ok := h.authorizeReceiverDecision(w, r, id); !ok {
+		return
+	}
 
 	var req UpdatePartnershipStatus
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

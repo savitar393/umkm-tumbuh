@@ -181,7 +181,6 @@ export default function PartnershipReviewPage() {
   const user = getCurrentUser();
 
   const basePath = getBasePath(user?.role, location.pathname);
-  const isReceiverRoute = location.pathname.includes("/mitra/") || location.pathname.includes("/incoming");
 
   const [partnership, setPartnership] = useState<PartnershipDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -194,9 +193,18 @@ export default function PartnershipReviewPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const status = getText(partnership, ["status", "statusPengajuan", "status_pengajuan"], "");
+  const requesterID = getOptionalText(partnership, ["requester_id", "requesterID", "pengaju_akun_id"]);
+  const receiverID = getOptionalText(partnership, ["receiver_id", "receiverID", "penerima_akun_id"]);
+  const isReceiver = Boolean(user?.id && receiverID && user.id === receiverID);
+  const isRequester = Boolean(user?.id && requesterID && user.id === requesterID);
+
   const requesterName = getText(partnership, ["requester_name", "pengirim", "business_name", "nama_pengaju"], "Pengaju");
   const receiverName = getText(partnership, ["receiver_name", "mitraUmkmTujuan", "nama_penerima"], "Tujuan Kemitraan");
-  const proposalTitle = getText(partnership, ["proposal_title", "proposalTitle", "proposal_description", "proposalDescription"], "Proposal kemitraan");
+  const proposalTitle = getText(
+    partnership,
+    ["proposal_title", "proposalTitle"],
+    requesterName !== "Pengaju" ? `Pengajuan Kemitraan - ${requesterName}` : "Proposal kemitraan",
+  );
   const proposalDescription = getText(partnership, ["proposal_description", "proposalDescription"], "");
   const requestCode = getText(partnership, ["request_code", "pengajuanID", "id"], id ?? "-");
   const contactPerson = getOptionalText(partnership, ["contact_person", "email", "phone_number"]);
@@ -248,17 +256,17 @@ export default function PartnershipReviewPage() {
   }, [id]);
 
   function handleBack() {
-    if (location.pathname.includes("/inbox")) {
+    if (location.pathname.includes("/inbox") || isReceiver) {
       navigate(`${basePath}/inbox`);
       return;
     }
 
-    if (isReceiverRoute) {
-      navigate(`${basePath}/inbox`);
+    if (isRequester) {
+      navigate(`${basePath}/status`);
       return;
     }
 
-    navigate(`${basePath}/status`);
+    navigate(basePath);
   }
 
   function handleContinueApproval() {
@@ -433,7 +441,7 @@ export default function PartnershipReviewPage() {
                   </div>
                 </div>
 
-                {isReceiverRoute && canReceiverReview(status) ? (
+                {isReceiver && canReceiverReview(status) ? (
                   <div className="partnership-review-actions">
                     <button
                       type="button"
@@ -455,7 +463,9 @@ export default function PartnershipReviewPage() {
                   </div>
                 ) : (
                   <p className="partnership-review-note">
-                    Pengajuan ini tidak berada pada status yang memerlukan tindakan review.
+                    {isRequester
+                      ? "Anda adalah pengaju. Keputusan hanya dapat dilakukan oleh pihak tujuan kemitraan."
+                      : "Pengajuan ini tidak berada pada status yang memerlukan tindakan review."}
                   </p>
                 )}
               </aside>
