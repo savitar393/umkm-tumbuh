@@ -20,6 +20,10 @@ function isFutureReportDate(value: string) {
   return value !== "" && value > today();
 }
 
+function onlyDigits(value: string) {
+  return value.replace(/\D/g, "");
+}
+
 function formatRupiah(value: number) {
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
@@ -43,7 +47,7 @@ export default function SalesCreatePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [transactionDate, setTransactionDate] = useState(today());
-  const [totalProfit, setTotalProfit] = useState(0);
+  const [totalProfit, setTotalProfit] = useState("0");
   const [note, setNote] = useState("Laporan penjualan harian.");
   const [existingSale, setExistingSale] = useState<SaleSummary | null>(null);
   const [loadingExistingSale, setLoadingExistingSale] = useState(false);
@@ -69,6 +73,7 @@ export default function SalesCreatePage() {
   }, [quantities]);
 
   const averagePerItem = totalItem > 0 ? totalOmzet / totalItem : 0;
+  const totalProfitValue = Number(totalProfit || 0);
 
   async function loadProducts() {
     setLoadingProducts(true);
@@ -162,11 +167,15 @@ export default function SalesCreatePage() {
       return "Total omzet harus lebih dari 0.";
     }
 
-    if (totalProfit < 0) {
+    if (Number.isNaN(totalProfitValue)) {
+      return "Laba harus berupa angka.";
+    }
+
+    if (totalProfitValue < 0) {
       return "Laba tidak boleh negatif.";
     }
 
-    if (totalProfit >= totalOmzet) {
+    if (totalProfitValue >= totalOmzet) {
       return "Laba harus lebih kecil dari omzet.";
     }
 
@@ -196,7 +205,7 @@ export default function SalesCreatePage() {
 
       const response = await createSale({
         transaction_date: transactionDate,
-        total_profit: Number(totalProfit),
+        total_profit: totalProfitValue,
         note,
         items: payloadItems,
       });
@@ -275,10 +284,11 @@ export default function SalesCreatePage() {
           <article className="sales-summary-card sales-summary-card--blue">
             <span>Total Laba Hari Ini</span>
             <input
-              type="number"
-              min="0"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               value={totalProfit}
-              onChange={(event) => setTotalProfit(Number(event.target.value))}
+              onChange={(event) => setTotalProfit(onlyDigits(event.target.value))}
               placeholder="Input laba hari ini"
             />
             <small>Laba harus lebih kecil dari omzet.</small>
