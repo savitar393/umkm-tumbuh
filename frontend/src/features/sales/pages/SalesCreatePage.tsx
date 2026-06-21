@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { CalendarDays, Check, Minus, Plus, Save } from "lucide-react";
 import UmkmLayout from "../../umkm/components/UmkmLayout";
 import { getProducts, type Product } from "../../products/api";
-import { createSale } from "../api";
+import { createSale, getSales, type SaleSummary } from "../api";
 
 function today() {
   return new Intl.DateTimeFormat("en-CA", {
@@ -39,6 +39,8 @@ export default function SalesCreatePage() {
   const [transactionDate, setTransactionDate] = useState(today());
   const [totalProfit, setTotalProfit] = useState(0);
   const [note, setNote] = useState("Laporan penjualan harian.");
+  const [existingSale, setExistingSale] = useState<SaleSummary | null>(null);
+  const [loadingExistingSale, setLoadingExistingSale] = useState(false);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [saving, setSaving] = useState(false);
   const [successSaleId, setSuccessSaleId] = useState("");
@@ -79,6 +81,36 @@ export default function SalesCreatePage() {
   useEffect(() => {
     loadProducts();
   }, []);
+
+  useEffect(() => {
+    async function loadExistingSaleForDate() {
+      if (!transactionDate) return;
+
+      setLoadingExistingSale(true);
+
+      try {
+        const response = await getSales({
+          from: transactionDate,
+          to: transactionDate,
+        });
+
+        const sale = response.sales[0] ?? null;
+        setExistingSale(sale);
+
+        if (sale?.note) {
+          setNote(sale.note);
+        } else {
+          setNote("Laporan penjualan harian.");
+        }
+      } catch {
+        setExistingSale(null);
+      } finally {
+        setLoadingExistingSale(false);
+      }
+    }
+
+    loadExistingSaleForDate();
+  }, [transactionDate]);
 
   function setQuantity(product: Product, nextQuantity: number) {
     const safeQuantity = Math.max(0, Math.min(nextQuantity, product.stock));
@@ -179,14 +211,23 @@ export default function SalesCreatePage() {
               />
             </label>
 
-            <button type="submit" disabled={saving || loadingProducts}>
+            <button type="submit" disabled={saving || loadingProducts || loadingExistingSale}>
               <Save size={18} />
-              {saving ? "Menyimpan..." : "Simpan Laporan"}
+              {saving ? "Menyimpan..." : existingSale ? "Perbarui Laporan" : "Simpan Laporan"}
             </button>
           </div>
         </header>
 
         {error ? <div className="error-message">{error}</div> : null}
+
+        {existingSale ? (
+          <div className="info-message">
+            Laporan untuk tanggal ini sudah ada. Input baru akan digabungkan ke
+            laporan yang sama, dan catatan akan diperbarui dengan catatan terbaru.
+          </div>
+        ) : loadingExistingSale ? (
+          <div className="info-message">Memeriksa laporan pada tanggal ini...</div>
+        ) : null}
 
         <section className="sales-report-summary">
           <article className="sales-summary-card sales-summary-card--dark">
@@ -281,9 +322,9 @@ export default function SalesCreatePage() {
               Batal
             </Link>
 
-            <button type="submit" disabled={saving || loadingProducts}>
+            <button type="submit" disabled={saving || loadingProducts || loadingExistingSale}>
               <Save size={18} />
-              Submit
+              {existingSale ? "Perbarui Laporan" : "Submit"}
             </button>
           </div>
         </section>
