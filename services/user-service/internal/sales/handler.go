@@ -223,11 +223,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 				total_omzet = total_omzet + $2,
 				total_laba = total_laba + $3,
 				total_item = total_item + $4,
-				catatan = CASE
-					WHEN $5::text IS NULL THEN catatan
-					WHEN catatan IS NULL OR catatan = '' THEN $5::text
-					ELSE catatan || E'\n' || $5::text
-				END,
+				catatan = COALESCE($5::text, catatan),
 				status_transaksi = 'FINAL',
 				updated_at = NOW()
 			WHERE penjualan_id = $1

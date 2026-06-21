@@ -6,7 +6,12 @@ import { getProducts, type Product } from "../../products/api";
 import { createSale } from "../api";
 
 function today() {
-  return new Date().toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 }
 
 function formatRupiah(value: number) {
