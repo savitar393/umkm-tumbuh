@@ -654,7 +654,17 @@ export default function ProductListPage() {
                     </div>
 
                     {product.legalitas ? (
-                      <div className="product-card__legalitas">{product.legalitas}</div>
+                      <div className="product-card__legalitas-list">
+                        {product.legalitas
+                          .split(",")
+                          .map((item) => item.trim())
+                          .filter(Boolean)
+                          .map((item) => (
+                            <span className="product-card__legalitas" key={item}>
+                              {item}
+                            </span>
+                          ))}
+                      </div>
                     ) : null}
                   </div>
 
