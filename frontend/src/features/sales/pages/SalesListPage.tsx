@@ -175,7 +175,7 @@ export default function SalesListPage() {
         <section className="stat-cards-grid sales-stat-grid">
           <article className="stat-card stat-card--blue">
             <div className="stat-card__icon-wrap">
-              <Banknote size={24} />
+              <ClipboardList size={24} />
             </div>
             <div>
               <div className="stat-card__label">Total Laporan</div>
@@ -197,7 +197,7 @@ export default function SalesListPage() {
 
           <article className="stat-card stat-card--yellow">
             <div className="stat-card__icon-wrap">
-              <Boxes size={24} />
+              <Banknote size={24} />
             </div>
             <div>
               <div className="stat-card__label">Total Laba</div>
@@ -208,7 +208,7 @@ export default function SalesListPage() {
 
           <article className="stat-card stat-card--orange">
             <div className="stat-card__icon-wrap">
-              <ClipboardList size={24} />
+              <Boxes size={24} />
             </div>
             <div>
               <div className="stat-card__label">Item Terjual</div>
