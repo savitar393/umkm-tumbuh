@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Building2,
   CheckCircle2,
@@ -18,6 +18,17 @@ import {
   type UmkmProfile,
   type UmkmProfilePayload,
 } from "../api";
+import {
+  buildPhoneWithIndonesiaPrefix,
+  getPhoneLocalValue,
+  isValidIndonesianPhone,
+} from "../../../shared/utils/phone";
+import {
+  emptySocialMediaLinks,
+  parseSocialMediaValue,
+  serializeSocialMediaValue,
+  type SocialMediaLinks,
+} from "../../../shared/utils/socialMedia";
 
 type FieldErrors = Partial<Record<keyof UmkmProfilePayload, string>>;
 
@@ -90,12 +101,6 @@ function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
-function isValidIndonesianPhone(value: string) {
-  const digits = onlyDigits(value);
-  if (digits.length < 10 || digits.length > 15) return false;
-  return digits.startsWith("08") || digits.startsWith("62");
-}
-
 function formatTimeLabel(value: string) {
   return value.replace(":", ".");
 }
@@ -166,7 +171,7 @@ function getProfileFormErrors(form: UmkmProfilePayload): FieldErrors {
   }
 
   if (!isValidIndonesianPhone(form.phone_number ?? "")) {
-    errors.phone_number = "Nomor WhatsApp harus berisi 10–15 digit dan diawali 08 atau 62.";
+    errors.phone_number = "Nomor WhatsApp harus valid. Contoh: +62 81234567890.";
   }
 
   if (!isValidEmail(form.business_email ?? "")) {
@@ -207,6 +212,7 @@ function RequiredMark() {
 }
 
 export default function ProfileEditPage() {
+  const navigate = useNavigate();
   const user = getCurrentUser();
   const [profile, setProfile] = useState<UmkmProfile | null>(null);
   const [form, setForm] = useState<UmkmProfilePayload>(emptyForm);
@@ -218,6 +224,7 @@ export default function ProfileEditPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const socialLinks = parseSocialMediaValue(form.social_media_marketplace);
 
   const fullAddress = useMemo(() => buildFullAddress(form), [form]);
 
@@ -317,22 +324,18 @@ export default function ProfileEditPage() {
     updateOperatingHours(nextDays);
   }
 
-  function resetForm() {
-    if (profile) {
-      setForm(mapProfileToForm(profile));
-      setFieldErrors({});
-      setMessage("Perubahan dibatalkan.");
-      setError("");
-      return;
-    }
+  function updateSocialMediaField(field: keyof SocialMediaLinks, value: string) {
+    const nextLinks = {
+      ...emptySocialMediaLinks,
+      ...socialLinks,
+      [field]: value,
+    };
 
-    setForm({
-      ...emptyForm,
-      owner_name: user?.full_name ?? "",
-    });
-    setFieldErrors({});
-    setMessage("Form dikosongkan kembali.");
-    setError("");
+    updateField("social_media_marketplace", serializeSocialMediaValue(nextLinks));
+  }
+
+  function resetForm() {
+    navigate("/umkm/profile");
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -369,7 +372,7 @@ export default function ProfileEditPage() {
         social_media_marketplace: form.social_media_marketplace?.trim() || "",
         owner_name: form.owner_name.trim(),
         nik: onlyDigits(form.nik ?? ""),
-        phone_number: onlyDigits(form.phone_number ?? ""),
+        phone_number: buildPhoneWithIndonesiaPrefix(form.phone_number ?? ""),
         address: form.address.trim(),
         city: form.city.trim(),
         province: form.province.trim(),
@@ -385,6 +388,8 @@ export default function ProfileEditPage() {
       setForm(mapProfileToForm(nextProfile));
       setFieldErrors({});
       setMessage("Data berhasil diperbarui.");
+      navigate("/umkm/profile", { state: { profileUpdated: true } });
+      navigate("/umkm/profile");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Gagal menyimpan profil.";
       setError(msg);
@@ -419,7 +424,7 @@ export default function ProfileEditPage() {
 
   return (
     <UmkmLayout>
-      <form className="umkm-profile-page" onSubmit={handleSubmit} noValidate>
+      <form className="umkm-profile-page umkm-profile-edit-page" onSubmit={handleSubmit} noValidate>
         <div className="umkm-profile-header">
           {message ? (
             <div className="umkm-save-message">
@@ -556,13 +561,17 @@ export default function ProfileEditPage() {
                   <span>
                     Nomor WhatsApp <RequiredMark />
                   </span>
-                  <input
-                    value={form.phone_number}
-                    onChange={(e) =>
-                      updateField("phone_number", e.target.value.replace(/[^0-9+\-\s]/g, ""))
-                    }
-                    placeholder="Contoh: 081234567890"
-                  />
+                  <div className="umkm-phone-input">
+                    <span>+62</span>
+                    <input
+                      value={getPhoneLocalValue(form.phone_number ?? "")}
+                      onChange={(e) =>
+                        updateField("phone_number", buildPhoneWithIndonesiaPrefix(e.target.value))
+                      }
+                      placeholder="81234567890"
+                      inputMode="numeric"
+                    />
+                  </div>
                   <FieldError message={fieldErrors.phone_number} />
                 </label>
 
@@ -687,11 +696,58 @@ export default function ProfileEditPage() {
 
                 <label className={fieldClass("social_media_marketplace", "umkm-field-full")}>
                   <span>Media Sosial / Marketplace</span>
-                  <input
-                    value={form.social_media_marketplace ?? ""}
-                    onChange={(e) => updateField("social_media_marketplace", e.target.value)}
-                    placeholder="Contoh: Instagram @usahaku | Shopee Usahaku"
-                  />
+                  <div className="umkm-social-form">
+                    <label>
+                      <span>Instagram</span>
+                      <div className="umkm-social-input">
+                        <strong>@</strong>
+                        <input
+                          value={socialLinks.instagram.replace(/^@/, "")}
+                          onChange={(e) => updateSocialMediaField("instagram", e.target.value)}
+                          placeholder="namausaha"
+                        />
+                      </div>
+                    </label>
+
+                    <label>
+                      <span>TikTok</span>
+                      <div className="umkm-social-input">
+                        <strong>@</strong>
+                        <input
+                          value={socialLinks.tiktok.replace(/^@/, "")}
+                          onChange={(e) => updateSocialMediaField("tiktok", e.target.value)}
+                          placeholder="namausaha"
+                        />
+                      </div>
+                    </label>
+
+                    <label>
+                      <span>Shopee</span>
+                      <input
+                        value={socialLinks.shopee}
+                        onChange={(e) => updateSocialMediaField("shopee", e.target.value)}
+                        placeholder="Nama toko Shopee"
+                      />
+                    </label>
+
+                    <label>
+                      <span>Tokopedia</span>
+                      <input
+                        value={socialLinks.tokopedia}
+                        onChange={(e) => updateSocialMediaField("tokopedia", e.target.value)}
+                        placeholder="Nama toko Tokopedia"
+                      />
+                    </label>
+
+                    <label className="umkm-social-form__full">
+                      <span>Website / Katalog Online</span>
+                      <input
+                        value={socialLinks.website}
+                        onChange={(e) => updateSocialMediaField("website", e.target.value)}
+                        placeholder="https://contoh.com"
+                      />
+                    </label>
+                  </div>
                   <FieldError message={fieldErrors.social_media_marketplace} />
                 </label>
 
@@ -723,7 +779,7 @@ export default function ProfileEditPage() {
               <div className="umkm-gallery-edit-grid">
                 <label>
                   Logo Usaha
-                  <div className="umkm-placeholder-image" style={{ maxWidth: 130, height: 130 }}>
+                  <div className="umkm-placeholder-image" style={{ width: 160, maxWidth: 160, height: 160 }}>
                     <ImagePlus size={28} />
                     <span>Logo belum tersedia</span>
                   </div>

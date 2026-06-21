@@ -1,22 +1,30 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
+  AtSign,
   Building2,
   CheckCircle2,
   Clock3,
   Edit3,
   FileText,
+  Globe2,
   ImagePlus,
   Mail,
   MapPin,
   MapPinned,
   Phone,
   ShieldCheck,
+  ShoppingBag,
   Store,
 } from "lucide-react";
 import { getCurrentUser } from "../../../shared/auth/currentUser";
 import UmkmLayout from "../../umkm/components/UmkmLayout";
 import { getMyProfile, type UmkmProfile } from "../api";
+import { formatIndonesianPhone } from "../../../shared/utils/phone";
+import {
+  hasAnySocialMedia,
+  parseSocialMediaValue,
+} from "../../../shared/utils/socialMedia";
 
 function onlyDigits(value: string) {
   return value.replace(/\D/g, "");
@@ -99,13 +107,23 @@ function EmptyText({ children = "Belum diisi" }: { children?: string }) {
 }
 
 export default function ProfilePage() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const user = getCurrentUser();
+  const profileUpdated = Boolean(
+    (location.state as { profileUpdated?: boolean } | null)?.profileUpdated,
+  );
 
   const [profile, setProfile] = useState<UmkmProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const fullAddress = useMemo(() => (profile ? buildFullAddress(profile) : ""), [profile]);
+
+  const socialLinks = useMemo(
+    () => (profile ? parseSocialMediaValue(profile.social_media_marketplace) : null),
+    [profile],
+  );
 
   const completenessItems = useMemo(
     () => (profile ? getCompletenessItems(profile) : []),
@@ -117,6 +135,17 @@ export default function ProfilePage() {
     completenessItems.length > 0
       ? Math.round((completedCount / completenessItems.length) * 100)
       : 0;
+
+  useEffect(() => {
+    if (!profileUpdated) return;
+
+    const timer = window.setTimeout(() => {
+      navigate(location.pathname, { replace: true, state: null });
+    }, 2600);
+
+    return () => window.clearTimeout(timer);
+  }, [location.pathname, navigate, profileUpdated]);
+
 
   useEffect(() => {
     let ignore = false;
@@ -171,6 +200,12 @@ export default function ProfilePage() {
   return (
     <UmkmLayout>
       <main className="umkm-profile-page umkm-profile-view-page">
+        {profileUpdated ? (
+          <div className="umkm-floating-toast">
+            <CheckCircle2 size={18} />
+            <span>Data berhasil diperbarui</span>
+          </div>
+        ) : null}
         <section className="umkm-profile-header umkm-profile-view-header">
           <div>
             <h1>Informasi UMKM</h1>
@@ -220,7 +255,7 @@ export default function ProfilePage() {
                 <div className="umkm-preview-contact-grid">
                   <div>
                     <Phone size={17} />
-                    <span>{profile.phone_number || "Nomor WhatsApp belum diisi"}</span>
+                    <span>{formatIndonesianPhone(profile.phone_number)}</span>
                   </div>
                   <div>
                     <Mail size={17} />
@@ -309,7 +344,7 @@ export default function ProfilePage() {
                 <div className="umkm-info-list">
                   <div>
                     <span>Nomor WhatsApp</span>
-                    <strong>{profile.phone_number || <EmptyText />}</strong>
+                    <strong>{formatIndonesianPhone(profile.phone_number)}</strong>
                   </div>
                   <div>
                     <span>Email Bisnis</span>
@@ -325,7 +360,49 @@ export default function ProfilePage() {
                   </div>
                   <div>
                     <span>Media Sosial / Marketplace</span>
-                    <strong>{profile.social_media_marketplace || <EmptyText />}</strong>
+
+                    {socialLinks && hasAnySocialMedia(socialLinks) ? (
+                      <div className="umkm-social-preview-list">
+                        {socialLinks.instagram ? (
+                          <p>
+                            <AtSign size={16} />
+                            <strong>{socialLinks.instagram}</strong>
+                          </p>
+                        ) : null}
+
+                        {socialLinks.tiktok ? (
+                          <p>
+                            <Store size={16} />
+                            <strong>{socialLinks.tiktok}</strong>
+                          </p>
+                        ) : null}
+
+                        {socialLinks.shopee ? (
+                          <p>
+                            <ShoppingBag size={16} />
+                            <strong>{socialLinks.shopee}</strong>
+                          </p>
+                        ) : null}
+
+                        {socialLinks.tokopedia ? (
+                          <p>
+                            <ShoppingBag size={16} />
+                            <strong>{socialLinks.tokopedia}</strong>
+                          </p>
+                        ) : null}
+
+                        {socialLinks.website ? (
+                          <p>
+                            <Globe2 size={16} />
+                            <strong>{socialLinks.website}</strong>
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <strong>
+                        <EmptyText />
+                      </strong>
+                    )}
                   </div>
                 </div>
 
@@ -385,6 +462,23 @@ export default function ProfilePage() {
                   <span>Coming soon</span>
                 </div>
               </aside>
+            </section>
+
+            <section className="umkm-form-section umkm-profile-view-card umkm-profile-product-section">
+              <h2>
+                <span className="umkm-section-icon">
+                  <Store size={18} />
+                </span>
+                Produk
+              </h2>
+
+              <p className="umkm-section-description">
+                Kelola produk yang akan muncul pada input laporan penjualan harian.
+              </p>
+
+              <Link className="button umkm-profile-product-button" to="/umkm/products">
+                Kelola Produk
+              </Link>
             </section>
           </>
         ) : (

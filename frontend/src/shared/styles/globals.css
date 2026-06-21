@@ -4842,3 +4842,352 @@ button.danger {
     grid-template-columns: repeat(2, minmax(42px, 1fr));
   }
 }
+
+/* UMKM profile edit page final UX polish */
+.umkm-profile-page .umkm-profile-actions {
+  position: static !important;
+  bottom: auto !important;
+  z-index: auto !important;
+  margin-top: 24px;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.umkm-gallery-edit-grid .umkm-placeholder-image {
+  display: grid !important;
+  place-items: center;
+  align-content: center;
+  justify-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.umkm-gallery-edit-grid .umkm-placeholder-image span {
+  max-width: 130px;
+  text-align: center;
+  line-height: 1.35;
+}
+
+/* UMKM profile mockup-aligned polish */
+.umkm-profile-page {
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
+.umkm-profile-view-header {
+  margin-bottom: 28px;
+}
+
+.umkm-profile-view-header h1,
+.umkm-profile-header h1 {
+  letter-spacing: -0.045em;
+}
+
+.umkm-profile-summary-card {
+  min-height: 300px;
+  padding: 34px;
+}
+
+.umkm-profile-summary-card h2 {
+  margin-top: 10px;
+  font-size: clamp(26px, 2.2vw, 36px);
+}
+
+.umkm-profile-summary-card p {
+  max-width: 760px;
+  font-size: 15px;
+}
+
+.umkm-preview-contact-grid {
+  margin-top: 8px;
+}
+
+.umkm-preview-contact-grid div {
+  font-size: 16px;
+}
+
+.umkm-credibility-card {
+  min-height: 300px;
+  padding: 28px;
+}
+
+.umkm-completeness-list div {
+  min-height: 42px;
+  font-size: 15px;
+}
+
+.umkm-profile-view-grid {
+  align-items: stretch;
+}
+
+.umkm-form-section.umkm-profile-view-card,
+.umkm-form-section {
+  border-radius: 28px;
+}
+
+.umkm-info-list div {
+  min-height: 82px;
+  border-radius: 18px;
+  background: #f8fafc;
+}
+
+.umkm-profile-view-map {
+  min-height: 210px;
+}
+
+.umkm-gallery-view-grid {
+  grid-template-columns: 180px minmax(0, 1fr);
+}
+
+.umkm-gallery-view-grid .umkm-placeholder-image:first-child {
+  min-height: 180px;
+}
+
+.umkm-gallery-view-grid .umkm-placeholder-image:nth-child(2) {
+  min-height: 180px;
+}
+
+.umkm-document-card--wide {
+  max-width: none;
+}
+
+.umkm-profile-product-section {
+  min-height: 190px;
+}
+
+.umkm-section-description {
+  margin-top: 12px;
+  color: #64748b;
+  font-weight: 650;
+}
+
+.umkm-profile-product-button {
+  width: fit-content;
+  margin-top: 22px;
+}
+
+/* success toast like mockup */
+.umkm-floating-toast {
+  position: fixed;
+  top: 28px;
+  left: 50%;
+  z-index: 70;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 24px;
+  border: 1px solid #bbf7d0;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #1f45b6;
+  font-weight: 900;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.16);
+  transform: translateX(-50%);
+}
+
+.umkm-floating-toast svg {
+  color: #1f45b6;
+}
+
+/* edit page: form-only, mockup-like */
+.umkm-profile-edit-page {
+  max-width: 1040px;
+}
+
+.umkm-profile-edit-page .umkm-profile-header {
+  margin-bottom: 28px;
+}
+
+.umkm-profile-edit-page .umkm-profile-actions {
+  position: static !important;
+  bottom: auto !important;
+  z-index: auto !important;
+  display: flex;
+  justify-content: flex-end;
+  gap: 18px;
+  margin-top: 28px;
+  padding: 26px 0 8px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.umkm-profile-edit-page .umkm-profile-actions button {
+  max-width: 260px;
+  min-height: 54px;
+  border-radius: 999px;
+}
+
+.umkm-phone-input {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  min-height: 54px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: #f8fafc;
+}
+
+.umkm-phone-input:focus-within {
+  border-color: #1f45b6;
+  box-shadow: 0 0 0 3px rgba(31, 69, 182, 0.12);
+}
+
+.umkm-phone-input > span {
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 16px;
+  border-right: 1px solid #e2e8f0;
+  color: #475569;
+  font-weight: 900;
+}
+
+.umkm-phone-input input {
+  min-height: 52px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* override older day-button styles */
+.umkm-profile-edit-page .umkm-day-buttons {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.umkm-profile-edit-page .umkm-day-buttons button {
+  flex: 0 0 auto;
+  width: auto !important;
+  min-width: 54px;
+  min-height: 40px;
+  padding: 0 15px;
+  border-radius: 999px;
+}
+
+.umkm-profile-edit-page .umkm-time-grid {
+  margin-top: 12px;
+}
+
+.umkm-profile-edit-page .umkm-generated-hours {
+  margin-top: 10px;
+}
+
+.umkm-gallery-edit-grid {
+  grid-template-columns: 180px minmax(0, 1fr);
+}
+
+.umkm-gallery-edit-grid .umkm-placeholder-image {
+  display: grid !important;
+  place-items: center;
+  align-content: center;
+  justify-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.umkm-gallery-edit-grid .umkm-placeholder-image span {
+  max-width: 140px;
+  text-align: center;
+  line-height: 1.35;
+}
+
+@media (max-width: 1100px) {
+  .umkm-profile-page,
+  .umkm-profile-edit-page {
+    max-width: none;
+  }
+
+  .umkm-gallery-view-grid,
+  .umkm-gallery-edit-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .umkm-profile-edit-page .umkm-profile-actions {
+    flex-direction: column;
+  }
+
+  .umkm-profile-edit-page .umkm-profile-actions button {
+    max-width: none;
+  }
+}
+
+/* Social media structured form and preview */
+.umkm-social-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.umkm-social-form__full {
+  grid-column: 1 / -1;
+}
+
+.umkm-social-input {
+  display: grid;
+  grid-template-columns: 54px 1fr;
+  align-items: center;
+  min-height: 54px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+  background: #f8fafc;
+}
+
+.umkm-social-input:focus-within {
+  border-color: #1f45b6;
+  box-shadow: 0 0 0 3px rgba(31, 69, 182, 0.12);
+}
+
+.umkm-social-input strong {
+  display: grid;
+  height: 100%;
+  place-items: center;
+  border-right: 1px solid #e2e8f0;
+  color: #1f45b6;
+  font-size: 18px;
+  font-weight: 950;
+}
+
+.umkm-social-input input {
+  min-height: 52px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.umkm-social-preview-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.umkm-social-preview-list p {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: #334155;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.umkm-social-preview-list svg {
+  color: #1f45b6;
+  flex: 0 0 auto;
+}
+
+.umkm-social-preview-list strong {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+  .umkm-social-form {
+    grid-template-columns: 1fr;
+  }
+}
