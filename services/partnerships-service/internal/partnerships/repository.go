@@ -256,14 +256,28 @@ func (r *repository) FindByReceiverID(ctx context.Context, receiverID string, st
 }
 
 func (r *repository) UpdateStatus(ctx context.Context, id string, status PartnershipStatus, rejectionReason *string, decidedAt time.Time) error {
-	query := `
-		UPDATE partnership.transaksi_pengajuankerjasama 
-		SET status_pengajuan_id = $1, catatan_keputusan = $2, 
-			tanggal_keputusan = $3, updated_at = NOW()
-		WHERE pengajuan_id = $4
-	`
+	var query string
+	var args []interface{}
 
-	result, err := r.db.Exec(ctx, query, status, rejectionReason, decidedAt, id)
+	if status == StatusRejected || status == StatusCancelled {
+		query = `
+			UPDATE partnership.transaksi_pengajuankerjasama 
+			SET status_pengajuan_id = $1, catatan_keputusan = $2, 
+				updated_at = NOW()
+			WHERE pengajuan_id = $3
+		`
+		args = []interface{}{status, rejectionReason, id}
+	} else {
+		query = `
+			UPDATE partnership.transaksi_pengajuankerjasama 
+			SET status_pengajuan_id = $1, catatan_keputusan = $2, 
+				updated_at = NOW()
+			WHERE pengajuan_id = $3
+		`
+		args = []interface{}{status, rejectionReason, id}
+	}
+
+	result, err := r.db.Exec(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("failed to update partnership status: %w", err)
 	}

@@ -186,7 +186,7 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-umkm_user}:${POSTGRES_PASSWORD:-umkm_password}@postgres:5432/${POSTGRES_DB:-umkm_tumbuh}?sslmode=disable
       JWT_SECRET: ${JWT_SECRET}
     ports:
-      - "${PARTNERSHIP_SERVICE_PORT:-8083}:${PARTNERSHIP_SERVICE_PORT:-8083}"
+      - "8082:8083"
     depends_on:
       db-migrate:
         condition: service_completed_successfully
@@ -238,14 +238,15 @@ services:
         condition: service_completed_successfully
       garage:
         condition: service_started
-      garage-bootstrap:
-        condition: service_completed_successfully
+      # garage-bootstrap:
+      #   condition: service_completed_successfully
     networks:
       - umkm_network
 
 volumes:
   postgres_data:
   uploads_data:
+  garage_data:
 
 networks:
   umkm_network:

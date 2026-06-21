@@ -141,8 +141,8 @@ export const partnershipsApi = {
   },
 
   // GET /api/v1/partnerships/{id}
-  getDetail: async (id: string): Promise<SuccessResponse<any>> => {
-    return httpPartnerships.get<SuccessResponse<any>>(`/partnerships/${id}`);
+  getDetail: async (id: string): Promise<SuccessResponse<Record<string, unknown>>> => {
+    return httpPartnerships.get<SuccessResponse<Record<string, unknown>>>(`/partnerships/${id}`);
   },
 
   // GET /api/v1/partnerships/summary
@@ -174,6 +174,11 @@ export const partnershipsApi = {
     });
   },
 
+  // PATCH /api/v1/partnerships/{id}/cancel
+  cancel: async (id: string): Promise<SuccessResponse<void>> => {
+    return httpPartnerships.patch<SuccessResponse<void>>(`/partnerships/${id}/cancel`, {});
+  },
+
   // GET /api/v1/umkm/{id}
   getUMKMDetail: async (id: string): Promise<SuccessResponse<{ umkm: UMKMDetail }>> => {
     return httpPartnerships.get<SuccessResponse<{ umkm: UMKMDetail }>>(`/umkm/${id}`);
@@ -198,7 +203,8 @@ export const partnershipsApi = {
     if (params?.limit) queryParams.append("limit", params.limit.toString());
     
     const url = `/mitra${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
-    const response = await httpPartnerships.get<BackendResponse<{ mitra: PartnerListItem[]; pagination: any }>>(url);
+    interface PaginationInfo { page: number; limit: number; total: number; totalPages: number; }
+    const response = await httpPartnerships.get<BackendResponse<{ mitra: PartnerListItem[]; pagination: PaginationInfo }>>(url);
     
     return {
       mitra: response.data.mitra,
@@ -220,7 +226,8 @@ export const partnershipsApi = {
     if (params?.limit) queryParams.append("limit", params.limit.toString());
     
     const url = `/umkm${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
-    const response = await httpPartnerships.get<BackendResponse<{ umkm: PartnerListItem[]; pagination: any }>>(url);
+    interface PaginationInfo { page: number; limit: number; total: number; totalPages: number; }
+    const response = await httpPartnerships.get<BackendResponse<{ umkm: PartnerListItem[]; pagination: PaginationInfo }>>(url);
     
     return {
       umkm: response.data.umkm,
@@ -232,13 +239,7 @@ export const partnershipsApi = {
   uploadDocument: async (file: File, uploaderAkunId: string): Promise<string> => {
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("jenis_dokumen_id", "PERJANJIAN_KERJASAMA");
-    formData.append("uploader_akun_id", uploaderAkunId);
-    formData.append("owner_type", "PENGAJUAN_KERJASAMA");
-    formData.append("owner_id", uploaderAkunId);
-    formData.append("context_type", "partnership");
-    formData.append("is_public", "false");
-    formData.append("display_order", "1");
+    formData.append("category", "PARTNERSHIP_FILE");
 
     const userRole = getCurrentUser()?.role || "UMKM";
     const token = getAccessToken();
@@ -253,7 +254,7 @@ export const partnershipsApi = {
       body: formData,
     });
     const json = await resp.json();
-    if (!resp.ok) throw new Error(json.message || "Upload gagal");
-    return json.data?.dokumen_id || json.data?.DokumenID;
+    if (!resp.ok) throw new Error(json.error || "Upload gagal");
+    return json.document?.id;
   },
 };
