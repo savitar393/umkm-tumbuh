@@ -16,6 +16,10 @@ function today() {
   }).format(new Date());
 }
 
+function isFutureReportDate(value: string) {
+  return value !== "" && value > today();
+}
+
 function formatRupiah(value: number) {
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
@@ -85,6 +89,16 @@ export default function SalesCreatePage() {
   }, []);
 
   useEffect(() => {
+    setError((currentError) => {
+      if (currentError === FUTURE_DATE_ERROR && !isFutureReportDate(transactionDate)) {
+        return "";
+      }
+
+      return currentError;
+    });
+  }, [transactionDate]);
+
+  useEffect(() => {
     async function loadExistingSaleForDate() {
       if (!transactionDate) return;
 
@@ -136,7 +150,7 @@ export default function SalesCreatePage() {
       return "Tanggal laporan wajib diisi.";
     }
 
-    if (transactionDate > today()) {
+    if (isFutureReportDate(transactionDate)) {
       return FUTURE_DATE_ERROR;
     }
 
@@ -169,8 +183,8 @@ export default function SalesCreatePage() {
       return;
     }
 
-    setSaving(true);
     setError("");
+    setSaving(true);
 
     try {
       const payloadItems = activeProducts
