@@ -1,9 +1,11 @@
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { CalendarDays, Check, Minus, Plus, Save } from "lucide-react";
+import { CalendarDays, Check, Info, Minus, Plus, Save } from "lucide-react";
 import UmkmLayout from "../../umkm/components/UmkmLayout";
 import { getProducts, type Product } from "../../products/api";
 import { createSale, getSales, type SaleSummary } from "../api";
+
+const FUTURE_DATE_ERROR = "Tanggal laporan tidak boleh melebihi hari ini.";
 
 function today() {
   return new Intl.DateTimeFormat("en-CA", {
@@ -134,6 +136,10 @@ export default function SalesCreatePage() {
       return "Tanggal laporan wajib diisi.";
     }
 
+    if (transactionDate > today()) {
+      return FUTURE_DATE_ERROR;
+    }
+
     if (totalItem <= 0) {
       return "Minimal satu produk harus memiliki jumlah terjual.";
     }
@@ -221,12 +227,27 @@ export default function SalesCreatePage() {
         {error ? <div className="error-message">{error}</div> : null}
 
         {existingSale ? (
-          <div className="info-message">
-            Laporan untuk tanggal ini sudah ada. Input baru akan digabungkan ke
-            laporan yang sama, dan catatan akan diperbarui dengan catatan terbaru.
+          <div className="notice-message sales-existing-report-notice" role="status">
+            <span className="notice-message__icon" aria-hidden="true">
+              <Info size={18} />
+            </span>
+            <span className="notice-message__content">
+              <strong>Laporan tanggal ini sudah ada.</strong>
+              <span>
+                Input baru akan digabungkan ke laporan yang sama. Catatan akan
+                mengikuti catatan terbaru yang Anda isi.
+              </span>
+            </span>
           </div>
         ) : loadingExistingSale ? (
-          <div className="info-message">Memeriksa laporan pada tanggal ini...</div>
+          <div className="notice-message" role="status">
+            <span className="notice-message__icon" aria-hidden="true">
+              <Info size={18} />
+            </span>
+            <span className="notice-message__content">
+              Memeriksa laporan pada tanggal ini...
+            </span>
+          </div>
         ) : null}
 
         <section className="sales-report-summary">

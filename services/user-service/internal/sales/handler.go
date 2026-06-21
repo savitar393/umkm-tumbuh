@@ -54,6 +54,11 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if transactionDate.After(todayInJakarta()) {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Tanggal laporan tidak boleh melebihi hari ini."})
+		return
+	}
+
 	umkmID, err := h.getUMKMID(r.Context(), user.ID)
 	if err != nil {
 		handleError(w, err, "Profil UMKM belum dibuat.")
@@ -527,24 +532,34 @@ func currentUMKMUser(w http.ResponseWriter, r *http.Request) (middleware.Current
 	return user, true
 }
 
+func todayInJakarta() time.Time {
+	loc, err := time.LoadLocation("Asia/Jakarta")
+	if err != nil {
+		loc = time.FixedZone("WIB", 7*60*60)
+	}
+
+	now := time.Now().In(loc)
+	return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
+}
+
 func parseTransactionDate(value string) (time.Time, error) {
-    loc, err := time.LoadLocation("Asia/Jakarta")
-    if err != nil {
-        loc = time.FixedZone("WIB", 7*60*60)
-    }
+	loc, err := time.LoadLocation("Asia/Jakarta")
+	if err != nil {
+		loc = time.FixedZone("WIB", 7*60*60)
+	}
 
-    value = strings.TrimSpace(value)
-    if value == "" {
-        now := time.Now().In(loc)
-        return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc), nil
-    }
+	value = strings.TrimSpace(value)
+	if value == "" {
+		now := time.Now().In(loc)
+		return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc), nil
+	}
 
-    parsed, err := time.ParseInLocation("2006-01-02", value, loc)
-    if err != nil {
-        return time.Time{}, err
-    }
+	parsed, err := time.ParseInLocation("2006-01-02", value, loc)
+	if err != nil {
+		return time.Time{}, err
+	}
 
-    return time.Date(parsed.Year(), parsed.Month(), parsed.Day(), 0, 0, 0, 0, loc), nil
+	return time.Date(parsed.Year(), parsed.Month(), parsed.Day(), 0, 0, 0, 0, loc), nil
 }
 
 func nullableTrim(value string) *string {
