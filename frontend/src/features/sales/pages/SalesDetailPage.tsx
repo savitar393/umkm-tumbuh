@@ -60,6 +60,40 @@ export default function SalesDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const aggregatedItems = sale
+    ? Object.values(
+        sale.items.reduce<
+          Record<
+            string,
+            {
+              id: string;
+              product_name: string;
+              unit_price: number;
+              quantity: number;
+              subtotal: number;
+            }
+          >
+        >((acc, item) => {
+          const key = `${item.product_name}-${item.unit_price}`;
+
+          if (!acc[key]) {
+            acc[key] = {
+              id: key,
+              product_name: item.product_name,
+              unit_price: item.unit_price,
+              quantity: 0,
+              subtotal: 0,
+            };
+          }
+
+          acc[key].quantity += item.quantity;
+          acc[key].subtotal += item.subtotal;
+
+          return acc;
+        }, {}),
+      )
+    : [];
+
   useEffect(() => {
     async function loadSale() {
       if (!id) return;
@@ -182,12 +216,12 @@ export default function SalesDetailPage() {
                   </thead>
 
                   <tbody>
-                    {sale.items.length === 0 ? (
+                    {aggregatedItems.length === 0 ? (
                       <tr>
                         <td colSpan={4}>Belum ada item pada laporan ini.</td>
                       </tr>
                     ) : (
-                      sale.items.map((item) => (
+                      aggregatedItems.map((item) => (
                         <tr key={item.id}>
                           <td>
                             <span className="sales-item-product">
