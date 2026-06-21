@@ -1,63 +1,122 @@
-import { type FormEvent, useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Building2, CheckCircle2, FileText, ImagePlus, MapPin, Store } from "lucide-react";
+import {
+  Building2,
+  CheckCircle2,
+  Clock3,
+  Edit3,
+  FileText,
+  ImagePlus,
+  Mail,
+  MapPin,
+  MapPinned,
+  Phone,
+  ShieldCheck,
+  Store,
+} from "lucide-react";
 import { getCurrentUser } from "../../../shared/auth/currentUser";
 import UmkmLayout from "../../umkm/components/UmkmLayout";
-import {
-  getMyProfile,
-  updateMyProfile,
-  type UmkmProfile,
-  type UmkmProfilePayload,
-} from "../api";
+import { getMyProfile, type UmkmProfile } from "../api";
 
-const emptyForm: UmkmProfilePayload = {
-  business_name: "",
-  business_category: "",
-  business_description: "",
-  established_year: undefined,
-  business_email: "",
-  operating_hours: "",
-  social_media_marketplace: "",
-  owner_name: "",
-  nik: "",
-  phone_number: "",
-  address: "",
-  city: "",
-  province: "",
-  district: "",
-  village: "",
-  postal_code: "",
-};
+function onlyDigits(value: string) {
+  return value.replace(/\D/g, "");
+}
 
-function mapProfileToForm(profile: UmkmProfile): UmkmProfilePayload {
-  return {
-    business_name: profile.business_name ?? "",
-    business_category: profile.business_category ?? "",
-    business_description: profile.business_description ?? "",
-    established_year: profile.established_year ?? undefined,
-    business_email: profile.business_email ?? "",
-    operating_hours: profile.operating_hours ?? "",
-    social_media_marketplace: profile.social_media_marketplace ?? "",
-    owner_name: profile.owner_name ?? "",
-    nik: profile.nik ?? "",
-    phone_number: profile.phone_number ?? "",
-    address: profile.address ?? "",
-    city: profile.city ?? "",
-    province: profile.province ?? "",
-    district: profile.district ?? "",
-    village: profile.village ?? "",
-    postal_code: profile.postal_code ?? "",
-  };
+function hasValue(value?: string | null) {
+  return Boolean(value && value.trim());
+}
+
+function isValidEmail(value?: string | null) {
+  if (!hasValue(value)) return true;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value).trim());
+}
+
+function isValidIndonesianPhone(value?: string | null) {
+  const digits = onlyDigits(value ?? "");
+  if (digits.length < 10 || digits.length > 15) return false;
+  return digits.startsWith("08") || digits.startsWith("62");
+}
+
+function buildFullAddress(profile: UmkmProfile) {
+  return [
+    profile.address,
+    profile.village,
+    profile.district,
+    profile.city,
+    profile.province,
+    profile.postal_code,
+  ]
+    .map((part) => String(part ?? "").trim())
+    .filter(Boolean)
+    .join(", ");
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return "-";
+
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
+function getCompletenessItems(profile: UmkmProfile) {
+  return [
+    {
+      label: "Profil dasar",
+      done:
+        hasValue(profile.business_name) &&
+        hasValue(profile.owner_name) &&
+        hasValue(profile.business_category) &&
+        onlyDigits(profile.nik ?? "").length === 16,
+    },
+    {
+      label: "Kontak usaha",
+      done: isValidIndonesianPhone(profile.phone_number) && isValidEmail(profile.business_email),
+    },
+    {
+      label: "Lokasi usaha",
+      done: hasValue(profile.address) && hasValue(profile.city) && hasValue(profile.province),
+    },
+    {
+      label: "Jam operasional",
+      done: hasValue(profile.operating_hours),
+    },
+    {
+      label: "Visual usaha",
+      done: false,
+    },
+    {
+      label: "Dokumen legalitas",
+      done: false,
+    },
+  ];
+}
+
+function EmptyText({ children = "Belum diisi" }: { children?: string }) {
+  return <span className="umkm-empty-text">{children}</span>;
 }
 
 export default function ProfilePage() {
   const user = getCurrentUser();
+
   const [profile, setProfile] = useState<UmkmProfile | null>(null);
-  const [form, setForm] = useState<UmkmProfilePayload>(emptyForm);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+
+  const fullAddress = useMemo(() => (profile ? buildFullAddress(profile) : ""), [profile]);
+
+  const completenessItems = useMemo(
+    () => (profile ? getCompletenessItems(profile) : []),
+    [profile],
+  );
+
+  const completedCount = completenessItems.filter((item) => item.done).length;
+  const completenessPercent =
+    completenessItems.length > 0
+      ? Math.round((completedCount / completenessItems.length) * 100)
+      : 0;
 
   useEffect(() => {
     let ignore = false;
@@ -65,31 +124,13 @@ export default function ProfilePage() {
     async function loadProfile() {
       setLoading(true);
       setError("");
-      setMessage("");
 
       try {
         const response = await getMyProfile();
-
-        if (ignore) return;
-
-        const profile = response.profile as UmkmProfile;
-
-        setProfile(profile);
-        setForm(mapProfileToForm(profile));
+        if (!ignore) setProfile(response.profile as UmkmProfile);
       } catch (err) {
-        if (ignore) return;
-
-        const msg = err instanceof Error ? err.message : "Gagal memuat profil.";
-
-        if (msg.toLowerCase().includes("profil belum dibuat")) {
-          setProfile(null);
-          setForm({
-            ...emptyForm,
-            owner_name: user?.full_name ?? "",
-          });
-          setMessage("Profil belum dibuat. Lengkapi data UMKM terlebih dahulu.");
-        } else {
-          setError(msg);
+        if (!ignore) {
+          setError(err instanceof Error ? err.message : "Gagal memuat profil.");
         }
       } finally {
         if (!ignore) setLoading(false);
@@ -101,52 +142,7 @@ export default function ProfilePage() {
     return () => {
       ignore = true;
     };
-  }, [user?.full_name]);
-
-  function updateField(field: keyof UmkmProfilePayload, value: string) {
-    setForm((current) => ({
-      ...current,
-      [field]: value,
-    }));
-  }
-
-  function resetForm() {
-    if (profile) {
-      setForm(mapProfileToForm(profile));
-      setMessage("Perubahan dibatalkan.");
-      setError("");
-      return;
-    }
-
-    setForm({
-      ...emptyForm,
-      owner_name: user?.full_name ?? "",
-    });
-    setMessage("Form dikosongkan kembali.");
-    setError("");
-  }
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    setSaving(true);
-    setError("");
-    setMessage("");
-
-    try {
-      const response = await updateMyProfile(form);
-      const profile = response.profile as UmkmProfile;
-
-      setProfile(profile);
-      setForm(mapProfileToForm(profile));
-      setMessage("Data berhasil diperbarui");
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Gagal menyimpan profil.";
-      setError(msg);
-    } finally {
-      setSaving(false);
-    }
-  }
+  }, []);
 
   if (!user) {
     return (
@@ -174,219 +170,173 @@ export default function ProfilePage() {
 
   return (
     <UmkmLayout>
-      <form className="umkm-profile-page" onSubmit={handleSubmit}>
-        <div className="umkm-profile-header">
-          {message ? (
-            <div className="umkm-save-message">
-              <CheckCircle2 size={18} />
-              <span>{message}</span>
-            </div>
-          ) : null}
+      <main className="umkm-profile-page umkm-profile-view-page">
+        <section className="umkm-profile-header umkm-profile-view-header">
+          <div>
+            <h1>Informasi UMKM</h1>
+            <p>Lihat profil bisnis yang digunakan untuk membangun kredibilitas UMKM Anda.</p>
+          </div>
 
-          {error ? <div className="error-message">{error}</div> : null}
-
-          <h1>Kelola Informasi UMKM</h1>
-          <p>Perbarui profil bisnis Anda untuk meningkatkan kepercayaan pelanggan dan mitra.</p>
-        </div>
+          <Link className="button umkm-profile-edit-button" to="/umkm/profile/edit">
+            <Edit3 size={18} />
+            Edit Profil
+          </Link>
+        </section>
 
         {loading ? (
           <section className="umkm-form-section">
             <p>Memuat profil...</p>
           </section>
-        ) : (
+        ) : error ? (
+          <section className="umkm-form-section">
+            <p>{error}</p>
+            <Link className="button" to="/umkm/profile/edit">
+              Lengkapi Profil
+            </Link>
+          </section>
+        ) : profile ? (
           <>
-            <section className="umkm-form-section">
-              <h2>
-                <span className="umkm-section-icon">
-                  <Store size={18} />
-                </span>
-                Informasi Dasar
-              </h2>
+            <section className="umkm-profile-preview-grid">
+              <article className="umkm-profile-summary-card">
+                <div className="umkm-preview-badge-row">
+                  <span className="umkm-preview-type">Profil bisnis</span>
+                  <strong className={`umkm-status-badge ${profile.status.toLowerCase()}`}>
+                    {profile.status}
+                  </strong>
+                </div>
 
-              <div className="umkm-form-grid">
-                <label>
-                  Nama UMKM
-                  <input
-                    value={form.business_name}
-                    onChange={(e) => updateField("business_name", e.target.value)}
-                    required
-                  />
-                </label>
+                <h2>{profile.business_name}</h2>
+                <p>{profile.business_description || "Deskripsi usaha belum diisi."}</p>
 
-                <label>
-                  Nama Pemilik
-                  <input
-                    value={form.owner_name}
-                    onChange={(e) => updateField("owner_name", e.target.value)}
-                    required
-                  />
-                </label>
+                <div className="umkm-preview-chip-row">
+                  <span>{profile.business_category || "Kategori belum dipilih"}</span>
+                  <span>
+                    {profile.established_year
+                      ? `Berdiri ${profile.established_year}`
+                      : "Tahun berdiri belum diisi"}
+                  </span>
+                </div>
 
-                <label>
-                  Kategori Usaha
-                  <select
-                    value={form.business_category}
-                    onChange={(e) => updateField("business_category", e.target.value)}
-                    required
-                  >
-                    <option value="">Pilih kategori</option>
-                    <option value="Makanan">Makanan</option>
-                    <option value="Minuman">Minuman</option>
-                    <option value="Kuliner">Kuliner</option>
-                    <option value="Fashion">Fashion</option>
-                    <option value="Kerajinan">Kerajinan</option>
-                    <option value="Jasa">Jasa</option>
-                    <option value="Teknologi">Teknologi</option>
-                    <option value="Lainnya">Lainnya</option>
-                  </select>
-                </label>
+                <div className="umkm-preview-contact-grid">
+                  <div>
+                    <Phone size={17} />
+                    <span>{profile.phone_number || "Nomor WhatsApp belum diisi"}</span>
+                  </div>
+                  <div>
+                    <Mail size={17} />
+                    <span>{profile.business_email || "Email bisnis belum diisi"}</span>
+                  </div>
+                  <div>
+                    <MapPin size={17} />
+                    <span>{fullAddress || "Alamat belum lengkap"}</span>
+                  </div>
+                  <div>
+                    <Clock3 size={17} />
+                    <span>{profile.operating_hours || "Jam operasional belum diisi"}</span>
+                  </div>
+                </div>
+              </article>
 
-                <label>
-                  Tahun Berdiri
-                  <input
-                    type="number"
-                    min={1900}
-                    max={2100}
-                    value={form.established_year ?? ""}
-                    onChange={(e) =>
-                      setForm((current) => ({
-                        ...current,
-                        established_year: e.target.value
-                          ? Number(e.target.value)
-                          : undefined,
-                      }))
-                    }
-                  />
-                </label>
+              <aside className="umkm-credibility-card">
+                <div className="umkm-credibility-card__header">
+                  <ShieldCheck size={24} />
+                  <div>
+                    <span>Status Kredibilitas</span>
+                    <strong>{completenessPercent}% lengkap</strong>
+                  </div>
+                </div>
 
-                <label className="umkm-field-full">
-                  Deskripsi Usaha
-                  <textarea
-                    value={form.business_description ?? ""}
-                    onChange={(e) => updateField("business_description", e.target.value)}
-                    rows={4}
-                  />
-                </label>
+                <div className="umkm-completeness-bar">
+                  <span style={{ width: `${completenessPercent}%` }} />
+                </div>
 
-                <label>
-                  NIK Pemilik
-                  <input
-                    value={form.nik}
-                    onChange={(e) => updateField("nik", e.target.value)}
-                    required
-                    minLength={16}
-                    maxLength={16}
-                    inputMode="numeric"
-                  />
-                </label>
-
-                <label>
-                  Status Profil
-                  <input value={profile?.status ?? "Belum dibuat"} disabled />
-                </label>
-              </div>
+                <div className="umkm-completeness-list">
+                  {completenessItems.map((item) => (
+                    <div className={item.done ? "done" : ""} key={item.label}>
+                      <CheckCircle2 size={16} />
+                      <span>{item.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </aside>
             </section>
 
-            <section className="umkm-form-section">
-              <h2>
-                <span className="umkm-section-icon">
-                  <MapPin size={18} />
-                </span>
-                Kontak & Lokasi
-              </h2>
+            <section className="umkm-profile-view-grid">
+              <article className="umkm-form-section umkm-profile-view-card">
+                <h2>
+                  <span className="umkm-section-icon">
+                    <Store size={18} />
+                  </span>
+                  Informasi Dasar
+                </h2>
 
-              <div className="umkm-form-grid">
-                <label>
-                  Nomor WhatsApp
-                  <input
-                    value={form.phone_number}
-                    onChange={(e) => updateField("phone_number", e.target.value)}
-                    required
-                  />
-                </label>
+                <div className="umkm-info-list">
+                  <div>
+                    <span>Nama UMKM</span>
+                    <strong>{profile.business_name || <EmptyText />}</strong>
+                  </div>
+                  <div>
+                    <span>Nama Pemilik</span>
+                    <strong>{profile.owner_name || <EmptyText />}</strong>
+                  </div>
+                  <div>
+                    <span>Kategori</span>
+                    <strong>{profile.business_category || <EmptyText />}</strong>
+                  </div>
+                  <div>
+                    <span>Tahun Berdiri</span>
+                    <strong>{profile.established_year || <EmptyText />}</strong>
+                  </div>
+                  <div>
+                    <span>NIK Pemilik</span>
+                    <strong>{profile.nik ? `${profile.nik.slice(0, 4)}••••••••${profile.nik.slice(-4)}` : <EmptyText />}</strong>
+                  </div>
+                  <div>
+                    <span>Terakhir Diperbarui</span>
+                    <strong>{formatDate(profile.updated_at)}</strong>
+                  </div>
+                </div>
+              </article>
 
-                <label>
-                  Email Bisnis
-                  <input
-                    type="email"
-                    value={form.business_email ?? ""}
-                    onChange={(e) => updateField("business_email", e.target.value)}
-                  />
-                </label>
+              <article className="umkm-form-section umkm-profile-view-card">
+                <h2>
+                  <span className="umkm-section-icon">
+                    <MapPin size={18} />
+                  </span>
+                  Kontak & Lokasi
+                </h2>
 
-                <label className="umkm-field-full">
-                  Alamat Lengkap
-                  <textarea
-                    value={form.address}
-                    onChange={(e) => updateField("address", e.target.value)}
-                    required
-                    rows={3}
-                  />
-                </label>
+                <div className="umkm-info-list">
+                  <div>
+                    <span>Nomor WhatsApp</span>
+                    <strong>{profile.phone_number || <EmptyText />}</strong>
+                  </div>
+                  <div>
+                    <span>Email Bisnis</span>
+                    <strong>{profile.business_email || <EmptyText />}</strong>
+                  </div>
+                  <div>
+                    <span>Alamat Lengkap</span>
+                    <strong>{fullAddress || <EmptyText />}</strong>
+                  </div>
+                  <div>
+                    <span>Jam Operasional</span>
+                    <strong>{profile.operating_hours || <EmptyText />}</strong>
+                  </div>
+                  <div>
+                    <span>Media Sosial / Marketplace</span>
+                    <strong>{profile.social_media_marketplace || <EmptyText />}</strong>
+                  </div>
+                </div>
 
-                <label>
-                  Kota
-                  <input
-                    value={form.city}
-                    onChange={(e) => updateField("city", e.target.value)}
-                    required
-                  />
-                </label>
-
-                <label>
-                  Provinsi
-                  <input
-                    value={form.province}
-                    onChange={(e) => updateField("province", e.target.value)}
-                    required
-                  />
-                </label>
-
-                <label>
-                  Kecamatan
-                  <input
-                    value={form.district ?? ""}
-                    onChange={(e) => updateField("district", e.target.value)}
-                  />
-                </label>
-
-                <label>
-                  Kelurahan/Desa
-                  <input
-                    value={form.village ?? ""}
-                    onChange={(e) => updateField("village", e.target.value)}
-                  />
-                </label>
-
-                <label>
-                  Kode Pos
-                  <input
-                    value={form.postal_code ?? ""}
-                    onChange={(e) => updateField("postal_code", e.target.value)}
-                  />
-                </label>
-
-                <label>
-                  Jam Operasional
-                  <input
-                    value={form.operating_hours ?? ""}
-                    onChange={(e) => updateField("operating_hours", e.target.value)}
-                    placeholder="Contoh: Senin - Sabtu (08.00 - 17.00)"
-                  />
-                </label>
-
-                <label className="umkm-field-full">
-                  Media Sosial / Marketplace
-                  <input
-                    value={form.social_media_marketplace ?? ""}
-                    onChange={(e) => updateField("social_media_marketplace", e.target.value)}
-                    placeholder="Contoh: Instagram @usahaku | Shopee Usahaku"
-                  />
-                </label>
-              </div>
+                <div className="umkm-map-preview umkm-profile-view-map">
+                  <MapPinned size={28} />
+                  <span>Preview peta belum tersambung</span>
+                </div>
+              </article>
             </section>
 
-            <section className="umkm-form-section">
+            <section className="umkm-form-section umkm-profile-view-card">
               <h2>
                 <span className="umkm-section-icon">
                   <Building2 size={18} />
@@ -394,21 +344,15 @@ export default function ProfilePage() {
                 Legalitas & Visual
               </h2>
 
-              <div className="umkm-visual-grid">
-                <div>
-                  <label>
-                    Logo Usaha
-                    <div className="umkm-placeholder-image" style={{ maxWidth: 130, height: 130 }}>
-                      <ImagePlus size={28} />
-                    </div>
-                  </label>
+              <div className="umkm-profile-view-visual-grid">
+                <div className="umkm-placeholder-image">
+                  <ImagePlus size={30} />
+                  <span>Logo usaha belum tersedia</span>
+                </div>
 
-                  <label style={{ marginTop: 24 }}>
-                    Foto Utama Usaha
-                    <div className="umkm-placeholder-image">
-                      <span>Upload foto produk/toko belum tersedia</span>
-                    </div>
-                  </label>
+                <div className="umkm-placeholder-image">
+                  <ImagePlus size={30} />
+                  <span>Foto utama usaha belum tersedia</span>
                 </div>
 
                 <aside className="umkm-document-card">
@@ -430,26 +374,19 @@ export default function ProfilePage() {
                     </span>
                     <span>Coming soon</span>
                   </div>
-
-                  <p>
-                    Fitur dokumen dan object storage akan disambungkan melalui document-service/Garage
-                    pada milestone berikutnya.
-                  </p>
                 </aside>
               </div>
             </section>
-
-            <div className="umkm-profile-actions">
-              <button className="umkm-secondary-btn" type="button" onClick={resetForm}>
-                Cancel
-              </button>
-              <button type="submit" disabled={saving}>
-                {saving ? "Menyimpan..." : profile ? "Save Changes" : "Buat Profil"}
-              </button>
-            </div>
           </>
+        ) : (
+          <section className="umkm-form-section">
+            <p>Profil UMKM belum tersedia.</p>
+            <Link className="button" to="/umkm/profile/edit">
+              Lengkapi Profil
+            </Link>
+          </section>
         )}
-      </form>
+      </main>
     </UmkmLayout>
   );
 }
