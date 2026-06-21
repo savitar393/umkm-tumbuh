@@ -339,12 +339,12 @@ export default function ProfilePage() {
             <section className="umkm-form-section umkm-profile-view-card">
               <h2>
                 <span className="umkm-section-icon">
-                  <Building2 size={18} />
+                  <ImagePlus size={18} />
                 </span>
-                Legalitas & Visual
+                Galeri Usaha
               </h2>
 
-              <div className="umkm-profile-view-visual-grid">
+              <div className="umkm-gallery-view-grid">
                 <div className="umkm-placeholder-image">
                   <ImagePlus size={30} />
                   <span>Logo usaha belum tersedia</span>
@@ -354,28 +354,37 @@ export default function ProfilePage() {
                   <ImagePlus size={30} />
                   <span>Foto utama usaha belum tersedia</span>
                 </div>
-
-                <aside className="umkm-document-card">
-                  <h3>STATUS DOKUMEN</h3>
-
-                  <div className="umkm-doc-row">
-                    <span>NIB / Legalitas Usaha</span>
-                    <span>Placeholder</span>
-                  </div>
-
-                  <div className="umkm-doc-row">
-                    <span>Dokumen Pendukung</span>
-                    <span>Placeholder</span>
-                  </div>
-
-                  <div className="umkm-doc-row pending">
-                    <span>
-                      <FileText size={16} /> Upload dokumen
-                    </span>
-                    <span>Coming soon</span>
-                  </div>
-                </aside>
               </div>
+            </section>
+
+            <section className="umkm-form-section umkm-profile-view-card">
+              <h2>
+                <span className="umkm-section-icon">
+                  <Building2 size={18} />
+                </span>
+                Legalitas & Dokumen
+              </h2>
+
+              <aside className="umkm-document-card umkm-document-card--wide">
+                <h3>STATUS DOKUMEN</h3>
+
+                <div className="umkm-doc-row">
+                  <span>NIB / Legalitas Usaha</span>
+                  <span>Placeholder</span>
+                </div>
+
+                <div className="umkm-doc-row">
+                  <span>Dokumen Pendukung</span>
+                  <span>Placeholder</span>
+                </div>
+
+                <div className="umkm-doc-row pending">
+                  <span>
+                    <FileText size={16} /> Upload dokumen
+                  </span>
+                  <span>Coming soon</span>
+                </div>
+              </aside>
             </section>
           </>
         ) : (

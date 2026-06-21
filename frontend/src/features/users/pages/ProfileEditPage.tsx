@@ -8,8 +8,6 @@ import {
   ImagePlus,
   MapPin,
   MapPinned,
-  Phone,
-  ShieldCheck,
   Store,
 } from "lucide-react";
 import { getCurrentUser } from "../../../shared/auth/currentUser";
@@ -199,39 +197,6 @@ function getProfileFormErrors(form: UmkmProfilePayload): FieldErrors {
   return errors;
 }
 
-function getCompletenessItems(form: UmkmProfilePayload) {
-  return [
-    {
-      label: "Profil dasar",
-      done:
-        isValidBusinessName(form.business_name) &&
-        hasTextLetter(form.owner_name ?? "") &&
-        Boolean(form.business_category?.trim()) &&
-        onlyDigits(form.nik ?? "").length === 16,
-    },
-    {
-      label: "Kontak usaha",
-      done: isValidIndonesianPhone(form.phone_number ?? "") && isValidEmail(form.business_email ?? ""),
-    },
-    {
-      label: "Lokasi usaha",
-      done: Boolean(form.address?.trim() && form.city?.trim() && form.province?.trim()),
-    },
-    {
-      label: "Jam operasional",
-      done: Boolean(form.operating_hours?.trim()),
-    },
-    {
-      label: "Visual usaha",
-      done: false,
-    },
-    {
-      label: "Dokumen legalitas",
-      done: false,
-    },
-  ];
-}
-
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
   return <span className="umkm-field-error">{message}</span>;
@@ -255,10 +220,6 @@ export default function ProfileEditPage() {
   const [error, setError] = useState("");
 
   const fullAddress = useMemo(() => buildFullAddress(form), [form]);
-
-  const completenessItems = useMemo(() => getCompletenessItems(form), [form]);
-  const completedCount = completenessItems.filter((item) => item.done).length;
-  const completenessPercent = Math.round((completedCount / completenessItems.length) * 100);
 
   useEffect(() => {
     let ignore = false;
@@ -479,63 +440,6 @@ export default function ProfileEditPage() {
           </section>
         ) : (
           <>
-            <section className="umkm-profile-preview-grid">
-              <article className="umkm-profile-summary-card">
-                <div className="umkm-preview-badge-row">
-                  <span className="umkm-preview-type">Profil bisnis</span>
-                  <strong className={`umkm-status-badge ${(profile?.status ?? "BELUM_DIBUAT").toLowerCase()}`}>
-                    {profile?.status ?? "Belum dibuat"}
-                  </strong>
-                </div>
-
-                <h2>{form.business_name || "Nama UMKM belum diisi"}</h2>
-                <p>{form.business_description || "Deskripsi usaha belum diisi."}</p>
-
-                <div className="umkm-preview-chip-row">
-                  <span>{form.business_category || "Kategori belum dipilih"}</span>
-                  <span>{form.established_year ? `Berdiri ${form.established_year}` : "Tahun berdiri belum diisi"}</span>
-                </div>
-
-                <div className="umkm-preview-contact-grid">
-                  <div>
-                    <Phone size={17} />
-                    <span>{form.phone_number || "Nomor WhatsApp belum diisi"}</span>
-                  </div>
-                  <div>
-                    <MapPin size={17} />
-                    <span>{fullAddress || "Alamat belum lengkap"}</span>
-                  </div>
-                  <div>
-                    <Clock3 size={17} />
-                    <span>{form.operating_hours || "Jam operasional belum diisi"}</span>
-                  </div>
-                </div>
-              </article>
-
-              <aside className="umkm-credibility-card">
-                <div className="umkm-credibility-card__header">
-                  <ShieldCheck size={24} />
-                  <div>
-                    <span>Status Kredibilitas</span>
-                    <strong>{completenessPercent}% lengkap</strong>
-                  </div>
-                </div>
-
-                <div className="umkm-completeness-bar">
-                  <span style={{ width: `${completenessPercent}%` }} />
-                </div>
-
-                <div className="umkm-completeness-list">
-                  {completenessItems.map((item) => (
-                    <div className={item.done ? "done" : ""} key={item.label}>
-                      <CheckCircle2 size={16} />
-                      <span>{item.label}</span>
-                    </div>
-                  ))}
-                </div>
-              </aside>
-            </section>
-
             <section className="umkm-form-section">
               <h2>
                 <span className="umkm-section-icon">
@@ -811,28 +715,50 @@ export default function ProfileEditPage() {
             <section className="umkm-form-section">
               <h2>
                 <span className="umkm-section-icon">
-                  <Building2 size={18} />
+                  <ImagePlus size={18} />
                 </span>
-                Legalitas & Visual
+                Galeri Usaha
               </h2>
 
-              <div className="umkm-visual-grid">
-                <div>
-                  <label>
-                    Logo Usaha
-                    <div className="umkm-placeholder-image" style={{ maxWidth: 130, height: 130 }}>
-                      <ImagePlus size={28} />
-                    </div>
-                  </label>
+              <div className="umkm-gallery-edit-grid">
+                <label>
+                  Logo Usaha
+                  <div className="umkm-placeholder-image" style={{ maxWidth: 130, height: 130 }}>
+                    <ImagePlus size={28} />
+                    <span>Logo belum tersedia</span>
+                  </div>
+                </label>
 
-                  <label style={{ marginTop: 24 }}>
-                    Foto Utama Usaha
-                    <div className="umkm-placeholder-image">
-                      <span>Upload foto produk/toko belum tersedia</span>
-                    </div>
-                  </label>
+                <label>
+                  Foto Utama Usaha
+                  <div className="umkm-placeholder-image">
+                    <ImagePlus size={28} />
+                    <span>Foto produk/toko belum tersedia</span>
+                  </div>
+                </label>
+
+                <div className="umkm-soft-note">
+                  <ImagePlus size={20} />
+                  <div>
+                    <strong>Upload gambar belum tersambung.</strong>
+                    <p>
+                      Bagian ini disiapkan untuk logo dan foto usaha. Integrasi upload akan
+                      disambungkan melalui document-service/Garage pada milestone berikutnya.
+                    </p>
+                  </div>
                 </div>
+              </div>
+            </section>
 
+            <section className="umkm-form-section">
+              <h2>
+                <span className="umkm-section-icon">
+                  <Building2 size={18} />
+                </span>
+                Legalitas & Dokumen
+              </h2>
+
+              <div className="umkm-document-edit-grid">
                 <aside className="umkm-document-card">
                   <h3>STATUS DOKUMEN</h3>
 
@@ -852,12 +778,18 @@ export default function ProfileEditPage() {
                     </span>
                     <span>Coming soon</span>
                   </div>
-
-                  <p>
-                    Fitur dokumen dan object storage akan disambungkan melalui document-service/Garage
-                    pada milestone berikutnya.
-                  </p>
                 </aside>
+
+                <div className="umkm-soft-note">
+                  <FileText size={20} />
+                  <div>
+                    <strong>Dokumen legalitas belum dapat diunggah.</strong>
+                    <p>
+                      Status dokumen masih placeholder untuk demo. Nanti bagian ini dapat
+                      dipakai untuk NIB, sertifikat halal, izin usaha, dan dokumen pendukung.
+                    </p>
+                  </div>
+                </div>
               </div>
             </section>
 

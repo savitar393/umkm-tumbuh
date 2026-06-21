@@ -4743,3 +4743,102 @@ button.danger {
     grid-template-columns: 1fr;
   }
 }
+
+/* UMKM profile refinements after splitting view/edit */
+.umkm-day-buttons {
+  display: grid !important;
+  grid-template-columns: repeat(7, minmax(42px, 1fr));
+  gap: 8px;
+}
+
+.umkm-day-buttons button {
+  width: 100% !important;
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 10px;
+  border-radius: 999px;
+  text-align: center;
+  box-shadow: none;
+}
+
+.umkm-gallery-edit-grid {
+  display: grid;
+  grid-template-columns: minmax(160px, 0.35fr) minmax(320px, 1fr);
+  gap: 18px;
+  align-items: start;
+  margin-top: 20px;
+}
+
+.umkm-gallery-edit-grid .umkm-soft-note {
+  grid-column: 1 / -1;
+}
+
+.umkm-gallery-view-grid {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.45fr) minmax(320px, 1fr);
+  gap: 18px;
+  align-items: stretch;
+  margin-top: 20px;
+}
+
+.umkm-gallery-view-grid .umkm-placeholder-image {
+  min-height: 180px;
+  max-width: none !important;
+}
+
+.umkm-document-edit-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.55fr) minmax(320px, 1fr);
+  gap: 18px;
+  align-items: stretch;
+  margin-top: 20px;
+}
+
+.umkm-document-card--wide {
+  max-width: 720px;
+  margin-top: 20px;
+}
+
+.umkm-soft-note {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid #bfdbfe;
+  border-radius: 18px;
+  background: #eff6ff;
+  color: #1e3a8a;
+}
+
+.umkm-soft-note svg {
+  color: #1f45b6;
+}
+
+.umkm-soft-note strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 15px;
+}
+
+.umkm-soft-note p {
+  color: #475569;
+  line-height: 1.55;
+}
+
+@media (max-width: 1100px) {
+  .umkm-gallery-edit-grid,
+  .umkm-gallery-view-grid,
+  .umkm-document-edit-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .umkm-day-buttons {
+    grid-template-columns: repeat(4, minmax(42px, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .umkm-day-buttons {
+    grid-template-columns: repeat(2, minmax(42px, 1fr));
+  }
+}
