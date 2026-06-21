@@ -1,20 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
-  AtSign,
   Building2,
   CheckCircle2,
   Clock3,
   Edit3,
   FileText,
-  Globe2,
   ImagePlus,
   Mail,
   MapPin,
   MapPinned,
   Phone,
   ShieldCheck,
-  ShoppingBag,
   Store,
 } from "lucide-react";
 import { getCurrentUser } from "../../../shared/auth/currentUser";
@@ -25,6 +22,7 @@ import {
   hasAnySocialMedia,
   parseSocialMediaValue,
 } from "../../../shared/utils/socialMedia";
+import { Icon } from "@iconify/react";
 
 function onlyDigits(value: string) {
   return value.replace(/\D/g, "");
@@ -104,6 +102,100 @@ function getCompletenessItems(profile: UmkmProfile) {
 
 function EmptyText({ children = "Belum diisi" }: { children?: string }) {
   return <span className="umkm-empty-text">{children}</span>;
+}
+
+type SocialPlatform = "instagram" | "tiktok" | "shopee" | "tokopedia" | "website";
+
+const socialIconMap: Record<SocialPlatform, string> = {
+  instagram: "simple-icons:instagram",
+  tiktok: "simple-icons:tiktok",
+  shopee: "simple-icons:shopee",
+  tokopedia: "logos:tokopedia",
+  website: "lucide:globe",
+};
+
+function SocialBrandIcon({ platform }: { platform: SocialPlatform }) {
+  return (
+    <span className={`umkm-social-brand-icon ${platform}`}>
+      <Icon icon={socialIconMap[platform]} width={16} height={16} />
+    </span>
+  );
+}
+
+function normalizeWebsiteUrl(value: string) {
+  const trimmed = value.trim();
+
+  if (!trimmed) return "";
+
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+
+  return `https://${trimmed}`;
+}
+
+function getSocialUrl(platform: SocialPlatform, label: string) {
+  const value = label.trim();
+
+  if (!value) return "";
+
+  switch (platform) {
+    case "instagram":
+      return `https://www.instagram.com/${withoutAt(value)}`;
+    case "tiktok":
+      return `https://www.tiktok.com/@${withoutAt(value)}`;
+    case "shopee":
+      return `https://shopee.co.id/search?keyword=${encodeURIComponent(value)}`;
+    case "tokopedia":
+      return `https://www.tokopedia.com/search?st=shop&q=${encodeURIComponent(value)}`;
+    case "website":
+      return normalizeWebsiteUrl(value);
+    default:
+      return "";
+  }
+}
+
+function SocialPreviewList({
+  socialLinks,
+  compact = false,
+}: {
+  socialLinks: NonNullable<ReturnType<typeof parseSocialMediaValue>>;
+  compact?: boolean;
+}) {
+  const items = [
+    socialLinks.instagram
+      ? { platform: "instagram" as const, label: socialLinks.instagram }
+      : null,
+    socialLinks.tiktok ? { platform: "tiktok" as const, label: socialLinks.tiktok } : null,
+    socialLinks.shopee ? { platform: "shopee" as const, label: socialLinks.shopee } : null,
+    socialLinks.tokopedia
+      ? { platform: "tokopedia" as const, label: socialLinks.tokopedia }
+      : null,
+    socialLinks.website ? { platform: "website" as const, label: socialLinks.website } : null,
+  ].filter(Boolean) as Array<{ platform: SocialPlatform; label: string }>;
+
+  return (
+    <div className={compact ? "umkm-social-chip-list" : "umkm-social-preview-list"}>
+      {items.map((item) => {
+        const href = getSocialUrl(item.platform, item.label);
+
+        return (
+          <a
+            href={href}
+            target="_blank"
+            rel="noreferrer"
+            key={`${item.platform}-${item.label}`}
+            title={item.label}
+          >
+            <SocialBrandIcon platform={item.platform} />
+            <strong>{item.label}</strong>
+          </a>
+        );
+      })}
+    </div>
+  );
+}
+
+function withoutAt(value: string) {
+  return value.trim().replace(/^@+/, "");
 }
 
 export default function ProfilePage() {
@@ -270,6 +362,10 @@ export default function ProfilePage() {
                     <span>{profile.operating_hours || "Jam operasional belum diisi"}</span>
                   </div>
                 </div>
+
+                {socialLinks && hasAnySocialMedia(socialLinks) ? (
+                  <SocialPreviewList socialLinks={socialLinks} compact />
+                ) : null}
               </article>
 
               <aside className="umkm-credibility-card">
@@ -362,42 +458,7 @@ export default function ProfilePage() {
                     <span>Media Sosial / Marketplace</span>
 
                     {socialLinks && hasAnySocialMedia(socialLinks) ? (
-                      <div className="umkm-social-preview-list">
-                        {socialLinks.instagram ? (
-                          <p>
-                            <AtSign size={16} />
-                            <strong>{socialLinks.instagram}</strong>
-                          </p>
-                        ) : null}
-
-                        {socialLinks.tiktok ? (
-                          <p>
-                            <Store size={16} />
-                            <strong>{socialLinks.tiktok}</strong>
-                          </p>
-                        ) : null}
-
-                        {socialLinks.shopee ? (
-                          <p>
-                            <ShoppingBag size={16} />
-                            <strong>{socialLinks.shopee}</strong>
-                          </p>
-                        ) : null}
-
-                        {socialLinks.tokopedia ? (
-                          <p>
-                            <ShoppingBag size={16} />
-                            <strong>{socialLinks.tokopedia}</strong>
-                          </p>
-                        ) : null}
-
-                        {socialLinks.website ? (
-                          <p>
-                            <Globe2 size={16} />
-                            <strong>{socialLinks.website}</strong>
-                          </p>
-                        ) : null}
-                      </div>
+                      <SocialPreviewList socialLinks={socialLinks} />
                     ) : (
                       <strong>
                         <EmptyText />

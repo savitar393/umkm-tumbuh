@@ -5167,7 +5167,7 @@ button.danger {
   margin-top: 4px;
 }
 
-.umkm-social-preview-list p {
+.umkm-social-preview-list a {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -5190,4 +5190,133 @@ button.danger {
   .umkm-social-form {
     grid-template-columns: 1fr;
   }
+}
+
+/* Brand social media preview */
+.umkm-social-brand-icon {
+  display: inline-grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #1f45b6;
+}
+
+.umkm-social-brand-icon.instagram {
+  background: #fdf2f8;
+  color: #be185d;
+}
+
+.umkm-social-brand-icon.tiktok {
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.umkm-social-brand-icon.shopee {
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+.umkm-social-brand-icon.tokopedia {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+.umkm-social-brand-icon.website {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.umkm-social-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.umkm-social-chip-list a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 260px;
+  min-height: 38px;
+  margin: 0;
+  padding: 6px 12px 6px 7px;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.umkm-social-chip-list strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.umkm-social-preview-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.umkm-social-preview-list a {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  color: #334155;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.umkm-social-preview-list strong {
+  overflow-wrap: anywhere;
+}
+
+.umkm-social-chip-list a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 260px;
+  min-height: 38px;
+  margin: 0;
+  padding: 6px 12px 6px 7px;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 850;
+  text-decoration: none;
+}
+
+.umkm-social-chip-list a:hover {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #1f45b6;
+}
+
+.umkm-social-preview-list a {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  color: #334155;
+  font-size: 13px;
+  line-height: 1.35;
+  text-decoration: none;
+}
+
+.umkm-social-preview-list a:hover {
+  color: #1f45b6;
+}
+
+.umkm-social-preview-list strong,
+.umkm-social-chip-list strong {
+  overflow-wrap: anywhere;
 }
