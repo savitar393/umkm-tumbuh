@@ -7419,3 +7419,230 @@ button.danger {
     width: 100%;
   }
 }
+
+/* ===================== PARTNERSHIP APPROVAL ===================== */
+
+.partnership-approval-page {
+  display: grid;
+  gap: 24px;
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
+.partnership-approval-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 22px;
+  align-items: stretch;
+  padding: 32px;
+  border: 1px solid #dbeafe;
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at top right, rgba(255, 215, 0, 0.22), transparent 28%),
+    linear-gradient(135deg, #ffffff, #f8fbff);
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.06);
+}
+
+.partnership-approval-hero h1 {
+  margin-top: 14px;
+  color: #0f172a;
+  font-size: clamp(26px, 3vw, 42px);
+  line-height: 1.08;
+  letter-spacing: -0.05em;
+}
+
+.partnership-approval-hero-card {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 8px;
+  min-height: 150px;
+  padding: 20px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #1f45b6, #0f2b75);
+  color: #ffffff;
+  text-align: center;
+}
+
+.partnership-approval-hero-card svg {
+  color: #ffd700;
+}
+
+.partnership-approval-hero-card strong {
+  font-size: 26px;
+  line-height: 1.1;
+}
+
+.partnership-approval-hero-card span {
+  max-width: 180px;
+  color: #c7d2fe;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.partnership-approval-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 22px;
+  align-items: start;
+}
+
+.partnership-approval-main {
+  display: grid;
+  gap: 22px;
+}
+
+.partnership-approval-panel {
+  position: sticky;
+  top: 24px;
+  display: grid;
+  gap: 18px;
+  padding: 24px;
+  border: 1px solid #e2e8f0;
+  border-radius: 26px;
+  background: #ffffff;
+  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.06);
+}
+
+.partnership-approval-reason {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid #bfdbfe;
+  border-radius: 16px;
+  background: #eff6ff;
+}
+
+.partnership-approval-reason strong {
+  color: #1e3a8a;
+  font-size: 13px;
+}
+
+.partnership-approval-reason p {
+  color: #1e40af;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.6;
+}
+
+.partnership-approval-upload {
+  position: relative;
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  min-height: 210px;
+  padding: 22px;
+  border: 1.5px dashed #bfdbfe;
+  border-radius: 22px;
+  background: #f8fbff;
+  color: #1f45b6;
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.15s ease;
+}
+
+.partnership-approval-upload:hover {
+  border-color: #1f45b6;
+  transform: translateY(-1px);
+}
+
+.partnership-approval-upload input {
+  display: none;
+}
+
+.partnership-approval-upload.has-file {
+  border-color: #22c55e;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.partnership-approval-upload.has-error {
+  border-color: #ef4444;
+  background: #fff7f7;
+  color: #b91c1c;
+}
+
+.partnership-approval-upload strong {
+  max-width: 280px;
+  color: inherit;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.partnership-approval-upload p {
+  max-width: 240px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.partnership-approval-upload button {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #64748b;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+}
+
+.partnership-upload-error {
+  padding: 12px 14px;
+  border: 1px solid #fecaca;
+  border-radius: 14px;
+  background: #fff7f7;
+  color: #b91c1c;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.partnership-approval-checklist {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 18px;
+  background: #f8fafc;
+}
+
+.partnership-approval-checklist div {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.partnership-approval-checklist svg {
+  color: #cbd5e1;
+}
+
+.partnership-approval-checklist div.done {
+  color: #166534;
+}
+
+.partnership-approval-checklist div.done svg {
+  color: #16a34a;
+}
+
+.partnership-apply-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+@media (max-width: 1100px) {
+  .partnership-approval-hero,
+  .partnership-approval-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .partnership-approval-panel {
+    position: static;
+  }
+}
