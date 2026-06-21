@@ -42,6 +42,10 @@ const DAY_OPTIONS = [
   { key: "Min", label: "Min", full: "Minggu" },
 ];
 
+const DEFAULT_OPERATING_DAYS = DAY_OPTIONS.map((day) => day.key);
+const DEFAULT_OPEN_TIME = "10:00";
+const DEFAULT_CLOSE_TIME = "22:00";
+
 const emptyForm: UmkmProfilePayload = {
   business_name: "",
   business_category: "",
@@ -122,6 +126,92 @@ function describeDays(days: string[]) {
 function buildOperatingHoursText(days: string[], openTime: string, closeTime: string) {
   if (days.length === 0) return "";
   return `${describeDays(days)} ${formatTimeLabel(openTime)}–${formatTimeLabel(closeTime)}`;
+}
+
+function normalizeTimeForInput(rawHour: string, rawMinute: string, meridiem?: string) {
+  let hour = Number(rawHour);
+  const minute = rawMinute.padStart(2, "0");
+  const normalizedMeridiem = meridiem?.toUpperCase();
+
+  if (normalizedMeridiem === "PM" && hour < 12) hour += 12;
+  if (normalizedMeridiem === "AM" && hour === 12) hour = 0;
+
+  return `${String(hour).padStart(2, "0")}:${minute}`;
+}
+
+function getDayIndexFromText(value: string) {
+  const text = value.toLowerCase();
+
+  return DAY_OPTIONS.findIndex((day) => {
+    const full = day.full.toLowerCase();
+    const key = day.key.toLowerCase();
+
+    return text === full || text === key;
+  });
+}
+
+function parseOperatingDays(daysText: string) {
+  const normalized = daysText
+    .toLowerCase()
+    .replace(/[()]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!normalized) return DEFAULT_OPERATING_DAYS;
+  if (normalized.includes("setiap hari")) return DEFAULT_OPERATING_DAYS;
+
+  const rangeMatch = normalized.match(
+    /(senin|selasa|rabu|kamis|jumat|sabtu|minggu|sen|sel|rab|kam|jum|sab|min)\s*(?:-|–|sampai|sd|s\/d)\s*(senin|selasa|rabu|kamis|jumat|sabtu|minggu|sen|sel|rab|kam|jum|sab|min)/i,
+  );
+
+  if (rangeMatch) {
+    const startIndex = getDayIndexFromText(rangeMatch[1]);
+    const endIndex = getDayIndexFromText(rangeMatch[2]);
+
+    if (startIndex >= 0 && endIndex >= 0) {
+      if (startIndex <= endIndex) {
+        return DAY_OPTIONS.slice(startIndex, endIndex + 1).map((day) => day.key);
+      }
+
+      return [
+        ...DAY_OPTIONS.slice(startIndex),
+        ...DAY_OPTIONS.slice(0, endIndex + 1),
+      ].map((day) => day.key);
+    }
+  }
+
+  const selected = DAY_OPTIONS.filter((day) => {
+    const full = day.full.toLowerCase();
+    const key = day.key.toLowerCase();
+
+    return new RegExp(`\\b(${full}|${key})\\b`, "i").test(normalized);
+  }).map((day) => day.key);
+
+  return selected.length > 0 ? selected : DEFAULT_OPERATING_DAYS;
+}
+
+function parseOperatingHours(value?: string | null) {
+  const text = value?.trim() ?? "";
+
+  const timeMatch = text.match(
+    /(\d{1,2})[.:](\d{2})\s*(AM|PM)?\s*(?:–|-|sampai|to)\s*(\d{1,2})[.:](\d{2})\s*(AM|PM)?/i,
+  );
+
+  if (!timeMatch) {
+    return {
+      days: DEFAULT_OPERATING_DAYS,
+      openTime: DEFAULT_OPEN_TIME,
+      closeTime: DEFAULT_CLOSE_TIME,
+    };
+  }
+
+  const daysText = text.slice(0, timeMatch.index).trim();
+
+  return {
+    days: parseOperatingDays(daysText),
+    openTime: normalizeTimeForInput(timeMatch[1], timeMatch[2], timeMatch[3]),
+    closeTime: normalizeTimeForInput(timeMatch[4], timeMatch[5], timeMatch[6]),
+  };
 }
 
 function buildFullAddress(form: UmkmProfilePayload) {
@@ -217,9 +307,9 @@ export default function ProfileEditPage() {
   const [profile, setProfile] = useState<UmkmProfile | null>(null);
   const [form, setForm] = useState<UmkmProfilePayload>(emptyForm);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  const [selectedDays, setSelectedDays] = useState(DAY_OPTIONS.map((day) => day.key));
-  const [openTime, setOpenTime] = useState("10:00");
-  const [closeTime, setCloseTime] = useState("22:00");
+  const [selectedDays, setSelectedDays] = useState(DEFAULT_OPERATING_DAYS);
+  const [openTime, setOpenTime] = useState(DEFAULT_OPEN_TIME);
+  const [closeTime, setCloseTime] = useState(DEFAULT_CLOSE_TIME);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -243,15 +333,23 @@ export default function ProfileEditPage() {
         if (ignore) return;
 
         const nextProfile = response.profile as UmkmProfile;
+        const nextForm = mapProfileToForm(nextProfile);
+        const parsedOperatingHours = parseOperatingHours(nextForm.operating_hours);
 
+        setSelectedDays(parsedOperatingHours.days);
+        setOpenTime(parsedOperatingHours.openTime);
+        setCloseTime(parsedOperatingHours.closeTime);
         setProfile(nextProfile);
-        setForm(mapProfileToForm(nextProfile));
+        setForm(nextForm);
       } catch (err) {
         if (ignore) return;
 
         const msg = err instanceof Error ? err.message : "Gagal memuat profil.";
 
         if (msg.toLowerCase().includes("profil belum dibuat")) {
+          setSelectedDays(DEFAULT_OPERATING_DAYS);
+          setOpenTime(DEFAULT_OPEN_TIME);
+          setCloseTime(DEFAULT_CLOSE_TIME);
           setProfile(null);
           setForm({
             ...emptyForm,
@@ -389,7 +487,6 @@ export default function ProfileEditPage() {
       setFieldErrors({});
       setMessage("Data berhasil diperbarui.");
       navigate("/umkm/profile", { state: { profileUpdated: true } });
-      navigate("/umkm/profile");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Gagal menyimpan profil.";
       setError(msg);
