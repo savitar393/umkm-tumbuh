@@ -16,6 +16,10 @@ interface SuccessResponse<T> {
   data: T;
 }
 
+interface DocumentUrlResponse {
+  url: string;
+  content_type?: string;
+}
 
 export interface PartnershipStatusResponse {
   pengajuan: Array<{
@@ -236,25 +240,76 @@ export const partnershipsApi = {
   },
 
   // POST /api/v1/documents/upload - upload dokumen
-  uploadDocument: async (file: File, uploaderAkunId: string): Promise<string> => {
+  uploadDocument: async (file: File): Promise<string> => {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("category", "PARTNERSHIP_FILE");
 
     const userRole = getCurrentUser()?.role || "UMKM";
     const token = getAccessToken();
+
     const headers: Record<string, string> = {
       "X-User-Role": userRole,
     };
-    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    if (token) headers.Authorization = `Bearer ${token}`;
 
     const resp = await fetch("/api/v1/documents/upload", {
       method: "POST",
       headers,
       body: formData,
     });
+
     const json = await resp.json();
-    if (!resp.ok) throw new Error(json.error || "Upload gagal");
-    return json.document?.id;
+
+    if (!resp.ok) {
+      throw new Error(json.error || json.message || "Upload gagal");
+    }
+
+    const documentId =
+      json.document?.id ||
+      json.data?.document_id ||
+      json.data?.dokumen_id ||
+      json.data?.DokumenID;
+
+    if (!documentId) {
+      throw new Error("Upload berhasil, tetapi ID dokumen tidak ditemukan.");
+    }
+
+    return documentId;
+  },
+
+  // GET /api/v1/documents/{id}/url - ambil URL dokumen untuk preview
+  getDocumentUrl: async (documentId: string): Promise<SuccessResponse<DocumentUrlResponse>> => {
+    const userRole = getCurrentUser()?.role || "UMKM";
+    const token = getAccessToken();
+
+    const headers: Record<string, string> = {
+      "X-User-Role": userRole,
+    };
+
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    const resp = await fetch(`/api/v1/documents/${documentId}/url`, {
+      method: "GET",
+      headers,
+    });
+
+    const json = await resp.json();
+
+    if (!resp.ok) {
+      throw new Error(json.error || json.message || "Gagal mengambil URL dokumen");
+    }
+
+    const data = json.data || json.document || json;
+
+    return {
+      success: json.success ?? true,
+      message: json.message,
+      data: {
+        url: data.url || data.file_url || data.download_url || data.presigned_url || "",
+        content_type: data.content_type || data.mime_type || data.file_type || "application/pdf",
+      },
+    };
   },
 };

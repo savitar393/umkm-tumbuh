@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { partnershipsApi } from "../api";
-import PartnershipSidebar from "../components/PartnershipSidebar";
 import { getCurrentUser } from "../../../shared/auth/currentUser";
 
 interface RejectModalProps {
@@ -475,7 +474,6 @@ const DocumentPreview: React.FC<{ url: string; fileType: string; file?: File | n
 
   const isPDF = fileType === "application/pdf";
   const isDOCX = fileType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-  const isDOC = fileType === "application/msword";
 
   // Convert DOCX to HTML using mammoth.js
   useEffect(() => {
@@ -736,16 +734,23 @@ const PartnershipApprovalPage: React.FC = () => {
       const resp = await partnershipsApi.getDetail(partnershipId);
       if (resp.success === true && resp.data) {
         setPartnership(resp.data);
-        if (resp.data.contract_document_id) {
+        const contractDocumentId =
+          typeof resp.data.contract_document_id === "string"
+            ? resp.data.contract_document_id
+            : "";
+
+        if (contractDocumentId) {
           setUploadState("success");
+
           try {
-            const docResp = await partnershipsApi.getDocumentUrl(resp.data.contract_document_id);
+            const docResp = await partnershipsApi.getDocumentUrl(contractDocumentId);
+
             if (docResp.data?.url) {
               setDocumentUrl(docResp.data.url);
               setFileType(docResp.data?.content_type || "application/pdf");
             }
           } catch {
-            // Silently fail
+            // Silently fail because preview is optional.
           }
         }
       }
@@ -787,11 +792,11 @@ const PartnershipApprovalPage: React.FC = () => {
     setSubmitting(true);
     try {
       if (!id) throw new Error("ID pengajuan tidak ditemukan");
-      const userId = user?.id || "";
-      if (signedFile && uploadState !== "success") {
+      if (signedFile) {
         setUploadState("uploading");
+
         try {
-          const docId = await partnershipsApi.uploadDocument(signedFile, userId);
+          const docId = await partnershipsApi.uploadDocument(signedFile);
           await partnershipsApi.sign(id, docId);
           setUploadState("success");
         } catch {
@@ -799,6 +804,7 @@ const PartnershipApprovalPage: React.FC = () => {
           throw new Error("Gagal mengunggah dokumen");
         }
       }
+
       await partnershipsApi.approve(id);
       navigate(`${basePath}/approve/success`, { state: { partnership } });
     } catch {
