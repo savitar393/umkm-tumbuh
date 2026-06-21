@@ -13,6 +13,11 @@ export const STATUS_OPTIONS: { value: UserStatus | "ALL"; label: string }[] = [
   { value: "REJECTED", label: "Ditolak" },
 ];
 
+export function displayStatus(status: UserStatus, isActive: boolean): string {
+  if (status === "APPROVED" && !isActive) return "Nonaktif";
+  return STATUS_LABEL[status];
+}
+
 export function statusLabel(s: UserStatus): string {
   return STATUS_LABEL[s];
 }

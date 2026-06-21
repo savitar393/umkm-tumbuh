@@ -79,7 +79,7 @@ export async function viewDocument(docID: string): Promise<void> {
   });
   if (!res.ok) {
     const data = await res.json().catch(() => null);
-    throw new Error(data?.error || "Gagal membuka dokumen");
+    throw new Error((data?.error || "Gagal membuka dokumen") + " (ERR-FILE-03)");
   }
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
@@ -104,7 +104,7 @@ export async function downloadDocument(docID: string, fileName = "dokumen"): Pro
   });
   if (!res.ok) {
     const data = await res.json().catch(() => null);
-    throw new Error(data?.error || "Gagal mengunduh dokumen");
+    throw new Error((data?.error || "Gagal mengunduh dokumen") + " (ERR-FILE-03)");
   }
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);

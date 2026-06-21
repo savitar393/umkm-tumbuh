@@ -83,6 +83,6 @@ func New(db *pgxpool.Pool, frontendURL string, jwtSecret string, uploadDir strin
 
 func timeoutMiddleware(timeout time.Duration) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
-		return http.TimeoutHandler(next, timeout, `{"error":"request timeout"}`)
+		return http.TimeoutHandler(next, timeout, `{"error":"Waktu permintaan habis.","error_code":"ERR-SYS-02"}`)
 	}
 }

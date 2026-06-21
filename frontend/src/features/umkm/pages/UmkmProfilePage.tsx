@@ -244,7 +244,7 @@ export default function UmkmProfilePage() {
                             onClick={async () => {
                               setDocError("");
                               try { await viewDocument(doc.id); }
-                              catch (e) { setDocError(e instanceof Error ? e.message : "Gagal membuka dokumen"); }
+                              catch (e) { setDocError(e instanceof Error ? e.message : "Gagal membuka dokumen (ERR-FILE-03)"); }
                             }}
                           >
                             Lihat

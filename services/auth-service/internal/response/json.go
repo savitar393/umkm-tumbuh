@@ -19,3 +19,10 @@ func Error(w http.ResponseWriter, statusCode int, message string) {
 		"error": message,
 	})
 }
+
+func ErrorWithCode(w http.ResponseWriter, statusCode int, code string, message string) {
+	JSON(w, statusCode, map[string]string{
+		"error":      message,
+		"error_code": code,
+	})
+}

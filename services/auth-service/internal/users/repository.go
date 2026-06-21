@@ -50,7 +50,8 @@ func (r *Repository) FindByEmail(ctx context.Context, email string) (*User, erro
 			id, full_name, email, phone_number, nik,
 			password_hash, role, status, rejection_reason,
 			is_active, submitted_at, reviewed_at, reviewed_by,
-			catatan_validasi, created_at, updated_at
+			catatan_validasi, failed_attempts, account_locked_until,
+			last_login_at, reactivation_requested_at, created_at, updated_at
 		FROM users
 		WHERE email = $1
 		LIMIT 1
@@ -59,13 +60,25 @@ func (r *Repository) FindByEmail(ctx context.Context, email string) (*User, erro
 	return scanUser(r.DB.QueryRow(ctx, query, email))
 }
 
+func (r *Repository) UpdateLastLoginAt(ctx context.Context, id string) error {
+	query := `
+		UPDATE users
+		SET last_login_at = NOW(),
+		    updated_at = NOW()
+		WHERE id = $1
+	`
+	_, err := r.DB.Exec(ctx, query, id)
+	return err
+}
+
 func (r *Repository) FindByID(ctx context.Context, id string) (*User, error) {
 	query := `
 		SELECT
 			id, full_name, email, phone_number, nik,
 			password_hash, role, status, rejection_reason,
 			is_active, submitted_at, reviewed_at, reviewed_by,
-			catatan_validasi, created_at, updated_at
+			catatan_validasi, failed_attempts, account_locked_until,
+			last_login_at, reactivation_requested_at, created_at, updated_at
 		FROM users
 		WHERE id = $1
 		LIMIT 1
@@ -85,7 +98,8 @@ func (r *Repository) FindDuplicate(
 			id, full_name, email, phone_number, nik,
 			password_hash, role, status, rejection_reason,
 			is_active, submitted_at, reviewed_at, reviewed_by,
-			catatan_validasi, created_at, updated_at
+			catatan_validasi, failed_attempts, account_locked_until,
+			last_login_at, reactivation_requested_at, created_at, updated_at
 		FROM users
 		WHERE email = $1
 		   OR ($2::text IS NOT NULL AND phone_number = $2)
@@ -115,6 +129,7 @@ func (r *Repository) ListRegistrations(
 	statusFilter string,
 	search string,
 	roleFilter string,
+	inactiveMonths int,
 	page int,
 	limit int,
 ) (*ListRegistrationsResult, error) {
@@ -142,6 +157,12 @@ func (r *Repository) ListRegistrations(
 		argIdx += 2
 	}
 
+	if inactiveMonths > 0 {
+		where += fmt.Sprintf(" AND (last_login_at IS NULL OR last_login_at < NOW() - $%d::interval)", argIdx)
+		args = append(args, fmt.Sprintf("%d months", inactiveMonths))
+		argIdx++
+	}
+
 	var totalCount int
 	countQuery := "SELECT COUNT(*) FROM users " + where
 	if err := r.DB.QueryRow(ctx, countQuery, args...).Scan(&totalCount); err != nil {
@@ -161,7 +182,8 @@ func (r *Repository) ListRegistrations(
 			id, full_name, email, phone_number, nik,
 			password_hash, role, status, rejection_reason,
 			is_active, submitted_at, reviewed_at, reviewed_by,
-			catatan_validasi, created_at, updated_at
+			catatan_validasi, failed_attempts, account_locked_until,
+			last_login_at, reactivation_requested_at, created_at, updated_at
 		FROM users
 		%s
 		ORDER BY created_at DESC
@@ -257,7 +279,8 @@ func (r *Repository) UpdateRegistrationStatus(
 			id, full_name, email, phone_number, nik,
 			password_hash, role, status, rejection_reason,
 			is_active, submitted_at, reviewed_at, reviewed_by,
-			catatan_validasi, created_at, updated_at
+			catatan_validasi, failed_attempts, account_locked_until,
+			last_login_at, reactivation_requested_at, created_at, updated_at
 	`
 
 	return scanUser(r.DB.QueryRow(ctx, query, id, status, rejectionReason, catatanValidasi, reviewedBy, isActive))
@@ -279,10 +302,166 @@ func (r *Repository) UpdateAccountStatus(
 			id, full_name, email, phone_number, nik,
 			password_hash, role, status, rejection_reason,
 			is_active, submitted_at, reviewed_at, reviewed_by,
-			catatan_validasi, created_at, updated_at
+			catatan_validasi, failed_attempts, account_locked_until,
+			last_login_at, reactivation_requested_at, created_at, updated_at
 	`
 
 	return scanUser(r.DB.QueryRow(ctx, query, id, isActive))
+}
+
+func (r *Repository) DeactivateAccountWithReason(
+	ctx context.Context,
+	id string,
+	rejectionReason string,
+	catatanValidasi string,
+) (*User, error) {
+	query := `
+		UPDATE users
+		SET
+			is_active = false,
+			rejection_reason = $2,
+			catatan_validasi = $3,
+			updated_at = NOW()
+		WHERE id = $1
+		  AND role <> 'ADMIN'
+		  AND is_active = true
+		RETURNING
+			id, full_name, email, phone_number, nik,
+			password_hash, role, status, rejection_reason,
+			is_active, submitted_at, reviewed_at, reviewed_by,
+			catatan_validasi, failed_attempts, account_locked_until,
+			last_login_at, reactivation_requested_at, created_at, updated_at
+	`
+
+	return scanUser(r.DB.QueryRow(ctx, query, id, rejectionReason, catatanValidasi))
+}
+
+func (r *Repository) RequestReactivation(ctx context.Context, id string) error {
+	query := `
+		UPDATE users
+		SET reactivation_requested_at = NOW(),
+		    updated_at = NOW()
+		WHERE id = $1
+	`
+	_, err := r.DB.Exec(ctx, query, id)
+	return err
+}
+
+func (r *Repository) ReactivateAccount(ctx context.Context, id string) error {
+	query := `
+		UPDATE users
+		SET is_active = true,
+		    rejection_reason = NULL,
+		    reactivation_requested_at = NULL,
+		    updated_at = NOW()
+		WHERE id = $1
+	`
+	_, err := r.DB.Exec(ctx, query, id)
+	return err
+}
+
+func (r *Repository) CountReactivationRequests(ctx context.Context) (int, error) {
+	query := `SELECT COUNT(*) FROM users WHERE reactivation_requested_at IS NOT NULL AND role <> 'ADMIN'`
+	var count int
+	err := r.DB.QueryRow(ctx, query).Scan(&count)
+	return count, err
+}
+
+func (r *Repository) ListReactivationRequests(ctx context.Context, page int, limit int) (*ListRegistrationsResult, error) {
+	offset := (page - 1) * limit
+
+	var totalCount int
+	err := r.DB.QueryRow(ctx, `SELECT COUNT(*) FROM users WHERE reactivation_requested_at IS NOT NULL AND role <> 'ADMIN'`).Scan(&totalCount)
+	if err != nil {
+		return nil, err
+	}
+
+	query := `
+		SELECT
+			id, full_name, email, phone_number, nik,
+			password_hash, role, status, rejection_reason,
+			is_active, submitted_at, reviewed_at, reviewed_by,
+			catatan_validasi, failed_attempts, account_locked_until,
+			last_login_at, reactivation_requested_at, created_at, updated_at
+		FROM users
+		WHERE reactivation_requested_at IS NOT NULL AND role <> 'ADMIN'
+		ORDER BY reactivation_requested_at DESC
+		LIMIT $1 OFFSET $2
+	`
+
+	rows, err := r.DB.Query(ctx, query, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := []User{}
+	for rows.Next() {
+		user, err := scanUser(rows)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, *user)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return &ListRegistrationsResult{
+		Users:      result,
+		TotalCount: totalCount,
+	}, nil
+}
+
+func (r *Repository) IncrementFailedAttempts(ctx context.Context, id string) error {
+	query := `
+		UPDATE users
+		SET failed_attempts = failed_attempts + 1,
+		    updated_at = NOW()
+		WHERE id = $1
+	`
+	_, err := r.DB.Exec(ctx, query, id)
+	return err
+}
+
+func (r *Repository) LockAccount(ctx context.Context, id string) error {
+	query := `
+		UPDATE users
+		SET account_locked_until = NOW() + INTERVAL '15 minutes',
+		    updated_at = NOW()
+		WHERE id = $1
+	`
+	_, err := r.DB.Exec(ctx, query, id)
+	return err
+}
+
+func (r *Repository) ResetFailedAttempts(ctx context.Context, id string) error {
+	query := `
+		UPDATE users
+		SET failed_attempts = 0,
+		    account_locked_until = NULL,
+		    updated_at = NOW()
+		WHERE id = $1
+	`
+	_, err := r.DB.Exec(ctx, query, id)
+	return err
+}
+
+func (r *Repository) FindByIDWithoutPassword(ctx context.Context, id string) (*User, error) {
+	query := `
+		SELECT
+			id, full_name, email, phone_number, nik,
+			role, status, rejection_reason,
+			is_active, submitted_at, reviewed_at, reviewed_by,
+			catatan_validasi, failed_attempts, account_locked_until,
+			last_login_at, reactivation_requested_at, created_at, updated_at
+		FROM users
+		WHERE id = $1
+		LIMIT 1
+	`
+
+	return scanUserWithoutPassword(r.DB.QueryRow(ctx, query, id))
 }
 
 type userScanner interface {
@@ -307,6 +486,42 @@ func scanUser(row userScanner) (*User, error) {
 		&user.ReviewedAt,
 		&user.ReviewedBy,
 		&user.CatatanValidasi,
+		&user.FailedAttempts,
+		&user.AccountLockedUntil,
+		&user.LastLoginAt,
+		&user.ReactivationRequestedAt,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+func scanUserWithoutPassword(row userScanner) (*User, error) {
+	var user User
+
+	err := row.Scan(
+		&user.ID,
+		&user.FullName,
+		&user.Email,
+		&user.PhoneNumber,
+		&user.NIK,
+		&user.Role,
+		&user.Status,
+		&user.RejectionReason,
+		&user.IsActive,
+		&user.SubmittedAt,
+		&user.ReviewedAt,
+		&user.ReviewedBy,
+		&user.CatatanValidasi,
+		&user.FailedAttempts,
+		&user.AccountLockedUntil,
+		&user.LastLoginAt,
+		&user.ReactivationRequestedAt,
 		&user.CreatedAt,
 		&user.UpdatedAt,
 	)

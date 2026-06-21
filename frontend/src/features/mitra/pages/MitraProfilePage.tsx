@@ -111,6 +111,7 @@ function OrgModal({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    console.log("[OrgModal] handleSubmit called, orgName:", orgName);
     if (!orgName.trim()) { setError("Nama perusahaan wajib diisi."); return; }
     setError("");
     setSaving(true);
@@ -125,11 +126,14 @@ function OrgModal({
         city: profile?.city ?? "",
         province: profile?.province ?? "",
       };
+      console.log("[OrgModal] sending payload:", payload);
       const res = await updateProfile(payload);
+      console.log("[OrgModal] response:", res);
       onSaved(res.profile);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Gagal menyimpan.";
       console.error("[OrgModal] save error:", err);
+      alert("Gagal menyimpan: " + msg);
       setError(msg);
     } finally {
       setSaving(false);
@@ -264,6 +268,7 @@ function PicModal({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    console.log("[PicModal] handleSubmit called, picName:", picName);
     setError("");
     setSaving(true);
     try {
@@ -277,11 +282,14 @@ function PicModal({
         city: profile?.city ?? "",
         province: profile?.province ?? "",
       };
+      console.log("[PicModal] sending payload:", payload);
       const res = await updateProfile(payload);
+      console.log("[PicModal] response:", res);
       onSaved(res.profile);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Gagal menyimpan.";
       console.error("[PicModal] save error:", err);
+      alert("Gagal menyimpan: " + msg);
       setError(msg);
     } finally {
       setSaving(false);
@@ -678,11 +686,11 @@ export default function MitraProfilePage() {
   useEffect(() => {
     fetchProfile();
     fetchDocs();
-  }, [location.pathname]);
+  }, []);
 
-  function handleSaved(_updated: MitraProfile) {
+  function handleSaved(updated: MitraProfile) {
+    setProfile(updated);
     closeModal();
-    // useEffect will re-fetch on pathname change
   }
 
   if (loading) {

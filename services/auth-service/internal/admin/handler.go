@@ -34,10 +34,11 @@ func (h *Handler) ListUsers(w http.ResponseWriter, r *http.Request) {
 	statusFilter := r.URL.Query().Get("status")
 	search := r.URL.Query().Get("search")
 	roleFilter := r.URL.Query().Get("role")
+	inactiveMonths, _ := strconv.Atoi(r.URL.Query().Get("inactive_months"))
 	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 
-	result, err := h.AdminService.ListRegistrations(r.Context(), statusFilter, search, roleFilter, page, limit)
+	result, err := h.AdminService.ListRegistrations(r.Context(), statusFilter, search, roleFilter, inactiveMonths, page, limit)
 	if err != nil {
 		handleError(w, err)
 		return
@@ -149,7 +150,63 @@ func (h *Handler) DeactivateAccount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	userID := chi.URLParam(r, "userID")
-	result, err := h.AdminService.DeactivateAccount(r.Context(), userID)
+
+	var req DeactivateAccountRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.Error(w, http.StatusBadRequest, "Request body tidak valid.")
+		return
+	}
+
+	result, err := h.AdminService.DeactivateAccount(r.Context(), userID, req.Alasan, req.CatatanValidasi)
+	if err != nil {
+		handleError(w, err)
+		return
+	}
+
+	response.JSON(w, http.StatusOK, result)
+}
+
+func (h *Handler) RequestReactivation(w http.ResponseWriter, r *http.Request) {
+	var req ReactivationRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.Error(w, http.StatusBadRequest, "Request body tidak valid.")
+		return
+	}
+
+	result, err := h.AdminService.RequestReactivation(r.Context(), req.Email, req.Password)
+	if err != nil {
+		handleError(w, err)
+		return
+	}
+
+	response.JSON(w, http.StatusOK, result)
+}
+
+func (h *Handler) ListReactivationRequests(w http.ResponseWriter, r *http.Request) {
+	if !h.requireAdmin(w, r) {
+		return
+	}
+
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+
+	result, err := h.AdminService.ListReactivationRequests(r.Context(), page, limit)
+	if err != nil {
+		handleError(w, err)
+		return
+	}
+
+	response.JSON(w, http.StatusOK, result)
+}
+
+func (h *Handler) ReactivateAccount(w http.ResponseWriter, r *http.Request) {
+	if !h.requireAdmin(w, r) {
+		return
+	}
+
+	userID := chi.URLParam(r, "userID")
+
+	result, err := h.AdminService.ReactivateAccount(r.Context(), userID)
 	if err != nil {
 		handleError(w, err)
 		return
@@ -169,7 +226,7 @@ func (h *Handler) requireAdmin(w http.ResponseWriter, r *http.Request) bool {
 	}
 
 	if currentUser.Role != users.RoleAdmin {
-		response.Error(w, http.StatusForbidden, "Akses hanya untuk Pemerintah/Admin.")
+		response.ErrorWithCode(w, http.StatusForbidden, "ERR-AUTH-03", "Akses hanya untuk Pemerintah/Admin.")
 		return false
 	}
 
@@ -180,9 +237,13 @@ func handleError(w http.ResponseWriter, err error) {
 	var appErr *apperror.AppError
 
 	if errors.As(err, &appErr) {
-		response.Error(w, appErr.StatusCode, appErr.Message)
+		if appErr.Code != "" {
+			response.ErrorWithCode(w, appErr.StatusCode, appErr.Code, appErr.Message)
+		} else {
+			response.Error(w, appErr.StatusCode, appErr.Message)
+		}
 		return
 	}
 
-	response.Error(w, http.StatusInternalServerError, "Terjadi kesalahan pada server.")
+	response.ErrorWithCode(w, http.StatusInternalServerError, "ERR-SYS-01", "Terjadi kesalahan pada server.")
 }

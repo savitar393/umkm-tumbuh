@@ -34,15 +34,18 @@ func NewRouter(
 			r.Post("/register", authHandler.Register)
 			r.Post("/login", authHandler.Login)
 			r.Get("/me", authHandler.Me)
+			r.Post("/request-reactivation", adminHandler.RequestReactivation)
 		})
 
 		r.Route("/users", func(r chi.Router) {
 			r.Get("/stats", adminHandler.GetUsersStats)
 			r.Get("/", adminHandler.ListUsers)
+			r.Get("/reactivation-requests", adminHandler.ListReactivationRequests)
 			r.Get("/{userID}", adminHandler.GetUserDetail)
 			r.Patch("/{userID}/approve", adminHandler.ApproveUser)
 			r.Patch("/{userID}/reject", adminHandler.RejectUser)
 			r.Patch("/{userID}/deactivate", adminHandler.DeactivateAccount)
+			r.Patch("/{userID}/reactivate", adminHandler.ReactivateAccount)
 		})
 	})
 

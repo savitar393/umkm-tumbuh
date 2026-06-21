@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import type { UserDetailData } from "../api";
-import { getUserDetail, approveUser, rejectUser } from "../api";
-import { STATUS_LABEL } from "../status";
+import { getUserDetail, approveUser, rejectUser, deactivateUser, reactivateUser } from "../api";
+import { displayStatus } from "../status";
 import { viewDocument, downloadDocument } from "../../../shared/api/documents";
 import type { DocumentItem, ChecklistItem } from "../../../shared/api/documents";
+import { ApiError } from "../../../shared/api/http";
 import AdminNavbar from "./AdminNavbar";
 import "./admin.css";
 
@@ -39,6 +40,10 @@ export default function RegistrationDetailPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+  const [showDeactivateModal, setShowDeactivateModal] = useState(false);
+  const [deactivateReason, setDeactivateReason] = useState("");
+  const [deactivateAlasanOption, setDeactivateAlasanOption] = useState("");
+  const [deactivateConfirm, setDeactivateConfirm] = useState(false);
 
   const fetchDetail = () => {
     if (!id) return;
@@ -70,17 +75,38 @@ export default function RegistrationDetailPage() {
     setActionLoading(true);
     approveUser(id, catatan)
       .then((res) => { setMessage(res.message); fetchDetail(); })
-      .catch((err: Error) => setError(err.message))
+      .catch((err: Error) => {
+        const code = err instanceof ApiError && err.code ? ` (${err.code})` : "";
+        setError(err.message + code);
+      })
       .finally(() => setActionLoading(false));
   }
 
   function handleReject() {
     if (!id) return;
-    if (rejectReason.trim().length < 3) { setError("Alasan minimal 3 karakter."); return; }
+    if (rejectReason.trim().length < 3) { setError("Alasan penolakan minimal 3 karakter (ERR-VAL-02)."); return; }
     setError(""); setActionLoading(true);
     rejectUser(id, rejectReason.trim(), catatan)
       .then((res) => { setMessage(res.message); setShowRejectModal(false); fetchDetail(); })
-      .catch((err: Error) => setError(err.message))
+      .catch((err: Error) => {
+        const code = err instanceof ApiError && err.code ? ` (${err.code})` : "";
+        setError(err.message + code);
+      })
+      .finally(() => setActionLoading(false));
+  }
+
+  function handleDeactivate() {
+    if (!id) return;
+    if (!deactivateConfirm) { setError("Harap centang konfirmasi sebelum menonaktifkan akun."); return; }
+    const alasan = deactivateAlasanOption === "lainnya" ? deactivateReason : deactivateAlasanOption;
+    if (alasan.trim().length < 3) { setError("Alasan penonaktifan minimal 3 karakter (ERR-VAL-02)."); return; }
+    setError(""); setActionLoading(true);
+    deactivateUser(id, alasan.trim(), catatan)
+      .then((res) => { setMessage(res.message); setShowDeactivateModal(false); setDeactivateReason(""); setDeactivateAlasanOption(""); setDeactivateConfirm(false); fetchDetail(); })
+      .catch((err: Error) => {
+        const code = err instanceof ApiError && err.code ? ` (${err.code})` : "";
+        setError(err.message + code);
+      })
       .finally(() => setActionLoading(false));
   }
 
@@ -116,8 +142,10 @@ export default function RegistrationDetailPage() {
   const profile = data.profile;
   const documents = (data.documents || []) as DocumentItem[];
   const checklist = (data.checklist || []) as ChecklistItem[];
-  const statusColor = user.status === "APPROVED" ? "#10b981" : user.status === "REJECTED" ? "#ef4444" : "#4f72f5";
+  const isActive = user.is_active !== false;
+  const statusColor = !isActive ? "#f59e0b" : user.status === "APPROVED" ? "#10b981" : user.status === "REJECTED" ? "#ef4444" : "#4f72f5";
   const isPending = user.status === "PENDING";
+  const isApproved = user.status === "APPROVED" && isActive;
 
   return (
     <div className="adm-page">
@@ -151,7 +179,7 @@ export default function RegistrationDetailPage() {
             <div className="info-bar-cell right">
               <span className="info-bar-label">STATUS PENGAJUAN</span>
               <span className="info-bar-status" style={{ color: statusColor }}>
-                ● {STATUS_LABEL[user.status]}
+                ● {displayStatus(user.status, isActive)}
               </span>
               <span className="info-bar-meta">
                 Dikirim: {user.submitted_at
@@ -184,6 +212,20 @@ export default function RegistrationDetailPage() {
                 <div className="field-item">
                   <span className="field-label">Tipe Akun</span>
                   <span className="field-val">{user.role}</span>
+                </div>
+                <div className="field-item">
+                  <span className="field-label">Terakhir Login</span>
+                  <span className="field-val">
+                    {user.last_login_at
+                      ? new Date(user.last_login_at).toLocaleDateString("id-ID", {
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : "—"}
+                  </span>
                 </div>
                 {user.nik && (
                   <div className="field-item">
@@ -271,10 +313,11 @@ export default function RegistrationDetailPage() {
               <div className="checklist-block">
                 <p className="checklist-heading">CHECKLIST KELENGKAPAN</p>
                 {(checklist.length > 0 ? checklist.map(c => c.label) : (user.role === "MITRA" ? MITRA_CHECKLIST_LABELS : UMKM_CHECKLIST_LABELS)).map((label, i) => (
-                  <label key={i} className="check-item">
+                    <label key={i} className={`check-item${!isPending ? " disabled" : ""}`}>
                     <input
                       type="checkbox"
                       checked={checklistItems[i] ?? false}
+                      disabled={!isPending || actionLoading}
                       onChange={() => {
                         const next = [...checklistItems];
                         next[i] = !next[i];
@@ -303,9 +346,46 @@ export default function RegistrationDetailPage() {
             </div>
           )}
 
+          {isApproved && (
+            <div className="detail-action-bar">
+              <button className="btn-nonaktif" onClick={() => setShowDeactivateModal(true)} disabled={actionLoading}>⛔ Nonaktifkan Akun</button>
+            </div>
+          )}
+
           {user.rejection_reason && user.status === "REJECTED" && (
             <div style={{ padding: "16px 0", color: "#ef4444", fontSize: 13 }}>
               <strong>Alasan penolakan:</strong> {user.rejection_reason}
+            </div>
+          )}
+
+          {user.status === "APPROVED" && !isActive && user.rejection_reason && (
+            <div className="status-info inactive">
+              <strong>⛔ Akun dinonaktifkan.</strong> Alasan: {user.rejection_reason}
+              {user.reactivation_requested_at && (
+                <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 13, color: "#d97706" }}>
+                    ⏳ Pengguna meminta aktivasi kembali pada{" "}
+                    {new Date(user.reactivation_requested_at).toLocaleDateString("id-ID", {
+                      day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit",
+                    })}
+                  </span>
+                  <button
+                    className="modal-btn approve"
+                    onClick={async () => {
+                      try {
+                        await reactivateUser(user.id);
+                        window.location.reload();
+                      } catch (err: unknown) {
+                        const code = err instanceof ApiError && err.code ? ` (${err.code})` : "";
+                        setError((err instanceof Error ? err.message : "Gagal mengaktifkan") + code);
+                      }
+                    }}
+                    style={{ fontSize: 13, padding: "6px 14px" }}
+                  >
+                    ✓ Aktifkan Kembali
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -321,6 +401,67 @@ export default function RegistrationDetailPage() {
             <div className="modal-footer">
               <button className="modal-btn cancel" onClick={() => { setShowRejectModal(false); setRejectReason(""); setError(""); }}>Batal</button>
               <button className="modal-btn reject" onClick={handleReject} disabled={actionLoading}>{actionLoading ? "Memproses..." : "Tolak Pendaftaran"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDeactivateModal && (
+        <div className="modal-overlay" onClick={() => setShowDeactivateModal(false)}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+            <h2 className="modal-title">Nonaktifkan Akun</h2>
+
+            <div className="deactivate-warning">
+              <span className="deactivate-warning-icon">⚠️</span>
+              <div>
+                <strong>Apakah Anda yakin akan menonaktifkan akun ini?</strong>
+                <p>Akun yang dinonaktifkan tidak dapat masuk ke sistem. Tindakan ini dapat dibalik dengan mengaktifkan kembali akun.</p>
+              </div>
+            </div>
+
+            <p className="modal-desc" style={{ marginTop: 20, marginBottom: 12 }}>Pilih alasan penonaktifan:</p>
+
+            <div className="deactivate-options">
+              {[
+                { value: "Akun tidak digunakan dalam waktu lama", label: "Akun tidak digunakan dalam waktu lama" },
+                { value: "lainnya", label: "Lainnya:" },
+              ].map((opt) => (
+                <label key={opt.value} className="deactivate-option">
+                  <input
+                    type="radio"
+                    name="deactivateReason"
+                    value={opt.value}
+                    checked={deactivateAlasanOption === opt.value}
+                    onChange={(e) => setDeactivateAlasanOption(e.target.value)}
+                  />
+                  <span>{opt.label}</span>
+                </label>
+              ))}
+              {deactivateAlasanOption === "lainnya" && (
+                <textarea
+                  className="modal-textarea"
+                  style={{ marginTop: 8 }}
+                  placeholder="Tuliskan alasan..."
+                  value={deactivateReason}
+                  onChange={(e) => setDeactivateReason(e.target.value)}
+                  rows={3}
+                />
+              )}
+            </div>
+
+            <label className="deactivate-confirm-check">
+              <input
+                type="checkbox"
+                checked={deactivateConfirm}
+                onChange={(e) => setDeactivateConfirm(e.target.checked)}
+              />
+              <span>Saya yakin akan menonaktifkan akun ini</span>
+            </label>
+
+            {error && <p className="modal-error">{error}</p>}
+            <div className="modal-footer">
+              <button className="modal-btn cancel" onClick={() => { setShowDeactivateModal(false); setDeactivateAlasanOption(""); setDeactivateReason(""); setDeactivateConfirm(false); setError(""); }}>Batal</button>
+              <button className="modal-btn reject" onClick={handleDeactivate} disabled={actionLoading || !deactivateConfirm}>{actionLoading ? "Memproses..." : "Nonaktifkan Akun"}</button>
             </div>
           </div>
         </div>

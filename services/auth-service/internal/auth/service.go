@@ -40,19 +40,19 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (*RegisterR
 	req.NIK = cleanOptionalString(req.NIK)
 
 	if len(req.FullName) < 3 {
-		return nil, apperror.New(http.StatusBadRequest, "Nama lengkap minimal 3 karakter.")
+		return nil, apperror.New(http.StatusBadRequest, "ERR-VAL-01", "Nama lengkap minimal 3 karakter.")
 	}
 
 	if _, err := mail.ParseAddress(req.Email); err != nil {
-		return nil, apperror.New(http.StatusBadRequest, "Format email tidak valid.")
+		return nil, apperror.New(http.StatusBadRequest, "ERR-VAL-01", "Format email tidak valid.")
 	}
 
 	if len(req.Password) < 8 {
-		return nil, apperror.New(http.StatusBadRequest, "Password minimal 8 karakter.")
+		return nil, apperror.New(http.StatusBadRequest, "ERR-VAL-01", "Password minimal 8 karakter.")
 	}
 
 	if req.Role != users.RoleUMKM && req.Role != users.RoleMitra {
-		return nil, apperror.New(http.StatusBadRequest, "Registrasi publik hanya untuk UMKM atau Mitra.")
+		return nil, apperror.New(http.StatusBadRequest, "ERR-VAL-01", "Registrasi publik hanya untuk UMKM atau Mitra.")
 	}
 
 	duplicate, err := s.UserRepo.FindDuplicate(ctx, req.Email, req.PhoneNumber, req.NIK)
@@ -63,13 +63,13 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (*RegisterR
 	if duplicate != nil {
 		switch {
 		case duplicate.Email == req.Email:
-			return nil, apperror.New(http.StatusConflict, "Email sudah terdaftar.")
+			return nil, apperror.New(http.StatusConflict, "ERR-DATA-01", "Email sudah terdaftar.")
 		case req.PhoneNumber != nil && duplicate.PhoneNumber != nil && *duplicate.PhoneNumber == *req.PhoneNumber:
-			return nil, apperror.New(http.StatusConflict, "Nomor telepon sudah terdaftar.")
+			return nil, apperror.New(http.StatusConflict, "ERR-DATA-01", "Nomor telepon sudah terdaftar.")
 		case req.NIK != nil && duplicate.NIK != nil && *duplicate.NIK == *req.NIK:
-			return nil, apperror.New(http.StatusConflict, "NIK sudah terdaftar.")
+			return nil, apperror.New(http.StatusConflict, "ERR-DATA-01", "NIK sudah terdaftar.")
 		default:
-			return nil, apperror.New(http.StatusConflict, "Data pengguna sudah terdaftar.")
+			return nil, apperror.New(http.StatusConflict, "ERR-DATA-01", "Data pengguna sudah terdaftar.")
 		}
 	}
 
@@ -111,27 +111,39 @@ func (s *Service) Login(ctx context.Context, req LoginRequest) (*TokenResponse, 
 	user, err := s.UserRepo.FindByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, apperror.New(http.StatusUnauthorized, "Email atau password tidak valid.")
+			return nil, apperror.New(http.StatusUnauthorized, "ERR-AUTH-02", "Email atau password tidak valid.")
 		}
 
 		return nil, err
 	}
 
+	if user.AccountLockedUntil != nil && user.AccountLockedUntil.After(time.Now()) {
+		return nil, apperror.New(http.StatusLocked, "ERR-LOCK-01", "Akun dikunci. Coba lagi dalam 15 menit.")
+	}
+
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
-		return nil, apperror.New(http.StatusUnauthorized, "Email atau password tidak valid.")
+		_ = s.UserRepo.IncrementFailedAttempts(ctx, user.ID)
+		updatedUser, _ := s.UserRepo.FindByID(ctx, user.ID)
+		if updatedUser != nil && updatedUser.FailedAttempts >= 3 {
+			_ = s.UserRepo.LockAccount(ctx, user.ID)
+		}
+		return nil, apperror.New(http.StatusUnauthorized, "ERR-AUTH-02", "Email atau password tidak valid.")
 	}
 
 	if !user.IsActive {
-		return nil, apperror.New(http.StatusForbidden, "Akun tidak aktif.")
+		return nil, apperror.New(http.StatusForbidden, "ERR-AUTH-03", "Akun tidak aktif.")
 	}
 
 	if user.Status == users.StatusPending {
-		return nil, apperror.New(http.StatusForbidden, "Akun masih menunggu validasi Pemerintah/Admin.")
+		return nil, apperror.New(http.StatusForbidden, "ERR-AUTH-04", "Akun masih menunggu validasi Pemerintah/Admin.")
 	}
 
 	if user.Status == users.StatusRejected {
-		return nil, apperror.New(http.StatusForbidden, "Akun ditolak. Silakan hubungi Pemerintah/Admin.")
+		return nil, apperror.New(http.StatusForbidden, "ERR-AUTH-04", "Akun ditolak. Silakan hubungi Pemerintah/Admin.")
 	}
+
+	_ = s.UserRepo.ResetFailedAttempts(ctx, user.ID)
+	_ = s.UserRepo.UpdateLastLoginAt(ctx, user.ID)
 
 	token, err := s.createAccessToken(user)
 	if err != nil {
@@ -160,30 +172,30 @@ func (s *Service) CurrentUserFromHeader(ctx context.Context, authorizationHeader
 	})
 
 	if err != nil || !token.Valid {
-		return nil, apperror.New(http.StatusUnauthorized, "Token tidak valid atau sudah kedaluwarsa.")
+		return nil, apperror.New(http.StatusUnauthorized, "ERR-AUTH-01", "Token tidak valid atau sudah kedaluwarsa.")
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return nil, apperror.New(http.StatusUnauthorized, "Token tidak valid.")
+		return nil, apperror.New(http.StatusUnauthorized, "ERR-AUTH-01", "Token tidak valid.")
 	}
 
 	userID, ok := claims["sub"].(string)
 	if !ok || userID == "" {
-		return nil, apperror.New(http.StatusUnauthorized, "Token tidak valid.")
+		return nil, apperror.New(http.StatusUnauthorized, "ERR-AUTH-01", "Token tidak valid.")
 	}
 
 	user, err := s.UserRepo.FindByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, apperror.New(http.StatusUnauthorized, "Pengguna tidak ditemukan.")
+			return nil, apperror.New(http.StatusUnauthorized, "ERR-AUTH-01", "Pengguna tidak ditemukan.")
 		}
 
 		return nil, err
 	}
 
 	if !user.IsActive {
-		return nil, apperror.New(http.StatusForbidden, "Akun tidak aktif.")
+		return nil, apperror.New(http.StatusForbidden, "ERR-AUTH-03", "Akun tidak aktif.")
 	}
 
 	return user, nil
@@ -210,12 +222,12 @@ func extractBearerToken(authorizationHeader string) (string, error) {
 	const prefix = "Bearer "
 
 	if !strings.HasPrefix(authorizationHeader, prefix) {
-		return "", apperror.New(http.StatusUnauthorized, "Authorization header tidak valid.")
+		return "", apperror.New(http.StatusUnauthorized, "ERR-AUTH-01", "Authorization header tidak valid.")
 	}
 
 	token := strings.TrimSpace(strings.TrimPrefix(authorizationHeader, prefix))
 	if token == "" {
-		return "", apperror.New(http.StatusUnauthorized, "Token tidak ditemukan.")
+		return "", apperror.New(http.StatusUnauthorized, "ERR-AUTH-01", "Token tidak ditemukan.")
 	}
 
 	return token, nil

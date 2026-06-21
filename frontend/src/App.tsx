@@ -65,7 +65,8 @@ function RequireAuth({
   const user = getCurrentUser();
 
   if (!token || !user) {
-    return <Navigate to="/login" replace />;
+    const returnUrl = window.location.pathname + window.location.search;
+    return <Navigate to={`/login?returnUrl=${encodeURIComponent(returnUrl)}`} replace />;
   }
 
   if (allowedRole && user.role !== allowedRole) {
@@ -219,23 +220,7 @@ export default function App() {
       />
 
       <Route
-        path="/profile/mitra/group"
-        element={<RequireAuth allowedRole="MITRA"><MitraProfilePage /></RequireAuth>}
-      />
-      <Route
-        path="/profile/mitra/pic"
-        element={<RequireAuth allowedRole="MITRA"><MitraProfilePage /></RequireAuth>}
-      />
-      <Route
-        path="/profile/mitra/bidang"
-        element={<RequireAuth allowedRole="MITRA"><MitraProfilePage /></RequireAuth>}
-      />
-      <Route
-        path="/profile/mitra/docs"
-        element={<RequireAuth allowedRole="MITRA"><MitraProfilePage /></RequireAuth>}
-      />
-      <Route
-        path="/profile/mitra"
+        path="/profile/mitra/*"
         element={<RequireAuth allowedRole="MITRA"><MitraProfilePage /></RequireAuth>}
       />
 

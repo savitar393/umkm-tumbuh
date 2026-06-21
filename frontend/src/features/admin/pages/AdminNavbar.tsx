@@ -1,5 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import logo from "../../../assets/logo-umkm-tumbuh.png";
+import { getStats } from "../api";
 
 type CurrentUser = {
   full_name: string;
@@ -25,6 +27,13 @@ function getInitials(name: string) {
 export default function AdminNavbar({ active }: { active?: string }) {
   const navigate = useNavigate();
   const user = getUser();
+  const [reactivationCount, setReactivationCount] = useState(0);
+
+  useEffect(() => {
+    getStats()
+      .then((res) => setReactivationCount(res.data.reactivation_requested ?? 0))
+      .catch(() => {});
+  }, []);
 
   function logout() {
     localStorage.removeItem("access_token");
@@ -54,6 +63,9 @@ export default function AdminNavbar({ active }: { active?: string }) {
           <Link to="/admin/registrations" className={`nav-link nav-link-pill${active === "registrations" ? " active" : ""}`}>
             <span className="nav-link-icon">👤</span>
             User Management
+            {reactivationCount > 0 && (
+              <span className="reactivation-badge">{reactivationCount}</span>
+            )}
           </Link>
         </div>
 

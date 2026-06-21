@@ -5,6 +5,16 @@ type RejectRegistrationRequest struct {
 	CatatanValidasi string `json:"catatan_validasi"`
 }
 
+type DeactivateAccountRequest struct {
+	Alasan          string `json:"alasan"`
+	CatatanValidasi string `json:"catatan_validasi"`
+}
+
+type ReactivationRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
 type ApproveRegistrationRequest struct {
 	CatatanValidasi string `json:"catatan_validasi"`
 }
@@ -35,9 +45,15 @@ type MessageResponse struct {
 type StatsResponse struct {
 	Status string `json:"status"`
 	Data   struct {
-		Pending  int `json:"pending"`
-		Approved int `json:"approved"`
-		Rejected int `json:"rejected"`
-		Total    int `json:"total"`
+		Pending              int `json:"pending"`
+		Approved             int `json:"approved"`
+		Rejected             int `json:"rejected"`
+		ReactivationRequested int `json:"reactivation_requested"`
+		Total                int `json:"total"`
 	} `json:"data"`
+}
+
+type ReactivationRequestResponse struct {
+	Status string `json:"status"`
+	Data   []any  `json:"data"`
 }

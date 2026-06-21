@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5"
+	"golang.org/x/crypto/bcrypt"
 
 	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/apperror"
 	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/email"
@@ -39,6 +40,7 @@ func (s *Service) ListRegistrations(
 	statusFilter string,
 	search string,
 	roleFilter string,
+	inactiveMonths int,
 	page int,
 	limit int,
 ) (*UserListResponse, error) {
@@ -53,13 +55,13 @@ func (s *Service) ListRegistrations(
 		statusFilter != users.StatusPending &&
 		statusFilter != users.StatusApproved &&
 		statusFilter != users.StatusRejected {
-		return nil, apperror.New(http.StatusBadRequest, "Status filter tidak valid.")
+		return nil, apperror.New(http.StatusBadRequest, "ERR-VAL-01", "Status filter tidak valid.")
 	}
 
 	if roleFilter != "" &&
 		roleFilter != users.RoleUMKM &&
 		roleFilter != users.RoleMitra {
-		return nil, apperror.New(http.StatusBadRequest, "Role filter tidak valid.")
+		return nil, apperror.New(http.StatusBadRequest, "ERR-VAL-01", "Role filter tidak valid.")
 	}
 
 	if limit < 1 {
@@ -72,7 +74,7 @@ func (s *Service) ListRegistrations(
 		page = 1
 	}
 
-	result, err := s.UserRepo.ListRegistrations(ctx, statusFilter, search, roleFilter, page, limit)
+	result, err := s.UserRepo.ListRegistrations(ctx, statusFilter, search, roleFilter, inactiveMonths, page, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -102,6 +104,11 @@ func (s *Service) GetStats(ctx context.Context) (*StatsResponse, error) {
 		return nil, err
 	}
 
+	reactivationCount, err := s.UserRepo.CountReactivationRequests(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	resp := &StatsResponse{Status: "success"}
 	for _, c := range counts {
 		switch c.Status {
@@ -114,8 +121,110 @@ func (s *Service) GetStats(ctx context.Context) (*StatsResponse, error) {
 		}
 		resp.Data.Total += c.Count
 	}
+	resp.Data.ReactivationRequested = reactivationCount
 
 	return resp, nil
+}
+
+func (s *Service) ListReactivationRequests(ctx context.Context, page int, limit int) (*UserListResponse, error) {
+	if limit < 1 {
+		limit = 10
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	if page < 1 {
+		page = 1
+	}
+
+	result, err := s.UserRepo.ListReactivationRequests(ctx, page, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	responses := make([]any, 0, len(result.Users))
+	for i := range result.Users {
+		responses = append(responses, users.ToResponse(&result.Users[i]))
+	}
+
+	totalPages := int(math.Ceil(float64(result.TotalCount) / float64(limit)))
+
+	resp := &UserListResponse{
+		Status: "success",
+	}
+	resp.Data.Users = responses
+	resp.Data.Pagination.Page = page
+	resp.Data.Pagination.Limit = limit
+	resp.Data.Pagination.Total = result.TotalCount
+	resp.Data.Pagination.TotalPages = totalPages
+
+	return resp, nil
+}
+
+func (s *Service) RequestReactivation(ctx context.Context, email string, password string) (*MessageResponse, error) {
+	user, err := s.UserRepo.FindByEmail(ctx, strings.ToLower(strings.TrimSpace(email)))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, apperror.New(http.StatusUnauthorized, "ERR-AUTH-02", "Email atau password tidak valid.")
+		}
+		return nil, err
+	}
+
+	if user.IsActive {
+		return nil, apperror.New(http.StatusBadRequest, "ERR-VAL-01", "Akun sudah aktif.")
+	}
+
+	if user.Status != users.StatusApproved {
+		return nil, apperror.New(http.StatusBadRequest, "ERR-VAL-01", "Akun yang dinonaktifkan hanya yang berstatus APPROVED.")
+	}
+
+	if user.ReactivationRequestedAt != nil {
+		return nil, apperror.New(http.StatusBadRequest, "ERR-VAL-01", "Permintaan aktivasi sudah diajukan. Silakan tunggu konfirmasi Admin.")
+	}
+
+	if err := s.authCheckPassword(user.PasswordHash, password); err != nil {
+		return nil, apperror.New(http.StatusUnauthorized, "ERR-AUTH-02", "Email atau password tidak valid.")
+	}
+
+	if err := s.UserRepo.RequestReactivation(ctx, user.ID); err != nil {
+		return nil, apperror.NewInternal("Gagal mengajukan permintaan aktivasi.")
+	}
+
+	return &MessageResponse{
+		Status:  "success",
+		Message: "Permintaan aktivasi akun berhasil diajukan. Silakan tunggu konfirmasi Admin.",
+	}, nil
+}
+
+func (s *Service) ReactivateAccount(ctx context.Context, userID string) (*MessageResponse, error) {
+	user, err := s.UserRepo.FindByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, apperror.New(http.StatusNotFound, "ERR-DATA-02", "Data pengguna tidak ditemukan.")
+		}
+		return nil, apperror.NewInternal("Gagal mengambil data pengguna.")
+	}
+
+	if user.IsActive {
+		return nil, apperror.New(http.StatusBadRequest, "ERR-VAL-01", "Akun sudah aktif.")
+	}
+
+	if user.ReactivationRequestedAt == nil {
+		return nil, apperror.New(http.StatusBadRequest, "ERR-VAL-01", "Tidak ada permintaan aktivasi untuk akun ini.")
+	}
+
+	if err := s.UserRepo.ReactivateAccount(ctx, userID); err != nil {
+		return nil, apperror.NewInternal("Gagal mengaktifkan akun.")
+	}
+
+	return &MessageResponse{
+		Status:  "success",
+		Message: "Akun berhasil diaktifkan kembali.",
+	}, nil
+}
+
+func (s *Service) authCheckPassword(hash string, password string) error {
+	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 }
 
 func (s *Service) ApproveRegistration(ctx context.Context, userID string, reviewedBy string, catatanValidasi string) (*MessageResponse, error) {
@@ -127,9 +236,9 @@ func (s *Service) ApproveRegistration(ctx context.Context, userID string, review
 	user, err := s.UserRepo.UpdateRegistrationStatus(ctx, userID, users.StatusApproved, nil, catatan, reviewedBy)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, apperror.New(http.StatusNotFound, "Data pendaftaran tidak ditemukan.")
+			return nil, apperror.New(http.StatusNotFound, "ERR-DATA-02", "Data pendaftaran tidak ditemukan.")
 		}
-		return nil, err
+		return nil, apperror.NewInternal("Gagal memperbarui status pendaftaran.")
 	}
 
 	s.sendNotification(ctx, email.NotificationData{
@@ -155,7 +264,7 @@ func (s *Service) RejectRegistration(
 	rejectionReason = strings.TrimSpace(rejectionReason)
 
 	if len(rejectionReason) < 3 {
-		return nil, apperror.New(http.StatusBadRequest, "Alasan penolakan minimal 3 karakter.")
+		return nil, apperror.New(http.StatusBadRequest, "ERR-VAL-02", "Alasan penolakan minimal 3 karakter.")
 	}
 
 	catatan := rejectionReason
@@ -173,9 +282,9 @@ func (s *Service) RejectRegistration(
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, apperror.New(http.StatusNotFound, "Data pendaftaran tidak ditemukan.")
+			return nil, apperror.New(http.StatusNotFound, "ERR-DATA-02", "Data pendaftaran tidak ditemukan.")
 		}
-		return nil, err
+		return nil, apperror.NewInternal("Gagal memperbarui status pendaftaran.")
 	}
 
 	reason := ""
@@ -210,18 +319,48 @@ func (s *Service) sendNotification(ctx context.Context, data email.NotificationD
 	_ = ctx
 }
 
-func (s *Service) DeactivateAccount(ctx context.Context, userID string) (*MessageResponse, error) {
-	_, err := s.UserRepo.UpdateAccountStatus(ctx, userID, false)
+func (s *Service) DeactivateAccount(ctx context.Context, userID string, alasan string, catatanValidasi string) (*MessageResponse, error) {
+	alasan = strings.TrimSpace(alasan)
+	if len(alasan) < 3 {
+		return nil, apperror.New(http.StatusBadRequest, "ERR-VAL-02", "Alasan penonaktifan minimal 3 karakter.")
+	}
+
+	user, err := s.UserRepo.FindByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, apperror.New(http.StatusNotFound, "Data pengguna tidak ditemukan.")
+			return nil, apperror.New(http.StatusNotFound, "ERR-DATA-02", "Data pengguna tidak ditemukan.")
 		}
-		return nil, err
+		return nil, apperror.NewInternal("Gagal mengambil data pengguna.")
+	}
+
+	if user.Role == users.RoleAdmin {
+		return nil, apperror.New(http.StatusForbidden, "ERR-AUTH-03", "Tidak dapat menonaktifkan akun Admin.")
+	}
+
+	if user.Status != users.StatusApproved {
+		return nil, apperror.New(http.StatusBadRequest, "ERR-VAL-01", "Hanya akun dengan status APPROVED yang dapat dinonaktifkan.")
+	}
+
+	if !user.IsActive {
+		return nil, apperror.New(http.StatusBadRequest, "ERR-VAL-01", "Akun sudah dalam status tidak aktif.")
+	}
+
+	catatan := alasan
+	if catatanValidasi != "" {
+		catatan = catatanValidasi
+	}
+
+	_, err = s.UserRepo.DeactivateAccountWithReason(ctx, userID, alasan, catatan)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, apperror.New(http.StatusNotFound, "ERR-DATA-02", "Data pengguna tidak ditemukan atau sudah tidak aktif.")
+		}
+		return nil, apperror.NewInternal("Gagal menonaktifkan akun.")
 	}
 
 	return &MessageResponse{
 		Status:  "success",
-		Message: "Akun dinonaktifkan.",
+		Message: "Akun berhasil dinonaktifkan.",
 	}, nil
 }
 
@@ -229,9 +368,9 @@ func (s *Service) GetRegistrationDetail(ctx context.Context, userID string) (*Us
 	user, err := s.UserRepo.FindByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, apperror.New(http.StatusNotFound, "Data pendaftaran tidak ditemukan.")
+			return nil, apperror.New(http.StatusNotFound, "ERR-DATA-02", "Data pendaftaran tidak ditemukan.")
 		}
-		return nil, err
+		return nil, apperror.NewInternal("Gagal mengambil detail pendaftaran.")
 	}
 
 	detail := &users.RegistrationDetailResponse{

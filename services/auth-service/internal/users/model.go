@@ -13,22 +13,26 @@ const (
 )
 
 type User struct {
-	ID              string
-	FullName        string
-	Email           string
-	PhoneNumber     *string
-	NIK             *string
-	PasswordHash    string
-	Role            string
-	Status          string
-	RejectionReason *string
-	IsActive        bool
-	SubmittedAt     *time.Time
-	ReviewedAt      *time.Time
-	ReviewedBy      *string
-	CatatanValidasi *string
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	ID                string
+	FullName          string
+	Email             string
+	PhoneNumber       *string
+	NIK               *string
+	PasswordHash      string
+	Role              string
+	Status            string
+	RejectionReason   *string
+	IsActive          bool
+	SubmittedAt       *time.Time
+	ReviewedAt        *time.Time
+	ReviewedBy        *string
+	CatatanValidasi   *string
+	FailedAttempts     int
+	AccountLockedUntil *time.Time
+	LastLoginAt           *time.Time
+	ReactivationRequestedAt *time.Time
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
 }
 
 type Response struct {
@@ -45,8 +49,10 @@ type Response struct {
 	ReviewedAt      *time.Time `json:"reviewed_at,omitempty"`
 	ReviewedBy      *string    `json:"reviewed_by,omitempty"`
 	CatatanValidasi *string    `json:"catatan_validasi,omitempty"`
-	CreatedAt       time.Time  `json:"created_at"`
-	UpdatedAt       time.Time  `json:"updated_at"`
+	LastLoginAt            *time.Time `json:"last_login_at,omitempty"`
+	ReactivationRequestedAt *time.Time `json:"reactivation_requested_at,omitempty"`
+	CreatedAt              time.Time  `json:"created_at"`
+	UpdatedAt              time.Time  `json:"updated_at"`
 }
 
 type RegistrationDetailResponse struct {
@@ -71,7 +77,9 @@ func ToResponse(user *User) Response {
 		ReviewedAt:      user.ReviewedAt,
 		ReviewedBy:      user.ReviewedBy,
 		CatatanValidasi: user.CatatanValidasi,
-		CreatedAt:       user.CreatedAt,
-		UpdatedAt:       user.UpdatedAt,
+		LastLoginAt:            user.LastLoginAt,
+		ReactivationRequestedAt: user.ReactivationRequestedAt,
+		CreatedAt:              user.CreatedAt,
+		UpdatedAt:              user.UpdatedAt,
 	}
 }

@@ -10,6 +10,8 @@ export type UserListItem = {
   status: UserStatus;
   is_active: boolean;
   submitted_at?: string;
+  last_login_at?: string;
+  reactivation_requested_at?: string;
   created_at: string;
 };
 
@@ -40,6 +42,8 @@ export type UserDetailData = {
     is_active: boolean;
     submitted_at?: string;
     reviewed_at?: string;
+    last_login_at?: string;
+    reactivation_requested_at?: string;
     created_at: string;
     updated_at: string;
   };
@@ -62,6 +66,7 @@ export type StatsData = {
   pending: number;
   approved: number;
   rejected: number;
+  reactivation_requested: number;
   total: number;
 };
 
@@ -74,6 +79,7 @@ export function listUsers(params: {
   status?: string;
   role?: string;
   search?: string;
+  inactive_months?: number;
   page?: number;
   limit?: number;
 } = {}) {
@@ -81,6 +87,7 @@ export function listUsers(params: {
   if (params.status && params.status !== "ALL") query.set("status", params.status);
   if (params.role) query.set("role", params.role);
   if (params.search) query.set("search", params.search);
+  if (params.inactive_months) query.set("inactive_months", String(params.inactive_months));
   if (params.page) query.set("page", String(params.page));
   if (params.limit) query.set("limit", String(params.limit));
 
@@ -109,12 +116,27 @@ export function rejectUser(userID: string, rejectionReason: string, catatanValid
   });
 }
 
-export function deactivateUser(userID: string) {
+export function deactivateUser(userID: string, alasan: string, catatanValidasi?: string) {
   return http<MessageResponse>(`/users/${userID}/deactivate`, {
     method: "PATCH",
+    body: JSON.stringify({ alasan, catatan_validasi: catatanValidasi || alasan }),
   });
 }
 
 export function getStats() {
   return http<StatsResponse>("/users/stats");
+}
+
+export function listReactivationRequests(page?: number, limit?: number) {
+  const query = new URLSearchParams();
+  if (page) query.set("page", String(page));
+  if (limit) query.set("limit", String(limit));
+  const qs = query.toString();
+  return http<UserListResponse>(`/users/reactivation-requests${qs ? `?${qs}` : ""}`);
+}
+
+export function reactivateUser(userID: string) {
+  return http<MessageResponse>(`/users/${userID}/reactivate`, {
+    method: "PATCH",
+  });
 }

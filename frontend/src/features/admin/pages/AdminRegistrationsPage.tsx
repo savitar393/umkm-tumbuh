@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import type { UserListItem } from "../api";
 import { Link } from "react-router-dom";
 import AdminNavbar from "./AdminNavbar";
-import { STATUS_LABEL, STATUS_OPTIONS } from "../status";
-import { getStats, listUsers } from "../api";
+import { STATUS_OPTIONS, displayStatus } from "../status";
+import { getStats, listUsers, listReactivationRequests, reactivateUser } from "../api";
+import { ApiError } from "../../../shared/api/http";
 import "./admin.css";
 
 function getInitials(name: string) {
@@ -26,27 +27,54 @@ export default function AdminRegistrationsPage() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
-  const [stats, setStats] = useState({ pending: 0, approved: 0, rejected: 0, total: 0 });
+  const [inactiveMonths, setInactiveMonths] = useState(0);
+  const [stats, setStats] = useState<import("../api").StatsData>({ pending: 0, approved: 0, rejected: 0, reactivation_requested: 0, total: 0 });
+  const [reactivationRequests, setReactivationRequests] = useState<UserListItem[]>([]);
+  const [reactivationLoading, setReactivationLoading] = useState(false);
+
+  const fetchReactivationRequests = () => {
+    setReactivationLoading(true);
+    listReactivationRequests(1, 50)
+      .then((res) => setReactivationRequests(res.data.users as UserListItem[]))
+      .catch(() => {})
+      .finally(() => setReactivationLoading(false));
+  };
+
+  const handleReactivate = async (userID: string) => {
+    try {
+      await reactivateUser(userID);
+      fetchReactivationRequests();
+      fetchData();
+    } catch (err: unknown) {
+      const code = err instanceof ApiError && err.code ? ` (${err.code})` : "";
+      setError((err instanceof Error ? err.message : "Gagal mengaktifkan akun") + code);
+    }
+  };
 
   const fetchData = () => {
     setLoading(true);
     setError("");
 
     Promise.all([
-      listUsers({ status: statusFilter, search: search || undefined }),
+      listUsers({ status: statusFilter, search: search || undefined, inactive_months: inactiveMonths || undefined }),
       getStats(),
+      listReactivationRequests(1, 50),
     ])
-      .then(([res, statsRes]) => {
+      .then(([res, statsRes, reactRes]) => {
         setUsers(res.data.users);
         setStats(statsRes.data);
+        setReactivationRequests(reactRes.data.users as UserListItem[]);
       })
-      .catch((err) => setError(err.message || "Gagal mengambil data"))
+      .catch((err) => {
+        const code = err instanceof ApiError && err.code ? ` (${err.code})` : "";
+        setError((err.message || "Gagal mengambil data") + code);
+      })
       .finally(() => setLoading(false));
   };
 
   useEffect(() => {
     fetchData();
-  }, [statusFilter]);
+  }, [statusFilter, inactiveMonths]);
 
   function handleSearch() {
     fetchData();
@@ -95,6 +123,43 @@ export default function AdminRegistrationsPage() {
           </div>
         </div>
 
+        {reactivationRequests.length > 0 && (
+          <div className="table-card reactivation-card">
+            <div className="table-card-head">
+              <h2 className="table-card-title">⏳ Permintaan Aktivasi Kembali</h2>
+              <span className="table-card-badge">{reactivationRequests.length} menunggu</span>
+            </div>
+            <div className="reactivation-list">
+              {reactivationRequests.map((u) => (
+                <div key={u.id} className="reactivation-item">
+                  <div className="reactivation-info">
+                    <span className="reactivation-name">{u.full_name}</span>
+                    <span className="reactivation-email">{u.email}</span>
+                    <span className="reactivation-date">
+                      Meminta: {u.reactivation_requested_at
+                        ? new Date(u.reactivation_requested_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
+                        : "—"}
+                    </span>
+                  </div>
+                  <div className="reactivation-actions">
+                    <Link to={`/admin/users/${u.id}`} className="modal-btn cancel" style={{ textDecoration: "none", padding: "6px 14px", fontSize: 12 }}>
+                      Detail
+                    </Link>
+                    <button
+                      className="modal-btn approve"
+                      onClick={() => handleReactivate(u.id)}
+                      disabled={reactivationLoading}
+                      style={{ fontSize: 12, padding: "6px 14px" }}
+                    >
+                      {reactivationLoading ? "..." : "✓ Aktifkan"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="table-card">
           <div className="table-card-head">
             <h2 className="table-card-title">Daftar Pengajuan Pendaftaran</h2>
@@ -112,6 +177,12 @@ export default function AdminRegistrationsPage() {
                   ))}
                 </select>
               </div>
+              <button
+                className={`filter-inactive-btn${inactiveMonths === 3 ? " active" : ""}`}
+                onClick={() => setInactiveMonths(inactiveMonths === 3 ? 0 : 3)}
+              >
+                ⏳ Tidak Aktif &gt; 3 Bulan
+              </button>
               <div className="search-wrap">
                 <span className="search-icon">🔍</span>
                 <input
@@ -136,6 +207,7 @@ export default function AdminRegistrationsPage() {
                   <th>NAMA PENDAFTAR</th>
                   <th>TIPE</th>
                   <th>KELENGKAPAN</th>
+                  <th>TERAKHIR LOGIN</th>
                   <th>HASIL SCAN</th>
                   <th>STATUS</th>
                   <th>ACTIONS</th>
@@ -144,13 +216,13 @@ export default function AdminRegistrationsPage() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={6} style={{ textAlign: "center", padding: "40px", color: "#9ca3af" }}>
+                    <td colSpan={7} style={{ textAlign: "center", padding: "40px", color: "#9ca3af" }}>
                       Memuat data...
                     </td>
                   </tr>
                 ) : users.length === 0 ? (
                   <tr>
-                    <td colSpan={6} style={{ textAlign: "center", padding: "40px", color: "#9ca3af" }}>
+                    <td colSpan={7} style={{ textAlign: "center", padding: "40px", color: "#9ca3af" }}>
                       Tidak ada data pendaftaran.
                     </td>
                   </tr>
@@ -179,12 +251,21 @@ export default function AdminRegistrationsPage() {
                           <span className="kel-badge waiting">⚠ Menunggu Dokumen</span>
                         )}
                       </td>
-                      <td className={`td-scan ${user.status === "APPROVED" ? "valid" : "incomplete"}`}>
-                        {user.status === "APPROVED" ? "Valid" : user.status === "REJECTED" ? "Ditolak" : "Review"}
+                      <td className="td-login">
+                        {user.last_login_at
+                          ? new Date(user.last_login_at).toLocaleDateString("id-ID", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            })
+                          : "—"}
+                      </td>
+                      <td className={`td-scan ${!user.is_active && user.status === "APPROVED" ? "inactive" : user.status === "APPROVED" ? "valid" : "incomplete"}`}>
+                        {!user.is_active && user.status === "APPROVED" ? "Nonaktif" : user.status === "APPROVED" ? "Valid" : user.status === "REJECTED" ? "Ditolak" : "Review"}
                       </td>
                       <td>
-                        <span className={`status-pill ${user.status.toLowerCase()}`}>
-                          {STATUS_LABEL[user.status]}
+                        <span className={`status-pill ${!user.is_active && user.status === "APPROVED" ? "inactive" : user.status.toLowerCase()}`}>
+                          {displayStatus(user.status, user.is_active)}
                         </span>
                       </td>
                       <td>

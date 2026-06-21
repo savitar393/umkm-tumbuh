@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
-import { login } from "../api";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
+import { login, requestReactivation } from "../api";
+import { ApiError } from "../../../shared/api/http";
 
 const QUICK_LOGIN = {
   admin: { email: "admin@example.com", password: "admin12345", label: "Admin" },
@@ -9,11 +10,27 @@ const QUICK_LOGIN = {
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnUrl = searchParams.get("returnUrl");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showReactivation, setShowReactivation] = useState(false);
+  const [reactivationMsg, setReactivationMsg] = useState("");
+  const [reactivationLoading, setReactivationLoading] = useState(false);
+
+  function redirectAfterLogin(role: string) {
+    if (returnUrl && !returnUrl.startsWith("/login")) {
+      navigate(returnUrl, { replace: true });
+      return;
+    }
+    if (role === "ADMIN") navigate("/admin");
+    else if (role === "UMKM") navigate("/umkm");
+    else if (role === "MITRA") navigate("/mitra");
+    else navigate("/");
+  }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -26,19 +43,30 @@ export default function LoginPage() {
       localStorage.setItem("access_token", result.access_token);
       localStorage.setItem("current_user", JSON.stringify(result.user));
 
-      if (result.user.role === "ADMIN") {
-        navigate("/admin");
-      } else if (result.user.role === "UMKM") {
-        navigate("/umkm");
-      } else if (result.user.role === "MITRA") {
-        navigate("/mitra");
-      } else {
-        navigate("/");
+      redirectAfterLogin(result.user.role);
+    } catch (err: unknown) {
+      const code = err instanceof ApiError ? err.code : "";
+      const msg = err instanceof Error ? err.message : "Login gagal";
+      if (code === "ERR-AUTH-03" && msg.toLowerCase().includes("tidak aktif")) {
+        setShowReactivation(true);
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Login gagal");
+      setError(msg + (code ? ` (${code})` : ""));
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleRequestReactivation() {
+    setReactivationMsg("");
+    setReactivationLoading(true);
+    try {
+      const res = await requestReactivation({ email, password });
+      setReactivationMsg(res.message);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Gagal mengajukan aktivasi";
+      setReactivationMsg(msg);
+    } finally {
+      setReactivationLoading(false);
     }
   }
 
@@ -52,9 +80,7 @@ export default function LoginPage() {
     localStorage.setItem("access_token", result.access_token);
     localStorage.setItem("current_user", JSON.stringify(result.user));
 
-    if (result.user.role === "ADMIN") navigate("/admin");
-    else if (result.user.role === "MITRA") navigate("/mitra");
-    else navigate("/");
+    redirectAfterLogin(result.user.role);
   }
 
   return (
@@ -81,6 +107,26 @@ export default function LoginPage() {
           />
 
           {error && <p className="error-message">{error}</p>}
+
+          {showReactivation && (
+            <div className="reactivation-box">
+              <p>Akun Anda telah dinonaktifkan. Ajukan aktivasi kembali untuk dapat login.</p>
+              {reactivationMsg ? (
+                <p className={reactivationMsg.includes("berhasil") ? "success-message" : "error-message"}>
+                  {reactivationMsg}
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  className="button reactivation-btn"
+                  onClick={handleRequestReactivation}
+                  disabled={reactivationLoading}
+                >
+                  {reactivationLoading ? "Memproses..." : "Ajukan Aktivasi Kembali"}
+                </button>
+              )}
+            </div>
+          )}
 
           <button type="submit" disabled={loading}>
             {loading ? "Memproses..." : "Login"}

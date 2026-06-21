@@ -71,9 +71,13 @@ func handleError(w http.ResponseWriter, err error) {
 	var appErr *apperror.AppError
 
 	if errors.As(err, &appErr) {
-		response.Error(w, appErr.StatusCode, appErr.Message)
+		if appErr.Code != "" {
+			response.ErrorWithCode(w, appErr.StatusCode, appErr.Code, appErr.Message)
+		} else {
+			response.Error(w, appErr.StatusCode, appErr.Message)
+		}
 		return
 	}
 
-	response.Error(w, http.StatusInternalServerError, "Terjadi kesalahan pada server.")
+	response.ErrorWithCode(w, http.StatusInternalServerError, "ERR-SYS-01", "Terjadi kesalahan pada server.")
 }

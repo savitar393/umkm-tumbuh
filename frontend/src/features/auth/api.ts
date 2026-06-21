@@ -17,6 +17,8 @@ export type User = {
   submitted_at?: string;
   reviewed_at?: string;
   reviewed_by?: string;
+  last_login_at?: string;
+  reactivation_requested_at?: string;
   created_at: string;
   updated_at: string;
 };
@@ -50,6 +52,13 @@ export function register(payload: RegisterPayload) {
 
 export function login(payload: LoginPayload) {
   return http<LoginResponse>("/auth/login", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function requestReactivation(payload: LoginPayload) {
+  return http<{ status: string; message: string }>("/auth/request-reactivation", {
     method: "POST",
     body: JSON.stringify(payload),
   });
