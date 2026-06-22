@@ -130,6 +130,11 @@ func (s *Service) GetMitraDashboard(ctx context.Context, accountID, selectedUMKM
 		umkmList = []UMKMMitraItem{}
 	}
 
+	allowedUMKM := make(map[string]UMKMMitraItem, len(umkmList))
+	for _, u := range umkmList {
+		allowedUMKM[u.UMKMID] = u
+	}
+
 	if selectedUMKMID == "" && len(umkmList) > 0 {
 		selectedUMKMID = umkmList[0].UMKMID
 	}
@@ -137,13 +142,16 @@ func (s *Service) GetMitraDashboard(ctx context.Context, accountID, selectedUMKM
 	var dashboard *UMKMDashboardForMitra
 
 	if selectedUMKMID != "" {
-		namaUMKM := selectedUMKMID
-		for _, u := range umkmList {
-			if u.UMKMID == selectedUMKMID {
-				namaUMKM = u.NamaUMKM
-				break
-			}
+		selectedUMKM, ok := allowedUMKM[selectedUMKMID]
+		if !ok {
+			return &MitraDashboardData{
+				NamaMitra: namaMitra,
+				UMKMList:  umkmList,
+				Dashboard: nil,
+			}, nil
 		}
+
+		namaUMKM := selectedUMKM.NamaUMKM
 
 		dateFrom, dateTo, rangeErr := s.Repo.GetDefaultDateRange(ctx, selectedUMKMID)
 		if rangeErr != nil || dateFrom == "" {

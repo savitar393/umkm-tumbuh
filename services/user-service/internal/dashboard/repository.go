@@ -171,7 +171,7 @@ func (r *Repository) GetUMKMPartnersOfMitra(ctx context.Context, mitraID string)
 		FROM partnership.transaksi_pengajuankerjasama pk
 		JOIN user_mgmt.master_umkm u ON u.umkm_id = pk.umkm_id
 		WHERE pk.mitra_id = $1
-		  AND pk.status_pengajuan_id IN ('AKTIF', 'SELESAI', 'DISETUJUI', 'MENUNGGU_DOKUMEN_TTD')
+		  AND pk.status_pengajuan_id = 'AKTIF'
 		  AND u.is_deleted = FALSE
 		ORDER BY u.nama_umkm ASC
 	`, mitraID)
