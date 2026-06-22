@@ -169,10 +169,16 @@ func (r *Repository) GetUMKMPartnersOfMitra(ctx context.Context, mitraID string)
 	rows, err := r.DB.Query(ctx, `
 		SELECT DISTINCT u.umkm_id, u.nama_umkm
 		FROM partnership.transaksi_pengajuankerjasama pk
-		JOIN user_mgmt.master_umkm u ON u.umkm_id = pk.umkm_id
+		JOIN user_mgmt.master_umkm u
+			ON u.umkm_id = pk.umkm_id
+		JOIN user_mgmt.master_mitra m
+			ON m.mitra_id = pk.mitra_id
 		WHERE pk.mitra_id = $1
 		  AND pk.status_pengajuan_id = 'AKTIF'
+		  AND pk.umkm_id IS NOT NULL
+		  AND pk.mitra_id IS NOT NULL
 		  AND u.is_deleted = FALSE
+		  AND m.is_deleted = FALSE
 		ORDER BY u.nama_umkm ASC
 	`, mitraID)
 	if err != nil {

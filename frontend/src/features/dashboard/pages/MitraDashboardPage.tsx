@@ -188,7 +188,7 @@ export default function MitraDashboardPage() {
 
   return (
     <UmkmLayout
-      title="Monitoring Perkembangan Usaha"
+      title="Monitoring Perkembangan UMKM"
       subtitle={
         data
           ? `Selamat datang, ${data.nama_mitra}. Pantau performa UMKM mitra Anda.`
@@ -202,7 +202,7 @@ export default function MitraDashboardPage() {
               <Handshake size={16} />
               Dashboard Mitra
             </span>
-            <h1>Monitoring Perkembangan Usaha</h1>
+            <h1>Monitoring Perkembangan UMKM</h1>
             <p>
               Pilih UMKM mitra untuk melihat omset, item terjual, laba harian,
               dan tren penjualan berdasarkan laporan yang tersedia.
@@ -212,7 +212,7 @@ export default function MitraDashboardPage() {
           <aside className="mitra-dashboard-hero-card">
             <Users size={30} />
             <strong>{umkmList.length}</strong>
-            <span>UMKM Dapat Dimonitor</span>
+            <span>UMKM Aktif Dimonitor</span>
           </aside>
         </section>
 
@@ -231,7 +231,7 @@ export default function MitraDashboardPage() {
                   <label>Nama UMKM</label>
                   {umkmList.length === 0 ? (
                     <div className="mitra-dashboard-empty-input">
-                      Belum ada UMKM mitra yang disetujui.
+                      Belum ada UMKM dengan kemitraan aktif.
                     </div>
                   ) : (
                     <div className="mitra-dashboard-combobox">
@@ -351,7 +351,7 @@ export default function MitraDashboardPage() {
                 <section className="mitra-dashboard-kpi-grid">
                   <article className="mitra-dashboard-kpi-card primary">
                     <div>
-                      <span>Total Omset Hari Ini</span>
+                      <span>Total Omset Periode</span>
                       <strong>{formatRupiah(dashboard.total_omzet_hari_ini)}</strong>
                       <p>{dashboard.nama_umkm}</p>
                     </div>
@@ -359,7 +359,7 @@ export default function MitraDashboardPage() {
                     <em className={isUp ? "up" : "down"}>
                       {isUp ? <TrendingUp size={15} /> : <TrendingDown size={15} />}
                       {isUp ? "+" : ""}
-                      {persen.toFixed(1)}% vs kemarin
+                      {persen.toFixed(1)}% vs periode sebelumnya
                     </em>
                   </article>
 
