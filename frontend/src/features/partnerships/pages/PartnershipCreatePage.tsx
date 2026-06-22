@@ -51,25 +51,6 @@ function getBasePath(role?: string) {
   return "/partnerships";
 }
 
-function validateContact(value: string) {
-  const trimmed = value.trim();
-
-  if (!trimmed) return "Kontak person wajib diisi.";
-
-  if (trimmed.includes("@")) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)
-      ? ""
-      : "Format email tidak valid.";
-  }
-
-  const digits = trimmed.replace(/\D/g, "");
-
-  if (digits.startsWith("08") && digits.length >= 10 && digits.length <= 13) return "";
-  if (digits.startsWith("62") && digits.length >= 11 && digits.length <= 15) return "";
-
-  return "Nomor WhatsApp harus diawali 08 atau 62 dan berisi 10–15 digit.";
-}
-
 function getFileValidationError(file: File) {
   if (file.size > MAX_FILE_SIZE) {
     return "File terlalu besar. Maksimal 10MB.";
@@ -157,6 +138,7 @@ export default function PartnershipCreatePage() {
 
   const params = new URLSearchParams(location.search);
   const preselectedReceiverId = params.get("receiver_id") || "";
+  const preselectedReceiverName = params.get("receiver_name") || "";
   const isFromDetail = Boolean(preselectedReceiverId);
 
   const [partnerList, setPartnerList] = useState<Array<{ id: string; name: string }>>([]);
@@ -164,7 +146,7 @@ export default function PartnershipCreatePage() {
   const [partnerError, setPartnerError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
-  const [selectedPartnerName, setSelectedPartnerName] = useState("");
+  const [selectedPartnerName, setSelectedPartnerName] = useState(preselectedReceiverName);
 
   const [formData, setFormData] = useState({
     receiver_id: preselectedReceiverId,
@@ -249,12 +231,19 @@ export default function PartnershipCreatePage() {
   }, [isMitra]);
 
   useEffect(() => {
-    if (!preselectedReceiverId || partnerList.length === 0) return;
+    if (!preselectedReceiverId) return;
 
     const found = partnerList.find((partner) => partner.id === preselectedReceiverId);
 
-    if (found) setSelectedPartnerName(found.name);
-  }, [partnerList, preselectedReceiverId]);
+    if (found) {
+      setSelectedPartnerName(found.name);
+      return;
+    }
+
+    if (preselectedReceiverName) {
+      setSelectedPartnerName(preselectedReceiverName);
+    }
+  }, [partnerList, preselectedReceiverId, preselectedReceiverName]);
 
   function updateField(name: keyof typeof formData, value: string) {
     setSubmitError("");
@@ -301,12 +290,12 @@ export default function PartnershipCreatePage() {
     const nextErrors: Record<string, string> = {};
     const nextFileErrors: FileErrors = {};
 
-    if (!formData.business_name.trim()) {
-      nextErrors.business_name = `Nama ${requesterLabel.toLowerCase()} wajib diisi.`;
-    }
+    // if (!formData.business_name.trim()) {
+    //   nextErrors.business_name = `Nama ${requesterLabel.toLowerCase()} wajib diisi.`;
+    // }
 
-    const contactError = validateContact(formData.contact_person);
-    if (contactError) nextErrors.contact_person = contactError;
+    // const contactError = validateContact(formData.contact_person);
+    // if (contactError) nextErrors.contact_person = contactError;
 
     if (!formData.receiver_id) {
       nextErrors.receiver_id = `Pilih ${targetLabel.toLowerCase()} tujuan.`;
@@ -355,7 +344,7 @@ export default function PartnershipCreatePage() {
 
       const payload: CreatePartnershipRequest = {
         receiver_id: formData.receiver_id,
-        proposal_title: `Pengajuan Kemitraan - ${formData.business_name.trim()}`,
+        proposal_title: `Pengajuan Kemitraan - ${(user?.full_name || formData.business_name || "Pengaju").trim()}`,
         proposal_description: [
           formData.product_description.trim(),
           `Alasan Bermitra: ${formData.reason_for_partnership.trim()}`,
@@ -434,27 +423,15 @@ export default function PartnershipCreatePage() {
             </h2>
 
             <div className="partnership-create-grid">
-              <label className={`partnership-create-field ${errors.business_name ? "has-error" : ""}`}>
+              <div className="partnership-readonly-info">
                 <span>Nama {requesterLabel}</span>
-                <input
-                  name="business_name"
-                  value={formData.business_name}
-                  onChange={(event) => updateField("business_name", event.target.value)}
-                  placeholder={`Masukkan nama ${requesterLabel.toLowerCase()}`}
-                />
-                {errors.business_name ? <em>{errors.business_name}</em> : null}
-              </label>
+                <strong>{formData.business_name || "-"}</strong>
+              </div>
 
-              <label className={`partnership-create-field ${errors.contact_person ? "has-error" : ""}`}>
+              <div className="partnership-readonly-info">
                 <span>Kontak Person</span>
-                <input
-                  name="contact_person"
-                  value={formData.contact_person}
-                  onChange={(event) => updateField("contact_person", event.target.value)}
-                  placeholder="081234567890 atau email@usaha.com"
-                />
-                {errors.contact_person ? <em>{errors.contact_person}</em> : null}
-              </label>
+                <strong>{formData.contact_person || "-"}</strong>
+              </div>
             </div>
           </section>
 
@@ -470,7 +447,11 @@ export default function PartnershipCreatePage() {
               {isFromDetail ? (
                 <div className="partnership-readonly-target">
                   <ShieldCheck size={18} />
-                  <strong>{selectedPartnerName || "Memuat tujuan..."}</strong>
+                  <strong>
+                    {selectedPartnerName ||
+                      preselectedReceiverName ||
+                      `${targetLabel} terpilih`}
+                  </strong>
                 </div>
               ) : (
                 <div className="partnership-select-search" ref={dropdownRef}>

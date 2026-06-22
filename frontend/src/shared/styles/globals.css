@@ -8457,3 +8457,29 @@ button.danger {
   width: 15px;
   height: 15px;
 }
+
+/* Partnership create readonly requester identity */
+.partnership-readonly-info {
+  display: grid;
+  gap: 10px;
+  min-height: 74px;
+  padding: 16px 18px;
+  border: 1px solid #dbeafe;
+  border-radius: 18px;
+  background: #f8fbff;
+}
+
+.partnership-readonly-info span {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.partnership-readonly-info strong {
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 900;
+  word-break: break-word;
+}

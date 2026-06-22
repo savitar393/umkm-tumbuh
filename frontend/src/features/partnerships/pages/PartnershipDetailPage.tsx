@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   Building2,
@@ -144,10 +144,21 @@ function InfoItem({
 export default function PartnershipDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const user = getCurrentUser();
 
   const isMitra = user?.role === "MITRA";
   const basePath = getBasePath(user?.role);
+  const rawReturnTo = searchParams.get("returnTo");
+  const decodedReturnTo = rawReturnTo ? decodeURIComponent(rawReturnTo) : "";
+
+  const returnPath = decodedReturnTo.startsWith(basePath)
+    ? decodedReturnTo
+    : basePath;
+
+  function goBackToList() {
+    navigate(returnPath);
+  }
   const profileKind = isMitra ? "UMKM" : "Mitra";
 
   const [detail, setDetail] = useState<UMKMDetail | MitraDetail | null>(null);
@@ -214,7 +225,12 @@ export default function PartnershipDetailPage() {
   }, [id, isMitra]);
 
   function handleApplyPartnership() {
-    navigate(`${basePath}/create?receiver_id=${id}`);
+    const query = new URLSearchParams();
+
+    if (id) query.set("receiver_id", id);
+    if (data?.name) query.set("receiver_name", data.name);
+
+    navigate(`${basePath}/create?${query.toString()}`);
   }
 
   return (
@@ -223,7 +239,7 @@ export default function PartnershipDetailPage() {
       subtitle={`Lihat detail ${profileKind.toLowerCase()} sebelum mengajukan kerja sama.`}
     >
       <main className="partnership-detail-page">
-        <button className="partnership-back-button" type="button" onClick={() => navigate(basePath)}>
+        <button className="partnership-back-button" type="button" onClick={goBackToList}>
           <ArrowLeft size={17} />
           Kembali ke Daftar
         </button>
@@ -237,7 +253,7 @@ export default function PartnershipDetailPage() {
           <section className="partnership-state-card error">
             <strong>{profileKind} tidak ditemukan</strong>
             <p>{error || "Data tidak tersedia."}</p>
-            <button type="button" onClick={() => navigate(basePath)}>
+            <button type="button" onClick={goBackToList}>
               Kembali
             </button>
           </section>
