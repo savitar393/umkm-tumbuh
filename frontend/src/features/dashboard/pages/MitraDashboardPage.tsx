@@ -53,6 +53,48 @@ function formatTanggal(value: string): string {
   });
 }
 
+function formatDateLocal(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getRollingMonthRange(periodInMonths: string, selectedYear: string) {
+  const months = Number(periodInMonths) || 1;
+  const year = Number(selectedYear) || new Date().getFullYear();
+  const today = new Date();
+
+  const end =
+    year === today.getFullYear()
+      ? new Date(today.getFullYear(), today.getMonth(), today.getDate())
+      : new Date(year, 11, 31);
+
+  const start = new Date(end);
+  start.setMonth(start.getMonth() - months);
+  start.setDate(start.getDate() + 1);
+
+  return {
+    from: formatDateLocal(start),
+    to: formatDateLocal(end),
+  };
+}
+
+function formatDateTime(value?: string) {
+  if (!value) return "-";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+
+  return date.toLocaleString("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function getInitials(name: string) {
   return name
     .split(/\s+/)
@@ -78,16 +120,50 @@ export default function MitraDashboardPage() {
   const [page, setPage] = useState(0);
 
   const searchRef = useRef<HTMLDivElement>(null);
+  
+  function getCurrentRange() {
+    return getRollingMonthRange(periode, tahun);
+  }
+
+  async function loadSelectedDashboard(umkmId?: string, nextSearchText?: string) {
+    const range = getCurrentRange();
+
+    setError("");
+    setPage(0);
+    setLoadingDetail(true);
+
+    try {
+      const result = await getMitraDashboard(umkmId, range.from, range.to);
+      setData(result);
+
+      if (nextSearchText !== undefined) {
+        setSearchText(nextSearchText);
+      }
+
+      if (umkmId) {
+        setSelectedUMKM(umkmId);
+      } else if (result.umkm_list?.length > 0) {
+        setSelectedUMKM(result.umkm_list[0].umkm_id);
+        setSearchText(result.umkm_list[0].nama_umkm);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal memuat data UMKM.");
+    } finally {
+      setLoadingDetail(false);
+    }
+  }
 
   useEffect(() => {
     let ignore = false;
 
     async function loadDashboard() {
+      const range = getRollingMonthRange("3", String(new Date().getFullYear()));
+
       setLoading(true);
       setError("");
 
       try {
-        const result = await getMitraDashboard();
+        const result = await getMitraDashboard(undefined, range.from, range.to);
 
         if (ignore) return;
 
@@ -156,6 +232,7 @@ export default function MitraDashboardPage() {
     setSelectedUMKM(id);
     setSearchText(name);
     setShowDropdown(false);
+    void loadSelectedDashboard(id, name);
   }
 
   function clearSearch() {
@@ -166,24 +243,12 @@ export default function MitraDashboardPage() {
   }
 
   async function handleApplyFilter() {
-    setError("");
-
     if (!selectedUMKM) {
       setError("Pilih UMKM terlebih dahulu.");
       return;
     }
 
-    setPage(0);
-    setLoadingDetail(true);
-
-    try {
-      const result = await getMitraDashboard(selectedUMKM);
-      setData(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Gagal memuat data UMKM.");
-    } finally {
-      setLoadingDetail(false);
-    }
+    await loadSelectedDashboard(selectedUMKM, searchText);
   }
 
   return (
@@ -395,16 +460,27 @@ export default function MitraDashboardPage() {
                             <th>Tanggal</th>
                             <th>Laba Bersih</th>
                             <th>Item Terjual</th>
+                            <th>Update Terakhir</th>
                           </tr>
                         </thead>
                         <tbody>
                           {pageData.map((row) => (
                             <tr key={row.tanggal}>
-                              <td>{formatTanggal(row.tanggal)}</td>
+                              <td>
+                                <strong>{formatTanggal(row.tanggal)}</strong>
+                                <small className="mitra-dashboard-table-meta">
+                                  Dibuat: {formatDateTime(row.created_at)}
+                                </small>
+                              </td>
                               <td>
                                 <strong>{formatRupiahFull(row.laba_bersih)}</strong>
                               </td>
                               <td>{row.jumlah_produk.toLocaleString("id-ID")} Item</td>
+                              <td>
+                                <small className="mitra-dashboard-table-meta">
+                                  {formatDateTime(row.last_updated_at)}
+                                </small>
+                              </td>
                             </tr>
                           ))}
                         </tbody>

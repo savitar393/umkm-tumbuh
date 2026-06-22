@@ -101,7 +101,9 @@ func (r *Repository) GetLabaHarian(ctx context.Context, umkmID, dateFrom, dateTo
 			TO_CHAR(tanggal_transaksi, 'YYYY-MM-DD')       AS tanggal,
 			TO_CHAR(tanggal_transaksi, 'Day, DD Mon YYYY') AS nama_hari,
 			COALESCE(SUM(total_laba), 0)::float8           AS laba_bersih,
-			COALESCE(SUM(total_item), 0)::bigint           AS jumlah_produk
+			COALESCE(SUM(total_item), 0)::bigint           AS jumlah_produk,
+			TO_CHAR(MIN(created_at), 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created_at,
+			TO_CHAR(MAX(updated_at), 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS last_updated_at
 		FROM dashboard.transaksi_penjualan
 		WHERE umkm_id = $1
 		  AND tanggal_transaksi >= $2::date
@@ -119,7 +121,7 @@ func (r *Repository) GetLabaHarian(ctx context.Context, umkmID, dateFrom, dateTo
 	var result []LabaHarianItem
 	for rows.Next() {
 		var item LabaHarianItem
-		if err := rows.Scan(&item.PenjualanID, &item.Tanggal, &item.NamaHari, &item.LabaBersih, &item.JumlahProduk); err != nil {
+		if err := rows.Scan(&item.PenjualanID, &item.Tanggal, &item.NamaHari, &item.LabaBersih, &item.JumlahProduk, &item.CreatedAt, &item.LastUpdatedAt); err != nil {
 			log.Printf("[DEBUG] GetLabaHarian scan error: %v", err)
 			return nil, err
 		}

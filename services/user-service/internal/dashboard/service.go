@@ -115,7 +115,7 @@ func (s *Service) GetUMKMDashboard(ctx context.Context, accountID, dateFrom, dat
 
 // ─── Mitra Dashboard ─────────────────────────────────────────────────────────
 
-func (s *Service) GetMitraDashboard(ctx context.Context, accountID, selectedUMKMID string) (*MitraDashboardData, error) {
+func (s *Service) GetMitraDashboard(ctx context.Context, accountID, selectedUMKMID, dateFrom, dateTo string) (*MitraDashboardData, error) {
 	mitraID, namaMitra, err := s.Repo.GetMitraByAccount(ctx, accountID)
 	if err != nil {
 		return &MitraDashboardData{
@@ -153,14 +153,19 @@ func (s *Service) GetMitraDashboard(ctx context.Context, accountID, selectedUMKM
 
 		namaUMKM := selectedUMKM.NamaUMKM
 
-		dateFrom, dateTo, rangeErr := s.Repo.GetDefaultDateRange(ctx, selectedUMKMID)
-		if rangeErr != nil || dateFrom == "" {
+		if dateTo == "" {
 			now := time.Now()
-			dateFrom = now.Format("2006-01") + "-01"
 			dateTo = now.Format("2006-01-02")
-		} else {
-			t, _ := time.Parse("2006-01-02", dateTo)
-			dateFrom = time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, t.Location()).Format("2006-01-02")
+		}
+
+		if dateFrom == "" {
+			t, err := time.Parse("2006-01-02", dateTo)
+			if err != nil {
+				now := time.Now()
+				t = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+			}
+
+			dateFrom = t.AddDate(0, -1, 1).Format("2006-01-02")
 		}
 
 		kategoriUsaha, _ := s.Repo.GetKategoriUsaha(ctx, selectedUMKMID)

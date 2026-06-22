@@ -448,12 +448,22 @@ func (h *Handler) GetMitraDashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	selectedUMKMID := r.URL.Query().Get("umkm_id")
+	selectedUMKMID := strings.TrimSpace(r.URL.Query().Get("umkm_id"))
 
 	repo := NewRepository(h.DB)
 	svc := NewService(repo)
 
-	data, err := svc.GetMitraDashboard(r.Context(), user.ID, selectedUMKMID)
+	dateFrom := strings.TrimSpace(r.URL.Query().Get("date_from"))
+	if dateFrom == "" {
+		dateFrom = strings.TrimSpace(r.URL.Query().Get("from"))
+	}
+
+	dateTo := strings.TrimSpace(r.URL.Query().Get("date_to"))
+	if dateTo == "" {
+		dateTo = strings.TrimSpace(r.URL.Query().Get("to"))
+	}
+
+	data, err := svc.GetMitraDashboard(r.Context(), user.ID, selectedUMKMID, dateFrom, dateTo)
 	if err != nil {
 		handleError(w, err, "Gagal memuat data dashboard mitra.")
 		return

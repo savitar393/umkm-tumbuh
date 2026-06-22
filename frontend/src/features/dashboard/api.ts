@@ -80,9 +80,11 @@ export function getUMKMDashboardSummary(params?: {
 export type LabaHarianItem = {
   penjualan_id?: string;
   tanggal: string;
-  nama_hari: string;
+  nama_hari?: string;
   laba_bersih: number;
   jumlah_produk: number;
+  created_at?: string;
+  last_updated_at?: string;
 };
 
 export type TrenMingguan = {
@@ -160,9 +162,25 @@ export function checkProfileExists(): Promise<boolean> {
     .catch(() => false);
 }
 
-export function getMitraDashboard(umkmId?: string): Promise<MitraDashboardData> {
+export function getMitraDashboard(
+  umkmId?: string,
+  dateFrom?: string,
+  dateTo?: string,
+): Promise<MitraDashboardData> {
   const params = new URLSearchParams();
+
   if (umkmId) params.set("umkm_id", umkmId);
+
+  if (dateFrom) {
+    params.set("date_from", dateFrom);
+    params.set("from", dateFrom);
+  }
+
+  if (dateTo) {
+    params.set("date_to", dateTo);
+    params.set("to", dateTo);
+  }
+
   const qs = params.toString() ? `?${params.toString()}` : "";
   return userHttp<MitraDashboardData>(`/dashboard/mitra${qs}`);
 }
