@@ -277,7 +277,9 @@ export default function EditMitraProfilePage() {
 
             <div className="mitra-profile-form-grid">
               <label className={errors.organization_name ? "has-error" : ""}>
-                Nama Organisasi <strong>*</strong>
+                <span className="mitra-profile-label-text">
+                  Nama Organisasi <strong>*</strong>
+                </span>
                 <input
                   value={form.organization_name}
                   onChange={(event) => updateField("organization_name", event.target.value)}
@@ -287,7 +289,9 @@ export default function EditMitraProfilePage() {
               </label>
 
               <label className={errors.organization_type ? "has-error" : ""}>
-                Jenis Organisasi <strong>*</strong>
+                <span className="mitra-profile-label-text">
+                  Jenis Organisasi <strong>*</strong>
+                </span>
                 <select
                   value={form.organization_type ?? ""}
                   onChange={(event) => updateField("organization_type", event.target.value)}
@@ -357,7 +361,9 @@ export default function EditMitraProfilePage() {
 
             <div className="mitra-profile-form-grid">
               <label className={errors.contact_person ? "has-error" : ""}>
-                Contact Person <strong>*</strong>
+                <span className="mitra-profile-label-text">
+                  Contact Person <strong>*</strong>
+                </span>
                 <input
                   value={form.contact_person ?? ""}
                   onChange={(event) => updateField("contact_person", event.target.value)}
@@ -376,7 +382,9 @@ export default function EditMitraProfilePage() {
               </label>
 
               <label className={errors.phone_number ? "has-error" : ""}>
-                Nomor Telepon <strong>*</strong>
+                <span className="mitra-profile-label-text">
+                  Nomor Telepon <strong>*</strong>
+                </span>
                 <div className="mitra-phone-input">
                   <span>+62</span>
                   <input
@@ -389,7 +397,9 @@ export default function EditMitraProfilePage() {
               </label>
 
               <label className={errors.city ? "has-error" : ""}>
-                Kota <strong>*</strong>
+                <span className="mitra-profile-label-text">
+                  Kota <strong>*</strong>
+                </span>
                 <input
                   value={form.city ?? ""}
                   onChange={(event) => updateField("city", event.target.value)}
@@ -399,7 +409,9 @@ export default function EditMitraProfilePage() {
               </label>
 
               <label className={errors.province ? "has-error" : ""}>
-                Provinsi <strong>*</strong>
+                <span className="mitra-profile-label-text">
+                  Provinsi <strong>*</strong>
+                </span>
                 <input
                   value={form.province ?? ""}
                   onChange={(event) => updateField("province", event.target.value)}
@@ -438,7 +450,9 @@ export default function EditMitraProfilePage() {
               </label>
 
               <label className={`full ${errors.address ? "has-error" : ""}`}>
-                Alamat Lengkap <strong>*</strong>
+                <span className="mitra-profile-label-text">
+                  Alamat Lengkap <strong>*</strong>
+                </span>
                 <textarea
                   value={form.address ?? ""}
                   onChange={(event) => updateField("address", event.target.value)}
