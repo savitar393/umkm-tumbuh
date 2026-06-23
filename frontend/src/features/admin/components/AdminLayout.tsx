@@ -4,33 +4,49 @@ import type { ReactNode } from "react";
 import { ChevronDown, LogOut } from "lucide-react";
 import { getCurrentUser, clearAuthStorage } from "../../../shared/auth/currentUser";
 
-const navItems = [
-  { label: "Beranda Nasional", to: "/admin" },
-  { label: "User Management", to: "/admin/users" },
-];
-
 const trainingSubMenus = [
   { label: "Dashboard Pelatihan", to: "/admin/training/dashboard" },
   { label: "Daftar Pelatihan", to: "/admin/training/list" },
   { label: "Sertifikat", to: "/admin/training/certificates" },
 ];
 
+const userSubMenus = [
+  { label: "Validasi Pendaftaran", to: "/admin/registrations" },
+  { label: "Manajemen Akun", to: "/admin/users" },
+];
+
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const user = getCurrentUser();
-  const [open, setOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
+  const [openTraining, setOpenTraining] = useState(false);
+  const [openUsers, setOpenUsers] = useState(false);
+
+  const trainingRef = useRef<HTMLDivElement>(null);
+  const usersRef = useRef<HTMLDivElement>(null);
+
+  const isDashboardActive = location.pathname === "/admin";
   const isTrainingActive = location.pathname.startsWith("/admin/training");
-  const isUsersPath = location.pathname.startsWith("/admin/users");
+  const isUserAreaActive =
+    location.pathname.startsWith("/admin/registrations") ||
+    location.pathname.startsWith("/admin/users");
+
+  const hideSubheader = isUserAreaActive;
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setOpen(false);
+      const target = e.target as Node;
+
+      if (trainingRef.current && !trainingRef.current.contains(target)) {
+        setOpenTraining(false);
+      }
+
+      if (usersRef.current && !usersRef.current.contains(target)) {
+        setOpenUsers(false);
       }
     }
+
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
@@ -40,32 +56,81 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     navigate("/login");
   }
 
+  function renderDropdown(
+    items: { label: string; to: string }[],
+    close: () => void
+  ) {
+    return (
+      <div
+        style={{
+          position: "absolute",
+          top: "100%",
+          left: 0,
+          marginTop: 4,
+          background: "#fff",
+          borderRadius: 10,
+          boxShadow: "0 6px 24px rgba(0,0,0,0.12)",
+          border: "1px solid #e2e8f0",
+          minWidth: 220,
+          overflow: "hidden",
+          zIndex: 100,
+        }}
+      >
+        {items.map((sub) => {
+          const active = location.pathname === sub.to || location.pathname.startsWith(`${sub.to}/`);
+
+          return (
+            <Link
+              key={sub.to}
+              to={sub.to}
+              onClick={close}
+              style={{
+                display: "block",
+                padding: "12px 16px",
+                textDecoration: "none",
+                fontSize: 13,
+                fontWeight: active ? 800 : 600,
+                color: active ? "#1a3fa4" : "#334155",
+                background: active ? "#eef2ff" : "transparent",
+              }}
+            >
+              {sub.label}
+            </Link>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <div className="admin-layout-v2">
-      {/* NAVBAR ATAS */}
       <header className="admin-navbar">
-        {/* Kiri: Logo */}
         <div className="navbar-left">
           <img src="/tumbuh.png" alt="UMKM Tumbuh" className="navbar-logo" />
         </div>
 
-        {/* Tengah: Menu navigasi */}
         <nav className="navbar-menu">
           <Link
-            to={navItems[0].to}
-            className={`navbar-link ${location.pathname === navItems[0].to ? "active" : ""}`}
+            to="/admin"
+            className={`navbar-link ${isDashboardActive ? "active" : ""}`}
           >
-            {navItems[0].label}
+            Beranda Nasional
           </Link>
 
-          {/* Dropdown Pelatihan */}
-          <div ref={dropdownRef} style={{ position: "relative" }}>
+          <div ref={trainingRef} style={{ position: "relative" }}>
             <button
-              onClick={() => setOpen((p) => !p)}
+              type="button"
+              onClick={() => {
+                setOpenTraining((p) => !p);
+                setOpenUsers(false);
+              }}
               className={`navbar-link ${isTrainingActive ? "active" : ""}`}
               style={{
-                background: "none", border: "none", cursor: "pointer",
-                fontFamily: "inherit", lineHeight: "inherit",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                fontFamily: "inherit",
+                lineHeight: "inherit",
               }}
             >
               Pelatihan
@@ -73,59 +138,44 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 size={14}
                 style={{
                   transition: "transform 0.2s",
-                  transform: open ? "rotate(180deg)" : "rotate(0deg)",
+                  transform: openTraining ? "rotate(180deg)" : "rotate(0deg)",
                 }}
               />
             </button>
 
-            {open && (
-              <div
-                style={{
-                  position: "absolute", top: "100%", left: 0, marginTop: 4,
-                  background: "#fff", borderRadius: 10, boxShadow: "0 6px 24px rgba(0,0,0,0.12)",
-                  border: "1px solid #e2e8f0", minWidth: 200, overflow: "hidden",
-                  zIndex: 100,
-                }}
-              >
-                {trainingSubMenus.map((sub) => (
-                  <Link
-                    key={sub.to}
-                    to={sub.to}
-                    onClick={() => setOpen(false)}
-                    style={{
-                      display: "block", padding: "10px 16px", textDecoration: "none",
-                      fontSize: 13, fontWeight: location.pathname === sub.to ? 700 : 500,
-                      color: location.pathname === sub.to ? "#1a3fa4" : "#334155",
-                      background: location.pathname === sub.to ? "#eef2ff" : "transparent",
-                      transition: "all 0.1s",
-                    }}
-                    onMouseEnter={(e) => {
-                      if (location.pathname !== sub.to) {
-                        (e.currentTarget as HTMLElement).style.background = "#f8fafc";
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (location.pathname !== sub.to) {
-                        (e.currentTarget as HTMLElement).style.background = "transparent";
-                      }
-                    }}
-                  >
-                    {sub.label}
-                  </Link>
-                ))}
-              </div>
-            )}
+            {openTraining && renderDropdown(trainingSubMenus, () => setOpenTraining(false))}
           </div>
 
-          <Link
-            to={navItems[1].to}
-            className={`navbar-link ${location.pathname === navItems[1].to ? "active" : ""}`}
-          >
-            {navItems[1].label}
-          </Link>
+          <div ref={usersRef} style={{ position: "relative" }}>
+            <button
+              type="button"
+              onClick={() => {
+                setOpenUsers((p) => !p);
+                setOpenTraining(false);
+              }}
+              className={`navbar-link ${isUserAreaActive ? "active" : ""}`}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                fontFamily: "inherit",
+                lineHeight: "inherit",
+              }}
+            >
+              User Management
+              <ChevronDown
+                size={14}
+                style={{
+                  transition: "transform 0.2s",
+                  transform: openUsers ? "rotate(180deg)" : "rotate(0deg)",
+                }}
+              />
+            </button>
+
+            {openUsers && renderDropdown(userSubMenus, () => setOpenUsers(false))}
+          </div>
         </nav>
 
-        {/* Kanan: User info */}
         <div className="navbar-right">
           <span className="navbar-username">Halo, {user?.full_name ?? "Admin"}</span>
           <div className="navbar-avatar" title={user?.full_name ?? "Admin"}>
@@ -138,22 +188,19 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      {/* KONTEN UTAMA */}
       <main className="admin-body">
-        {/* Sub-header biru — hidden di User Management */}
-        {!isUsersPath && (
+        {!hideSubheader && (
           <div className="admin-subheader">
             <div>
               <div className="subheader-title">Dashboard Strategi Nasional</div>
-              <div className="subheader-sub">Monitoring dan analisis data UMKM di seluruh Indonesia</div>
+              <div className="subheader-sub">
+                Monitoring dan analisis data UMKM di seluruh Indonesia
+              </div>
             </div>
           </div>
         )}
 
-        {/* Konten halaman */}
-        <div className="admin-content-v2">
-          {children}
-        </div>
+        <div className="admin-content-v2">{children}</div>
       </main>
     </div>
   );
