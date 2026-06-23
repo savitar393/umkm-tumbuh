@@ -39,6 +39,22 @@ function hasValue(value?: string | null) {
   return Boolean(value && value.trim());
 }
 
+function formatIndonesiaPhone(value?: string | null) {
+  const digits = (value || "").replace(/\D/g, "");
+
+  if (!digits) return "Belum tersedia";
+
+  if (digits.startsWith("62")) {
+    return `+${digits}`;
+  }
+
+  if (digits.startsWith("0")) {
+    return `+62 ${digits.slice(1)}`;
+  }
+
+  return `+62 ${digits}`;
+}
+
 function getFullLocation(detail: PartnershipProfileDetail) {
   return [detail.city, detail.province].filter(Boolean).join(", ");
 }
@@ -407,7 +423,11 @@ export default function PartnershipDetailPage() {
                     <InfoItem icon={<Building2 size={18} />} label="Jenis/Kategori" value={data.type} />
                     <InfoItem icon={<MapPin size={18} />} label="Alamat" value={fullAddress} />
                     <InfoItem icon={<MapPin size={18} />} label="Wilayah Operasional" value={data.operational_area} />
-                    <InfoItem icon={<Phone size={18} />} label="Telepon/WhatsApp" value={data.phone_number} />
+                    <InfoItem
+                      icon={<Phone size={18} />}
+                      label="Telepon/WhatsApp"
+                      value={formatIndonesiaPhone(data.phone_number)}
+                    />
                     <InfoItem icon={<Mail size={18} />} label="Email" value={data.email} />
                     {"year_established" in data ? (
                       <InfoItem
