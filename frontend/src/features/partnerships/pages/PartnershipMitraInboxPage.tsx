@@ -13,7 +13,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import UmkmLayout from "../../umkm/components/UmkmLayout";
 import { getCurrentUser } from "../../../shared/auth/currentUser";
-import { partnershipsApi, type IncomingPartnershipsResponse } from "../api";
+import { partnershipsApi, type IncomingPartnershipsResponse, type IncomingPartnershipSummaryResponse } from "../api";
 
 type IncomingItem = IncomingPartnershipsResponse["pengajuan_masuk"][number];
 
@@ -144,6 +144,7 @@ export default function PartnershipMitraInboxPage() {
   });
 
   const [incomingList, setIncomingList] = useState<IncomingItem[]>([]);
+  const [incomingSummary, setIncomingSummary] = useState<IncomingPartnershipSummaryResponse["summary"] | null>(null);
   const [pagination, setPagination] = useState<{ total: number; totalPages: number } | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -172,7 +173,12 @@ export default function PartnershipMitraInboxPage() {
 
   const visibleRange = useMemo(() => getPageRange(currentPage, totalPages), [currentPage, totalPages]);
 
-  const unreadCount = incomingList.filter((item) => !readItems.has(item.pengajuanID)).length;
+  // const unreadCount = incomingList.filter((item) => !readItems.has(item.pengajuanID)).length;
+  const visibleUnreadCount = filteredItems.filter(
+    (item) => !readItems.has(item.pengajuanID),
+  ).length;
+
+  const visibleRequestCount = filteredItems.length;
   const pendingCount = incomingList.filter((item) =>
     ["DRAFT", "SUBMITTED", "DIAJUKAN", "REVIEWED", "DITINJAU"].includes(item.status.toUpperCase()),
   ).length;
@@ -190,6 +196,12 @@ export default function PartnershipMitraInboxPage() {
   const rejectedCount = incomingList.filter((item) =>
     ["REJECTED", "DITOLAK"].includes(item.status.toUpperCase()),
   ).length;
+
+  const kpiPending = incomingSummary?.menunggu ?? pendingCount;
+  const kpiApproved = incomingSummary?.disetujui ?? approvedCount;
+  const kpiRejected = incomingSummary?.ditolak ?? rejectedCount;
+  const kpiTotal = incomingSummary?.total ?? totalItems;
+
   const currentStart = totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
   const currentEnd = Math.min(currentPage * itemsPerPage, totalItems);
 
@@ -261,6 +273,22 @@ export default function PartnershipMitraInboxPage() {
     navigate(`${basePath}/review/${item.pengajuanID}`);
   }
 
+  async function fetchIncomingSummary() {
+    try {
+      const response = await partnershipsApi.getIncomingSummary();
+
+      if (response.success === true && response.data?.summary) {
+        setIncomingSummary(response.data.summary);
+      }
+    } catch {
+      // Summary is optional; table pagination still works without it.
+    }
+  }
+
+  useEffect(() => {
+    fetchIncomingSummary();
+  }, []);
+
   return (
     <UmkmLayout
       title="Inbox Kemitraan"
@@ -280,9 +308,9 @@ export default function PartnershipMitraInboxPage() {
           </div>
 
           <article className="partnership-inbox-highlight-card">
-            <strong>{unreadCount}</strong>
-            <span>Belum Dibaca</span>
-            <small>dari {totalItems} total pengajuan</small>
+            <strong>{kpiTotal}</strong>
+            <span>Total Masuk</span>
+            <small>{kpiPending} perlu ditinjau</small>
           </article>
         </section>
 
@@ -291,7 +319,7 @@ export default function PartnershipMitraInboxPage() {
             <Clock3 size={22} />
             <div>
               <span>Menunggu</span>
-              <strong>{pendingCount}</strong>
+              <strong>{kpiPending}</strong>
               <small>Perlu ditinjau</small>
             </div>
           </article>
@@ -300,7 +328,7 @@ export default function PartnershipMitraInboxPage() {
             <CheckCircle2 size={22} />
             <div>
               <span>Disetujui / Aktif</span>
-              <strong>{approvedCount}</strong>
+              <strong>{kpiApproved}</strong>
               <small>Proses lanjut</small>
             </div>
           </article>
@@ -309,7 +337,7 @@ export default function PartnershipMitraInboxPage() {
             <XCircle size={22} />
             <div>
               <span>Ditolak</span>
-              <strong>{rejectedCount}</strong>
+              <strong>{kpiRejected}</strong>
               <small>Tidak disetujui</small>
             </div>
           </article>
@@ -317,9 +345,9 @@ export default function PartnershipMitraInboxPage() {
           <article className="partnership-inbox-metric-card total">
             <Inbox size={22} />
             <div>
-              <span>Total Masuk</span>
-              <strong>{totalItems}</strong>
-              <small>Seluruh pengajuan</small>
+              <span>Belum Dibaca</span>
+              <strong>{visibleUnreadCount}</strong>
+              <small>dari {visibleRequestCount} ditampilkan</small>
             </div>
           </article>
         </section>

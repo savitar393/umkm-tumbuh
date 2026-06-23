@@ -53,6 +53,16 @@ export interface IncomingPartnershipsResponse {
   };
 }
 
+export interface IncomingPartnershipSummaryResponse {
+  summary: {
+    menunggu: number;
+    disetujui: number;
+    ditolak: number;
+    dibatalkan?: number;
+    total: number;
+  };
+}
+
 export interface PartnerListItem {
   id: string;
   name: string;
@@ -143,6 +153,12 @@ export const partnershipsApi = {
     
     const url = `/partnerships/incoming${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
     return httpPartnerships.get<SuccessResponse<IncomingPartnershipsResponse>>(url);
+  },
+
+  getIncomingSummary: async (): Promise<SuccessResponse<IncomingPartnershipSummaryResponse>> => {
+    return httpPartnerships.get<SuccessResponse<IncomingPartnershipSummaryResponse>>(
+      "/partnerships/incoming/summary",
+    );
   },
 
   // GET /api/v1/partnerships/{id}

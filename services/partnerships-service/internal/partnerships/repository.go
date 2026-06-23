@@ -19,6 +19,7 @@ type Repository interface {
 	UpdateContract(ctx context.Context, id string, dokumenKontrak string, signedAt time.Time) error
 	GenerateRequestCode(ctx context.Context) (string, error)
 	GetSummary(ctx context.Context, userID string) (map[string]int, error)
+	GetIncomingSummary(ctx context.Context, userID string) (map[string]int, error)
 
 	FindUMKMList(ctx context.Context, search string, filterType string, limit, offset int) ([]UMKMListItem, int, error)
 	FindMitraList(ctx context.Context, search string, filterType string, limit, offset int) ([]MitraListItem, int, error)
@@ -316,6 +317,33 @@ func (r *repository) GetSummary(ctx context.Context, userID string) (map[string]
 		var count int
 		if err := rows.Scan(&status, &count); err != nil {
 			return nil, fmt.Errorf("failed to scan summary row: %w", err)
+		}
+		summary[status] = count
+	}
+
+	return summary, nil
+}
+
+func (r *repository) GetIncomingSummary(ctx context.Context, userID string) (map[string]int, error) {
+	query := `
+		SELECT status_pengajuan_id, COUNT(*) as cnt
+		FROM partnership.transaksi_pengajuankerjasama
+		WHERE penerima_akun_id = $1
+		GROUP BY status_pengajuan_id
+	`
+
+	rows, err := r.db.Query(ctx, query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get incoming summary: %w", err)
+	}
+	defer rows.Close()
+
+	summary := make(map[string]int)
+	for rows.Next() {
+		var status string
+		var count int
+		if err := rows.Scan(&status, &count); err != nil {
+			return nil, fmt.Errorf("failed to scan incoming summary row: %w", err)
 		}
 		summary[status] = count
 	}

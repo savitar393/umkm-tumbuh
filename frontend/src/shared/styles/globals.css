@@ -9203,3 +9203,18 @@ button.danger {
 .partnership-inbox-actions button.read:hover {
   background: #dcfce7;
 }
+
+.partnership-inbox-metric-card.unread::before,
+.partnership-inbox-metric-card.unread > svg {
+  color: #1f45b6;
+  background: #1f45b6;
+}
+
+.partnership-inbox-metric-card.unread > svg {
+  background: #eff6ff;
+  color: #1f45b6;
+}
+
+.partnership-inbox-metric-card.unread {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+}

@@ -90,6 +90,11 @@ type Service interface {
 		ctx context.Context,
 		mitraID string,
 	) (*MitraDetail, error)
+
+	GetIncomingPartnershipSummary(
+		ctx context.Context,
+		userID string,
+	) (map[string]int, error)
 }
 
 type service struct {
@@ -100,6 +105,17 @@ func NewService(repo Repository) Service {
 	return &service{
 		repo: repo,
 	}
+}
+
+func (s *service) GetIncomingPartnershipSummary(
+	ctx context.Context,
+	userID string,
+) (map[string]int, error) {
+	if strings.TrimSpace(userID) == "" {
+		return nil, apperror.New(401, "user not authenticated")
+	}
+
+	return s.repo.GetIncomingSummary(ctx, userID)
 }
 
 func (s *service) ValidatePartnershipRequest(

@@ -209,6 +209,42 @@ func (h *Handler) GetPartnershipSummary(w http.ResponseWriter, r *http.Request) 
 	}, "")
 }
 
+// GetIncomingPartnershipSummary - GET /api/v1/partnerships/incoming/summary
+func (h *Handler) GetIncomingPartnershipSummary(w http.ResponseWriter, r *http.Request) {
+	userID := extractUserIDFromRequest(r)
+	if userID == "" {
+		response.Error(w, http.StatusUnauthorized, "User not authenticated", nil)
+		return
+	}
+
+	summary, err := h.service.GetIncomingPartnershipSummary(r.Context(), userID)
+	if err != nil {
+		if appErr, ok := err.(*apperror.AppError); ok {
+			response.Error(w, appErr.Code, appErr.Message, nil)
+			return
+		}
+		response.Error(w, http.StatusInternalServerError, "Failed to get incoming partnership summary", nil)
+		return
+	}
+
+	total := 0
+	for _, count := range summary {
+		total += count
+	}
+
+	kpi := map[string]int{
+		"menunggu":  summary["DIAJUKAN"] + summary["DITINJAU"],
+		"disetujui": summary["MENUNGGU_DOKUMEN_TTD"] + summary["APPROVED"] + summary["AKTIF"] + summary["SELESAI"],
+		"ditolak":   summary["DITOLAK"],
+		"dibatalkan": summary["DIBATALKAN"],
+		"total":     total,
+	}
+
+	response.Success(w, http.StatusOK, map[string]interface{}{
+		"summary": kpi,
+	}, "")
+}
+
 // GetIncomingPartnerships - GET /api/v1/partnerships/incoming
 func (h *Handler) GetIncomingPartnerships(w http.ResponseWriter, r *http.Request) {
 	userID := extractUserIDFromRequest(r)
