@@ -108,7 +108,9 @@ func (r *repository) FindByID(ctx context.Context, id string) (*PartnershipRespo
 			pr.catatan_keputusan as rejection_reason,
 			pr.dokumen_perjanjian_id as contract_document_id,
 			u1.nama_lengkap as requester_name,
-			u2.nama_lengkap as receiver_name
+			u2.nama_lengkap as receiver_name,
+			pr.created_at,
+			pr.updated_at
 		FROM partnership.transaksi_pengajuankerjasama pr
 		LEFT JOIN auth.master_akunpengguna u1 ON pr.pengaju_akun_id = u1.akun_id
 		LEFT JOIN auth.master_akunpengguna u2 ON pr.penerima_akun_id = u2.akun_id
@@ -120,7 +122,7 @@ func (r *repository) FindByID(ctx context.Context, id string) (*PartnershipRespo
 		&resp.ID, &resp.RequestCode, &resp.RequesterID, &resp.ReceiverID,
 		&resp.Status, &resp.SubmittedAt, &resp.DecidedAt,
 		&resp.ProposalDescription, &resp.RejectionReason, &resp.ContractDocumentID,
-		&resp.RequesterName, &resp.ReceiverName,
+		&resp.RequesterName, &resp.ReceiverName, &resp.CreatedAt, &resp.UpdatedAt,
 	)
 
 	if err != nil {
@@ -134,12 +136,11 @@ func (r *repository) FindByID(ctx context.Context, id string) (*PartnershipRespo
 	if err != nil {
 		return nil, err
 	}
-	resp.Attachments = attachments
-
-	resp.AttachmentFiles = make([]string, 0, len(attachments))
-	for _, attachment := range attachments {
-		resp.AttachmentFiles = append(resp.AttachmentFiles, attachment.DocumentID)
+	if attachments == nil {
+		attachments = []PartnershipAttachment{}
 	}
+
+	resp.Attachments = attachments
 
 	return &resp, nil
 }
