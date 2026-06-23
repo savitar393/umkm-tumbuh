@@ -208,6 +208,15 @@ func (s *service) CreatePartnership(
 		)
 	}
 
+	if len(req.AttachmentFiles) > 0 {
+		if err := s.repo.CreateAttachments(ctx, partnership.ID, req.AttachmentFiles); err != nil {
+			return nil, apperror.New(
+				500,
+				"failed to save partnership attachments: "+err.Error(),
+			)
+		}
+	}
+
 	return s.repo.FindByID(ctx, partnership.ID)
 }
 

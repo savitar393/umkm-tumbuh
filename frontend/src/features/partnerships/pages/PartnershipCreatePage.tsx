@@ -29,7 +29,7 @@ import type { CreatePartnershipRequest } from "../types";
 
 type FileKey = "nib_ktp" | "pdf_kemitraan" | "sertifikat";
 
-type FileState = Record<FileKey, string | null>;
+type FileState = Record<FileKey, File | null>;
 type FileErrors = Partial<Record<FileKey, string>>;
 
 type UploadCardProps = {
@@ -37,9 +37,9 @@ type UploadCardProps = {
   hint: string;
   optional?: boolean;
   icon: ReactNode;
-  value: string | null;
+  value: File | null;
   error?: string;
-  onChange: (filename: string | null, error?: string) => void;
+  onChange: (file: File | null, error?: string) => void;
 };
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -65,6 +65,7 @@ function getFileValidationError(file: File) {
 
 function UploadCard({ label, hint, optional, icon, value, error, onChange }: UploadCardProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileName = value?.name ?? null;
 
   function handleFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -79,7 +80,7 @@ function UploadCard({ label, hint, optional, icon, value, error, onChange }: Upl
       return;
     }
 
-    onChange(file.name);
+    onChange(file);
   }
 
   return (
@@ -102,7 +103,7 @@ function UploadCard({ label, hint, optional, icon, value, error, onChange }: Upl
       <div className="partnership-upload-icon">{value ? <CheckCircle2 size={26} /> : icon}</div>
 
       <strong>
-        {value || label}
+        {fileName || label}
         {optional && !value ? <span>Opsional</span> : null}
       </strong>
 
@@ -268,7 +269,7 @@ export default function PartnershipCreatePage() {
   }
 
   function handleFileChange(key: FileKey) {
-    return (filename: string | null, error?: string) => {
+    return (file: File | null, error?: string) => {
       setSubmitError("");
 
       if (error) {
@@ -277,7 +278,7 @@ export default function PartnershipCreatePage() {
         return;
       }
 
-      setFiles((current) => ({ ...current, [key]: filename }));
+      setFiles((current) => ({ ...current, [key]: file }));
       setFileErrors((current) => {
         const next = { ...current };
         delete next[key];
@@ -340,7 +341,13 @@ export default function PartnershipCreatePage() {
     setLoading(true);
 
     try {
-      const attachments = [files.nib_ktp, files.pdf_kemitraan, files.sertifikat].filter(Boolean) as string[];
+      const selectedFiles = [files.nib_ktp, files.pdf_kemitraan, files.sertifikat].filter(Boolean) as File[];
+
+      const attachments: string[] = [];
+      for (const file of selectedFiles) {
+        const documentId = await partnershipsApi.uploadDocument(file);
+        attachments.push(documentId);
+      }
 
       const payload: CreatePartnershipRequest = {
         receiver_id: formData.receiver_id,

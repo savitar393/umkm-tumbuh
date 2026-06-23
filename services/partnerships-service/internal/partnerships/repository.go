@@ -27,6 +27,9 @@ type Repository interface {
 	FindBusinessIDByAkunID(ctx context.Context, akunID string, role UserRole) (string, error)
 	FindUMKMDetail(ctx context.Context, umkmID string) (*UMKMDetail, error)
 	FindMitraDetail(ctx context.Context, mitraID string) (*MitraDetail, error)
+
+	CreateAttachments(ctx context.Context, partnershipID string, documentIDs []string) error
+	FindAttachmentsByPartnershipID(ctx context.Context, partnershipID string) ([]PartnershipAttachment, error)
 }
 
 type repository struct {
@@ -125,6 +128,17 @@ func (r *repository) FindByID(ctx context.Context, id string) (*PartnershipRespo
 			return nil, fmt.Errorf("partnership request not found")
 		}
 		return nil, fmt.Errorf("failed to find partnership request: %w", err)
+	}
+
+	attachments, err := r.FindAttachmentsByPartnershipID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	resp.Attachments = attachments
+
+	resp.AttachmentFiles = make([]string, 0, len(attachments))
+	for _, attachment := range attachments {
+		resp.AttachmentFiles = append(resp.AttachmentFiles, attachment.DocumentID)
 	}
 
 	return &resp, nil
@@ -643,4 +657,105 @@ func (r *repository) FindMitraDetail(ctx context.Context, mitraID string) (*Mitr
 	}
 
 	return &d, nil
+}
+
+func (r *repository) CreateAttachments(ctx context.Context, partnershipID string, documentIDs []string) error {
+	if len(documentIDs) == 0 {
+		return nil
+	}
+
+	for index, documentID := range documentIDs {
+		if documentID == "" {
+			continue
+		}
+
+		attachmentType := "LAINNYA"
+		switch index {
+		case 0:
+			attachmentType = "NIB_KTP"
+		case 1:
+			attachmentType = "PROPOSAL_KEMITRAAN"
+		case 2:
+			attachmentType = "SERTIFIKAT"
+		}
+
+		const query = `
+			INSERT INTO partnership.transaksi_pengajuankerjasama_lampiran (
+				pengajuan_id,
+				dokumen_id,
+				jenis_lampiran,
+				nama_file,
+				urutan,
+				created_at
+			)
+			SELECT
+				$1,
+				d.dokumen_id,
+				$2,
+				d.original_filename,
+				$3,
+				NOW()
+			FROM documents.master_dokumen d
+			WHERE d.dokumen_id = $4
+			  AND d.status = 'AKTIF'
+			ON CONFLICT (pengajuan_id, dokumen_id) DO NOTHING
+		`
+
+		result, err := r.db.Exec(ctx, query, partnershipID, attachmentType, index+1, documentID)
+		if err != nil {
+			return fmt.Errorf("failed to create partnership attachment: %w", err)
+		}
+
+		if result.RowsAffected() == 0 {
+			return fmt.Errorf("document attachment not found or inactive: %s", documentID)
+		}
+	}
+
+	return nil
+}
+
+func (r *repository) FindAttachmentsByPartnershipID(ctx context.Context, partnershipID string) ([]PartnershipAttachment, error) {
+	const query = `
+		SELECT
+			l.dokumen_id,
+			l.jenis_lampiran,
+			COALESCE(l.nama_file, ''),
+			COALESCE(d.original_filename, ''),
+			COALESCE(d.content_type, ''),
+			COALESCE(d.size_bytes, 0),
+			l.created_at
+		FROM partnership.transaksi_pengajuankerjasama_lampiran l
+		JOIN documents.master_dokumen d
+		  ON d.dokumen_id = l.dokumen_id
+		WHERE l.pengajuan_id = $1
+		  AND d.status = 'AKTIF'
+		ORDER BY l.urutan ASC, l.created_at ASC
+	`
+
+	rows, err := r.db.Query(ctx, query, partnershipID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find partnership attachments: %w", err)
+	}
+	defer rows.Close()
+
+	attachments := make([]PartnershipAttachment, 0)
+
+	for rows.Next() {
+		var item PartnershipAttachment
+		if err := rows.Scan(
+			&item.DocumentID,
+			&item.Type,
+			&item.FileName,
+			&item.OriginalFilename,
+			&item.ContentType,
+			&item.SizeBytes,
+			&item.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan partnership attachment: %w", err)
+		}
+
+		attachments = append(attachments, item)
+	}
+
+	return attachments, nil
 }

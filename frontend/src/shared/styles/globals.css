@@ -9369,3 +9369,27 @@ button.danger {
     grid-template-columns: 1fr;
   }
 }
+
+.partnership-review-document {
+  width: 100%;
+  border: 1px solid #dbe5f5;
+  background: #f8fbff;
+  cursor: pointer;
+  text-align: left;
+}
+
+.partnership-review-document span {
+  display: grid;
+  gap: 4px;
+}
+
+.partnership-review-document small {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.partnership-review-document:hover {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}

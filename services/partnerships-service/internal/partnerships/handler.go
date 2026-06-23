@@ -233,11 +233,11 @@ func (h *Handler) GetIncomingPartnershipSummary(w http.ResponseWriter, r *http.R
 	}
 
 	kpi := map[string]int{
-		"menunggu":  summary["DIAJUKAN"] + summary["DITINJAU"],
-		"disetujui": summary["MENUNGGU_DOKUMEN_TTD"] + summary["APPROVED"] + summary["AKTIF"] + summary["SELESAI"],
-		"ditolak":   summary["DITOLAK"],
+		"menunggu":   summary["DIAJUKAN"] + summary["DITINJAU"],
+		"disetujui":  summary["MENUNGGU_DOKUMEN_TTD"] + summary["APPROVED"] + summary["AKTIF"] + summary["SELESAI"],
+		"ditolak":    summary["DITOLAK"],
 		"dibatalkan": summary["DIBATALKAN"],
-		"total":     total,
+		"total":      total,
 	}
 
 	response.Success(w, http.StatusOK, map[string]interface{}{

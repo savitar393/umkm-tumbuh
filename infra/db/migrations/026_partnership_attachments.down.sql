@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS partnership.transaksi_pengajuankerjasama_lampiran;

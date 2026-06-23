@@ -41,6 +41,15 @@ const STATUS_LABELS: Record<string, string> = {
   CANCELLED: "Dibatalkan",
 };
 
+type PartnershipAttachment = {
+  document_id?: string;
+  type?: string;
+  file_name?: string;
+  original_filename?: string;
+  content_type?: string;
+  size_bytes?: number;
+};
+
 const REJECTION_REASONS = [
   { value: "tidak_sesuai_kriteria", label: "Tidak sesuai dengan kriteria kemitraan" },
   { value: "dokumen_tidak_lengkap", label: "Dokumen tidak lengkap atau tidak valid" },
@@ -269,6 +278,24 @@ function InfoItem({
   );
 }
 
+function getAttachments(data: PartnershipDetail | null): PartnershipAttachment[] {
+  const raw = data?.attachments;
+
+  if (!Array.isArray(raw)) return [];
+
+  return raw
+    .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
+    .map((item) => ({
+      document_id: typeof item.document_id === "string" ? item.document_id : "",
+      type: typeof item.type === "string" ? item.type : "",
+      file_name: typeof item.file_name === "string" ? item.file_name : "",
+      original_filename: typeof item.original_filename === "string" ? item.original_filename : "",
+      content_type: typeof item.content_type === "string" ? item.content_type : "",
+      size_bytes: typeof item.size_bytes === "number" ? item.size_bytes : 0,
+    }))
+    .filter((item) => item.document_id);
+}
+
 export default function PartnershipReviewPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -309,6 +336,19 @@ export default function PartnershipReviewPage() {
   const updatedAt = partnership?.updated_at;
 
   const parsedProposal = useMemo(() => splitProposalDescription(proposalDescription), [proposalDescription]);
+
+  const attachments = useMemo(() => getAttachments(partnership), [partnership]);
+
+  async function handleOpenAttachment(documentId: string) {
+    try {
+      const response = await partnershipsApi.getDocumentUrl(documentId);
+      if (response.success && response.data.url) {
+        window.open(response.data.url, "_blank", "noopener,noreferrer");
+      }
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "Gagal membuka dokumen.");
+    }
+  }
 
   useEffect(() => {
     if (!id) {
@@ -486,26 +526,37 @@ export default function PartnershipReviewPage() {
                     Dokumen Pendukung
                   </h2>
 
-                  <p className="partnership-review-note">
-                    Saat ini lampiran dari form pengajuan masih berupa referensi nama file sesuai implementasi awal
-                    branch partnership. Integrasi preview/unduh dokumen asli dapat disambungkan setelah document-service stabil.
-                  </p>
-
-                  <div className="partnership-review-document-grid">
-                    {Array.isArray(partnership.attachment_files) && partnership.attachment_files.length > 0 ? (
-                      partnership.attachment_files.map((item, index) => (
-                        <div className="partnership-review-document" key={`${String(item)}-${index}`}>
+                  {attachments.length > 0 ? (
+                    <div className="partnership-review-document-grid">
+                      {attachments.map((item) => (
+                        <button
+                          type="button"
+                          className="partnership-review-document"
+                          key={item.document_id}
+                          onClick={() => item.document_id && handleOpenAttachment(item.document_id)}
+                        >
                           <ScrollText size={18} />
-                          <strong>{String(item)}</strong>
+                          <span>
+                            <strong>{item.original_filename || item.file_name || item.document_id}</strong>
+                            <small>{item.type || "Dokumen pendukung"}</small>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <>
+                      <p className="partnership-review-note">
+                        Belum ada dokumen pendukung yang tersimpan untuk pengajuan ini.
+                      </p>
+
+                      <div className="partnership-review-document-grid">
+                        <div className="partnership-review-document empty">
+                          <ScrollText size={18} />
+                          <strong>Belum ada lampiran terbaca</strong>
                         </div>
-                      ))
-                    ) : (
-                      <div className="partnership-review-document empty">
-                        <ScrollText size={18} />
-                        <strong>Belum ada lampiran terbaca</strong>
                       </div>
-                    )}
-                  </div>
+                    </>
+                  )}
                 </article>
               </div>
 

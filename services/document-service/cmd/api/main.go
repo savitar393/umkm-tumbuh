@@ -781,9 +781,18 @@ func (a *app) canAccessDocument(ctx context.Context, user currentUser, document 
 	const query = `
 		SELECT EXISTS (
 			SELECT 1
-			FROM partnership.transaksi_pengajuankerjasama
-			WHERE dokumen_perjanjian_id = $1
-			  AND (pengaju_akun_id = $2 OR penerima_akun_id = $2)
+			FROM partnership.transaksi_pengajuankerjasama pk
+			WHERE pk.dokumen_perjanjian_id = $1
+			AND (pk.pengaju_akun_id = $2 OR pk.penerima_akun_id = $2)
+
+			UNION
+
+			SELECT 1
+			FROM partnership.transaksi_pengajuankerjasama_lampiran l
+			JOIN partnership.transaksi_pengajuankerjasama pk
+			ON pk.pengajuan_id = l.pengajuan_id
+			WHERE l.dokumen_id = $1
+			AND (pk.pengaju_akun_id = $2 OR pk.penerima_akun_id = $2)
 		)
 	`
 
