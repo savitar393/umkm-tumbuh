@@ -88,6 +88,7 @@ export interface UMKMDetail {
   address: string;
   products: string;
   year_established: number;
+  social_media_marketplace?: string | null;
 }
 
 export interface MitraDetail {

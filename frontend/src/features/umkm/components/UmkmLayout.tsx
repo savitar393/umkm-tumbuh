@@ -13,6 +13,14 @@ export default function UmkmLayout({ children, title, subtitle }: UmkmLayoutProp
   const user = getCurrentUser();
   const [collapsed, setCollapsed] = useState(false);
 
+  const breadcrumb = user?.role === "MITRA" ? "Informasi Mitra" : "Informasi UMKM";
+  const roleLabel =
+    user?.role === "UMKM"
+      ? "Owner UMKM"
+      : user?.role === "MITRA"
+        ? "Mitra"
+        : user?.role ?? "User";
+
   return (
     <div className={`umkm-shell ${collapsed ? "sidebar-collapsed" : ""}`}>
       <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />
@@ -20,7 +28,7 @@ export default function UmkmLayout({ children, title, subtitle }: UmkmLayoutProp
       <section className="umkm-main">
         <header className="umkm-topbar">
           <div>
-            <div className="umkm-breadcrumb">Informasi UMKM</div>
+            <div className="umkm-breadcrumb">{breadcrumb}</div>
             {title ? <h1>{title}</h1> : null}
             {subtitle ? <p>{subtitle}</p> : null}
           </div>
@@ -33,7 +41,7 @@ export default function UmkmLayout({ children, title, subtitle }: UmkmLayoutProp
             <div className="umkm-user-chip">
               <div>
                 <strong>{user?.full_name ?? "User"}</strong>
-                <span>{user?.role === "UMKM" ? "Owner UMKM" : user?.role}</span>
+                <span>{roleLabel}</span>
               </div>
               <div className="umkm-avatar">
                 {user?.full_name?.[0]?.toUpperCase() ?? "U"}

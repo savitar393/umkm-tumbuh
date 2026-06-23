@@ -2,6 +2,7 @@ import { type FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Building2, FileText, Handshake, MapPin, ShieldCheck } from "lucide-react";
 import { getCurrentUser } from "../../../shared/auth/currentUser";
+import UmkmLayout from "../../umkm/components/UmkmLayout";
 import { getProfile, updateProfile, type MitraProfile, type MitraProfilePayload } from "../api";
 import "./mitra-profile.css";
 
@@ -250,16 +251,12 @@ export default function EditMitraProfilePage() {
   }
 
   return (
-    <main className="mitra-profile-page">
-      <header className="mitra-profile-title-row">
-        <div>
-          <span className="mitra-profile-kicker">Informasi Mitra</span>
-          <h1>Edit Informasi Mitra</h1>
-          <p>Ubah data organisasi, kontak, lokasi, dan kapasitas kerja sama mitra.</p>
-        </div>
-      </header>
-
-      {pageError ? <div className="mitra-profile-error">{pageError}</div> : null}
+    <UmkmLayout
+      title="Edit Informasi Mitra"
+      subtitle="Ubah data organisasi, kontak, lokasi, dan kapasitas kerja sama mitra."
+    >
+      <main className="mitra-profile-page">
+        {pageError ? <div className="mitra-profile-error">{pageError}</div> : null}
 
       {loading ? (
         <section className="mitra-profile-card">
@@ -528,6 +525,7 @@ export default function EditMitraProfilePage() {
           </div>
         </form>
       )}
-    </main>
+      </main>
+    </UmkmLayout>
   );
 }

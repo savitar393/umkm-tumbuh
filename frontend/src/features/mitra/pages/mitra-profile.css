@@ -578,3 +578,10 @@
     min-width: 0;
   }
 }
+
+/* Mitra profile inside shared dashboard layout */
+.mitra-profile-page-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 24px;
+}

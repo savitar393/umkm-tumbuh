@@ -5566,6 +5566,7 @@ button.danger {
   line-height: 1.55;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 .partnership-card-meta {
@@ -8482,4 +8483,64 @@ button.danger {
   font-size: 15px;
   font-weight: 900;
   word-break: break-word;
+}
+
+.partnership-social-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.partnership-social-chip-list a {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid #dbe5f5;
+  border-radius: 999px;
+  background: #f8fbff;
+  color: #0f172a;
+  text-decoration: none;
+  font-weight: 900;
+}
+
+.partnership-social-chip-list a:hover {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.partnership-social-brand-icon {
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1f45b6;
+}
+
+.partnership-social-brand-icon.instagram {
+  background: #fdf2f8;
+  color: #db2777;
+}
+
+.partnership-social-brand-icon.tiktok {
+  background: #f8fafc;
+  color: #020617;
+}
+
+.partnership-social-brand-icon.shopee {
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+.partnership-social-brand-icon.tokopedia {
+  background: #ecfdf5;
+  color: #16a34a;
+}
+
+.partnership-social-brand-icon.website {
+  background: #eff6ff;
+  color: #1f45b6;
 }

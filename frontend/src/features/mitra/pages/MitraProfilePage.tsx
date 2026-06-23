@@ -14,6 +14,7 @@ import {
   // User,
 } from "lucide-react";
 import { getCurrentUser } from "../../../shared/auth/currentUser";
+import UmkmLayout from "../../umkm/components/UmkmLayout";
 import { getProfile, type MitraProfile } from "../api";
 import "./mitra-profile.css";
 
@@ -169,19 +170,17 @@ export default function MitraProfilePage() {
   }
 
   return (
-    <main className="mitra-profile-page">
-      <header className="mitra-profile-title-row">
-        <div>
-          <span className="mitra-profile-kicker">Informasi Mitra</span>
-          <h1>Informasi Mitra</h1>
-          <p>Lihat profil organisasi yang digunakan UMKM dan admin untuk menilai kapasitas kerja sama.</p>
+    <UmkmLayout
+      title="Informasi Mitra"
+      subtitle="Lihat profil organisasi yang digunakan UMKM dan admin untuk menilai kapasitas kerja sama."
+    >
+      <main className="mitra-profile-page">
+        <div className="mitra-profile-page-toolbar">
+          <Link className="mitra-profile-edit-button" to="/mitra/profile/edit">
+            <Edit3 size={18} />
+            Edit Profil
+          </Link>
         </div>
-
-        <Link className="mitra-profile-edit-button" to="/mitra/profile/edit">
-          <Edit3 size={18} />
-          Edit Profil
-        </Link>
-      </header>
 
       {saved ? (
         <div className="mitra-profile-toast">
@@ -352,6 +351,7 @@ export default function MitraProfilePage() {
           </section>
         </>
       )}
-    </main>
+      </main>
+    </UmkmLayout>
   );
 }

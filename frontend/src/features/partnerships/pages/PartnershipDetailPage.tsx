@@ -16,6 +16,11 @@ import {
 import UmkmLayout from "../../umkm/components/UmkmLayout";
 import { getCurrentUser } from "../../../shared/auth/currentUser";
 import { partnershipsApi, type MitraDetail, type UMKMDetail } from "../api";
+import { Icon } from "@iconify/react";
+import {
+  hasAnySocialMedia,
+  parseSocialMediaValue,
+} from "../../../shared/utils/socialMedia";
 
 type PartnershipProfileDetail = UMKMDetail & MitraDetail;
 
@@ -137,6 +142,86 @@ function InfoItem({
         <span>{label}</span>
         <strong>{value || "Belum tersedia"}</strong>
       </div>
+    </div>
+  );
+}
+
+type SocialPlatform = "instagram" | "tiktok" | "shopee" | "tokopedia" | "website";
+
+const socialIconMap: Record<SocialPlatform, string> = {
+  instagram: "simple-icons:instagram",
+  tiktok: "simple-icons:tiktok",
+  shopee: "simple-icons:shopee",
+  tokopedia: "logos:tokopedia",
+  website: "lucide:globe",
+};
+
+function withoutAt(value: string) {
+  return value.trim().replace(/^@+/, "");
+}
+
+function normalizeWebsiteUrl(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}
+
+function getSocialUrl(platform: SocialPlatform, label: string) {
+  const value = label.trim();
+  if (!value) return "";
+
+  switch (platform) {
+    case "instagram":
+      return `https://www.instagram.com/${withoutAt(value)}`;
+    case "tiktok":
+      return `https://www.tiktok.com/@${withoutAt(value)}`;
+    case "shopee":
+      return `https://shopee.co.id/search?keyword=${encodeURIComponent(value)}`;
+    case "tokopedia":
+      return `https://www.tokopedia.com/search?st=shop&q=${encodeURIComponent(value)}`;
+    case "website":
+      return normalizeWebsiteUrl(value);
+    default:
+      return "";
+  }
+}
+
+function SocialBrandIcon({ platform }: { platform: SocialPlatform }) {
+  return (
+    <span className={`partnership-social-brand-icon ${platform}`}>
+      <Icon icon={socialIconMap[platform]} width={16} height={16} />
+    </span>
+  );
+}
+
+function SocialProfileLinks({ value }: { value?: string | null }) {
+  const socialLinks = parseSocialMediaValue(value);
+
+  if (!hasAnySocialMedia(socialLinks)) return null;
+
+  const items = [
+    socialLinks.instagram ? { platform: "instagram" as const, label: socialLinks.instagram } : null,
+    socialLinks.tiktok ? { platform: "tiktok" as const, label: socialLinks.tiktok } : null,
+    socialLinks.shopee ? { platform: "shopee" as const, label: socialLinks.shopee } : null,
+    socialLinks.tokopedia ? { platform: "tokopedia" as const, label: socialLinks.tokopedia } : null,
+    socialLinks.website ? { platform: "website" as const, label: socialLinks.website } : null,
+  ].filter(Boolean) as Array<{ platform: SocialPlatform; label: string }>;
+
+  return (
+    <div className="partnership-social-chip-list">
+      {items.map((item) => (
+        <a
+          key={`${item.platform}-${item.label}`}
+          href={getSocialUrl(item.platform, item.label)}
+          target="_blank"
+          rel="noreferrer"
+          title={item.label}
+        >
+          <SocialBrandIcon platform={item.platform} />
+          <strong>{item.label}</strong>
+        </a>
+      ))}
     </div>
   );
 }
@@ -293,6 +378,13 @@ export default function PartnershipDetailPage() {
                       : `Deskripsi ${profileKind.toLowerCase()} belum tersedia.`}
                   </p>
                 </article>
+
+                {"social_media_marketplace" in data && hasValue(data.social_media_marketplace) ? (
+                  <article className="partnership-detail-card">
+                    <h2>Media Sosial / Marketplace</h2>
+                    <SocialProfileLinks value={data.social_media_marketplace} />
+                  </article>
+                ) : null}
 
                 <article className="partnership-detail-card">
                   <h2>Informasi Profil</h2>
