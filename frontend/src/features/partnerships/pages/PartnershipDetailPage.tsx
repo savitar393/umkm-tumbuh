@@ -380,6 +380,11 @@ export default function PartnershipDetailPage() {
                     Terverifikasi
                   </span>
                 </div>
+                {"social_media_marketplace" in data && hasValue(data.social_media_marketplace) ? (
+                  <div className="partnership-detail-hero-social">
+                    <SocialProfileLinks value={data.social_media_marketplace} />
+                  </div>
+                ) : null}
               </div>
             </section>
 
@@ -393,13 +398,6 @@ export default function PartnershipDetailPage() {
                       : `Deskripsi ${profileKind.toLowerCase()} belum tersedia.`}
                   </p>
                 </article>
-
-                {"social_media_marketplace" in data && hasValue(data.social_media_marketplace) ? (
-                  <article className="partnership-detail-card">
-                    <h2>Media Sosial / Marketplace</h2>
-                    <SocialProfileLinks value={data.social_media_marketplace} />
-                  </article>
-                ) : null}
 
                 <article className="partnership-detail-card">
                   <h2>Informasi Profil</h2>

@@ -8581,3 +8581,31 @@ button.danger {
   width: 13px;
   height: 13px;
 }
+
+/* Social links inside partnership profile hero */
+.partnership-detail-hero-social {
+  margin-top: 14px;
+}
+
+.partnership-detail-hero-social .partnership-social-chip-list {
+  gap: 8px;
+}
+
+.partnership-detail-hero-social .partnership-social-chip-list a {
+  min-height: 30px;
+  max-width: 190px;
+  padding: 0 10px;
+  font-size: 12px;
+  background: rgba(248, 251, 255, 0.92);
+}
+
+.partnership-detail-hero-social .partnership-social-brand-icon {
+  width: 20px;
+  height: 20px;
+  flex-basis: 20px;
+}
+
+.partnership-detail-hero-social .partnership-social-brand-icon svg {
+  width: 12px;
+  height: 12px;
+}
