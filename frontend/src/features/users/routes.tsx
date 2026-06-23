@@ -1,7 +1,6 @@
 import type { RouteObject } from "react-router-dom";
 import ProfilePage from "./pages/ProfilePage";
 import ProfileEditPage from "./pages/ProfileEditPage";
-import MitraProfilePage from "./pages/MitraProfilePage";
 import SettingsPage from "./pages/SettingsPage";
 
 export const userRoutes: RouteObject[] = [
@@ -19,9 +18,4 @@ export const userRoutes: RouteObject[] = [
   },
 ];
 
-export const mitraUserRoutes: RouteObject[] = [
-  {
-    path: "profile",
-    element: <MitraProfilePage />,
-  },
-];
+export const mitraUserRoutes: RouteObject[] = [];

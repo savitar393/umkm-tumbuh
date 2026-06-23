@@ -51,8 +51,9 @@ const routes: RouteObject[] = [
       ...mitraPartnershipRoutes,
       ...documentRoutes,
       ...notificationRoutes,
-      { path: "profile", element: <EditMitraProfilePage /> },
-      { path: "profile/view", element: <MitraProfilePage /> },
+      { path: "profile", element: <MitraProfilePage /> },
+      { path: "profile/edit", element: <EditMitraProfilePage /> },
+      { path: "profile/view", element: <Navigate to="/mitra/profile" replace /> },
     ],
   },
   {

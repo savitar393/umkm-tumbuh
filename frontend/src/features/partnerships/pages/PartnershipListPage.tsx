@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, Building2, Handshake, MapPin, Search, UsersRound } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import UmkmLayout from "../../umkm/components/UmkmLayout";
 import { getCurrentUser } from "../../../shared/auth/currentUser";
 import { partnershipsApi, type PartnerListItem } from "../api";
@@ -89,15 +89,26 @@ function getPageRange(currentPage: number, totalPages: number) {
 
 export default function PartnershipListPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const user = getCurrentUser();
 
   const isMitra = user?.role === "MITRA";
   const basePath = getBasePath(user?.role);
   const categories = isMitra ? UMKM_TYPES : MITRA_TYPES;
 
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get("q") ?? "");
+
+  const [selectedCategory, setSelectedCategory] = useState(() => {
+    const category = searchParams.get("type") ?? "all";
+    return categories.includes(category) ? category : "all";
+  });
+
+  const [currentPage, setCurrentPage] = useState(() => {
+    const page = Number(searchParams.get("page") ?? "1");
+    return Number.isFinite(page) && page > 0 ? page : 1;
+  });
+  
   const [totalItems, setTotalItems] = useState(0);
   const [partnerList, setPartnerList] = useState<PartnerListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -111,6 +122,16 @@ export default function PartnershipListPage() {
   const targetLabel = isMitra ? "UMKM" : "Mitra";
   const totalPages = Math.max(1, Math.ceil(totalItems / ITEMS_PER_PAGE));
   const visibleRange = useMemo(() => getPageRange(currentPage, totalPages), [currentPage, totalPages]);
+
+  useEffect(() => {
+    const nextParams = new URLSearchParams();
+
+    if (searchTerm.trim()) nextParams.set("q", searchTerm.trim());
+    if (selectedCategory !== "all") nextParams.set("type", selectedCategory);
+    if (currentPage > 1) nextParams.set("page", String(currentPage));
+
+    setSearchParams(nextParams, { replace: true });
+  }, [searchTerm, selectedCategory, currentPage, setSearchParams]);
 
   useEffect(() => {
     let ignore = false;
@@ -288,7 +309,13 @@ export default function PartnershipListPage() {
                     </div>
                   ) : null}
 
-                  <button type="button" onClick={() => navigate(`${basePath}/${partner.id}`)}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const returnTo = `${location.pathname}${location.search}`;
+                      navigate(`${basePath}/${partner.id}?returnTo=${encodeURIComponent(returnTo)}`);
+                    }}
+                  >
                     Lihat Profil
                     <ArrowRight size={16} />
                   </button>
