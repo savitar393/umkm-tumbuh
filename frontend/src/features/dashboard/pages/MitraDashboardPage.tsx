@@ -116,7 +116,6 @@ export default function MitraDashboardPage() {
 
   const [periode, setPeriode] = useState("3");
   const [tahun, setTahun] = useState(String(new Date().getFullYear()));
-  const [trendRange, setTrendRange] = useState<7 | 14 | 30 | 90>(7);
   const [page, setPage] = useState(0);
 
   const searchRef = useRef<HTMLDivElement>(null);
@@ -206,7 +205,7 @@ export default function MitraDashboardPage() {
   const labaHarian: LabaHarianItem[] = dashboard?.laba_harian ?? [];
   const totalPages = Math.max(1, Math.ceil(labaHarian.length / PAGE_SIZE));
   const pageData = labaHarian.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
-  const trenData = (dashboard?.tren_mingguan ?? []).slice(-trendRange);
+  const trenData = dashboard?.tren_mingguan ?? [];
 
   const filteredUmkm = useMemo(() => {
     const keyword = searchText.trim().toLowerCase();
@@ -511,18 +510,8 @@ export default function MitraDashboardPage() {
                     <div className="mitra-dashboard-card-header">
                       <div>
                         <span>Tren Penjualan</span>
-                        <h2>Pergerakan Laba</h2>
+                        <h2>Pergerakan Laba Periode Ini</h2>
                       </div>
-
-                      <select
-                        value={trendRange}
-                        onChange={(event) => setTrendRange(Number(event.target.value) as 7 | 14 | 30 | 90)}
-                      >
-                        <option value={7}>7 Hari</option>
-                        <option value={14}>14 Hari</option>
-                        <option value={30}>30 Hari</option>
-                        <option value={90}>Kuartal</option>
-                      </select>
                     </div>
 
                     {trenData.length === 0 ? (
