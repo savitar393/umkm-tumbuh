@@ -154,6 +154,101 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+function getStatusMeta(status: string) {
+  const normalized = status.toUpperCase();
+  const label = getStatusLabel(status);
+  const tone = getStatusClass(status);
+
+  if (["SUBMITTED", "DIAJUKAN", "DRAFT"].includes(normalized)) {
+    return {
+      tone,
+      label,
+      description: "Pengajuan sudah dikirim dan menunggu pihak tujuan meninjau detail proposal.",
+      nextStep: "Pihak tujuan dapat menyetujui atau menolak pengajuan ini.",
+    };
+  }
+
+  if (["REVIEWED", "DITINJAU"].includes(normalized)) {
+    return {
+      tone,
+      label,
+      description: "Pengajuan sedang dalam proses peninjauan oleh pihak tujuan.",
+      nextStep: "Tunggu keputusan akhir atau lanjutkan proses persetujuan bila Anda pihak tujuan.",
+    };
+  }
+
+  if (["WAITING_DOCUMENT", "MENUNGGU_DOKUMEN_TTD", "APPROVED"].includes(normalized)) {
+    return {
+      tone,
+      label,
+      description: "Pengajuan telah disetujui awal dan membutuhkan kontrak yang sudah ditandatangani.",
+      nextStep: "Unggah kontrak final untuk mengaktifkan kemitraan.",
+    };
+  }
+
+  if (["ACTIVE", "AKTIF"].includes(normalized)) {
+    return {
+      tone,
+      label,
+      description: "Pengajuan telah disetujui dan kerja sama sudah aktif.",
+      nextStep: "Kemitraan dapat dilanjutkan melalui monitoring dan aktivitas kerja sama.",
+    };
+  }
+
+  if (["COMPLETED", "SELESAI"].includes(normalized)) {
+    return {
+      tone,
+      label,
+      description: "Kerja sama pada pengajuan ini sudah selesai.",
+      nextStep: "Riwayat pengajuan tetap dapat dilihat sebagai arsip.",
+    };
+  }
+
+  if (["REJECTED", "DITOLAK"].includes(normalized)) {
+    return {
+      tone,
+      label,
+      description: "Pengajuan tidak disetujui oleh pihak tujuan.",
+      nextStep: "Pengaju dapat memperbaiki proposal atau mengajukan kerja sama lain.",
+    };
+  }
+
+  if (["CANCELLED", "DIBATALKAN"].includes(normalized)) {
+    return {
+      tone,
+      label,
+      description: "Pengajuan ini sudah dibatalkan dan tidak lagi diproses.",
+      nextStep: "Buat pengajuan baru bila kerja sama masih ingin dilanjutkan.",
+    };
+  }
+
+  return {
+    tone: "default",
+    label,
+    description: "Status pengajuan belum dikenali oleh sistem.",
+    nextStep: "Periksa kembali detail pengajuan.",
+  };
+}
+
+// function StatusTimeline({ progress }: { progress: number }) {
+//   const steps = ["Dikirim", "Ditinjau", "Dokumen", "Keputusan"];
+
+//   return (
+//     <div className="partnership-status-timeline">
+//       {steps.map((step, index) => {
+//         const active = index + 1 <= progress;
+
+//         return (
+//           <div className={active ? "active" : ""} key={step}>
+//             <span>{active ? <CheckCircle2 size={13} /> : index + 1}</span>
+//             <strong>{step}</strong>
+//           </div>
+//         );
+//       })}
+//     </div>
+//   );
+// }
+
 function InfoItem({
   icon,
   label,
@@ -193,6 +288,7 @@ export default function PartnershipReviewPage() {
   const [submitting, setSubmitting] = useState(false);
 
   const status = getText(partnership, ["status", "statusPengajuan", "status_pengajuan"], "");
+  const statusMeta = getStatusMeta(status);
   const requesterID = getOptionalText(partnership, ["requester_id", "requesterID", "pengaju_akun_id"]);
   const receiverID = getOptionalText(partnership, ["receiver_id", "receiverID", "penerima_akun_id"]);
   const isReceiver = Boolean(user?.id && receiverID && user.id === receiverID);
@@ -413,14 +509,25 @@ export default function PartnershipReviewPage() {
                 </article>
               </div>
 
-              <aside className="partnership-review-action-panel">
-                <div className="partnership-action-panel__header">
-                  <ShieldCheck size={24} />
+              <aside className={`partnership-review-action-panel status-${statusMeta.tone}`}>
+                <div className="partnership-status-card-header">
+                  <div className="partnership-status-card-icon">
+                    {statusMeta.tone === "active" ? (
+                      <CheckCircle2 size={24} />
+                    ) : statusMeta.tone === "rejected" || statusMeta.tone === "cancelled" ? (
+                      <XCircle size={24} />
+                    ) : (
+                      <ShieldCheck size={24} />
+                    )}
+                  </div>
+
                   <div>
                     <span>Status Pengajuan</span>
-                    <strong>{getStatusLabel(status)}</strong>
+                    <strong>{statusMeta.label}</strong>
                   </div>
                 </div>
+
+                <p className="partnership-status-description">{statusMeta.description}</p>
 
                 <div className="partnership-action-summary">
                   <div>
@@ -439,6 +546,11 @@ export default function PartnershipReviewPage() {
                     <span>ID</span>
                     <strong>#{requestCode}</strong>
                   </div>
+                </div>
+
+                <div className="partnership-status-next-step">
+                  <ClipboardCheck size={17} />
+                  <p>{statusMeta.nextStep}</p>
                 </div>
 
                 {isReceiver && canReceiverReview(status) ? (
