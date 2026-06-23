@@ -24,8 +24,19 @@ const PROVINSI_LIST = [
 ];
 
 const MONTHS = [
-  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+  { label: "Semua Bulan", value: -1 },
+  { label: "Januari", value: 0 },
+  { label: "Februari", value: 1 },
+  { label: "Maret", value: 2 },
+  { label: "April", value: 3 },
+  { label: "Mei", value: 4 },
+  { label: "Juni", value: 5 },
+  { label: "Juli", value: 6 },
+  { label: "Agustus", value: 7 },
+  { label: "September", value: 8 },
+  { label: "Oktober", value: 9 },
+  { label: "November", value: 10 },
+  { label: "Desember", value: 11 },
 ];
 
 const YEARS = [2026, 2025, 2024];
@@ -44,52 +55,60 @@ function formatNumber(value: number): string {
 }
 
 export default function AdminDashboardPage() {
-  const now = new Date();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   // Filter state
   const [provinsi, setProvinsi] = useState("Seluruh Indonesia");
-  const [bulan, setBulan] = useState<number | "all">("all");
-  const [tahun, setTahun] = useState(2025);
+  const [bulan, setBulan] = useState(-1);
+  const [tahun, setTahun] = useState(new Date().getFullYear());
   const [statusUmkm, setStatusUmkm] = useState("Semua Status");
 
-  function buildQueryString() {
+  function buildFilterParams() {
     const params = new URLSearchParams();
     if (provinsi !== "Seluruh Indonesia") params.set("provinsi", provinsi);
-    if (bulan !== "all") {
-      const monthStr = `${tahun}-${String((bulan as number) + 1).padStart(2, "0")}`;
+    if (bulan >= 0) {
+      const monthStr = `${tahun}-${String(bulan + 1).padStart(2, "0")}`;
       params.set("bulan", monthStr);
     }
     params.set("tahun", String(tahun));
     if (statusUmkm !== "Semua Status") params.set("status_umkm", statusUmkm);
-    return params.toString() ? `?${params.toString()}` : "";
+    return params;
   }
 
   function fetchDashboard() {
     setLoading(true);
     setError("");
 
-    getDashboard(buildQueryString())
-      .then((result) => { setData(result); setError(""); })
-      .catch((err) => { setError(err instanceof Error ? err.message : "Gagal memuat data dashboard"); })
+    const params = buildFilterParams();
+    const qs = params.toString() ? `?${params.toString()}` : "";
+
+    getDashboard(qs)
+      .then((result) => {
+        setData(result);
+        setError("");
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "Gagal memuat data dashboard");
+      })
       .finally(() => setLoading(false));
   }
 
   function resetFilters() {
     setProvinsi("Seluruh Indonesia");
-    setBulan("all");
-    setTahun(2025);
+    setBulan(-1);
+    setTahun(new Date().getFullYear());
     setStatusUmkm("Semua Status");
     fetchDashboard();
   }
 
   useEffect(() => {
     let ignore = false;
-    setLoading(true);
+    const params = buildFilterParams();
+    const qs = params.toString() ? `?${params.toString()}` : "";
 
-    getDashboard(buildQueryString())
+    getDashboard(qs)
       .then((result) => { if (!ignore) { setData(result); setError(""); } })
       .catch((err) => { if (!ignore) setError(err instanceof Error ? err.message : "Gagal memuat data dashboard"); })
       .finally(() => { if (!ignore) setLoading(false); });
@@ -132,13 +151,9 @@ export default function AdminDashboardPage() {
         </div>
         <div className="filter-group">
           <label className="filter-label">BULAN</label>
-          <select className="filter-select" value={bulan} onChange={(e) => {
-            const val = e.target.value;
-            setBulan(val === "all" ? "all" : Number(val));
-          }}>
-            <option value="all">Semua Bulan</option>
-            {MONTHS.map((m, i) => (
-              <option key={i} value={i}>{m}</option>
+          <select className="filter-select" value={bulan} onChange={(e) => setBulan(Number(e.target.value))}>
+            {MONTHS.map((m) => (
+              <option key={m.value} value={m.value}>{m.label}</option>
             ))}
           </select>
         </div>

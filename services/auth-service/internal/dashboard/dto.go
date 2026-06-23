@@ -7,8 +7,8 @@ type DashboardFilter struct {
 	Provinsi   string // kosong = semua provinsi
 	StatusUMKM string // kosong = semua status
 	Days       string // jumlah hari untuk tren, default "180"
-	StartDate  string // format YYYY-MM-DD, kosong = semua tanggal
-	EndDate    string // format YYYY-MM-DD, kosong = semua tanggal
+	Bulan      string // format YYYY-MM, kosong = semua bulan
+	Tahun      string // format YYYY, kosong = semua tahun
 }
 
 // SummaryResponse — KPI cards utama dashboard nasional

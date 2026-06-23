@@ -3,6 +3,7 @@ package dashboard
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -66,7 +67,7 @@ func (r *Repository) GetOmzetSummary(ctx context.Context, umkmID string) (omzetH
 			COALESCE(MAX(CASE WHEN rn = 1 THEN laba   END), 0) AS hari_ini,
 			COALESCE(MAX(CASE WHEN rn = 2 THEN laba   END), 0) AS kemarin,
 			COALESCE(MAX(CASE WHEN rn = 1 THEN produk END), 0) AS item,
-			COALESCE(MAX(CASE WHEN rn = 1 THEN tgl::text END), '') AS tgl_terkini
+			COALESCE(MAX(CASE WHEN rn = 1 THEN TO_CHAR(tgl, 'YYYY-MM-DD') END), '') AS tgl_terkini
 		FROM ranked
 		WHERE rn <= 2
 	`, umkmID).Scan(&omzetHariIni, &omzetKemarin, &totalItem, &tglTerkini)
@@ -75,12 +76,13 @@ func (r *Repository) GetOmzetSummary(ctx context.Context, umkmID string) (omzetH
 
 // GetLabaHarian — data laba per hari dalam rentang tanggal
 func (r *Repository) GetLabaHarian(ctx context.Context, umkmID, dateFrom, dateTo string) ([]LabaHarianItem, error) {
+		log.Printf("[DEBUG] GetLabaHarian umkmID=%s dateFrom=%s dateTo=%s", umkmID, dateFrom, dateTo)
 	rows, err := r.DB.Query(ctx, `
 		SELECT
-			created_at::date::text                        AS tanggal,
-			TO_CHAR(MIN(created_at), 'Day, DD Mon YYYY') AS nama_hari,
-			SUM(laba_harian)::float8                      AS laba_bersih,
-			SUM(jumlah_produk)::float8                    AS jumlah_produk
+			TO_CHAR(created_at::date, 'YYYY-MM-DD')       AS tanggal,
+			TO_CHAR(created_at::date, 'Day, DD Mon YYYY') AS nama_hari,
+			COALESCE(SUM(laba_harian), 0)::float8         AS laba_bersih,
+			COALESCE(SUM(jumlah_produk), 0)::bigint       AS jumlah_produk
 		FROM dashboard.transaksi_monitoringperkembangan
 		WHERE umkm_id = $1
 		  AND created_at::date >= $2::date
@@ -89,6 +91,7 @@ func (r *Repository) GetLabaHarian(ctx context.Context, umkmID, dateFrom, dateTo
 		ORDER BY tanggal DESC
 	`, umkmID, dateFrom, dateTo)
 	if err != nil {
+		log.Printf("[DEBUG] GetLabaHarian query error: %v", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -97,10 +100,12 @@ func (r *Repository) GetLabaHarian(ctx context.Context, umkmID, dateFrom, dateTo
 	for rows.Next() {
 		var item LabaHarianItem
 		if err := rows.Scan(&item.Tanggal, &item.NamaHari, &item.LabaBersih, &item.JumlahProduk); err != nil {
+			log.Printf("[DEBUG] GetLabaHarian scan error: %v", err)
 			return nil, err
 		}
 		result = append(result, item)
 	}
+	log.Printf("[DEBUG] GetLabaHarian returning %d rows", len(result))
 	return result, rows.Err()
 }
 
@@ -114,8 +119,8 @@ func (r *Repository) GetTrenMingguan(ctx context.Context, umkmID string, days in
 			WHERE umkm_id = $1
 		)
 		SELECT
-			TO_CHAR(mp.created_at::date, 'Dy') AS hari,
-			SUM(mp.laba_harian)::float8         AS total_laba
+			TO_CHAR(mp.created_at::date, 'Dy')      AS hari,
+			COALESCE(SUM(mp.laba_harian), 0)::float8 AS total_laba
 		FROM dashboard.transaksi_monitoringperkembangan mp, latest
 		WHERE mp.umkm_id = $1
 		  AND mp.created_at::date > (latest.tgl_max - $2::interval)
@@ -189,6 +194,11 @@ func (r *Repository) GetDefaultDateRange(ctx context.Context, umkmID string) (mi
 		FROM dashboard.transaksi_monitoringperkembangan
 		WHERE umkm_id = $1
 	`, umkmID).Scan(&minDate, &maxDate)
+	if err != nil {
+		log.Printf("[DEBUG] GetDefaultDateRange error for umkmID=%s: %v", umkmID, err)
+	} else {
+		log.Printf("[DEBUG] GetDefaultDateRange umkmID=%s min=%s max=%s", umkmID, minDate, maxDate)
+	}
 	return
 }
 

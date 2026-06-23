@@ -8,13 +8,17 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/savitar393/umkm-tumbuh/services/user-service/internal/adminprofiles"
 	"github.com/savitar393/umkm-tumbuh/services/user-service/internal/dashboard"
+	"github.com/savitar393/umkm-tumbuh/services/user-service/internal/documents"
 	"github.com/savitar393/umkm-tumbuh/services/user-service/internal/health"
 	"github.com/savitar393/umkm-tumbuh/services/user-service/internal/middleware"
+	"github.com/savitar393/umkm-tumbuh/services/user-service/internal/products"
 	"github.com/savitar393/umkm-tumbuh/services/user-service/internal/profiles"
+	"github.com/savitar393/umkm-tumbuh/services/user-service/internal/sales"
 )
 
-func New(db *pgxpool.Pool, frontendURL string, jwtSecret string) http.Handler {
+func New(db *pgxpool.Pool, frontendURL string, jwtSecret string, uploadDir string) http.Handler {
 	r := chi.NewRouter()
 
 	r.Use(cors.Handler(cors.Options{
@@ -29,9 +33,11 @@ func New(db *pgxpool.Pool, frontendURL string, jwtSecret string) http.Handler {
 
 	healthHandler := health.NewHandler(db)
 	profileHandler := profiles.NewHandler(db)
-	dashboardRepo := dashboard.NewRepository(db)
-	dashboardSvc := dashboard.NewService(dashboardRepo)
-	dashboardHandler := dashboard.NewHandlerWithService(dashboardSvc)
+	productHandler := products.NewHandler(db)
+	salesHandler := sales.NewHandler(db)
+	dashboardHandler := dashboard.NewHandler(db)
+	adminProfileHandler := adminprofiles.NewHandler(db)
+	docHandler := documents.NewHandler(db, uploadDir)
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/health", healthHandler.ServiceHealth)
@@ -43,13 +49,50 @@ func New(db *pgxpool.Pool, frontendURL string, jwtSecret string) http.Handler {
 			r.Route("/profiles", func(r chi.Router) {
 				r.Get("/me", profileHandler.GetMe)
 				r.Put("/me", profileHandler.UpsertMe)
+				r.Get("/mitra", profileHandler.ListMitra)
+				r.Get("/umkm", profileHandler.ListUMKM)
+			})
+
+			r.Route("/products", func(r chi.Router) {
+				r.Get("/", productHandler.List)
+				r.Post("/", productHandler.Create)
+				r.Get("/{id}", productHandler.Get)
+				r.Put("/{id}", productHandler.Update)
+				r.Patch("/{id}/stock", productHandler.UpdateStock)
+				r.Delete("/{id}", productHandler.Delete)
+				r.Get("/{id}/thumbnail", productHandler.GetThumbnail)
+				r.Post("/{id}/thumbnail", productHandler.UploadThumbnail)
+				r.Patch("/{id}/thumbnail", productHandler.AttachThumbnail)
+				r.Delete("/{id}/thumbnail", productHandler.DeleteThumbnail)
+			})
+
+			r.Route("/sales", func(r chi.Router) {
+				r.Get("/", salesHandler.List)
+				r.Post("/", salesHandler.Create)
+				r.Get("/{id}", salesHandler.Get)
 			})
 
 			r.Route("/dashboard", func(r chi.Router) {
+				r.Get("/umkm/summary", dashboardHandler.UMKMSummary)
 				r.Get("/umkm", dashboardHandler.GetUMKMDashboard)
 				r.Get("/mitra", dashboardHandler.GetMitraDashboard)
 			})
+
+			r.Route("/documents", func(r chi.Router) {
+				r.Get("/", docHandler.GetDocuments)
+				r.Get("/checklist", docHandler.GetDocumentChecklist)
+				r.Get("/{docID}/view", docHandler.ViewDocument)
+				r.Get("/{docID}/download", docHandler.DownloadDocument)
+				r.Delete("/{docID}", docHandler.DeleteDocument)
+			})
 		})
+
+		r.Route("/admin", func(r chi.Router) {
+			r.Use(middleware.Auth(jwtSecret))
+			r.Get("/profiles/{userID}", adminProfileHandler.GetProfileByUserID)
+			r.Get("/users/{userID}/documents", docHandler.AdminGetUserDocuments)
+		})
+
 	})
 
 	return r

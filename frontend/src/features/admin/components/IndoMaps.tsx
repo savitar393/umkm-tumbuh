@@ -1,15 +1,11 @@
-import { useState, useEffect, useRef, useCallback } from "react";
-import {
-  geoMercator,
-  geoPath,
-  geoCentroid,
-  type GeoPermissibleObjects,
-} from "d3-geo";
+import { useState, useCallback, useMemo } from "react";
+import { ComposableMap, Geographies, Geography, ZoomableGroup } from "react-simple-maps";
+import { scaleQuantize } from "d3-scale";
+import { interpolateBlues } from "d3-scale-chromatic";
 import type { MapDataItem } from "../api";
 
 const GEO_URL = "/indonesia-provinces.geojson";
 
-// GeoJSON name (CAPS) → DB name
 const GEO_TO_DB: Record<string, string> = {
   "BALI":                       "Bali",
   "BANGKA BELITUNG":            "Kepulauan Bangka Belitung",
@@ -36,6 +32,10 @@ const GEO_TO_DB: Record<string, string> = {
   "NUSATENGGARA BARAT":         "Nusa Tenggara Barat",
   "PAPUA":                      "Papua",
   "PAPUA BARAT":                "Papua Barat",
+  "PAPUA BARAT DAYA":           "Papua Barat Daya",
+  "PAPUA PEGUNUNGAN":           "Papua Pegunungan",
+  "PAPUA SELATAN":              "Papua Selatan",
+  "PAPUA TENGAH":               "Papua Tengah",
   "RIAU":                       "Riau",
   "SULAWESI BARAT":             "Sulawesi Barat",
   "SULAWESI SELATAN":           "Sulawesi Selatan",
@@ -47,73 +47,8 @@ const GEO_TO_DB: Record<string, string> = {
   "SUMATERA UTARA":             "Sumatera Utara",
 };
 
-// Label teks di dalam provinsi
-const LABEL_MAP: Record<string, string[]> = {
-  "Aceh":                   ["ACEH"],
-  "Sumatera Utara":         ["NORTH", "SUMATERA"],
-  "Sumatera Barat":         ["WEST", "SUMATERA"],
-  "Riau":                   ["RIAU"],
-  "Kepulauan Riau":         ["RIAU", "ISLANDS"],
-  "Jambi":                  ["JAMBI"],
-  "Sumatera Selatan":       ["SOUTH", "SUMATERA"],
-  "Bengkulu":               ["BENGKULU"],
-  "Lampung":                ["LAMPUNG"],
-  "Kepulauan Bangka Belitung": ["BANGKA", "BELITUNG"],
-  "DKI Jakarta":            ["JAKARTA"],
-  "Jawa Barat":             ["WEST JAVA"],
-  "Jawa Tengah":            ["CENTRAL JAVA"],
-  "DI Yogyakarta":          ["YOGYAKARTA"],
-  "Jawa Timur":             ["EAST JAVA"],
-  "Banten":                 ["BANTEN"],
-  "Bali":                   ["BALI"],
-  "Nusa Tenggara Barat":    ["WEST NUSA", "TENGGARA"],
-  "Nusa Tenggara Timur":    ["EAST NUSA", "TENGGARA"],
-  "Kalimantan Barat":       ["WEST", "KALIMANTAN"],
-  "Kalimantan Tengah":      ["CENTRAL", "KALIMANTAN"],
-  "Kalimantan Selatan":     ["SOUTH", "KALIMANTAN"],
-  "Kalimantan Timur":       ["EAST", "KALIMANTAN"],
-  "Kalimantan Utara":       ["NORTH", "KALIMANTAN"],
-  "Sulawesi Utara":         ["NORTH", "SULAWESI"],
-  "Gorontalo":              ["GORONTALO"],
-  "Sulawesi Tengah":        ["CENTRAL", "SULAWESI"],
-  "Sulawesi Selatan":       ["SOUTH", "SULAWESI"],
-  "Sulawesi Tenggara":      ["SOUTHEAST", "SULAWESI"],
-  "Sulawesi Barat":         ["WEST", "SULAWESI"],
-  "Maluku":                 ["MALUKU"],
-  "Maluku Utara":           ["NORTH", "MALUKU"],
-  "Papua Barat":            ["WEST PAPUA"],
-  "Papua":                  ["PAPUA"],
-};
-
-const SKIP_LABEL = new Set([
-  "DKI Jakarta", "DI Yogyakarta", "Bali",
-  "Kepulauan Riau", "Kepulauan Bangka Belitung",
-  "Sulawesi Barat", "Banten",
-]);
-
-// Warna biru interpolasi
-function blueColor(ratio: number): string {
-  const stops: [number, number, number][] = [
-    [200, 228, 244],
-    [130, 186, 225],
-    [ 65, 138, 196],
-    [ 22,  84, 158],
-    [  8,  40, 105],
-  ];
-  const r = Math.min(ratio, 1);
-  const idx = r * (stops.length - 1);
-  const lo = Math.floor(idx);
-  const hi = Math.min(lo + 1, stops.length - 1);
-  const t = idx - lo;
-  const R = Math.round(stops[lo][0] + t * (stops[hi][0] - stops[lo][0]));
-  const G = Math.round(stops[lo][1] + t * (stops[hi][1] - stops[lo][1]));
-  const B = Math.round(stops[lo][2] + t * (stops[hi][2] - stops[lo][2]));
-  return `rgb(${R},${G},${B})`;
-}
-
-function labelColor(ratio: number): string {
-  return ratio > 0.38 ? "#ffffff" : "#0a2560";
-}
+const NO_DATA_FILL = "#E5E7EB";
+const NUM_COLOR_STEPS = 9;
 
 function formatRupiah(v: number): string {
   if (v >= 1_000_000_000) return `Rp ${(v / 1_000_000_000).toFixed(1)} M`;
@@ -121,59 +56,89 @@ function formatRupiah(v: number): string {
   return `Rp ${v.toLocaleString("id-ID")}`;
 }
 
-type GeoFeature = {
-  type: string;
-  properties: Record<string, string>;
-  geometry: GeoPermissibleObjects;
+type Props = { mapData: MapDataItem[] };
+
+type ProvinceSummary = {
+  totalLaba: number;
+  totalUmkm: number;
+  avgOmzet: number;
 };
 
 type TooltipState = {
   x: number; y: number;
-  provinsi: string; totalUMKM: number; totalLaba: number;
+  provinsi: string;
+  avgOmzet: number;
+  totalLaba: number;
+  totalUmkm: number;
 } | null;
 
-const W = 900;
-const H = 370;
+export default function IndoMaps({ mapData }: Props) {
+  const [tooltip, setTooltip] = useState<TooltipState>(null);
+  const [zoom, setZoom] = useState(1);
 
-type Props = { mapData: MapDataItem[] };
+  const byProvinsi = useMemo(() => {
+    const acc: Record<string, ProvinceSummary> = {};
+    for (const d of mapData) {
+      const entry = acc[d.provinsi];
+      if (entry) {
+        entry.totalLaba += d.total_laba;
+        entry.totalUmkm += d.total_umkm;
+      } else {
+        acc[d.provinsi] = {
+          totalLaba: d.total_laba,
+          totalUmkm: d.total_umkm,
+          avgOmzet: 0,
+        };
+      }
+    }
+    for (const v of Object.values(acc)) {
+      v.avgOmzet = v.totalUmkm > 0 ? v.totalLaba / v.totalUmkm : 0;
+    }
+    return acc;
+  }, [mapData]);
 
-export default function IndonesiaMap({ mapData }: Props) {
-  const [geoData,    setGeoData]    = useState<GeoFeature[]>([]);
-  const [tooltip,    setTooltip]    = useState<TooltipState>(null);
-  const [hovered,    setHovered]    = useState<string | null>(null);
-  const svgRef = useRef<SVGSVGElement>(null);
+  const maxAvg = useMemo(() => {
+    const values = Object.values(byProvinsi).map(v => v.avgOmzet).filter(v => v > 0);
+    return values.length > 0 ? Math.max(...values) : 1;
+  }, [byProvinsi]);
 
-  // Load GeoJSON sekali
-  useEffect(() => {
-    fetch(GEO_URL)
-      .then((r) => r.json())
-      .then((fc) => setGeoData(fc.features ?? []))
-      .catch(console.error);
+  const colorScale = useMemo(() => {
+    return scaleQuantize<string>()
+      .domain([0, maxAvg])
+      .range(
+        Array.from({ length: NUM_COLOR_STEPS }, (_, i) =>
+          interpolateBlues((i + 1) / NUM_COLOR_STEPS)
+        )
+      );
+  }, [maxAvg]);
+
+  const gradientStops = useMemo(() => {
+    return Array.from({ length: NUM_COLOR_STEPS }, (_, i) =>
+      interpolateBlues((i + 1) / NUM_COLOR_STEPS)
+    );
   }, []);
 
-  // Agregasi per provinsi DB
-  const byProvinsi = mapData.reduce<Record<string, { total_umkm: number; total_laba: number }>>(
-    (acc, d) => {
-      if (!acc[d.provinsi]) acc[d.provinsi] = { total_umkm: 0, total_laba: 0 };
-      acc[d.provinsi].total_umkm += d.total_umkm;
-      acc[d.provinsi].total_laba += d.total_laba;
-      return acc;
-    }, {}
-  );
-  const maxLaba = Math.max(...Object.values(byProvinsi).map((v) => v.total_laba), 1);
+  const gradientCSS = useMemo(() => {
+    const stops = gradientStops.map((c, i) => `${c} ${Math.round((i / (NUM_COLOR_STEPS - 1)) * 100)}%`);
+    return `linear-gradient(to right, ${stops.join(", ")})`;
+  }, [gradientStops]);
 
-  // Buat proyeksi Mercator — fit Indonesia ke dalam SVG
-  const projection = geoMercator()
-    .center([118, -2.5])
-    .scale(1050)
-    .translate([W / 2, H / 2]);
-
-  const pathGen = geoPath().projection(projection);
+  const legendLabels = useMemo(() => {
+    const step = maxAvg / (NUM_COLOR_STEPS - 1);
+    return Array.from({ length: NUM_COLOR_STEPS }, (_, i) =>
+      formatRupiah(Math.round(step * i))
+    );
+  }, [maxAvg]);
 
   const handleMouseEnter = useCallback(
-    (e: React.MouseEvent, dbName: string, umkm: number, laba: number) => {
-      setHovered(dbName);
-      setTooltip({ x: e.clientX, y: e.clientY, provinsi: dbName, totalUMKM: umkm, totalLaba: laba });
+    (e: React.MouseEvent, dbName: string, summary: ProvinceSummary | undefined) => {
+      setTooltip({
+        x: e.clientX, y: e.clientY,
+        provinsi: dbName,
+        avgOmzet: summary?.avgOmzet ?? 0,
+        totalLaba: summary?.totalLaba ?? 0,
+        totalUmkm: summary?.totalUmkm ?? 0,
+      });
     }, []
   );
 
@@ -182,128 +147,194 @@ export default function IndonesiaMap({ mapData }: Props) {
   }, []);
 
   const handleMouseLeave = useCallback(() => {
-    setHovered(null);
     setTooltip(null);
   }, []);
 
   return (
-    <div className="map-card-v2">
-      {/* Header */}
-      <div className="map-card-v2__header">
-        <div className="map-card-v2__title">Peta Kepadatan Omzet UMKM Nasional</div>
-        <div className="map-card-v2__sub">
-          Visualisasi kepadatan konsentrasi UMKM di seluruh wilayah Indonesia
+    <div className="map-card-v2" style={{ background: "#ffffff", borderRadius: 16, overflow: "hidden" }}>
+      <div className="map-card-v2__header" style={{ padding: "20px 24px", borderBottom: "1px solid #e2e8f0" }}>
+        <div style={{ fontSize: 18, fontWeight: 700, color: "#1e293b", marginBottom: 4 }}>
+          Peta Kepadatan Omzet UMKM Nasional
+        </div>
+        <div style={{ fontSize: 13, color: "#64748b" }}>
+          Rata-rata omzet UMKM per provinsi — dari Sabang hingga Merauke.
         </div>
       </div>
 
-      {/* Peta SVG */}
-      <div className="map-card-v2__body">
-        <svg
-          ref={svgRef}
-          viewBox={`0 0 ${W} ${H}`}
-          style={{ width: "100%", height: "auto", display: "block" }}
+      <div style={{ position: "relative", padding: 0, background: "#ffffff" }}>
+        {/* Reset Zoom Button */}
+        <button
+          onClick={() => setZoom(1)}
+          style={{
+            position: "absolute",
+            top: 16,
+            right: 16,
+            padding: "8px 16px",
+            background: "#1a3fa4",
+            color: "#fff",
+            border: "none",
+            borderRadius: 8,
+            cursor: "pointer",
+            fontSize: 13,
+            fontWeight: 600,
+            zIndex: 10,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+          }}
         >
-          {geoData.map((geo, i) => {
-            const rawName = (geo.properties?.Propinsi ?? "").trim().toUpperCase();
-            const dbName  = GEO_TO_DB[rawName] ?? rawName;
-            const data    = byProvinsi[dbName];
-            const laba    = data?.total_laba ?? 0;
-            const umkm    = data?.total_umkm ?? 0;
-            const ratio   = laba / maxLaba;
-            const isHov   = hovered === dbName;
+          Reset View
+        </button>
 
-            const d = pathGen(geo.geometry as Parameters<typeof pathGen>[0]);
-            if (!d) return null;
+        {/* THE MAP */}
+        <ComposableMap
+          projection="geoMercator"
+          projectionConfig={{
+            center: [118, -2.5],
+            scale: 3000,
+          }}
+          width={980}
+          height={520}
+          style={{ 
+            width: "100%", 
+            height: "auto", 
+            display: "block",
+            background: "#ffffff"
+          }}
+        >
+          <ZoomableGroup
+            zoom={zoom}
+            onMoveEnd={({ zoom }) => setZoom(zoom)}
+            center={[118, -2.5]}
+            minZoom={1}
+            maxZoom={8}
+          >
+            <Geographies geography={GEO_URL}>
+              {({ geographies }) => {
+                if (!geographies || geographies.length === 0) {
+                  return null;
+                }
 
-            const fill = isHov ? "#ffc933" : (laba > 0 ? blueColor(ratio) : "#d1d5db");
+                return geographies.map((geo) => {
+                  const rawName = (geo.properties?.Propinsi ?? "").trim().toUpperCase();
+                  const dbName  = GEO_TO_DB[rawName] ?? rawName;
+                  const summary = byProvinsi[dbName];
+                  const avg     = summary?.avgOmzet ?? 0;
+                  const fill    = avg > 0 ? colorScale(avg) : NO_DATA_FILL;
 
-            // Hitung centroid untuk label
-            let cx = 0, cy = 0;
-            try {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const [lon, lat] = geoCentroid(geo.geometry as any);
-              const proj = projection([lon, lat]);
-              if (proj) { cx = proj[0]; cy = proj[1]; }
-            } catch { /* skip */ }
-
-            const lines   = LABEL_MAP[dbName];
-            const showLbl = lines && !SKIP_LABEL.has(dbName) && cx > 0;
-            const fSize   = dbName === "Papua" ? 8 : 5.5;
-            const tColor  = isHov ? "#1a3a8f" : labelColor(ratio);
-            const lineH   = fSize + 1.5;
-
-            return (
-              <g key={i}>
-                <path
-                  d={d}
-                  fill={fill}
-                  stroke="#ffffff"
-                  strokeWidth={0.5}
-                  style={{ cursor: "pointer", transition: "fill 0.12s" }}
-                  onMouseEnter={(e) => handleMouseEnter(e, dbName, umkm, laba)}
-                  onMouseMove={handleMouseMove}
-                  onMouseLeave={handleMouseLeave}
-                />
-                {showLbl && lines && (
-                  <text
-                    x={cx}
-                    y={cy - ((lines.length - 1) * lineH) / 2}
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    fontSize={fSize}
-                    fontWeight={700}
-                    fill={tColor}
-                    letterSpacing="0.04em"
-                    style={{ pointerEvents: "none", userSelect: "none" }}
-                  >
-                    {lines.map((line, li) => (
-                      <tspan key={li} x={cx} dy={li === 0 ? 0 : lineH}>
-                        {line}
-                      </tspan>
-                    ))}
-                  </text>
-                )}
-              </g>
-            );
-          })}
-        </svg>
+                  return (
+                    <Geography
+                      key={geo.rsmKey || geo.properties?.kode}
+                      geography={geo}
+                      fill={fill}
+                      stroke="#ffffff"
+                      strokeWidth={0.6}
+                      style={{
+                        default: { outline: "none", transition: "all 0.2s" },
+                        hover: {
+                          fill: "#f59e0b",
+                          outline: "none",
+                          cursor: "pointer",
+                          strokeWidth: 2,
+                          stroke: "#1e293b"
+                        },
+                        pressed: { outline: "none" },
+                      }}
+                      onMouseEnter={(e) => handleMouseEnter(e as unknown as React.MouseEvent, dbName, summary)}
+                      onMouseMove={(e) => handleMouseMove(e as unknown as React.MouseEvent)}
+                      onMouseLeave={handleMouseLeave}
+                    />
+                  );
+                });
+              }}
+            </Geographies>
+          </ZoomableGroup>
+        </ComposableMap>
 
         {/* Legend */}
-        <div className="map-legend-v2">
-          <div className="map-legend-v2__label-top">VOLUME OMZET UMKM</div>
-          <div className="map-legend-v2__bar" />
-          <div className="map-legend-v2__labels">
-            <span>Rendah (Low)</span>
-            <span>Tinggi (High)</span>
+        <div style={{
+          position: "absolute",
+          bottom: 20,
+          left: 20,
+          background: "rgba(255,255,255,0.95)",
+          backdropFilter: "blur(8px)",
+          padding: 16,
+          borderRadius: 12,
+          boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
+          border: "1px solid #e2e8f0",
+          minWidth: 200,
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#334155", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>
+            Rata-Rata Omzet UMKM
+          </div>
+          <div style={{ height: 12, borderRadius: 6, background: gradientCSS, marginBottom: 8 }} />
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 600, color: "#1e293b", marginBottom: 4 }}>
+            <span>{legendLabels[0]}</span>
+            <span>{legendLabels[NUM_COLOR_STEPS - 1]}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#64748b", marginBottom: 12 }}>
+            <span>Rendah</span>
+            <span>Tinggi</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#64748b", paddingTop: 8, borderTop: "1px solid #e2e8f0" }}>
+            <span style={{ width: 12, height: 12, borderRadius: 3, background: "#E5E7EB", display: "inline-block" }} />
+            Tidak ada data
           </div>
         </div>
 
-        <div className="map-hint">🖱️ Hover provinsi untuk detail</div>
+        {/* Hint */}
+        <div style={{
+          position: "absolute",
+          bottom: 20,
+          right: 20,
+          fontSize: 11,
+          color: "#94a3b8",
+          background: "rgba(255,255,255,0.9)",
+          padding: "6px 12px",
+          borderRadius: 20,
+        }}>
+          Arahkan kursor untuk detail • Scroll untuk zoom
+        </div>
       </div>
 
       {/* Tooltip */}
       {tooltip && (
         <div
-          className="map-tooltip"
           style={{
             position: "fixed",
-            left: tooltip.x + 14,
-            top: tooltip.y - 10,
+            left: Math.min(tooltip.x + 14, (typeof window !== 'undefined' ? window.innerWidth - 280 : 800)),
+            top: Math.min(tooltip.y - 10, (typeof window !== 'undefined' ? window.innerHeight - 160 : 600)),
             pointerEvents: "none",
             zIndex: 9999,
+            background: "#1e293b",
+            color: "#ffffff",
+            padding: "14px 18px",
+            borderRadius: 12,
+            boxShadow: "0 8px 32px rgba(0,0,0,0.25)",
+            minWidth: 220,
+            fontSize: 13,
           }}
         >
-          <div className="map-tooltip__title">{tooltip.provinsi}</div>
-          <div className="map-tooltip__row">
-            <span>UMKM</span>
-            <strong>{tooltip.totalUMKM.toLocaleString("id-ID")}</strong>
+          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 10, paddingBottom: 8, borderBottom: "1px solid rgba(255,255,255,0.15)" }}>
+            {tooltip.provinsi}
           </div>
-          <div className="map-tooltip__row">
-            <span>Total Omzet</span>
-            <strong>{formatRupiah(tooltip.totalLaba)}</strong>
-          </div>
-          {tooltip.totalLaba === 0 && (
-            <div className="map-tooltip__empty">Belum ada data</div>
+          {tooltip.totalUmkm > 0 ? (
+            <>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                <span style={{ color: "#94a3b8", fontSize: 12 }}>Rata-rata Omzet</span>
+                <strong>{formatRupiah(tooltip.avgOmzet)}</strong>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                <span style={{ color: "#94a3b8", fontSize: 12 }}>Total Omzet</span>
+                <strong>{formatRupiah(tooltip.totalLaba)}</strong>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ color: "#94a3b8", fontSize: 12 }}>Total UMKM</span>
+                <strong>{tooltip.totalUmkm.toLocaleString("id-ID")}</strong>
+              </div>
+            </>
+          ) : (
+            <div style={{ color: "#94a3b8", fontStyle: "italic", fontSize: 12 }}>
+              Belum ada data untuk {tooltip.provinsi}
+            </div>
           )}
         </div>
       )}

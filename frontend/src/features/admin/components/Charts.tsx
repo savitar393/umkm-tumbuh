@@ -13,39 +13,21 @@ import type {
 
 // ─── Registration Trend ───────────────────────────────────────────────────────
 
-function getWeekOfMonth(dateStr: string): number {
-  const d = new Date(dateStr + "T00:00:00");
-  const day = d.getDate();
-  if (day <= 7) return 1;
-  if (day <= 14) return 2;
-  if (day <= 21) return 3;
-  return 4;
-}
+const EmptyChart = () => (
+  <div className="chart-empty">
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 3v18h18" /><path d="M7 16l4-8 4 4 4-6" />
+    </svg>
+    <p>Data tidak tersedia</p>
+  </div>
+);
 
 export function RegistrationTrendChart({ data }: { data: RegistrationTrendItem[] }) {
-  // Urutkan data ascending by date
-  const sorted = [...data].sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+  if (data.length === 0) return <div className="chart-card"><div className="chart-card__header"><div><div className="chart-card__title">Tren Pendaftaran UMKM Baru</div><div className="chart-card__sub">Jumlah pendaftaran tiap bulan</div></div><span className="chart-badge">+Rincian</span></div><EmptyChart /></div>;
 
-  // Kelompokkan per bulan lalu per minggu (1-4)
-  const weeklyMap = new Map<string, number>();
-  const orderMap = new Map<string, number>();
-  let idx = 0;
-  for (const d of sorted) {
-    const [y, m] = d.tanggal.split("-");
-    const week = getWeekOfMonth(d.tanggal);
-    const key = `${y}-${m}-W${week}`;
-    if (!orderMap.has(key)) orderMap.set(key, idx++);
-    weeklyMap.set(key, (weeklyMap.get(key) ?? 0) + d.total_pendaftaran);
-  }
-
-  // Urutkan berdasarkan urutan waktu
-  const sortedEntries = Array.from(orderMap.entries())
-    .sort((a, b) => a[1] - b[1])
-    .map(([key]) => key);
-
-  const chartData = sortedEntries.map((key) => ({
-    label: `M${key.slice(-1)}`,
-    total: weeklyMap.get(key) ?? 0,
+  const chartData = data.map((d) => ({
+    bulan: d.tanggal.slice(0, 7), // YYYY-MM
+    total: d.total_pendaftaran,
   }));
 
   const maxTotal = chartData.length > 0 ? Math.max(...chartData.map((d) => d.total)) : 0;
@@ -62,7 +44,7 @@ export function RegistrationTrendChart({ data }: { data: RegistrationTrendItem[]
       <ResponsiveContainer width="100%" height={200}>
         <LineChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-          <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+          <XAxis dataKey="bulan" tick={{ fontSize: 11 }} />
           <YAxis tick={{ fontSize: 12 }} />
           <Tooltip formatter={(value) => [(value as number).toLocaleString("id-ID"), "Pendaftaran"]} />
           <Line type="monotone" dataKey="total" stroke="#1f45b6" strokeWidth={2} dot={{ r: 3 }} />
@@ -94,6 +76,8 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export function StatusDonutChart({ data }: { data: StatusDistributionItem[] }) {
+  if (data.length === 0) return <div className="chart-card"><div className="chart-card__header"><div className="chart-card__title">Distribusi Status UMKM</div></div><EmptyChart /></div>;
+
   const chartData = data.map((d) => ({
     name: d.nama_status,
     value: d.total,
@@ -145,6 +129,8 @@ export function StatusDonutChart({ data }: { data: StatusDistributionItem[] }) {
 // ─── Laba / Omzet Trend ───────────────────────────────────────────────────────
 
 export function OmzetTrendChart({ data }: { data: LabaTimeseriesItem[] }) {
+  if (data.length === 0) return <div className="chart-card full-width"><div className="chart-card__header"><div><div className="chart-card__title">Tren Laba UMKM</div><div className="chart-card__sub">Total laba per bulan (dalam juta Rp)</div></div><span className="chart-badge">+Rincian</span></div><EmptyChart /></div>;
+
   const chartData = data.map((d) => ({
     bulan: d.tanggal.slice(0, 7),
     omzet: Math.round(d.total_laba / 1_000_000), // dalam juta
@@ -188,6 +174,8 @@ export function OmzetTrendChart({ data }: { data: LabaTimeseriesItem[] }) {
 // ─── Region Bar ───────────────────────────────────────────────────────────────
 
 export function RegionBarChart({ data }: { data: TopWilayahItem[] }) {
+  if (data.length === 0) return <div className="chart-card"><div className="chart-card__header"><div className="chart-card__title">Top 5 Wilayah Berdasarkan Laba</div></div><EmptyChart /></div>;
+
   const chartData = data.map((d) => ({
     wilayah: d.kabupaten_kota.length > 12 ? d.kabupaten_kota.slice(0, 12) + "…" : d.kabupaten_kota,
     laba: Math.round(d.total_laba / 1_000_000),
@@ -224,6 +212,8 @@ export function RegionBarChart({ data }: { data: TopWilayahItem[] }) {
 // ─── Category Bar ─────────────────────────────────────────────────────────────
 
 export function CategoryBarChart({ data }: { data: KategoriPerformaItem[] }) {
+  if (data.length === 0) return <div className="chart-card"><div className="chart-card__header"><div className="chart-card__title">Analisis Performa Kategori</div></div><EmptyChart /></div>;
+
   const maxLaba = data.length > 0 ? Math.max(...data.map((d) => d.total_laba)) : 1;
 
   return (

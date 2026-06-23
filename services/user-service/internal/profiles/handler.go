@@ -2,11 +2,14 @@ package profiles
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -150,6 +153,10 @@ func (h *Handler) getUMKMProfile(ctx context.Context, accountID string) (map[str
 			u.nama_umkm,
 			k.nama_kategori_usaha,
 			u.deskripsi_usaha,
+			u.tahun_berdiri,
+			u.email_bisnis::text,
+			u.jam_operasional,
+			u.media_sosial_marketplace,
 			p.nama_pelaku,
 			p.nik,
 			p.no_hp,
@@ -268,18 +275,38 @@ func (h *Handler) upsertUMKMProfile(ctx context.Context, accountID string, req U
 	businessName := trim(req.BusinessName)
 	businessDescription := nullableTrim(req.BusinessDescription)
 
+	businessEmail := nullableTrim(req.BusinessEmail)
+	if businessEmail == nil {
+		businessEmail = nullableTrim(account.Email)
+	}
+
+	var establishedYear any
+	if req.EstablishedYear != nil {
+		if *req.EstablishedYear < 1900 || *req.EstablishedYear > 2100 {
+			return nil, errors.New("tahun berdiri harus berada di antara 1900 dan 2100")
+		}
+		establishedYear = *req.EstablishedYear
+	}
+
+	operatingHours := nullableTrim(req.OperatingHours)
+	socialMediaMarketplace := nullableTrim(req.SocialMediaMarketplace)
+
 	_, err = tx.Exec(ctx, `
 		INSERT INTO user_mgmt.master_umkm (
 			umkm_id, kode_umkm, pelaku_umkm_id, lokasi_id,
 			jenis_umkm_id, skala_usaha_id, kategori_usaha_id,
 			status_umkm_id, nama_umkm, deskripsi_usaha,
-			nomor_whatsapp, email_bisnis, tanggal_terdaftar
+			nomor_whatsapp, email_bisnis, tahun_berdiri,
+			jam_operasional, media_sosial_marketplace,
+			tanggal_terdaftar
 		)
 		VALUES (
 			$1, $2, $3, $4,
 			'UMKM', 'MIKRO', $5,
 			'AKTIF', $6, $7,
-			$8, $9, CURRENT_DATE
+			$8, $9, $10,
+			$11, $12,
+			CURRENT_DATE
 		)
 		ON CONFLICT (umkm_id)
 		DO UPDATE SET
@@ -289,10 +316,13 @@ func (h *Handler) upsertUMKMProfile(ctx context.Context, accountID string, req U
 			deskripsi_usaha = EXCLUDED.deskripsi_usaha,
 			nomor_whatsapp = EXCLUDED.nomor_whatsapp,
 			email_bisnis = EXCLUDED.email_bisnis,
+			tahun_berdiri = EXCLUDED.tahun_berdiri,
+			jam_operasional = EXCLUDED.jam_operasional,
+			media_sosial_marketplace = EXCLUDED.media_sosial_marketplace,
 			is_deleted = FALSE,
 			deleted_at = NULL,
 			updated_at = NOW()
-	`, ids.UMKMID, "KODE-"+ids.UMKMID, ids.PelakuUMKMID, ids.LokasiID, categoryID, businessName, businessDescription, phoneNumber, account.Email)
+	`, ids.UMKMID, "KODE-"+ids.UMKMID, ids.PelakuUMKMID, ids.LokasiID, categoryID, businessName, businessDescription, phoneNumber, businessEmail, establishedYear, operatingHours, socialMediaMarketplace)
 	if err != nil {
 		return nil, err
 	}
@@ -407,23 +437,27 @@ type scanner interface {
 
 func scanUMKMProfile(row scanner) (map[string]any, error) {
 	var (
-		id         string
-		userID     string
-		name       string
-		category   string
-		desc       *string
-		ownerName  string
-		nik        string
-		phone      string
-		address    string
-		city       string
-		province   string
-		district   string
-		village    string
-		postalCode *string
-		status     string
-		createdAt  time.Time
-		updatedAt  time.Time
+		id                     string
+		userID                 string
+		name                   string
+		category               string
+		desc                   sql.NullString
+		establishedYear        sql.NullInt16
+		businessEmail          sql.NullString
+		operatingHours         sql.NullString
+		socialMediaMarketplace sql.NullString
+		ownerName              string
+		nik                    string
+		phone                  string
+		address                string
+		city                   string
+		province               string
+		district               string
+		village                string
+		postalCode             sql.NullString
+		status                 string
+		createdAt              time.Time
+		updatedAt              time.Time
 	)
 
 	if err := row.Scan(
@@ -432,6 +466,10 @@ func scanUMKMProfile(row scanner) (map[string]any, error) {
 		&name,
 		&category,
 		&desc,
+		&establishedYear,
+		&businessEmail,
+		&operatingHours,
+		&socialMediaMarketplace,
 		&ownerName,
 		&nik,
 		&phone,
@@ -448,25 +486,50 @@ func scanUMKMProfile(row scanner) (map[string]any, error) {
 		return nil, err
 	}
 
-	return map[string]any{
-		"id":                   id,
-		"user_id":              userID,
-		"business_name":        name,
-		"business_category":    category,
-		"business_description": desc,
-		"owner_name":           ownerName,
-		"nik":                  nik,
-		"phone_number":         phone,
-		"address":              address,
-		"city":                 city,
-		"province":             province,
-		"district":             district,
-		"village":              village,
-		"postal_code":          postalCode,
-		"status":               status,
-		"created_at":           createdAt,
-		"updated_at":           updatedAt,
-	}, nil
+	profile := map[string]any{
+		"id":                       id,
+		"user_id":                  userID,
+		"business_name":            name,
+		"business_category":        category,
+		"business_description":     nil,
+		"established_year":         nil,
+		"business_email":           nil,
+		"operating_hours":          nil,
+		"social_media_marketplace": nil,
+		"owner_name":               ownerName,
+		"nik":                      nik,
+		"phone_number":             phone,
+		"address":                  address,
+		"city":                     city,
+		"province":                 province,
+		"district":                 district,
+		"village":                  village,
+		"postal_code":              nil,
+		"status":                   status,
+		"created_at":               createdAt,
+		"updated_at":               updatedAt,
+	}
+
+	if desc.Valid {
+		profile["business_description"] = desc.String
+	}
+	if establishedYear.Valid {
+		profile["established_year"] = int(establishedYear.Int16)
+	}
+	if businessEmail.Valid {
+		profile["business_email"] = businessEmail.String
+	}
+	if operatingHours.Valid {
+		profile["operating_hours"] = operatingHours.String
+	}
+	if socialMediaMarketplace.Valid {
+		profile["social_media_marketplace"] = socialMediaMarketplace.String
+	}
+	if postalCode.Valid {
+		profile["postal_code"] = postalCode.String
+	}
+
+	return profile, nil
 }
 
 func (h *Handler) getMitraProfile(ctx context.Context, accountID string) (map[string]any, error) {
@@ -816,6 +879,198 @@ func scanMitraProfile(row scanner) (map[string]any, error) {
 		"created_at":           createdAt,
 		"updated_at":           updatedAt,
 	}, nil
+}
+
+func (h *Handler) ListMitra(w http.ResponseWriter, r *http.Request) {
+	searchQuery := strings.TrimSpace(r.URL.Query().Get("q"))
+
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page < 1 {
+		page = 1
+	}
+
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit < 1 || limit > 50 {
+		limit = 9
+	}
+
+	offset := (page - 1) * limit
+
+	query := `
+		SELECT
+			m.mitra_id,
+			m.nama_mitra,
+			j.nama_jenis_mitra,
+			l.kabupaten_kota,
+			l.provinsi,
+			m.deskripsi_dukungan,
+			m.wilayah_operasional,
+			COUNT(*) OVER() as total_count
+		FROM user_mgmt.master_mitra m
+		JOIN user_mgmt.master_lokasi l ON l.lokasi_id = m.lokasi_id
+		JOIN ref.ref_jenismitra j ON j.jenis_mitra_id = m.jenis_mitra_id
+		WHERE m.is_deleted = FALSE
+	`
+
+	var args []interface{}
+	argIndex := 1
+
+	if searchQuery != "" {
+		query += fmt.Sprintf(
+			" AND (m.nama_mitra ILIKE $%d OR j.nama_jenis_mitra ILIKE $%d)",
+			argIndex, argIndex,
+		)
+		args = append(args, "%"+searchQuery+"%")
+		argIndex++
+	}
+
+	query += fmt.Sprintf(
+		" ORDER BY m.nama_mitra ASC LIMIT $%d OFFSET $%d",
+		argIndex, argIndex+1,
+	)
+	args = append(args, limit, offset)
+
+	rows, err := h.DB.Query(r.Context(), query, args...)
+	if err != nil {
+		log.Printf("failed to query mitra list: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "Gagal mengambil daftar mitra."})
+		return
+	}
+	defer rows.Close()
+
+	type mitraItem struct {
+		ID               string  `json:"id"`
+		Name             string  `json:"name"`
+		Type             string  `json:"type"`
+		City             string  `json:"city"`
+		Province         string  `json:"province"`
+		Description      *string `json:"description"`
+		OperationalArea  *string `json:"operational_area"`
+	}
+
+	var mitraList []mitraItem
+	var totalCount int
+
+	for rows.Next() {
+		var item mitraItem
+		if err := rows.Scan(
+			&item.ID, &item.Name, &item.Type,
+			&item.City, &item.Province,
+			&item.Description, &item.OperationalArea,
+			&totalCount,
+		); err != nil {
+			log.Printf("failed to scan mitra row: %v", err)
+			continue
+		}
+		mitraList = append(mitraList, item)
+	}
+
+	totalPages := (totalCount + limit - 1) / limit
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"mitra": mitraList,
+		"pagination": map[string]int{
+			"page":       page,
+			"limit":      limit,
+			"total":      totalCount,
+			"totalPages": totalPages,
+		},
+	})
+}
+
+func (h *Handler) ListUMKM(w http.ResponseWriter, r *http.Request) {
+	searchQuery := strings.TrimSpace(r.URL.Query().Get("q"))
+
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page < 1 {
+		page = 1
+	}
+
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit < 1 || limit > 50 {
+		limit = 9
+	}
+
+	offset := (page - 1) * limit
+
+	query := `
+		SELECT
+			u.umkm_id,
+			u.nama_umkm,
+			k.nama_kategori_usaha,
+			l.kabupaten_kota,
+			l.provinsi,
+			u.deskripsi_usaha,
+			COUNT(*) OVER() as total_count
+		FROM user_mgmt.master_umkm u
+		JOIN user_mgmt.master_lokasi l ON l.lokasi_id = u.lokasi_id
+		JOIN ref.ref_kategoriusaha k ON k.kategori_usaha_id = u.kategori_usaha_id
+		WHERE u.is_deleted = FALSE
+	`
+
+	var args []interface{}
+	argIndex := 1
+
+	if searchQuery != "" {
+		query += fmt.Sprintf(
+			" AND (u.nama_umkm ILIKE $%d OR k.nama_kategori_usaha ILIKE $%d)",
+			argIndex, argIndex,
+		)
+		args = append(args, "%"+searchQuery+"%")
+		argIndex++
+	}
+
+	query += fmt.Sprintf(
+		" ORDER BY u.nama_umkm ASC LIMIT $%d OFFSET $%d",
+		argIndex, argIndex+1,
+	)
+	args = append(args, limit, offset)
+
+	rows, err := h.DB.Query(r.Context(), query, args...)
+	if err != nil {
+		log.Printf("failed to query umkm list: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "Gagal mengambil daftar UMKM."})
+		return
+	}
+	defer rows.Close()
+
+	type umkmItem struct {
+		ID          string  `json:"id"`
+		Name        string  `json:"name"`
+		Type        string  `json:"type"`
+		City        string  `json:"city"`
+		Province    string  `json:"province"`
+		Description *string `json:"description"`
+	}
+
+	var umkmList []umkmItem
+	var totalCount int
+
+	for rows.Next() {
+		var item umkmItem
+		if err := rows.Scan(
+			&item.ID, &item.Name, &item.Type,
+			&item.City, &item.Province,
+			&item.Description,
+			&totalCount,
+		); err != nil {
+			log.Printf("failed to scan umkm row: %v", err)
+			continue
+		}
+		umkmList = append(umkmList, item)
+	}
+
+	totalPages := (totalCount + limit - 1) / limit
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"umkm": umkmList,
+		"pagination": map[string]int{
+			"page":       page,
+			"limit":      limit,
+			"total":      totalCount,
+			"totalPages": totalPages,
+		},
+	})
 }
 
 func handleProfileError(w http.ResponseWriter, err error) {

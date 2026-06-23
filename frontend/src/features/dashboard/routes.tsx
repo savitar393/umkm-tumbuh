@@ -1,11 +1,11 @@
 import type { RouteObject } from "react-router-dom";
-import UMKMDashboardPage from "./pages/UMKMDashboardPage";
+import RoleDashboardPage from "./pages/RoleDashboardPage";
 import MitraDashboardPage from "./pages/MitraDashboardPage";
 
 export const umkmDashboardRoutes: RouteObject[] = [
   {
     index: true,
-    element: <UMKMDashboardPage />,
+    element: <RoleDashboardPage title="Dashboard UMKM" />,
   },
 ];
 

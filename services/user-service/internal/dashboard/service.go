@@ -71,7 +71,9 @@ func (s *Service) GetUMKMDashboard(ctx context.Context, accountID, dateFrom, dat
 
 	// 7. Laba harian (tabel)
 	labaHarian, err := s.Repo.GetLabaHarian(ctx, umkmID, dateFrom, dateTo)
-	if err != nil || labaHarian == nil {
+	if err != nil {
+		labaHarian = []LabaHarianItem{}
+	} else if labaHarian == nil {
 		labaHarian = []LabaHarianItem{}
 	}
 
@@ -98,7 +100,7 @@ func (s *Service) GetUMKMDashboard(ctx context.Context, accountID, dateFrom, dat
 		OmzetBulanIni:     omzetBulanIni,
 		OmzetBulanLalu:    omzetBulanLalu,
 		PersenVsBulanLalu: persenBulan,
-		TotalItemTerjual:  totalItem,
+		TotalItemTerjual:  int(totalItem),
 		RataRataPerItem:   rataRata,
 		LabaHarian:        labaHarian,
 		TrenMingguan:      tren,
@@ -195,7 +197,7 @@ func (s *Service) GetMitraDashboard(ctx context.Context, accountID, selectedUMKM
 			OmzetBulanIni:     omzetBulanIni,
 			OmzetBulanLalu:    omzetBulanLalu,
 			PersenVsBulanLalu: persenBulan,
-			TotalItemTerjual:  totalItem,
+			TotalItemTerjual:  int(totalItem),
 			RataRataPerItem:   rataRata,
 			LabaHarian:        labaHarian,
 			TrenMingguan:      tren,

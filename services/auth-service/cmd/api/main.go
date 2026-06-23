@@ -11,6 +11,7 @@ import (
 	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/config"
 	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/dashboard"
 	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/database"
+	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/email"
 	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/health"
 	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/router"
 	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/users"
@@ -33,6 +34,12 @@ func main() {
 	authService := auth.NewService(userRepo, cfg)
 	adminService := admin.NewService(userRepo)
 	dashboardService := dashboard.NewService(dashboardRepo)
+
+	adminClient := admin.NewClient(cfg.UserServiceURL)
+	adminService.SetClient(adminClient)
+
+	emailSender := email.NewSender(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUser, cfg.SMTPPassword, cfg.SMTPFrom)
+	adminService.SetEmailSender(emailSender)
 
 	healthHandler := health.NewHandler(db)
 	authHandler := auth.NewHandler(authService)

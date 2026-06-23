@@ -39,9 +39,12 @@ func NewRouter(
 		})
 
 		r.Route("/admin", func(r chi.Router) {
-			r.Get("/registrations", adminHandler.ListRegistrations)
-			r.Patch("/registrations/{userID}/approve", adminHandler.ApproveRegistration)
-			r.Patch("/registrations/{userID}/reject", adminHandler.RejectRegistration)
+			r.Get("/stats", adminHandler.GetUsersStats)
+			r.Get("/registrations", adminHandler.ListUsers)
+			r.Get("/registrations/{userID}", adminHandler.GetUserDetail)
+			r.Patch("/registrations/{userID}/approve", adminHandler.ApproveUser)
+			r.Patch("/registrations/{userID}/reject", adminHandler.RejectUser)
+			r.Patch("/registrations/{userID}/deactivate", adminHandler.DeactivateAccount)
 
 			r.Get("/dashboard", dashboardHandler.GetDashboard)
 		})

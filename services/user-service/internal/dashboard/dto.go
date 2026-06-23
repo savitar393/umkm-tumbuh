@@ -1,12 +1,69 @@
 package dashboard
 
-// ─── UMKM Dashboard ──────────────────────────────────────────────────────────
+type PeriodResponse struct {
+	From  string `json:"from"`
+	To    string `json:"to"`
+	Range string `json:"range"`
+}
+
+type MetricsResponse struct {
+	TotalOmzet       float64 `json:"total_omzet"`
+	TotalProfit      float64 `json:"total_profit"`
+	TotalItem        int     `json:"total_item"`
+	TransactionCount int     `json:"transaction_count"`
+	AverageOrder     float64 `json:"average_order"`
+	ActiveProducts   int     `json:"active_products"`
+	TotalStock       int     `json:"total_stock"`
+	LowStockCount    int     `json:"low_stock_count"`
+}
+
+type RecentSaleResponse struct {
+	ID                string  `json:"id"`
+	TransactionNumber string  `json:"transaction_number"`
+	TransactionDate   string  `json:"transaction_date"`
+	TotalOmzet        float64 `json:"total_omzet"`
+	TotalProfit       float64 `json:"total_profit"`
+	TotalItem         int     `json:"total_item"`
+	Status            string  `json:"status"`
+}
+
+type TopProductResponse struct {
+	ProductID    string  `json:"product_id"`
+	ProductName  string  `json:"product_name"`
+	TotalSold    int     `json:"total_sold"`
+	TotalRevenue float64 `json:"total_revenue"`
+}
+
+type DailySalesResponse struct {
+	Date        string  `json:"date"`
+	TotalOmzet  float64 `json:"total_omzet"`
+	TotalProfit float64 `json:"total_profit"`
+	TotalItem   int     `json:"total_item"`
+}
+
+type LowStockProductResponse struct {
+	ProductID   string `json:"product_id"`
+	ProductName string `json:"product_name"`
+	Stock       int    `json:"stock"`
+	Status      string `json:"status"`
+}
+
+type UMKMSummaryResponse struct {
+	Period           PeriodResponse            `json:"period"`
+	Metrics          MetricsResponse           `json:"metrics"`
+	RecentSales      []RecentSaleResponse      `json:"recent_sales"`
+	TopProducts      []TopProductResponse      `json:"top_products"`
+	DailySales       []DailySalesResponse      `json:"daily_sales"`
+	LowStockProducts []LowStockProductResponse `json:"low_stock_products"`
+}
+
+// ─── Detail Dashboard Types (for GET /dashboard/umkm) ────────────────────
 
 type LabaHarianItem struct {
-	Tanggal      string  `json:"tanggal"`
-	NamaHari     string  `json:"nama_hari"`
-	LabaBersih   float64 `json:"laba_bersih"`
-	JumlahProduk int64   `json:"jumlah_produk"`
+	Tanggal     string  `json:"tanggal"`
+	NamaHari    string  `json:"nama_hari"`
+	LabaBersih  float64 `json:"laba_bersih"`
+	JumlahProduk int64  `json:"jumlah_produk"`
 }
 
 type TrenMingguan struct {
@@ -23,7 +80,7 @@ type UMKMDashboardData struct {
 	OmzetBulanIni     float64          `json:"omzet_bulan_ini"`
 	OmzetBulanLalu    float64          `json:"omzet_bulan_lalu"`
 	PersenVsBulanLalu float64          `json:"persen_vs_bulan_lalu"`
-	TotalItemTerjual  int64            `json:"total_item_terjual"`
+	TotalItemTerjual  int              `json:"total_item_terjual"`
 	RataRataPerItem   float64          `json:"rata_rata_per_item"`
 	LabaHarian        []LabaHarianItem `json:"laba_harian"`
 	TrenMingguan      []TrenMingguan   `json:"tren_mingguan"`
@@ -35,41 +92,8 @@ type UMKMDashboardData struct {
 	TrendDays         int              `json:"trend_days"`
 }
 
-// ─── Monitoring Business ─────────────────────────────────────────────────────
-
-type MonitoringBusinessResponse struct {
-	NamaUMKM      string            `json:"nama_umkm"`
-	KategoriUsaha string            `json:"kategori_usaha"`
-	ChartData     ChartData         `json:"chart_data"`
-	Summary       MonitoringSummary `json:"summary"`
-}
-
-type ChartData struct {
-	Labels   []string  `json:"labels"`
-	Datasets []Dataset `json:"datasets"`
-}
-
-type Dataset struct {
-	Label           string    `json:"label"`
-	Data            []float64 `json:"data"`
-	BorderColor     string    `json:"borderColor"`
-	BackgroundColor string    `json:"backgroundColor"`
-	Tension         float64   `json:"tension"`
-}
-
-type MonitoringSummary struct {
-	TotalOmzet         float64 `json:"total_omzet"`
-	GrowthRate         float64 `json:"growth_rate"`
-	TotalProduksi      int64   `json:"total_produksi"`
-	StatusPerkembangan string  `json:"status_perkembangan"`
-	TotalItemTerjual   int64   `json:"total_item_terjual"`
-	RataRataPerItem    float64 `json:"rata_rata_per_item"`
-}
-
-// ─── Mitra Dashboard ─────────────────────────────────────────────────────────
-
 type UMKMMitraItem struct {
-	UMKMID   string `json:"umkm_id"`
+	UMKMID  string `json:"umkm_id"`
 	NamaUMKM string `json:"nama_umkm"`
 }
 
@@ -84,7 +108,7 @@ type UMKMDashboardForMitra struct {
 	OmzetBulanIni     float64          `json:"omzet_bulan_ini"`
 	OmzetBulanLalu    float64          `json:"omzet_bulan_lalu"`
 	PersenVsBulanLalu float64          `json:"persen_vs_bulan_lalu"`
-	TotalItemTerjual  int64            `json:"total_item_terjual"`
+	TotalItemTerjual  int              `json:"total_item_terjual"`
 	RataRataPerItem   float64          `json:"rata_rata_per_item"`
 	LabaHarian        []LabaHarianItem `json:"laba_harian"`
 	TrenMingguan      []TrenMingguan   `json:"tren_mingguan"`
@@ -95,7 +119,7 @@ type UMKMDashboardForMitra struct {
 }
 
 type MitraDashboardData struct {
-	NamaMitra string                 `json:"nama_mitra"`
-	UMKMList  []UMKMMitraItem        `json:"umkm_list"`
+	NamaMitra string                `json:"nama_mitra"`
+	UMKMList  []UMKMMitraItem       `json:"umkm_list"`
 	Dashboard *UMKMDashboardForMitra `json:"dashboard"`
 }

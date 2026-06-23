@@ -66,6 +66,7 @@ infra/minio_data/
 *.sql.gz
 *.dump
 *.backup
+*.bat
 
 # =========================
 # Logs
