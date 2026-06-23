@@ -173,12 +173,25 @@ export default function PartnershipMitraInboxPage() {
   const visibleRange = useMemo(() => getPageRange(currentPage, totalPages), [currentPage, totalPages]);
 
   const unreadCount = incomingList.filter((item) => !readItems.has(item.pengajuanID)).length;
-  const activeCount = incomingList.filter((item) =>
-    ["ACTIVE", "AKTIF", "COMPLETED", "SELESAI"].includes(item.status.toUpperCase()),
+  const pendingCount = incomingList.filter((item) =>
+    ["DRAFT", "SUBMITTED", "DIAJUKAN", "REVIEWED", "DITINJAU"].includes(item.status.toUpperCase()),
+  ).length;
+  const approvedCount = incomingList.filter((item) =>
+    [
+      "WAITING_DOCUMENT",
+      "MENUNGGU_DOKUMEN_TTD",
+      "APPROVED",
+      "ACTIVE",
+      "AKTIF",
+      "COMPLETED",
+      "SELESAI",
+    ].includes(item.status.toUpperCase()),
   ).length;
   const rejectedCount = incomingList.filter((item) =>
     ["REJECTED", "DITOLAK"].includes(item.status.toUpperCase()),
   ).length;
+  const currentStart = totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
+  const currentEnd = Math.min(currentPage * itemsPerPage, totalItems);
 
   const persistReadItems = useCallback(
     (updated: Set<string>) => {
@@ -254,54 +267,59 @@ export default function PartnershipMitraInboxPage() {
       subtitle="Tinjau pengajuan kemitraan yang masuk dari calon partner."
     >
       <main className="partnership-inbox-page">
-        <section className="partnership-inbox-hero">
+        <section className="partnership-inbox-overview">
           <div>
             <span className="partnership-eyebrow">
               <Inbox size={16} />
               Pengajuan Masuk
             </span>
-            <h1>Inbox Pengajuan Kemitraan</h1>
+            <h1>Daftar Pengajuan Masuk</h1>
             <p>
-              Kelola pengajuan yang masuk, tandai sebagai dibaca, lalu buka detail untuk melakukan review.
+              Pantau proposal kerja sama yang masuk, buka detail pengajuan, lalu ambil keputusan review.
             </p>
           </div>
 
-          <div className="partnership-inbox-hero-card">
+          <article className="partnership-inbox-highlight-card">
             <strong>{unreadCount}</strong>
-            <span>Belum dibaca</span>
-          </div>
+            <span>Belum Dibaca</span>
+            <small>dari {totalItems} total pengajuan</small>
+          </article>
         </section>
 
-        <section className="partnership-status-summary-grid">
-          <article className="waiting">
+        <section className="partnership-inbox-metric-grid">
+          <article className="partnership-inbox-metric-card waiting">
             <Clock3 size={22} />
             <div>
-              <strong>{unreadCount}</strong>
-              <span>Belum Dibaca</span>
+              <span>Menunggu</span>
+              <strong>{pendingCount}</strong>
+              <small>Perlu ditinjau</small>
             </div>
           </article>
 
-          <article className="active">
+          <article className="partnership-inbox-metric-card active">
             <CheckCircle2 size={22} />
             <div>
-              <strong>{activeCount}</strong>
-              <span>Disetujui/Aktif</span>
+              <span>Disetujui / Aktif</span>
+              <strong>{approvedCount}</strong>
+              <small>Proses lanjut</small>
             </div>
           </article>
 
-          <article className="rejected">
+          <article className="partnership-inbox-metric-card rejected">
             <XCircle size={22} />
             <div>
-              <strong>{rejectedCount}</strong>
               <span>Ditolak</span>
+              <strong>{rejectedCount}</strong>
+              <small>Tidak disetujui</small>
             </div>
           </article>
 
-          <article className="total">
+          <article className="partnership-inbox-metric-card total">
             <Inbox size={22} />
             <div>
-              <strong>{totalItems}</strong>
               <span>Total Masuk</span>
+              <strong>{totalItems}</strong>
+              <small>Seluruh pengajuan</small>
             </div>
           </article>
         </section>
@@ -368,28 +386,40 @@ export default function PartnershipMitraInboxPage() {
             </section>
           ) : (
             <>
-              <div className="partnership-inbox-list">
+              <div className="partnership-inbox-table">
+                <div className="partnership-inbox-table-head">
+                  <span>Pengaju UMKM</span>
+                  <span>ID Pengajuan</span>
+                  <span>Tanggal</span>
+                  <span>Status</span>
+                  <span>Aksi</span>
+                </div>
+
                 {filteredItems.map((item) => {
                   const isUnread = !readItems.has(item.pengajuanID);
 
                   return (
                     <article
-                      className={`partnership-inbox-card ${isUnread ? "unread" : ""}`}
+                      className={`partnership-inbox-row ${isUnread ? "unread" : ""}`}
                       key={item.pengajuanID}
                     >
-                      <div className="partnership-status-target">
-                        <div>{getInitials(item.pengirim)}</div>
+                      <div className="partnership-inbox-row-main">
+                        <div className="partnership-inbox-avatar">{getInitials(item.pengirim)}</div>
                         <span>
                           <strong>{item.pengirim}</strong>
                           <small>{item.proposal_title || "Proposal kemitraan"}</small>
                         </span>
+                        {isUnread ? <em>Baru</em> : null}
                       </div>
 
-                      <div className="partnership-inbox-meta">
+                      <div className="partnership-inbox-id">
                         <code>#{item.pengajuanID}</code>
-                        <span>{formatDate(item.tanggalPengajuan)}</span>
+                      </div>
+
+                      <div className="partnership-inbox-date">{formatDate(item.tanggalPengajuan)}</div>
+
+                      <div className="partnership-inbox-status">
                         <StatusBadge status={String(item.status)} />
-                        {isUnread ? <em>Baru</em> : null}
                       </div>
 
                       <div className="partnership-inbox-actions">
@@ -410,7 +440,7 @@ export default function PartnershipMitraInboxPage() {
                             onClick={() => handleMarkRead(item.pengajuanID)}
                           >
                             <ShieldCheck size={15} />
-                            {markingId === item.pengajuanID ? "Menandai..." : "Tandai Dibaca"}
+                            {markingId === item.pengajuanID ? "..." : "Dibaca"}
                           </button>
                         ) : null}
                       </div>
@@ -421,7 +451,7 @@ export default function PartnershipMitraInboxPage() {
 
               <section className="partnership-pagination">
                 <p>
-                  Menampilkan {Math.min(currentPage * itemsPerPage, totalItems)} dari {totalItems} pengajuan
+                  Menampilkan {currentStart}-{currentEnd} dari {totalItems} pengajuan
                 </p>
 
                 <div>

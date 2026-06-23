@@ -8731,3 +8731,378 @@ button.danger {
   background: #64748b;
   color: #ffffff;
 }
+/* Polished Mitra partnership inbox */
+.partnership-inbox-page {
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.partnership-inbox-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 28px;
+  align-items: center;
+  margin-bottom: 22px;
+  padding: 34px 38px;
+  border: 1px solid #dbe5f5;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at right top, rgba(255, 214, 10, 0.24), transparent 28%),
+    linear-gradient(135deg, #ffffff 0%, #f8fbff 100%);
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.06);
+}
+
+.partnership-inbox-overview h1 {
+  margin: 14px 0 8px;
+  color: #0f172a;
+  font-size: clamp(30px, 4vw, 44px);
+  line-height: 1.05;
+  font-weight: 950;
+}
+
+.partnership-inbox-overview p {
+  max-width: 660px;
+  margin: 0;
+  color: #475569;
+  font-size: 16px;
+  font-weight: 750;
+  line-height: 1.55;
+}
+
+.partnership-inbox-highlight-card {
+  display: grid;
+  min-height: 150px;
+  place-items: center;
+  padding: 22px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #1f45b6, #17358f);
+  color: #ffffff;
+  text-align: center;
+  box-shadow: 0 22px 48px rgba(31, 69, 182, 0.28);
+}
+
+.partnership-inbox-highlight-card strong {
+  font-size: 54px;
+  line-height: 0.95;
+  font-weight: 950;
+}
+
+.partnership-inbox-highlight-card span {
+  font-size: 13px;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.partnership-inbox-highlight-card small {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.partnership-inbox-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.partnership-inbox-metric-card {
+  position: relative;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  min-height: 112px;
+  padding: 20px 22px;
+  overflow: hidden;
+  border: 1px solid #dbe5f5;
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.055);
+}
+
+.partnership-inbox-metric-card::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  content: "";
+  background: #1f45b6;
+}
+
+.partnership-inbox-metric-card svg {
+  color: #1f45b6;
+}
+
+.partnership-inbox-metric-card.waiting::before,
+.partnership-inbox-metric-card.waiting svg {
+  color: #f59e0b;
+  background: #f59e0b;
+}
+
+.partnership-inbox-metric-card.active::before,
+.partnership-inbox-metric-card.active svg {
+  color: #16a34a;
+  background: #16a34a;
+}
+
+.partnership-inbox-metric-card.rejected::before,
+.partnership-inbox-metric-card.rejected svg {
+  color: #dc2626;
+  background: #dc2626;
+}
+
+.partnership-inbox-metric-card span {
+  display: block;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.partnership-inbox-metric-card strong {
+  display: block;
+  margin-top: 4px;
+  color: #0f172a;
+  font-size: 34px;
+  line-height: 1;
+  font-weight: 950;
+}
+
+.partnership-inbox-metric-card small {
+  display: block;
+  margin-top: 8px;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.partnership-status-panel {
+  overflow: hidden;
+  border: 1px solid #dbe5f5;
+  border-radius: 26px;
+  background: #ffffff;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.06);
+}
+
+.partnership-status-toolbar {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) 190px 150px;
+  gap: 14px;
+  padding: 20px 22px;
+  border-bottom: 1px solid #eef2f7;
+  background: #ffffff;
+}
+
+.partnership-status-toolbar .partnership-search {
+  min-height: 52px;
+  border-radius: 18px;
+  background: #f8fbff;
+}
+
+.partnership-status-toolbar select {
+  min-height: 52px;
+  border: 1px solid #dbe5f5;
+  border-radius: 18px;
+  background: #f8fbff;
+  color: #0f172a;
+  font-weight: 850;
+}
+
+.partnership-inbox-table {
+  width: 100%;
+}
+
+.partnership-inbox-table-head,
+.partnership-inbox-row {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.6fr) 150px 140px 140px 190px;
+  gap: 16px;
+  align-items: center;
+}
+
+.partnership-inbox-table-head {
+  padding: 18px 22px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.partnership-inbox-row {
+  min-height: 88px;
+  padding: 18px 22px;
+  border-top: 1px solid #eef2f7;
+  background: #ffffff;
+}
+
+.partnership-inbox-row.unread {
+  background: linear-gradient(90deg, rgba(239, 246, 255, 0.72), #ffffff 42%);
+}
+
+.partnership-inbox-row-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.partnership-inbox-avatar {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  place-items: center;
+  border-radius: 14px;
+  background: #1f45b6;
+  color: #ffd60a;
+  font-weight: 950;
+}
+
+.partnership-inbox-row-main span {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.partnership-inbox-row-main strong {
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 950;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.partnership-inbox-row-main small {
+  overflow: hidden;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.partnership-inbox-row-main em {
+  width: fit-content;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1f45b6;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.partnership-inbox-id code {
+  padding: 6px 9px;
+  border-radius: 8px;
+  background: #f4f1e8;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 950;
+}
+
+.partnership-inbox-date {
+  color: #475569;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.partnership-inbox-status {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.partnership-inbox-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.partnership-inbox-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  gap: 6px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.partnership-inbox-actions button.view {
+  background: #eff6ff;
+  color: #1f45b6;
+}
+
+.partnership-inbox-actions button.read {
+  background: #f8fafc;
+  color: #475569;
+}
+
+.partnership-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px 22px 22px;
+  border-top: 1px solid #eef2f7;
+}
+
+.partnership-pagination p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+@media (max-width: 1100px) {
+  .partnership-inbox-overview {
+    grid-template-columns: 1fr;
+  }
+
+  .partnership-inbox-highlight-card {
+    min-height: 120px;
+  }
+
+  .partnership-inbox-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .partnership-status-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .partnership-inbox-table-head {
+    display: none;
+  }
+
+  .partnership-inbox-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    border-radius: 18px;
+    margin: 12px;
+    border: 1px solid #eef2f7;
+  }
+
+  .partnership-inbox-actions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  .partnership-inbox-metric-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .partnership-pagination {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
