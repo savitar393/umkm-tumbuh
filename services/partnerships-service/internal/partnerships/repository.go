@@ -547,7 +547,8 @@ func (r *repository) FindUMKMDetail(ctx context.Context, umkmID string) (*UMKMDe
 			COALESCE(p.email::text, '') as email,
 			COALESCE(p.alamat, '') as address,
 			COALESCE(u.produk_utama, '') as products,
-			COALESCE(u.tahun_berdiri, 0) as year_established
+			COALESCE(u.tahun_berdiri, 0) as year_established,
+			COALESCE(u.media_sosial_marketplace, '') as social_media_marketplace
 		FROM user_mgmt.master_umkm u
 		LEFT JOIN ref.ref_jenisumkm juk ON u.jenis_umkm_id = juk.jenis_umkm_id
 		LEFT JOIN user_mgmt.master_lokasi l ON u.lokasi_id = l.lokasi_id
@@ -560,7 +561,7 @@ func (r *repository) FindUMKMDetail(ctx context.Context, umkmID string) (*UMKMDe
 		&d.ID, &d.Name, &d.Type, &d.City, &d.Province,
 		&d.Description, &d.OperationalArea,
 		&d.OwnerName, &d.PhoneNumber, &d.Email, &d.Address,
-		&d.Products, &d.YearEstablished,
+		&d.Products, &d.YearEstablished, &d.SocialMediaMarketplace,
 	)
 	if err != nil {
 		if err == pgx.ErrNoRows {

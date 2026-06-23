@@ -135,6 +135,7 @@ type UMKMDetail struct {
 	Address         string `json:"address"`
 	Products        string `json:"products"`
 	YearEstablished int    `json:"year_established"`
+	SocialMediaMarketplace string `json:"social_media_marketplace"`
 }
 
 // MitraDetail represents full detail of a Mitra

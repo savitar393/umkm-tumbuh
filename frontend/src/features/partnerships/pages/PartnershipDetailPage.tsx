@@ -152,7 +152,7 @@ const socialIconMap: Record<SocialPlatform, string> = {
   instagram: "simple-icons:instagram",
   tiktok: "simple-icons:tiktok",
   shopee: "simple-icons:shopee",
-  tokopedia: "logos:tokopedia",
+  tokopedia: "simple-icons:tokopedia",
   website: "lucide:globe",
 };
 
@@ -165,6 +165,21 @@ function normalizeWebsiteUrl(value: string) {
   if (!trimmed) return "";
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
   return `https://${trimmed}`;
+}
+
+function getSocialDisplayLabel(platform: SocialPlatform, label: string) {
+  const value = label.trim();
+
+  if (platform === "website") {
+    try {
+      const url = new URL(normalizeWebsiteUrl(value));
+      return url.hostname.replace(/^www\./, "");
+    } catch {
+      return value.replace(/^https?:\/\//i, "").replace(/^www\./, "");
+    }
+  }
+
+  return value;
 }
 
 function getSocialUrl(platform: SocialPlatform, label: string) {
@@ -219,7 +234,7 @@ function SocialProfileLinks({ value }: { value?: string | null }) {
           title={item.label}
         >
           <SocialBrandIcon platform={item.platform} />
-          <strong>{item.label}</strong>
+          <strong>{getSocialDisplayLabel(item.platform, item.label)}</strong>
         </a>
       ))}
     </div>

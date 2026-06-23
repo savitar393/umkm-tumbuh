@@ -8544,3 +8544,40 @@ button.danger {
   background: #eff6ff;
   color: #1f45b6;
 }
+
+/* Compact social chips on partnership detail */
+.partnership-social-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.partnership-social-chip-list a {
+  min-height: 34px;
+  max-width: 220px;
+  padding: 0 11px;
+  gap: 8px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.partnership-social-chip-list a strong {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.partnership-social-brand-icon {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+}
+
+.partnership-social-brand-icon svg {
+  width: 13px;
+  height: 13px;
+}
