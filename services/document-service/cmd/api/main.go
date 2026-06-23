@@ -20,7 +20,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -225,7 +224,13 @@ func (a *app) handleUploadDocument(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	documentID := "DOC" + strings.ToUpper(strings.ReplaceAll(uuid.NewString(), "-", ""))
+	documentID, err := a.generateDocumentID(r.Context())
+	if err != nil {
+		log.Printf("failed to generate document id: %v", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Gagal membuat ID dokumen."})
+		return
+	}
+
 	extension := strings.ToLower(filepath.Ext(header.Filename))
 	objectKey := fmt.Sprintf("%s/%s/%s%s", strings.ToLower(category), user.ID, documentID, extension)
 	publicURL := publicObjectURL(bucket, objectKey)
@@ -505,6 +510,21 @@ func (a *app) handleDeleteDocument(w http.ResponseWriter, r *http.Request, docum
 
 func (a *app) handleNotFound(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusNotFound, errorResponse{Error: "Endpoint not found."})
+}
+
+func (a *app) generateDocumentID(ctx context.Context) (string, error) {
+	const query = `
+		SELECT COALESCE(MAX(SUBSTRING(dokumen_id FROM 4)::int), 0) + 1
+		FROM documents.master_dokumen
+		WHERE dokumen_id ~ '^DOK[0-9]+$'
+	`
+
+	var next int
+	if err := a.db.QueryRow(ctx, query).Scan(&next); err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("DOK%06d", next), nil
 }
 
 func (a *app) insertDocumentMetadata(
