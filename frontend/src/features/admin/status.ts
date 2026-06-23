@@ -4,6 +4,7 @@ export const STATUS_LABEL: Record<UserStatus, string> = {
   MENUNGGU: "Menunggu Review",
   DISETUJUI: "Disetujui",
   DITOLAK: "Ditolak",
+  AKTIF: "Aktif",
   PENDING: "Menunggu Review",
   APPROVED: "Disetujui",
   REJECTED: "Ditolak",

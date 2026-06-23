@@ -6,6 +6,7 @@ export type UserStatus =
   | "MENUNGGU"
   | "DISETUJUI"
   | "DITOLAK"
+  | "AKTIF"
   | "PENDING"
   | "APPROVED"
   | "REJECTED";
@@ -59,6 +60,26 @@ export function register(payload: RegisterPayload) {
 
 export function login(payload: LoginPayload) {
   return http<LoginResponse>("/auth/login", {
+    method: "POST",
+    body: JSON.stringify(payload),
+    auth: false,
+    service: "auth",
+  });
+}
+
+export type ReactivatePayload = {
+  email: string;
+  password: string;
+};
+
+export type ReactivateResponse = {
+  access_token: string;
+  token_type: string;
+  user: User;
+};
+
+export function reactivate(payload: ReactivatePayload) {
+  return http<ReactivateResponse>("/auth/reactivate", {
     method: "POST",
     body: JSON.stringify(payload),
     auth: false,

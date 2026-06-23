@@ -3,6 +3,7 @@ import type { RouteObject } from "react-router-dom";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import AdminRegistrationsPage from "./pages/AdminRegistrationsPage";
 import AdminUsersPage from "./pages/AdminUsersPage";
+import AdminUserDetailPage from "./pages/AdminUserDetailPage";
 import AdminCertificatesPage from "./pages/AdminCertificatesPage";
 import ComingSoon from "./components/ComingSoon";
 
@@ -17,7 +18,10 @@ export const adminRoutes: RouteObject[] = [
   },
   {
     path: "users",
-    element: <AdminUsersPage />,
+    children: [
+      { index: true, element: <AdminUsersPage /> },
+      { path: ":userId", element: <AdminUserDetailPage /> },
+    ],
   },
   {
     path: "training",

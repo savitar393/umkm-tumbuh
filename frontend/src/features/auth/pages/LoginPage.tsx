@@ -157,7 +157,18 @@ export default function LoginPage() {
               <span>Ingat saya</span>
             </label>
 
-            {error ? <div className="error-message">{error}</div> : null}
+            {error ? (
+              <div className="error-message">
+                {error}
+                {error.toLowerCase().includes("tidak aktif") && (
+                  <div style={{ marginTop: 8 }}>
+                    <Link to="/reactivate" style={{ fontSize: 13 }}>
+                      Aktifkan kembali akun Anda
+                    </Link>
+                  </div>
+                )}
+              </div>
+            ) : null}
 
             <button type="submit" disabled={loading}>
               {loading ? "Memproses..." : "Masuk ke Dashboard"}

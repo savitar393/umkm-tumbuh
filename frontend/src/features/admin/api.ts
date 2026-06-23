@@ -134,9 +134,12 @@ export function rejectUser(userID: string, rejectionReason: string, catatanValid
   });
 }
 
-export function deactivateUser(userID: string) {
+export function deactivateUser(userID: string, reason?: string) {
+  const body: Record<string, string> = {};
+  if (reason) body.deactivation_reason = reason;
   return http<MessageResponse>(`/admin/registrations/${userID}/deactivate`, {
     method: "PATCH",
+    body: JSON.stringify(body),
   });
 }
 
