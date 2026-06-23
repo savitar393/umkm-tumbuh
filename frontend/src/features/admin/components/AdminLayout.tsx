@@ -23,6 +23,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const isTrainingActive = location.pathname.startsWith("/admin/training");
+  const isUsersPath = location.pathname.startsWith("/admin/users");
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -139,13 +140,15 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
       {/* KONTEN UTAMA */}
       <main className="admin-body">
-        {/* Sub-header biru */}
-        <div className="admin-subheader">
-          <div>
-            <div className="subheader-title">Dashboard Strategi Nasional</div>
-            <div className="subheader-sub">Monitoring dan analisis data UMKM di seluruh Indonesia</div>
+        {/* Sub-header biru — hidden di User Management */}
+        {!isUsersPath && (
+          <div className="admin-subheader">
+            <div>
+              <div className="subheader-title">Dashboard Strategi Nasional</div>
+              <div className="subheader-sub">Monitoring dan analisis data UMKM di seluruh Indonesia</div>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Konten halaman */}
         <div className="admin-content-v2">
