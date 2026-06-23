@@ -204,7 +204,9 @@ services:
       - ./garage/bootstrap.sh:/bootstrap.sh:ro
     command: [ "sh", "/bootstrap.sh" ]
     environment:
-      GARAGE_ADMIN_TOKEN: CHANGE_ME_LOCAL_GARAGE_ADMIN_TOKEN
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:-CHANGE_ME_LOCAL_GARAGE_ADMIN_TOKEN}
+      OBJECT_STORAGE_ACCESS_KEY: ${OBJECT_STORAGE_ACCESS_KEY:-umkm_garage_access_key}
+      OBJECT_STORAGE_SECRET_KEY: ${OBJECT_STORAGE_SECRET_KEY:-umkm_garage_secret_key}
     networks:
       - umkm_network
 
@@ -217,7 +219,7 @@ services:
     environment:
       APP_ENV: ${APP_ENV:-development}
       DOCUMENT_SERVICE_HOST: 0.0.0.0
-      DOCUMENT_SERVICE_PORT: ${DOCUMENT_SERVICE_PORT:-8084}
+      DOCUMENT_SERVICE_PORT: ${DOCUMENT_SERVICE_PORT:-8083}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       DATABASE_URL: postgres://${POSTGRES_USER:-umkm_user}:${POSTGRES_PASSWORD:-umkm_password}@postgres:5432/${POSTGRES_DB:-umkm_tumbuh}?sslmode=disable
       JWT_SECRET: ${JWT_SECRET}
@@ -232,14 +234,14 @@ services:
       OBJECT_STORAGE_BUCKET_PRODUCT_IMAGES: ${OBJECT_STORAGE_BUCKET_PRODUCT_IMAGES:-product-images}
       OBJECT_STORAGE_BUCKET_PARTNERSHIP_FILES: ${OBJECT_STORAGE_BUCKET_PARTNERSHIP_FILES:-partnership-files}
     ports:
-      - "${DOCUMENT_SERVICE_PORT:-8084}:${DOCUMENT_SERVICE_PORT:-8084}"
+      - "${DOCUMENT_SERVICE_PORT:-8083}:${DOCUMENT_SERVICE_PORT:-8083}"
     depends_on:
       db-migrate:
         condition: service_completed_successfully
       garage:
         condition: service_started
-      # garage-bootstrap:
-      #   condition: service_completed_successfully
+      garage-bootstrap:
+        condition: service_completed_successfully
     networks:
       - umkm_network
 
