@@ -1,7 +1,7 @@
 import { type FormEvent, useState } from "react";
 import { ArrowRight, Check, Handshake, HelpCircle, Store } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { register } from "../api";
+import { register, requestEmailVerification } from "../api";
 import {
   isStrongEnoughPassword,
   isValidEmail,
@@ -98,10 +98,27 @@ export default function RegisterPage() {
       localStorage.setItem("access_token", result.access_token);
       localStorage.setItem("current_user", JSON.stringify(result.user));
 
-      const nextPath =
-        role === "MITRA" ? "/register/mitra/details" : "/register/umkm/details";
+      let devCode = "";
 
-      navigate(nextPath, { replace: true });
+      try {
+        const verification = await requestEmailVerification(email.trim().toLowerCase());
+        devCode = verification.dev_code ?? "";
+      } catch {
+        // Account creation succeeded. User can resend code from verification page.
+      }
+
+      navigate(
+        `/register/verify-email?email=${encodeURIComponent(email.trim().toLowerCase())}&role=${role.toLowerCase()}`,
+        {
+          replace: true,
+          state: {
+            email: email.trim().toLowerCase(),
+            role,
+            devCode,
+          },
+        }
+      );
+
       return;
     }
 

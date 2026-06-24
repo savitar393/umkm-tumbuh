@@ -7,6 +7,7 @@ import RegisterReviewPage from "./pages/RegisterReviewPage";
 import RegisterPendingPage from "./pages/RegisterPendingPage";
 import RegisterRejectedPage from "./pages/RegisterRejectedPage";
 import RegisterApprovedPage from "./pages/RegisterApprovedPage";
+import RegisterVerifyEmailPage from "./pages/RegisterVerifyEmailPage";
 
 export const authRoutes: RouteObject[] = [
   {
@@ -16,6 +17,10 @@ export const authRoutes: RouteObject[] = [
   {
     path: "/register",
     element: <RegisterPage />,
+  },
+  {
+    path: "/register/verify-email",
+    element: <RegisterVerifyEmailPage />,
   },
   {
     path: "/reactivate",
