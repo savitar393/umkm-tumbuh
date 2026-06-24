@@ -17,7 +17,8 @@ type Sender struct {
 }
 
 func NewSender(host, port, user, password, from string) *Sender {
-	enabled := host != "" && user != "" && password != "" && from != ""
+	enabled := host != "" && port != "" && from != ""
+
 	return &Sender{
 		Host:     host,
 		Port:     port,
@@ -26,6 +27,14 @@ func NewSender(host, port, user, password, from string) *Sender {
 		From:     from,
 		Enabled:  enabled,
 	}
+}
+
+func (s *Sender) smtpAuth() smtp.Auth {
+	if s.User == "" || s.Password == "" {
+		return nil
+	}
+
+	return smtp.PlainAuth("", s.User, s.Password, s.Host)
 }
 
 type NotificationData struct {
@@ -64,9 +73,8 @@ func (s *Sender) SendRegistrationNotification(data NotificationData) error {
 		s.From, data.To, data.Subject, body)
 
 	addr := fmt.Sprintf("%s:%s", s.Host, s.Port)
-	auth := smtp.PlainAuth("", s.User, s.Password, s.Host)
 
-	return smtp.SendMail(addr, auth, s.From, []string{data.To}, []byte(msg))
+	return smtp.SendMail(addr, s.smtpAuth(), s.From, []string{data.To}, []byte(msg))
 }
 
 func (s *Sender) SendCodeEmail(data CodeEmailData) error {
@@ -81,9 +89,8 @@ func (s *Sender) SendCodeEmail(data CodeEmailData) error {
 		s.From, data.To, data.Subject, body)
 
 	addr := fmt.Sprintf("%s:%s", s.Host, s.Port)
-	auth := smtp.PlainAuth("", s.User, s.Password, s.Host)
 
-	return smtp.SendMail(addr, auth, s.From, []string{data.To}, []byte(msg))
+	return smtp.SendMail(addr, s.smtpAuth(), s.From, []string{data.To}, []byte(msg))
 }
 
 func (s *Sender) buildApprovedBody(name string) string {

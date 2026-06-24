@@ -79,6 +79,16 @@ services:
       - umkm_network
     restart: "no"
 
+  mailpit:
+    image: axllent/mailpit:v1.21
+    container_name: umkm_mailpit
+    restart: unless-stopped
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # Web UI
+    networks:
+      - umkm_network
+
   auth-service:
     build:
       context: ../services/auth-service
@@ -94,16 +104,18 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-1440}
       USER_SERVICE_URL: http://user-service:8081
-      SMTP_HOST: ${SMTP_HOST}
-      SMTP_PORT: ${SMTP_PORT}
-      SMTP_USER: ${SMTP_USER}
-      SMTP_PASSWORD: ${SMTP_PASSWORD}
-      SMTP_FROM: ${SMTP_FROM}
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-no-reply@umkm-tumbuh.local}
     ports:
       - "8080:8080"
     depends_on:
       auth-seed-admin:
         condition: service_completed_successfully
+      mailpit:
+        condition: service_started
     networks:
       - umkm_network
 
