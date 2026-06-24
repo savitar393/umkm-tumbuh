@@ -89,7 +89,6 @@ RAW="$(request_with_status POST "$AUTH_URL/auth/register" "{
   \"full_name\": \"Smoke UMKM\",
   \"email\": \"$UMKM_EMAIL\",
   \"phone_number\": \"62812$UMKM_PHONE_SUFFIX\",
-  \"nik\": \"$RUN_NIK\",
   \"password\": \"$PASSWORD\",
   \"role\": \"UMKM\"
 }")"

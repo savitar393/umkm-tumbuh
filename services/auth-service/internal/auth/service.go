@@ -63,17 +63,7 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (*RegisterR
 		return nil, apperror.New(http.StatusBadRequest, "Nomor WhatsApp wajib 8–13 digit setelah kode +62.")
 	}
 
-	if req.Role == users.RoleUMKM {
-		if req.NIK == nil {
-			return nil, apperror.New(http.StatusBadRequest, "NIK wajib diisi untuk akun UMKM.")
-		}
-
-		if len(*req.NIK) != 16 {
-			return nil, apperror.New(http.StatusBadRequest, "NIK wajib 16 digit.")
-		}
-	}
-
-	if req.Role == users.RoleMitra && req.NIK != nil && len(*req.NIK) != 16 {
+	if req.NIK != nil && len(*req.NIK) != 16 {
 		return nil, apperror.New(http.StatusBadRequest, "NIK wajib 16 digit jika diisi.")
 	}
 

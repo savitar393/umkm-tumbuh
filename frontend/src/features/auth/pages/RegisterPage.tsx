@@ -6,9 +6,7 @@ import {
   isStrongEnoughPassword,
   isValidEmail,
   isValidIndonesianPhone,
-  isValidNIK,
   normalizeIndonesianPhone,
-  onlyDigits,
 } from "../../../shared/validation/forms";
 
 type RegisterStep = "role" | "account";
@@ -21,7 +19,6 @@ export default function RegisterPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [nik, setNik] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
@@ -59,10 +56,6 @@ export default function RegisterPage() {
       return "Nomor WhatsApp wajib 8–13 digit setelah kode +62.";
     }
 
-    if (role === "UMKM" && !isValidNIK(nik)) {
-      return "NIK wajib 16 digit untuk akun UMKM.";
-    }
-
     if (!isStrongEnoughPassword(password)) {
       return "Password minimal 8 karakter.";
     }
@@ -97,7 +90,6 @@ export default function RegisterPage() {
       full_name: fullName.trim(),
       email: email.trim().toLowerCase(),
       phone_number: `62${normalizeIndonesianPhone(phoneNumber)}`,
-      nik: role === "UMKM" ? onlyDigits(nik, 16) : undefined,
       password,
       role,
     });
@@ -233,19 +225,6 @@ export default function RegisterPage() {
                   />
                 </div>
               </label>
-
-              {role === "UMKM" ? (
-                <label>
-                  NIK
-                  <input
-                    value={nik}
-                    onChange={(event) => setNik(onlyDigits(event.target.value, 16))}
-                    inputMode="numeric"
-                    maxLength={16}
-                    placeholder="Nomor Induk Kependudukan"
-                  />
-                </label>
-              ) : null}
 
               <div className="register-two-column">
                 <label>

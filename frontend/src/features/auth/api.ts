@@ -33,7 +33,6 @@ export type RegisterPayload = {
   full_name: string;
   email: string;
   phone_number?: string;
-  nik?: string;
   password: string;
   role: "UMKM" | "MITRA";
 };
