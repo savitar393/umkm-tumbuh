@@ -37,6 +37,8 @@ func NewRouter(
 			r.Post("/login", authHandler.Login)
 			r.Post("/verify-email/request", authHandler.RequestEmailVerification)
 			r.Post("/verify-email/confirm", authHandler.ConfirmEmailVerification)
+			r.Post("/password/request-reset", authHandler.RequestPasswordReset)
+			r.Post("/password/reset", authHandler.ResetPassword)
 			r.Get("/me", authHandler.Me)
 		})
 

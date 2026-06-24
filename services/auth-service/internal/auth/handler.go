@@ -113,3 +113,37 @@ func (h *Handler) ConfirmEmailVerification(w http.ResponseWriter, r *http.Reques
 
 	response.JSON(w, http.StatusOK, result)
 }
+
+func (h *Handler) RequestPasswordReset(w http.ResponseWriter, r *http.Request) {
+	var req RequestPasswordResetRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.Error(w, http.StatusBadRequest, "Request body tidak valid.")
+		return
+	}
+
+	result, err := h.AuthService.RequestPasswordReset(r.Context(), req)
+	if err != nil {
+		handleError(w, err)
+		return
+	}
+
+	response.JSON(w, http.StatusOK, result)
+}
+
+func (h *Handler) ResetPassword(w http.ResponseWriter, r *http.Request) {
+	var req ResetPasswordRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.Error(w, http.StatusBadRequest, "Request body tidak valid.")
+		return
+	}
+
+	result, err := h.AuthService.ResetPassword(r.Context(), req)
+	if err != nil {
+		handleError(w, err)
+		return
+	}
+
+	response.JSON(w, http.StatusOK, result)
+}

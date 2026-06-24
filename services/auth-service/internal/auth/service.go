@@ -2,6 +2,9 @@ package auth
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"log"
@@ -9,9 +12,6 @@ import (
 	"net/mail"
 	"strings"
 	"time"
-	"crypto/rand"
-	"crypto/sha256"
-	"encoding/base64"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -283,6 +283,149 @@ func (s *Service) ConfirmEmailVerification(ctx context.Context, req ConfirmEmail
 	}, nil
 }
 
+func (s *Service) RequestPasswordReset(ctx context.Context, req RequestPasswordResetRequest) (map[string]string, error) {
+	email := strings.ToLower(strings.TrimSpace(req.Email))
+
+	if email == "" {
+		return nil, apperror.New(http.StatusBadRequest, "Email wajib diisi.")
+	}
+
+	if _, err := mail.ParseAddress(email); err != nil {
+		return nil, apperror.New(http.StatusBadRequest, "Format email tidak valid.")
+	}
+
+	user, err := s.UserRepo.FindByEmail(ctx, email)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return passwordResetGenericResponse(), nil
+		}
+
+		return nil, err
+	}
+
+	code, err := generateVerificationCode()
+	if err != nil {
+		return nil, err
+	}
+
+	codeHash := hashVerificationCode(code)
+
+	_, err = s.UserRepo.DB.Exec(ctx, `
+		INSERT INTO auth.transaksi_kode_verifikasi (
+			akun_id,
+			email,
+			purpose,
+			code_hash,
+			expires_at
+		)
+		VALUES ($1, $2, 'PASSWORD_RESET', $3, NOW() + INTERVAL '15 minutes')
+	`, user.ID, email, codeHash)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Printf("DEV password reset code for %s: %s", email, code)
+
+	return map[string]string{
+		"message":  "Jika email terdaftar, instruksi reset password telah dikirim.",
+		"dev_code": code,
+	}, nil
+}
+
+func (s *Service) ResetPassword(ctx context.Context, req ResetPasswordRequest) (map[string]string, error) {
+	email := strings.ToLower(strings.TrimSpace(req.Email))
+	code := strings.TrimSpace(req.Code)
+	newPassword := strings.TrimSpace(req.NewPassword)
+
+	if email == "" {
+		return nil, apperror.New(http.StatusBadRequest, "Email wajib diisi.")
+	}
+
+	if _, err := mail.ParseAddress(email); err != nil {
+		return nil, apperror.New(http.StatusBadRequest, "Format email tidak valid.")
+	}
+
+	if code == "" {
+		return nil, apperror.New(http.StatusBadRequest, "Kode reset password wajib diisi.")
+	}
+
+	if len(newPassword) < 8 {
+		return nil, apperror.New(http.StatusBadRequest, "Password baru minimal 8 karakter.")
+	}
+
+	user, err := s.UserRepo.FindByEmail(ctx, email)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, apperror.New(http.StatusBadRequest, "Kode reset password tidak valid atau sudah kedaluwarsa.")
+		}
+
+		return nil, err
+	}
+
+	codeHash := hashVerificationCode(code)
+
+	tx, err := s.UserRepo.DB.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	var codeID string
+	err = tx.QueryRow(ctx, `
+		SELECT kode_verifikasi_id::text
+		FROM auth.transaksi_kode_verifikasi
+		WHERE akun_id = $1
+		  AND email = $2
+		  AND purpose = 'PASSWORD_RESET'
+		  AND code_hash = $3
+		  AND used_at IS NULL
+		  AND expires_at > NOW()
+		ORDER BY created_at DESC
+		LIMIT 1
+		FOR UPDATE
+	`, user.ID, email, codeHash).Scan(&codeID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, apperror.New(http.StatusBadRequest, "Kode reset password tidak valid atau sudah kedaluwarsa.")
+		}
+
+		return nil, err
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = tx.Exec(ctx, `
+		UPDATE auth.master_akunpengguna
+		SET
+			password_hash = $2,
+			updated_at = NOW()
+		WHERE akun_id = $1
+	`, user.ID, string(hashedPassword))
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = tx.Exec(ctx, `
+		UPDATE auth.transaksi_kode_verifikasi
+		SET used_at = NOW()
+		WHERE kode_verifikasi_id = $1::uuid
+	`, codeID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+
+	return map[string]string{
+		"message": "Password berhasil direset. Silakan login dengan password baru.",
+	}, nil
+}
+
 func (s *Service) CurrentUserFromHeader(ctx context.Context, authorizationHeader string) (*users.User, error) {
 	tokenString, err := extractBearerToken(authorizationHeader)
 	if err != nil {
@@ -439,4 +582,10 @@ func generateVerificationCode() (string, error) {
 func hashVerificationCode(code string) string {
 	sum := sha256.Sum256([]byte(strings.TrimSpace(code)))
 	return base64.RawURLEncoding.EncodeToString(sum[:])
+}
+
+func passwordResetGenericResponse() map[string]string {
+	return map[string]string{
+		"message": "Jika email terdaftar, instruksi reset password telah dikirim.",
+	}
 }
