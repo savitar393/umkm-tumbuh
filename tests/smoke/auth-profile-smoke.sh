@@ -84,6 +84,58 @@ split_response "$RAW"
 expect_status "$RESPONSE_STATUS" "401" "invalid login"
 echo
 
+echo "== 2. Password reset flow =="
+RESET_EMAIL="reset.smoke.$RUN_ID@mail.com"
+RESET_OLD_PASSWORD="password123"
+RESET_NEW_PASSWORD="newpassword123"
+
+RAW="$(request_with_status POST "$AUTH_URL/auth/register" "{
+  \"full_name\":\"Reset Smoke User\",
+  \"email\":\"$RESET_EMAIL\",
+  \"phone_number\":\"62814$UMKM_PHONE_SUFFIX\",
+  \"password\":\"$RESET_OLD_PASSWORD\",
+  \"role\":\"UMKM\"
+}")"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "201" "register reset smoke user"
+
+RAW="$(request_with_status POST "$AUTH_URL/auth/password/request-reset" "{
+  \"email\":\"$RESET_EMAIL\"
+}")"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "200" "request password reset"
+
+RESET_CODE="$(printf '%s' "$RESPONSE_BODY" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("dev_code",""))')"
+
+if [ -z "$RESET_CODE" ]; then
+  echo "❌ password reset dev_code missing"
+  echo "$RESPONSE_BODY"
+  exit 1
+fi
+
+RAW="$(request_with_status POST "$AUTH_URL/auth/password/reset" "{
+  \"email\":\"$RESET_EMAIL\",
+  \"code\":\"$RESET_CODE\",
+  \"new_password\":\"$RESET_NEW_PASSWORD\"
+}")"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "200" "reset password"
+
+RAW="$(request_with_status POST "$AUTH_URL/auth/login" "{
+  \"email\":\"$RESET_EMAIL\",
+  \"password\":\"$RESET_OLD_PASSWORD\"
+}")"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "401" "old password should fail"
+
+RAW="$(request_with_status POST "$AUTH_URL/auth/login" "{
+  \"email\":\"$RESET_EMAIL\",
+  \"password\":\"$RESET_NEW_PASSWORD\"
+}")"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "403" "new password should pass password check but fail email verification"
+echo
+
 echo "== 2. Register UMKM =="
 RAW="$(request_with_status POST "$AUTH_URL/auth/register" "{
   \"full_name\": \"Smoke UMKM\",
