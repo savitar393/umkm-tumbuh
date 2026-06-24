@@ -138,7 +138,15 @@ fi
 echo "✅ UMKM profile verified"
 echo
 
-echo "== 5. Register Mitra =="
+echo "== 5. Submit UMKM registration =="
+RAW="$(request_with_status POST "$USER_URL/register/submit" \
+  '{"action":"submit"}' \
+  "$UMKM_TOKEN")"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "200" "submit UMKM registration"
+echo
+
+echo "== 6. Register Mitra =="
 RAW="$(request_with_status POST "$AUTH_URL/auth/register" "{
   \"full_name\": \"Smoke Mitra\",
   \"email\": \"$MITRA_EMAIL\",
@@ -160,7 +168,7 @@ fi
 echo "✅ Mitra token received"
 echo
 
-echo "== 6. Save Mitra profile =="
+echo "== 7. Save Mitra profile =="
 RAW="$(request_with_status PUT "$USER_URL/profiles/me" "{
   \"organization_name\": \"Smoke Mitra Organization\",
   \"organization_type\": \"Inkubator Bisnis\",
@@ -184,7 +192,7 @@ split_response "$RAW"
 expect_status "$RESPONSE_STATUS" "200" "save Mitra profile"
 echo
 
-echo "== 7. Get Mitra profile =="
+echo "== 8. Get Mitra profile =="
 RAW="$(request_with_status GET "$USER_URL/profiles/me" "" "$MITRA_TOKEN")"
 split_response "$RAW"
 expect_status "$RESPONSE_STATUS" "200" "get Mitra profile"
@@ -197,4 +205,13 @@ fi
 
 echo "✅ Mitra profile verified"
 echo
+
+echo "== 9. Submit Mitra registration =="
+RAW="$(request_with_status POST "$USER_URL/register/submit" \
+  '{"action":"submit"}' \
+  "$MITRA_TOKEN")"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "200" "submit Mitra registration"
+echo
+
 echo "🎉 Smoke test passed."
