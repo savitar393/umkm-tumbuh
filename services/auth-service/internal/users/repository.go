@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -27,15 +28,26 @@ func (r *Repository) Create(ctx context.Context, user *User) error {
 
 	queryAccount := `
 		INSERT INTO auth.master_akunpengguna (
-			akun_id, peran_id, nama_lengkap, email, no_hp,
-			password_hash, status_aktif
+			akun_id,
+			peran_id,
+			nama_lengkap,
+			email,
+			no_hp,
+			password_hash,
+			status_aktif,
+			email_verified_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 	`
 
 	phoneNumber := ""
 	if user.PhoneNumber != nil {
 		phoneNumber = *user.PhoneNumber
+	}
+
+	var emailVerifiedAt any
+	if user.Role == "ADMIN" {
+		emailVerifiedAt = time.Now().UTC()
 	}
 
 	if _, err := tx.Exec(
@@ -48,6 +60,7 @@ func (r *Repository) Create(ctx context.Context, user *User) error {
 		phoneNumber,
 		user.PasswordHash,
 		user.IsActive,
+		emailVerifiedAt,
 	); err != nil {
 		return err
 	}
@@ -117,9 +130,9 @@ func (r *Repository) FindDuplicate(
 	nik *string,
 ) (*User, error) {
 	query := userSelectQuery() + `
-		WHERE a.email = $1
-		   OR ($2::text IS NOT NULL AND a.no_hp = $2)
-		   OR ($3::text IS NOT NULL AND p.nik = $3)
+		WHERE a.email::text = $1::text
+		OR ($2::text IS NOT NULL AND a.no_hp::text = $2::text)
+		OR ($3::text IS NOT NULL AND p.nik::text = $3::text)
 		LIMIT 1
 	`
 
@@ -294,17 +307,6 @@ func (r *Repository) UpdateRegistrationStatus(
 		return nil, err
 	}
 
-	if status == StatusRejected {
-		_, err = tx.Exec(
-			ctx,
-			`UPDATE auth.master_akunpengguna SET status_aktif = FALSE WHERE akun_id = $1`,
-			id,
-		)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	if status == StatusApproved {
 		_, err = tx.Exec(
 			ctx,
@@ -352,6 +354,7 @@ func userSelectQuery() string {
 			a.akun_id,
 			a.nama_lengkap,
 			a.email::text,
+			a.email_verified_at,
 			NULLIF(a.no_hp, ''),
 			p.nik,
 			a.password_hash,
@@ -383,6 +386,7 @@ func scanUser(row userScanner) (*User, error) {
 		&user.ID,
 		&user.FullName,
 		&user.Email,
+		&user.EmailVerifiedAt,
 		&user.PhoneNumber,
 		&user.NIK,
 		&user.PasswordHash,

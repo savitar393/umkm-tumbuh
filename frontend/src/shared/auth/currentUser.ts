@@ -13,6 +13,7 @@ export type CurrentUser = {
   id: string;
   full_name: string;
   email: string;
+  email_verified_at?: string | null;
   role: UserRole;
   status: UserStatus;
 
@@ -44,6 +45,10 @@ export function setCurrentUser(user: CurrentUser) {
   localStorage.setItem("current_user", JSON.stringify(user));
 }
 
+export function isEmailVerified(user: CurrentUser) {
+  return user.role === "ADMIN" || Boolean(user.email_verified_at);
+}
+
 export function clearAuthStorage() {
   localStorage.removeItem("access_token");
   localStorage.removeItem("current_user");
@@ -70,6 +75,10 @@ export function isRejectedStatus(status?: UserStatus | string | null) {
 }
 
 export function getRegistrationStatusRoute(user: CurrentUser) {
+  if (!isEmailVerified(user)) {
+    return `/register/verify-email?email=${encodeURIComponent(user.email)}&role=${user.role.toLowerCase()}`;
+  }
+
   if (isApprovedStatus(user.status)) {
     return getDefaultRouteByRole(user.role);
   }

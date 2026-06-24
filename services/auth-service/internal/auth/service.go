@@ -160,12 +160,8 @@ func (s *Service) Login(ctx context.Context, req LoginRequest) (*TokenResponse, 
 		return nil, apperror.New(http.StatusForbidden, "Akun tidak aktif.")
 	}
 
-	if user.Status == users.StatusPending {
-		return nil, apperror.New(http.StatusForbidden, "Akun masih menunggu validasi Pemerintah/Admin.")
-	}
-
-	if user.Status == users.StatusRejected {
-		return nil, apperror.New(http.StatusForbidden, "Akun ditolak. Silakan hubungi Pemerintah/Admin.")
+	if user.Role != users.RoleAdmin && user.EmailVerifiedAt == nil {
+		return nil, apperror.New(http.StatusForbidden, "Email belum diverifikasi. Silakan verifikasi email terlebih dahulu.")
 	}
 
 	token, err := s.createAccessToken(user)
@@ -267,6 +263,17 @@ func (s *Service) ConfirmEmailVerification(ctx context.Context, req ConfirmEmail
 		SET used_at = NOW()
 		WHERE token_id = $1::uuid
 	`, tokenID)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = s.UserRepo.DB.Exec(ctx, `
+		UPDATE auth.master_akunpengguna
+		SET
+			email_verified_at = COALESCE(email_verified_at, NOW()),
+			updated_at = NOW()
+		WHERE akun_id = $1
+	`, user.ID)
 	if err != nil {
 		return nil, err
 	}
