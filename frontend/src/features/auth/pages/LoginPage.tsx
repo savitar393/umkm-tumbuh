@@ -3,6 +3,7 @@ import { ArrowRight, Eye, Lock, Mail } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { login } from "../api";
 import { isValidEmail } from "../../../shared/validation/forms";
+import { getPostLoginRoute, setCurrentUser } from "../../../shared/auth/currentUser";
 
 const QUICK_LOGIN = {
   admin: {
@@ -70,7 +71,7 @@ export default function LoginPage() {
       });
 
       localStorage.setItem("access_token", result.access_token);
-      localStorage.setItem("current_user", JSON.stringify(result.user));
+      setCurrentUser(result.user);
 
       if (rememberMe) {
         localStorage.setItem("remember_me", "true");
@@ -78,15 +79,7 @@ export default function LoginPage() {
         localStorage.removeItem("remember_me");
       }
 
-      if (result.user.role === "ADMIN") {
-        navigate("/admin");
-      } else if (result.user.role === "UMKM") {
-        navigate("/umkm");
-      } else if (result.user.role === "MITRA") {
-        navigate("/mitra");
-      } else {
-        navigate("/");
-      }
+      navigate(getPostLoginRoute(result.user), { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login gagal");
     } finally {
@@ -109,17 +102,9 @@ export default function LoginPage() {
       });
 
       localStorage.setItem("access_token", result.access_token);
-      localStorage.setItem("current_user", JSON.stringify(result.user));
+      setCurrentUser(result.user);
 
-      if (result.user.role === "ADMIN") {
-        navigate("/admin", { replace: true });
-      } else if (result.user.role === "UMKM") {
-        navigate("/umkm", { replace: true });
-      } else if (result.user.role === "MITRA") {
-        navigate("/mitra", { replace: true });
-      } else {
-        navigate("/", { replace: true });
-      }
+      navigate(getPostLoginRoute(result.user), { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login cepat gagal");
     } finally {

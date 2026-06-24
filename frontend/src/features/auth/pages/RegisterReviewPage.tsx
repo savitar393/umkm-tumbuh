@@ -4,6 +4,8 @@ import { CheckCircle, Loader2 } from "lucide-react";
 import { getCurrentUser } from "../../../shared/auth/currentUser";
 import { http } from "../../../shared/api/http";
 import { submitRegistration } from "../api";
+import { getMe } from "../api";
+import { setCurrentUser } from "../../../shared/auth/currentUser";
 
 type RegisterDetailRole = "umkm" | "mitra";
 
@@ -216,6 +218,9 @@ export default function RegisterReviewPage() {
 
     try {
       const response = await submitRegistration();
+      const freshUser = await getMe();
+      
+      setCurrentUser(freshUser);
       setSubmitMessage(response.message || "Pendaftaran berhasil dikirim. Menunggu review Admin.");
       setSubmitted(true);
       navigate("/register/pending", { replace: true });

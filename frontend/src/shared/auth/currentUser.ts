@@ -40,6 +40,10 @@ export function getCurrentUser(): CurrentUser | null {
   }
 }
 
+export function setCurrentUser(user: CurrentUser) {
+  localStorage.setItem("current_user", JSON.stringify(user));
+}
+
 export function clearAuthStorage() {
   localStorage.removeItem("access_token");
   localStorage.removeItem("current_user");
@@ -75,4 +79,16 @@ export function getRegistrationStatusRoute(user: CurrentUser) {
   }
 
   return "/register/pending";
+}
+
+export function getPostLoginRoute(user: CurrentUser) {
+  if (user.role === "ADMIN") {
+    return "/admin";
+  }
+
+  if (isApprovedStatus(user.status)) {
+    return getDefaultRouteByRole(user.role);
+  }
+
+  return getRegistrationStatusRoute(user);
 }
