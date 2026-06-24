@@ -9827,3 +9827,49 @@ button.danger {
   color: #dc2626;
   font-weight: 800;
 }
+
+.register-upload-box {
+  position: relative;
+}
+
+.register-upload-box {
+  position: relative;
+}
+
+.register-upload-clear {
+  all: unset;
+  box-sizing: border-box;
+
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 30px;
+  height: 30px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #b91c1c;
+  cursor: pointer;
+  z-index: 5;
+
+  box-shadow: 0 8px 18px rgba(185, 28, 28, 0.16);
+}
+
+.register-upload-clear:hover {
+  background: #fecaca;
+}
+
+.register-upload-clear svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  pointer-events: none;
+}
+
+.register-upload-clear:hover {
+  background: #fecaca;
+}

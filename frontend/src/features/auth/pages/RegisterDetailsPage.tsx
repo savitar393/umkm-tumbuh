@@ -2,12 +2,14 @@ import {
   type ChangeEvent,
   type Dispatch,
   type FormEvent,
+  type MouseEvent,
   type SetStateAction,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
-import { ArrowLeft, ArrowRight, Bell, HelpCircle, Upload, UserCircle } from "lucide-react";
+import { ArrowLeft, ArrowRight, Bell, HelpCircle, Upload, UserCircle, X } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { getCurrentUser } from "../../../shared/auth/currentUser";
 import {
@@ -389,11 +391,28 @@ export default function RegisterDetailsPage() {
     }
   }
 
+  function clearUpload(key: UploadKey) {
+    setUploads((prev) => ({
+      ...prev,
+      [key]: { ...initialUpload },
+    }));
+
+    const draft = readRegistrationDraft(draftKey);
+
+    writeRegistrationDraft(draftKey, {
+      ...(draft ?? {}),
+      uploads: {
+        ...(draft?.uploads ?? {}),
+        [key]: { documentId: null },
+      },
+    });
+  }
+
   async function uploadIfNeeded(key: UploadKey) {
     const item = uploads[key];
 
+    if (item?.documentId) return item.documentId;
     if (!item?.file) return null;
-    if (item.documentId) return item.documentId;
 
     setUploads((prev) => ({
       ...prev,
@@ -599,6 +618,7 @@ export default function RegisterDetailsPage() {
           nib: mitraForm.nib,
           npwp: mitraForm.npwp,
           description: mitraForm.deskripsiTujuan,
+          support_description: mitraForm.deskripsiTujuan,
 
           address: mitraForm.alamatKantor.trim(),
           city: mitraForm.kotaKabupaten.trim(),
@@ -686,6 +706,7 @@ export default function RegisterDetailsPage() {
               setForm={setUmkmForm}
               uploads={uploads}
               selectFile={selectFile}
+              clearUpload={clearUpload}
             />
           ) : (
             <MitraFields
@@ -693,6 +714,7 @@ export default function RegisterDetailsPage() {
               setForm={setMitraForm}
               uploads={uploads}
               selectFile={selectFile}
+              clearUpload={clearUpload}
             />
           )}
 
@@ -746,6 +768,7 @@ function UploadBox({
   value,
   accept,
   onChange,
+  onClear,
 }: {
   id: string;
   label: string;
@@ -753,7 +776,22 @@ function UploadBox({
   value: UploadState;
   accept: string;
   onChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onClear?: () => void;
 }) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const hasValue = Boolean(value.file || value.documentId);
+
+  function handleClear(event: MouseEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (inputRef.current) {
+      inputRef.current.value = "";
+    }
+
+    onClear?.();
+  }
+
   return (
     <label
       className={`register-upload-box ${value.documentId ? "filled" : ""} ${
@@ -761,7 +799,18 @@ function UploadBox({
       }`}
       htmlFor={id}
     >
-      <input id={id} type="file" onChange={onChange} accept={accept} />
+      {hasValue ? (
+        <button
+          type="button"
+          className="register-upload-clear"
+          aria-label={`Hapus ${label}`}
+          onClick={handleClear}
+        >
+          <X size={16} />
+        </button>
+      ) : null}
+
+      <input ref={inputRef} id={id} type="file" onChange={onChange} accept={accept} />
       <span>
         <Upload size={22} />
       </span>
@@ -786,11 +835,13 @@ function UmkmFields({
   setForm,
   uploads,
   selectFile,
+  clearUpload,
 }: {
   form: any;
   setForm: Dispatch<SetStateAction<any>>;
   uploads: Record<string, UploadState>;
   selectFile: (key: UploadKey, event: ChangeEvent<HTMLInputElement>) => void;
+  clearUpload: (key: UploadKey) => void;
 }) {
   return (
     <>
@@ -944,6 +995,7 @@ function UmkmFields({
             value={uploads.umkmPhoto}
             accept={uploadRules.umkmPhoto.accept}
             onChange={(e) => selectFile("umkmPhoto", e)}
+            onClear={() => clearUpload("umkmPhoto")}
           />
           <UploadBox
             id="umkm-legal"
@@ -952,6 +1004,7 @@ function UmkmFields({
             value={uploads.umkmLegal}
             accept={uploadRules.umkmLegal.accept}
             onChange={(e) => selectFile("umkmLegal", e)}
+            onClear={() => clearUpload("umkmLegal")}
           />
         </div>
       </section>
@@ -964,11 +1017,13 @@ function MitraFields({
   setForm,
   uploads,
   selectFile,
+  clearUpload,
 }: {
   form: any;
   setForm: Dispatch<SetStateAction<any>>;
   uploads: Record<UploadKey, UploadState>;
   selectFile: (key: UploadKey, event: ChangeEvent<HTMLInputElement>) => void;
+  clearUpload: (key: UploadKey) => void;
 }) {
   return (
     <>
@@ -1165,6 +1220,7 @@ function MitraFields({
             value={uploads.mitraLegal}
             accept={uploadRules.mitraLegal.accept}
             onChange={(e) => selectFile("mitraLegal", e)}
+            onClear={() => clearUpload("mitraLegal")}
           />
           <UploadBox
             id="mitra-commitment"
@@ -1173,6 +1229,7 @@ function MitraFields({
             value={uploads.mitraCommitment}
             accept={uploadRules.mitraCommitment.accept}
             onChange={(e) => selectFile("mitraCommitment", e)}
+            onClear={() => clearUpload("mitraCommitment")}
           />
           <UploadBox
             id="mitra-company-profile"
@@ -1181,6 +1238,7 @@ function MitraFields({
             value={uploads.mitraCompanyProfile}
             accept={uploadRules.mitraCompanyProfile.accept}
             onChange={(e) => selectFile("mitraCompanyProfile", e)}
+            onClear={() => clearUpload("mitraCompanyProfile")}
           />
         </div>
       </section>

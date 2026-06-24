@@ -178,6 +178,7 @@ export type MitraRegistrationDetailsPayload = {
   nib?: string | null;
   npwp?: string | null;
   description?: string | null;
+  support_description?: string | null;
   
   address?: string | null;
   city?: string | null;
