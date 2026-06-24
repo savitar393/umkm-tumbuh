@@ -155,6 +155,15 @@ export async function uploadRegistrationDocument(file: File, category: string) {
 
   return data;
 }
+
+export function submitRegistration() {
+  return http<{ message: string }>("/register/submit", {
+    method: "POST",
+    body: JSON.stringify({ action: "submit" }),
+    service: "user",
+  });
+}
+
 export type UmkmRegistrationDetailsPayload = {
   business_name: string;
   business_category?: string;

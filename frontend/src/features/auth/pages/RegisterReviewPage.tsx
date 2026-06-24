@@ -3,6 +3,7 @@ import { Link, Navigate, useLocation, useParams } from "react-router-dom";
 import { CheckCircle, Loader2 } from "lucide-react";
 import { getCurrentUser } from "../../../shared/auth/currentUser";
 import { http } from "../../../shared/api/http";
+import { submitRegistration } from "../api";
 
 type RegisterDetailRole = "umkm" | "mitra";
 
@@ -76,6 +77,9 @@ export default function RegisterReviewPage() {
   const [profile, setProfile] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const [submitting, setSubmitting] = useState(false);
+  const [submitMessage, setSubmitMessage] = useState("");
 
   const expectedRole = role === "umkm" ? "UMKM" : "MITRA";
   const dashboardPath = role === "umkm" ? "/umkm" : "/mitra";
@@ -202,6 +206,21 @@ export default function RegisterReviewPage() {
     return <Navigate to={`/register/${currentUser.role.toLowerCase()}/details`} replace />;
   }
 
+  async function handleSubmitRegistration() {
+    setError("");
+    setSubmitMessage("");
+    setSubmitting(true);
+
+    try {
+      const response = await submitRegistration();
+      setSubmitMessage(response.message || "Pendaftaran berhasil dikirim. Menunggu review Admin.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal mengirim pendaftaran.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <main className="register-detail-page">
       <header className="register-detail-navbar">
@@ -252,14 +271,31 @@ export default function RegisterReviewPage() {
             </>
           )}
 
+          {submitMessage ? (
+            <div className="form-alert success" style={{ marginTop: 18 }}>
+              {submitMessage}
+            </div>
+          ) : null}
+
+          {submitMessage ? (
+            <Link to={dashboardPath} className="secondary-button">
+              Ke Dashboard
+            </Link>
+          ) : null}
+
           <div className="register-detail-actions" style={{ marginTop: 32 }}>
             <Link to={editPath} className="secondary-button">
               Kembali Edit Data
             </Link>
 
-            <Link to={dashboardPath} className="primary-button">
-              Lanjut ke Dashboard
-            </Link>
+            <button
+              type="button"
+              className="primary-button"
+              disabled={loading || submitting || Boolean(error)}
+              onClick={handleSubmitRegistration}
+            >
+              {submitting ? "Mengirim..." : "Kirim untuk Review Admin"}
+            </button>
           </div>
         </div>
       </section>

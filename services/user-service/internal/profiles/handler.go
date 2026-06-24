@@ -110,6 +110,124 @@ func (h *Handler) UpsertMe(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h *Handler) SubmitRegistration(w http.ResponseWriter, r *http.Request) {
+	user, ok := middleware.CurrentUserFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+		return
+	}
+
+	if user.Role != "UMKM" && user.Role != "MITRA" {
+		writeJSON(w, http.StatusForbidden, map[string]string{
+			"error": "Role ini tidak dapat mengirim pendaftaran.",
+		})
+		return
+	}
+
+	tx, err := h.DB.Begin(r.Context())
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": "Gagal memulai submit pendaftaran.",
+		})
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	var (
+		checklistComplete bool
+		umkmID            sql.NullString
+		mitraID           sql.NullString
+		status            string
+	)
+
+	err = tx.QueryRow(r.Context(), `
+		SELECT
+			checklist_informasi_lengkap,
+			umkm_id,
+			mitra_id,
+			status_verifikasi_id
+		FROM user_mgmt.transaksi_registrasipengguna
+		WHERE akun_id = $1
+		FOR UPDATE
+	`, user.ID).Scan(&checklistComplete, &umkmID, &mitraID, &status)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			writeJSON(w, http.StatusForbidden, map[string]string{
+				"error": "Data registrasi belum dibuat.",
+			})
+			return
+		}
+
+		log.Printf("failed to read registration before submit: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": "Gagal membaca data registrasi.",
+		})
+		return
+	}
+
+	if !checklistComplete {
+		writeJSON(w, http.StatusForbidden, map[string]string{
+			"error": "Profil belum lengkap. Lengkapi data terlebih dahulu.",
+		})
+		return
+	}
+
+	if user.Role == "UMKM" && !umkmID.Valid {
+		writeJSON(w, http.StatusForbidden, map[string]string{
+			"error": "Profil UMKM belum lengkap.",
+		})
+		return
+	}
+
+	if user.Role == "MITRA" && !mitraID.Valid {
+		writeJSON(w, http.StatusForbidden, map[string]string{
+			"error": "Profil Mitra belum lengkap.",
+		})
+		return
+	}
+
+	if status == "DISETUJUI" {
+		writeJSON(w, http.StatusConflict, map[string]string{
+			"error": "Pendaftaran sudah disetujui.",
+		})
+		return
+	}
+
+	if status == "DITOLAK" {
+		writeJSON(w, http.StatusConflict, map[string]string{
+			"error": "Pendaftaran sudah ditolak. Silakan ajukan ulang jika fitur re-submit sudah tersedia.",
+		})
+		return
+	}
+
+	_, err = tx.Exec(r.Context(), `
+		UPDATE user_mgmt.transaksi_registrasipengguna
+		SET
+			status_verifikasi_id = 'MENUNGGU',
+			tanggal_submit = NOW()
+		WHERE akun_id = $1
+	`, user.ID)
+	if err != nil {
+		log.Printf("failed to submit registration: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": "Gagal mengirim pendaftaran.",
+		})
+		return
+	}
+
+	if err := tx.Commit(r.Context()); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": "Gagal menyelesaikan submit pendaftaran.",
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{
+		"message": "Pendaftaran berhasil dikirim. Menunggu review Admin.",
+	})
+}
+
 func (h *Handler) getUMKMProfile(ctx context.Context, accountID string) (map[string]any, error) {
 	row := h.DB.QueryRow(ctx, `
 		SELECT
