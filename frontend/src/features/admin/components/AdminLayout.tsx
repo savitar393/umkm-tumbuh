@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { ChevronDown, LogOut } from "lucide-react";
 import { getCurrentUser, clearAuthStorage } from "../../../shared/auth/currentUser";
+import { logout as logoutApi } from "../../auth/api";
 
 const trainingSubMenus = [
   { label: "Dashboard Pelatihan", to: "/admin/training/dashboard" },
@@ -51,9 +52,15 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  function logout() {
-    clearAuthStorage();
-    navigate("/login");
+  async function logout() {
+    try {
+      await logoutApi();
+    } catch {
+      // Local logout should still happen even if backend logout fails.
+    } finally {
+      clearAuthStorage();
+      navigate("/login", { replace: true });
+    }
   }
 
   function renderDropdown(

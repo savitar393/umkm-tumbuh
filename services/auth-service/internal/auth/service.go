@@ -176,6 +176,40 @@ func (s *Service) Login(ctx context.Context, req LoginRequest) (*TokenResponse, 
 	}, nil
 }
 
+func (s *Service) Logout(ctx context.Context, authorizationHeader string) (map[string]string, error) {
+	claims, err := s.parseAccessToken(authorizationHeader)
+	if err != nil {
+		return nil, err
+	}
+
+	userID, _ := claims["sub"].(string)
+	jti, _ := claims["jti"].(string)
+
+	expFloat, ok := claims["exp"].(float64)
+	if !ok || userID == "" || jti == "" {
+		return nil, apperror.New(http.StatusUnauthorized, "Token tidak valid.")
+	}
+
+	expiresAt := time.Unix(int64(expFloat), 0).UTC()
+
+	_, err = s.UserRepo.DB.Exec(ctx, `
+		INSERT INTO auth.transaksi_revoked_jwts (
+			akun_id,
+			jwt_id,
+			expires_at
+		)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (jwt_id) DO NOTHING
+	`, userID, jti, expiresAt)
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]string{
+		"message": "Logout berhasil.",
+	}, nil
+}
+
 func (s *Service) RequestEmailVerification(ctx context.Context, req RequestEmailVerificationRequest) (map[string]any, error) {
 	email := strings.ToLower(strings.TrimSpace(req.Email))
 
@@ -427,26 +461,30 @@ func (s *Service) ResetPassword(ctx context.Context, req ResetPasswordRequest) (
 }
 
 func (s *Service) CurrentUserFromHeader(ctx context.Context, authorizationHeader string) (*users.User, error) {
-	tokenString, err := extractBearerToken(authorizationHeader)
+	claims, err := s.parseAccessToken(authorizationHeader)
 	if err != nil {
 		return nil, err
 	}
 
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method")
+	jti, _ := claims["jti"].(string)
+	if jti != "" {
+		var exists bool
+
+		err = s.UserRepo.DB.QueryRow(ctx, `
+			SELECT EXISTS (
+				SELECT 1
+				FROM auth.transaksi_revoked_jwts
+				WHERE jwt_id = $1
+				  AND expires_at > NOW()
+			)
+		`, jti).Scan(&exists)
+		if err != nil {
+			return nil, err
 		}
 
-		return []byte(s.Config.JWTSecret), nil
-	})
-
-	if err != nil || !token.Valid {
-		return nil, apperror.New(http.StatusUnauthorized, "Token tidak valid atau sudah kedaluwarsa.")
-	}
-
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		return nil, apperror.New(http.StatusUnauthorized, "Token tidak valid.")
+		if exists {
+			return nil, apperror.New(http.StatusUnauthorized, "Token sudah logout.")
+		}
 	}
 
 	userID, ok := claims["sub"].(string)
@@ -475,6 +513,7 @@ func (s *Service) createAccessToken(user *users.User) (string, error) {
 		"sub":   user.ID,
 		"email": user.Email,
 		"role":  user.Role,
+		"jti":   uuid.NewString(),
 		"exp": time.Now().
 			Add(time.Duration(s.Config.JWTExpireMinutes) * time.Minute).
 			Unix(),
@@ -500,6 +539,32 @@ func extractBearerToken(authorizationHeader string) (string, error) {
 	}
 
 	return token, nil
+}
+
+func (s *Service) parseAccessToken(authorizationHeader string) (jwt.MapClaims, error) {
+	tokenString, err := extractBearerToken(authorizationHeader)
+	if err != nil {
+		return nil, err
+	}
+
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method")
+		}
+
+		return []byte(s.Config.JWTSecret), nil
+	})
+
+	if err != nil || !token.Valid {
+		return nil, apperror.New(http.StatusUnauthorized, "Token tidak valid atau sudah kedaluwarsa.")
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return nil, apperror.New(http.StatusUnauthorized, "Token tidak valid.")
+	}
+
+	return claims, nil
 }
 
 func newAccountID() string {

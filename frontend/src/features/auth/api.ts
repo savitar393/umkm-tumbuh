@@ -263,3 +263,10 @@ export function resetPassword(email: string, code: string, newPassword: string) 
     service: "auth",
   });
 }
+
+export function logout() {
+  return http<{ message: string }>("/auth/logout", {
+    method: "POST",
+    service: "auth",
+  });
+}

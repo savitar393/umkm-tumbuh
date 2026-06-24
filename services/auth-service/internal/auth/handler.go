@@ -147,3 +147,13 @@ func (h *Handler) ResetPassword(w http.ResponseWriter, r *http.Request) {
 
 	response.JSON(w, http.StatusOK, result)
 }
+
+func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
+	result, err := h.AuthService.Logout(r.Context(), r.Header.Get("Authorization"))
+	if err != nil {
+		handleError(w, err)
+		return
+	}
+
+	response.JSON(w, http.StatusOK, result)
+}
