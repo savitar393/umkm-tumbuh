@@ -36,8 +36,8 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (*RegisterR
 	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
 	req.Role = strings.ToUpper(strings.TrimSpace(req.Role))
 
-	req.PhoneNumber = cleanOptionalString(req.PhoneNumber)
-	req.NIK = cleanOptionalString(req.NIK)
+	req.PhoneNumber = normalizePhoneNumber(req.PhoneNumber)
+	req.NIK = normalizeNIK(req.NIK)
 
 	if len(req.FullName) < 3 {
 		return nil, apperror.New(http.StatusBadRequest, "Nama lengkap minimal 3 karakter.")
@@ -53,6 +53,28 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (*RegisterR
 
 	if req.Role != users.RoleUMKM && req.Role != users.RoleMitra {
 		return nil, apperror.New(http.StatusBadRequest, "Registrasi publik hanya untuk UMKM atau Mitra.")
+	}
+
+	if req.PhoneNumber == nil {
+		return nil, apperror.New(http.StatusBadRequest, "Nomor WhatsApp wajib diisi.")
+	}
+
+	if len(*req.PhoneNumber) < 10 || len(*req.PhoneNumber) > 15 {
+		return nil, apperror.New(http.StatusBadRequest, "Nomor WhatsApp wajib 8–13 digit setelah kode +62.")
+	}
+
+	if req.Role == users.RoleUMKM {
+		if req.NIK == nil {
+			return nil, apperror.New(http.StatusBadRequest, "NIK wajib diisi untuk akun UMKM.")
+		}
+
+		if len(*req.NIK) != 16 {
+			return nil, apperror.New(http.StatusBadRequest, "NIK wajib 16 digit.")
+		}
+	}
+
+	if req.Role == users.RoleMitra && req.NIK != nil && len(*req.NIK) != 16 {
+		return nil, apperror.New(http.StatusBadRequest, "NIK wajib 16 digit jika diisi.")
 	}
 
 	duplicate, err := s.UserRepo.FindDuplicate(ctx, req.Email, req.PhoneNumber, req.NIK)
@@ -114,6 +136,18 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (*RegisterR
 
 func (s *Service) Login(ctx context.Context, req LoginRequest) (*TokenResponse, error) {
 	email := strings.ToLower(strings.TrimSpace(req.Email))
+
+	if email == "" {
+		return nil, apperror.New(http.StatusBadRequest, "Email wajib diisi.")
+	}
+
+	if _, err := mail.ParseAddress(email); err != nil {
+		return nil, apperror.New(http.StatusBadRequest, "Format email tidak valid.")
+	}
+
+	if strings.TrimSpace(req.Password) == "" {
+		return nil, apperror.New(http.StatusBadRequest, "Kata sandi wajib diisi.")
+	}
 
 	user, err := s.UserRepo.FindByEmail(ctx, email)
 	if err != nil {
@@ -244,4 +278,48 @@ func cleanOptionalString(value *string) *string {
 	}
 
 	return &cleaned
+}
+
+func digitsOnly(value string) string {
+	var builder strings.Builder
+
+	for _, char := range value {
+		if char >= '0' && char <= '9' {
+			builder.WriteRune(char)
+		}
+	}
+
+	return builder.String()
+}
+
+func normalizePhoneNumber(value *string) *string {
+	if value == nil {
+		return nil
+	}
+
+	digits := digitsOnly(strings.TrimSpace(*value))
+	if digits == "" {
+		return nil
+	}
+
+	if strings.HasPrefix(digits, "0") {
+		digits = "62" + strings.TrimPrefix(digits, "0")
+	} else if strings.HasPrefix(digits, "8") {
+		digits = "62" + digits
+	}
+
+	return &digits
+}
+
+func normalizeNIK(value *string) *string {
+	if value == nil {
+		return nil
+	}
+
+	digits := digitsOnly(strings.TrimSpace(*value))
+	if digits == "" {
+		return nil
+	}
+
+	return &digits
 }
