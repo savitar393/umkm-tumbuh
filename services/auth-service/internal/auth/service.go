@@ -4,10 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"net/mail"
 	"strings"
 	"time"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -176,6 +180,102 @@ func (s *Service) Login(ctx context.Context, req LoginRequest) (*TokenResponse, 
 	}, nil
 }
 
+func (s *Service) RequestEmailVerification(ctx context.Context, req RequestEmailVerificationRequest) (map[string]any, error) {
+	email := strings.ToLower(strings.TrimSpace(req.Email))
+
+	if email == "" {
+		return nil, apperror.New(http.StatusBadRequest, "Email wajib diisi.")
+	}
+
+	if _, err := mail.ParseAddress(email); err != nil {
+		return nil, apperror.New(http.StatusBadRequest, "Format email tidak valid.")
+	}
+
+	user, err := s.UserRepo.FindByEmail(ctx, email)
+	if err != nil {
+		return nil, apperror.New(http.StatusNotFound, "Akun tidak ditemukan.")
+	}
+
+	code, err := generateVerificationCode()
+	if err != nil {
+		return nil, err
+	}
+
+	codeHash := hashVerificationCode(code)
+
+	_, err = s.UserRepo.DB.Exec(ctx, `
+		INSERT INTO auth.email_verification_tokens (
+			token_id,
+			akun_id,
+			code_hash,
+			expires_at
+		)
+		VALUES (gen_random_uuid(), $1, $2, NOW() + INTERVAL '15 minutes')
+	`, user.ID, codeHash)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Printf("DEV email verification code for %s: %s", email, code)
+
+	return map[string]any{
+		"message":  "Kode verifikasi email berhasil dibuat.",
+		"dev_code": code,
+	}, nil
+}
+
+func (s *Service) ConfirmEmailVerification(ctx context.Context, req ConfirmEmailVerificationRequest) (map[string]any, error) {
+	email := strings.ToLower(strings.TrimSpace(req.Email))
+	code := strings.TrimSpace(req.Code)
+
+	if email == "" {
+		return nil, apperror.New(http.StatusBadRequest, "Email wajib diisi.")
+	}
+
+	if code == "" {
+		return nil, apperror.New(http.StatusBadRequest, "Kode verifikasi wajib diisi.")
+	}
+
+	user, err := s.UserRepo.FindByEmail(ctx, email)
+	if err != nil {
+		return nil, apperror.New(http.StatusNotFound, "Akun tidak ditemukan.")
+	}
+
+	codeHash := hashVerificationCode(code)
+
+	var tokenID string
+	err = s.UserRepo.DB.QueryRow(ctx, `
+		SELECT token_id::text
+		FROM auth.email_verification_tokens
+		WHERE akun_id = $1
+		  AND code_hash = $2
+		  AND used_at IS NULL
+		  AND expires_at > NOW()
+		ORDER BY created_at DESC
+		LIMIT 1
+	`, user.ID, codeHash).Scan(&tokenID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, apperror.New(http.StatusBadRequest, "Kode verifikasi tidak valid atau sudah kedaluwarsa.")
+		}
+
+		return nil, err
+	}
+
+	_, err = s.UserRepo.DB.Exec(ctx, `
+		UPDATE auth.email_verification_tokens
+		SET used_at = NOW()
+		WHERE token_id = $1::uuid
+	`, tokenID)
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]any{
+		"message": "Email berhasil diverifikasi.",
+	}, nil
+}
+
 func (s *Service) CurrentUserFromHeader(ctx context.Context, authorizationHeader string) (*users.User, error) {
 	tokenString, err := extractBearerToken(authorizationHeader)
 	if err != nil {
@@ -312,4 +412,24 @@ func normalizeNIK(value *string) *string {
 	}
 
 	return &digits
+}
+
+func generateVerificationCode() (string, error) {
+	var bytes [4]byte
+
+	if _, err := rand.Read(bytes[:]); err != nil {
+		return "", err
+	}
+
+	n := int(bytes[0])<<24 | int(bytes[1])<<16 | int(bytes[2])<<8 | int(bytes[3])
+	if n < 0 {
+		n = -n
+	}
+
+	return fmt.Sprintf("%06d", n%1000000), nil
+}
+
+func hashVerificationCode(code string) string {
+	sum := sha256.Sum256([]byte(strings.TrimSpace(code)))
+	return base64.RawURLEncoding.EncodeToString(sum[:])
 }

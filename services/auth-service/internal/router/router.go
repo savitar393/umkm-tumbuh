@@ -35,6 +35,8 @@ func NewRouter(
 		r.Route("/auth", func(r chi.Router) {
 			r.Post("/register", authHandler.Register)
 			r.Post("/login", authHandler.Login)
+			r.Post("/verify-email/request", authHandler.RequestEmailVerification)
+			r.Post("/verify-email/confirm", authHandler.ConfirmEmailVerification)
 			r.Get("/me", authHandler.Me)
 		})
 

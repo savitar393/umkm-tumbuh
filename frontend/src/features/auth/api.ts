@@ -222,3 +222,21 @@ export function saveMitraRegistrationDetails(payload: MitraRegistrationDetailsPa
     service: "user",
   });
 }
+
+export function requestEmailVerification(email: string) {
+  return http<{ message: string; dev_code?: string }>("/auth/verify-email/request", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+    auth: false,
+    service: "auth",
+  });
+}
+
+export function confirmEmailVerification(email: string, code: string) {
+  return http<{ message: string }>("/auth/verify-email/confirm", {
+    method: "POST",
+    body: JSON.stringify({ email, code }),
+    auth: false,
+    service: "auth",
+  });
+}
