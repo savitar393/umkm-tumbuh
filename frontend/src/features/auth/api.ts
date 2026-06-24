@@ -241,3 +241,25 @@ export function confirmEmailVerification(email: string, code: string) {
     service: "auth",
   });
 }
+
+export function requestPasswordReset(email: string) {
+  return http<{ message: string; dev_code?: string }>("/auth/password/request-reset", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+    auth: false,
+    service: "auth",
+  });
+}
+
+export function resetPassword(email: string, code: string, newPassword: string) {
+  return http<{ message: string }>("/auth/password/reset", {
+    method: "POST",
+    body: JSON.stringify({
+      email,
+      code,
+      new_password: newPassword,
+    }),
+    auth: false,
+    service: "auth",
+  });
+}

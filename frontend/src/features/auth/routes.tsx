@@ -8,11 +8,21 @@ import RegisterPendingPage from "./pages/RegisterPendingPage";
 import RegisterRejectedPage from "./pages/RegisterRejectedPage";
 import RegisterApprovedPage from "./pages/RegisterApprovedPage";
 import RegisterVerifyEmailPage from "./pages/RegisterVerifyEmailPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 
 export const authRoutes: RouteObject[] = [
   {
     path: "/login",
     element: <LoginPage />,
+  },
+  {
+    path: "/forgot-password",
+    element: <ForgotPasswordPage />,
+  },
+  {
+    path: "/reset-password",
+    element: <ResetPasswordPage />,
   },
   {
     path: "/register",
