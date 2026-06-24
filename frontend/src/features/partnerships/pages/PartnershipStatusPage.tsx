@@ -2,8 +2,6 @@ import React, { useState, useEffect } from "react";
 import { partnershipsApi } from "../api";
 import PartnershipSidebar from "../components/PartnershipSidebar";
 
-
-
 // ─── Avatar helpers ───────────────────────────────────────────────────────────
 
 const AVATAR_COLORS = [
@@ -72,6 +70,7 @@ const TopBar: React.FC = () => {
 };
 
 const PartnershipStatusPage: React.FC = () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [statusData, setStatusData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -97,8 +96,8 @@ const PartnershipStatusPage: React.FC = () => {
     setError(null);
 
     try {
-      const response = await partnershipsApi.getStatus({
-        page: currentPage,
+      const response = await partnershipsApi.getStatus({ 
+        page: currentPage, 
         limit: itemsPerPage,
         status: statusFilter || undefined,
       });
@@ -124,6 +123,7 @@ const PartnershipStatusPage: React.FC = () => {
   const formatDate = (d: string) =>
     new Date(d).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const allItems: any[] = statusData?.pengajuan ?? [];
 
   const filtered = allItems.filter((item) => {
@@ -246,30 +246,18 @@ const PartnershipStatusPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Growth Pulse */}
-            <div style={{
-              background: "#1A3A6B",
-              borderRadius: 12,
-              padding: "20px 24px",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "space-between",
-            }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <p style={{ margin: 0, fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.6)", letterSpacing: 1 }}>GROWTH PULSE</p>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2">
-                  <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
-                  <polyline points="16 7 22 7 22 13" />
-                </svg>
-              </div>
+            {/* Total Pengajuan */}
+            <div style={{ ...cardBase, borderLeft: "4px solid #1A3A6B" }}>
               <div>
-                <p style={{ margin: "10px 0 4px", fontSize: 30, fontWeight: 700, color: "white", lineHeight: 1 }}>24.8%</p>
-                <p style={{ margin: "0 0 12px", fontSize: 11, color: "rgba(255,255,255,0.65)", lineHeight: 1.5 }}>
-                  Peningkatan efisiensi pengajuan kemitraan baru.
-                </p>
-                <div style={{ background: "rgba(255,255,255,0.2)", borderRadius: 4, height: 6, overflow: "hidden" }}>
-                  <div style={{ width: "24.8%", height: "100%", background: "#F5A623", borderRadius: 4 }} />
-                </div>
+                <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#888780", letterSpacing: 0.5 }}>Total Pengajuan</p>
+                <p style={{ margin: "0 0 6px", fontSize: 32, fontWeight: 700, color: "#2C2C2A", lineHeight: 1 }}>{stats.bermitra + stats.menunggu + stats.ditolak}</p>
+                <p style={{ margin: 0, fontSize: 12, color: "#888780" }}>Semua status</p>
+              </div>
+              <div style={iconBox("#D4EDDA")}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1A3A6B" strokeWidth="2">
+                  <path d="M22 12h-4l-3 3-3-3H2" />
+                  <path d="M2 6v10a2 2 0 002 2h16a2 2 0 002-2V6" />
+                </svg>
               </div>
             </div>
           </div>
@@ -385,7 +373,7 @@ const PartnershipStatusPage: React.FC = () => {
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#FAFAF8" }}>
-                    {["MITRA UMKM", "ID PENGAJUAN", "TANGGAL", "STATUS"].map((h) => (
+                    {["MITRA UMKM", "ID PENGAJUAN", "TANGGAL", "STATUS", "AKSI"].map((h) => (
                       <th key={h} style={{
                         padding: "11px 20px",
                         textAlign: "left",
@@ -402,11 +390,11 @@ const PartnershipStatusPage: React.FC = () => {
                 <tbody>
                   {pageItems.length === 0 ? (
                     <tr>
-                      <td colSpan={4} style={{ padding: "40px 20px", textAlign: "center", color: "#888780", fontSize: 14 }}>
+                      <td colSpan={5} style={{ padding: "40px 20px", textAlign: "center", color: "#888780", fontSize: 14 }}>
                         Tidak ada pengajuan ditemukan.
                       </td>
                     </tr>
-                  ) : pageItems.map((item: any, idx: number) => {
+                  ) : pageItems.map((item, idx: number) => {
                     const av = avatarColor(item.mitraUmkmTujuan);
                     return (
                       <tr key={item.pengajuanID} style={{
@@ -453,6 +441,39 @@ const PartnershipStatusPage: React.FC = () => {
                         {/* Status */}
                         <td style={{ padding: "14px 20px" }}>
                           <StatusBadge status={item.statusPengajuan} />
+                        </td>
+
+                        {/* Aksi */}
+                        <td style={{ padding: "14px 20px" }}>
+                          {["DIAJUKAN", "DITINJAU", "SUBMITTED", "REVIEWED"].includes(item.statusPengajuan) ? (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await partnershipsApi.cancel(item.pengajuanID);
+                                  alert("Pengajuan berhasil dibatalkan.");
+                                  setCurrentPage(1);
+                                  fetchStatus();
+                                  fetchSummary();
+                                } catch {
+                                  alert("Gagal membatalkan pengajuan.");
+                                }
+                              }}
+                              style={{
+                                padding: "6px 14px",
+                                border: "1px solid #E24B4A",
+                                borderRadius: 8,
+                                fontSize: 12,
+                                fontWeight: 600,
+                                color: "#E24B4A",
+                                background: "white",
+                                cursor: "pointer",
+                              }}
+                            >
+                              Batalkan
+                            </button>
+                          ) : (
+                            <span style={{ fontSize: 12, color: "#D3D1C7" }}>—</span>
+                          )}
                         </td>
 
                       </tr>

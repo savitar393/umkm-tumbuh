@@ -158,8 +158,102 @@ const PartnershipMitraInboxPage: React.FC = () => {
 
         {/* Empty */}
         {!loading && incomingList.length === 0 && (
-          <div style={{ textAlign: "center", padding: "60px 20px", background: "white", borderRadius: 16, border: "1px solid #E8E7E2" }}>
-            <p style={{ fontSize: 16, color: "#888780" }}>Belum ada pengajuan masuk</p>
+          <div>
+            <div style={{ textAlign: "center", padding: "30px 20px", background: "white", borderRadius: 16, border: "1px solid #E8E7E2", marginBottom: 16 }}>
+              <p style={{ fontSize: 16, color: "#888780" }}>Belum ada pengajuan masuk dari pengguna</p>
+            </div>
+            <div style={{ background: "white", borderRadius: 16, padding: "20px 24px", border: "1px solid #E8E7E2", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, opacity: 0.6 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 16, flex: 1, minWidth: 200 }}>
+                <div style={{ width: 52, height: 52, borderRadius: 14, background: "#1D9E75", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "bold", fontSize: 20, flexShrink: 0 }}>B</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontWeight: 700, fontSize: 16, color: "#2C2C2A" }}>Bakso Mercon Pak Sadi</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "white", background: "#E24B4A", padding: "2px 8px", borderRadius: 10 }}>BARU</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 12, color: "#888780", display: "flex", alignItems: "center", gap: 4 }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                      19 Jun 2026
+                    </span>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 20, fontSize: 11, fontWeight: 600, background: "#1D9E7515", color: "#1D9E75" }}>Proposal</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <button style={{ padding: "8px 14px", background: "white", border: "1px solid #D3D1C7", borderRadius: 8, fontSize: 12, fontWeight: 500, color: "#888780", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  Tandai Dibaca
+                </button>
+                <button style={{ padding: "8px 20px", background: "#1A3A6B", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, color: "white", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  Lihat Detail
+                </button>
+              </div>
+            </div>
+            <div style={{ background: "white", borderRadius: 16, padding: "20px 24px", border: "1px solid #E8E7E2", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, opacity: 0.6 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 16, flex: 1, minWidth: 200 }}>
+                <div style={{ width: 52, height: 52, borderRadius: 14, background: "#F5A623", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "bold", fontSize: 20, flexShrink: 0 }}>K</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontWeight: 700, fontSize: 16, color: "#2C2C2A" }}>Kripik Pisang Aroma</span>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: "#888780", background: "#F1F1F1", padding: "2px 8px", borderRadius: 10 }}>DIBACA</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 12, color: "#888780", display: "flex", alignItems: "center", gap: 4 }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                      15 Jun 2026
+                    </span>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 20, fontSize: 11, fontWeight: 600, background: "#1A3A6B15", color: "#1A3A6B" }}>NIB</span>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 20, fontSize: 11, fontWeight: 600, background: "#F5A62315", color: "#F5A623" }}>Katalog</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <button style={{ padding: "8px 14px", background: "white", border: "1px solid #D3D1C7", borderRadius: 8, fontSize: 12, fontWeight: 500, color: "#888780", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  Tandai Dibaca
+                </button>
+                <span style={{ fontSize: 12, fontWeight: 700, padding: "6px 16px", borderRadius: 8, color: "#065F46", background: "#D1FAE5", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  Diterima
+                </span>
+              </div>
+            </div>
+            <div style={{ background: "white", borderRadius: 16, padding: "20px 24px", border: "1px solid #E8E7E2", marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, opacity: 0.6 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 16, flex: 1, minWidth: 200 }}>
+                <div style={{ width: 52, height: 52, borderRadius: 14, background: "#E24B4A", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "bold", fontSize: 20, flexShrink: 0 }}>T</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontWeight: 700, fontSize: 16, color: "#2C2C2A" }}>Tahu Walik Cemilan</span>
+                    <span style={{ fontSize: 10, fontWeight: 600, color: "#888780", background: "#F1F1F1", padding: "2px 8px", borderRadius: 10 }}>DIBACA</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 12, color: "#888780", display: "flex", alignItems: "center", gap: 4 }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                      10 Jun 2026
+                    </span>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 20, fontSize: 11, fontWeight: 600, background: "#1D9E7515", color: "#1D9E75" }}>Proposal</span>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "4px 10px", borderRadius: 20, fontSize: 11, fontWeight: 600, background: "#F5A62315", color: "#F5A623" }}>Katalog</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <button style={{ padding: "8px 14px", background: "white", border: "1px solid #D3D1C7", borderRadius: 8, fontSize: 12, fontWeight: 500, color: "#888780", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  Tandai Dibaca
+                </button>
+                <span style={{ fontSize: 12, fontWeight: 700, padding: "6px 16px", borderRadius: 8, color: "#B91C1C", background: "#FEE2E2", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  Ditolak
+                </span>
+              </div>
+            </div>
           </div>
         )}
 
@@ -191,19 +285,41 @@ const PartnershipMitraInboxPage: React.FC = () => {
                 </div>
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <button onClick={() => handleMarkRead(item.pengajuanID)}
-                  style={{ padding: "8px 14px", background: "white", border: "1px solid #D3D1C7", borderRadius: 8, fontSize: 12, fontWeight: 500, color: "#888780", cursor: "pointer" }}>
-                  Tandai Dibaca
-                </button>
-                {["DIAJUKAN", "DITINJAU", "MENUNGGU_DOKUMEN_TTD"].includes(item.status) ? (
-                  <button onClick={() => navigate(`${basePath}/approve/${item.pengajuanID}`)}
-                    style={{ padding: "8px 20px", background: "#1A3A6B", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, color: "white", cursor: "pointer" }}>
-                    Lihat Detail
-                  </button>
+                {["DIAJUKAN", "DITINJAU", "MENUNGGU_DOKUMEN_TTD", "SUBMITTED", "REVIEWED", "WAITING_DOCUMENT"].includes(item.status) ? (
+                  <>
+                    <button onClick={() => handleMarkRead(item.pengajuanID)}
+                      style={{ padding: "8px 14px", background: "white", border: "1px solid #D3D1C7", borderRadius: 8, fontSize: 12, fontWeight: 500, color: "#888780", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      Tandai Dibaca
+                    </button>
+                    <button onClick={() => navigate(`${basePath}/approve/${item.pengajuanID}`)}
+                      style={{ padding: "8px 20px", background: "#1A3A6B", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, color: "white", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      Lihat Detail
+                    </button>
+                  </>
                 ) : (
-                  <span style={{ fontSize: 12, fontWeight: 600, color: item.status === "AKTIF" || item.status === "SELESAI" ? "#1D9E75" : "#E24B4A", background: item.status === "AKTIF" || item.status === "SELESAI" ? "#E8F5F0" : "#FEE2E2", padding: "6px 14px", borderRadius: 8 }}>
-                    {item.status === "AKTIF" || item.status === "SELESAI" ? "Sudah Diproses" : "Ditolak"}
-                  </span>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <button onClick={() => handleMarkRead(item.pengajuanID)}
+                      style={{ padding: "8px 14px", background: "white", border: "1px solid #D3D1C7", borderRadius: 8, fontSize: 12, fontWeight: 500, color: "#888780", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                      Tandai Dibaca
+                    </button>
+                    <span style={{
+                      fontSize: 12, fontWeight: 700, padding: "6px 16px", borderRadius: 8,
+                      color: item.status === "AKTIF" || item.status === "SELESAI" || item.status === "ACTIVE" || item.status === "COMPLETED" ? "#065F46" : "#B91C1C",
+                      background: item.status === "AKTIF" || item.status === "SELESAI" || item.status === "ACTIVE" || item.status === "COMPLETED" ? "#D1FAE5" : "#FEE2E2",
+                      display: "inline-flex", alignItems: "center", gap: 6,
+                    }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        {item.status === "AKTIF" || item.status === "SELESAI" || item.status === "ACTIVE" || item.status === "COMPLETED"
+                          ? <polyline points="20 6 9 17 4 12" />
+                          : <><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></>
+                        }
+                      </svg>
+                      {item.status === "AKTIF" || item.status === "SELESAI" || item.status === "ACTIVE" || item.status === "COMPLETED" ? "Diterima" : "Ditolak"}
+                    </span>
+                  </div>
                 )}
               </div>
             </div>

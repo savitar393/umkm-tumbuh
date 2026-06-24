@@ -1,9 +1,11 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import PartnershipSidebar from "../components/PartnershipSidebar";
 
 const PartnershipApprovalSuccessPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const basePath = location.pathname.startsWith("/umkm") ? "/umkm" : "/mitra";
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'Segoe UI', Roboto, sans-serif", position: "relative" }}>
@@ -11,14 +13,6 @@ const PartnershipApprovalSuccessPage: React.FC = () => {
       <div style={{ position: "relative", zIndex: 1, display: "flex", width: "100%" }}>
       <PartnershipSidebar />
       <main style={{ marginLeft: 260, flex: 1, display: "flex", flexDirection: "column", minHeight: "100vh" }}>
-        <header style={{ background: "white", borderBottom: "1px solid #E8E7E2", padding: "0 32px", height: 60, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 16, position: "sticky", top: 0, zIndex: 50 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ textAlign: "right" }}>
-              <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#2C2C2A" }}>Nusantara Ventures</p>
-              <p style={{ margin: 0, fontSize: 11, color: "#888780" }}>MITRA</p>
-            </div>
-          </div>
-        </header>
         <div style={{ padding: "32px 40px", width: "100%", maxWidth: 1200, alignSelf: "center" }}>
           <div style={{ maxWidth: 640, margin: "40px auto 0", background: "white", borderRadius: 24, boxShadow: "0 12px 40px rgba(0,0,0,0.08)", border: "1px solid #E8E7E2", padding: "56px 48px", textAlign: "center" }}>
             <div style={{ position: "relative", width: 96, height: 96, margin: "0 auto 28px" }}>
@@ -47,9 +41,9 @@ const PartnershipApprovalSuccessPage: React.FC = () => {
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>Tertanda tangan
               </span>
             </div>
-            <button onClick={() => navigate("/mitra/partnerships/inbox")} style={{ width: "100%", maxWidth: 400, padding: "14px 0", background: "#1A3A6B", border: "none", borderRadius: 40, color: "white", fontSize: 16, fontWeight: 600, cursor: "pointer", display: "block", margin: "0 auto 16px", boxShadow: "0 4px 12px rgba(26, 58, 107, 0.25)" }}
+            <button onClick={() => navigate(`${basePath}/partnerships/incoming`)} style={{ width: "100%", maxWidth: 400, padding: "14px 0", background: "#1A3A6B", border: "none", borderRadius: 40, color: "white", fontSize: 16, fontWeight: 600, cursor: "pointer", display: "block", margin: "0 auto 16px", boxShadow: "0 4px 12px rgba(26, 58, 107, 0.25)" }}
               onMouseEnter={(e) => (e.currentTarget.style.background = "#2A5DA8")} onMouseLeave={(e) => (e.currentTarget.style.background = "#1A3A6B")}>Lihat Status Kemitraan</button>
-            <button onClick={() => navigate("/mitra")} style={{ padding: "10px 24px", background: "white", border: "1px solid #D3D1C7", borderRadius: 30, fontSize: 14, fontWeight: 500, color: "#1A3A6B", cursor: "pointer" }}
+            <button onClick={() => navigate(basePath)} style={{ padding: "10px 24px", background: "white", border: "1px solid #D3D1C7", borderRadius: 30, fontSize: 14, fontWeight: 500, color: "#1A3A6B", cursor: "pointer" }}
               onMouseEnter={(e) => (e.currentTarget.style.color = "#2A5DA8")} onMouseLeave={(e) => (e.currentTarget.style.color = "#1A3A6B")}>Kembali ke Dashboard</button>
           </div>
         </div>

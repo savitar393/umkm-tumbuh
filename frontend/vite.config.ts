@@ -47,7 +47,7 @@ export default defineConfig({
         changeOrigin: true,
       },
       "/api/v1/documents": {
-        target: "http://localhost:8083",
+        target: "http://localhost:8084",
         changeOrigin: true,
       },
     },
