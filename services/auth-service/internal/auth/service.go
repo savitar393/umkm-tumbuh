@@ -99,9 +99,16 @@ func (s *Service) Register(ctx context.Context, req RegisterRequest) (*RegisterR
 		return nil, err
 	}
 
+	token, err := s.createAccessToken(createdUser)
+	if err != nil {
+		return nil, err
+	}
+
 	return &RegisterResponse{
-		Message: "Pendaftaran berhasil dikirim. Akun menunggu validasi Pemerintah/Admin.",
-		User:    users.ToResponse(createdUser),
+		Message:     "Akun dasar berhasil dibuat. Lengkapi data profil untuk proses validasi.",
+		AccessToken: token,
+		TokenType:   "bearer",
+		User:        users.ToResponse(createdUser),
 	}, nil
 }
 

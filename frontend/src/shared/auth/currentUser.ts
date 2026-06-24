@@ -4,6 +4,7 @@ export type UserStatus =
   | "MENUNGGU"
   | "DISETUJUI"
   | "DITOLAK"
+  | "AKTIF"
   | "PENDING"
   | "APPROVED"
   | "REJECTED";
@@ -14,6 +15,17 @@ export type CurrentUser = {
   email: string;
   role: UserRole;
   status: UserStatus;
+
+  phone_number?: string | null;
+  nik?: string | null;
+  is_active?: boolean;
+  rejection_reason?: string | null;
+  catatan_validasi?: string | null;
+  submitted_at?: string | null;
+  reviewed_at?: string | null;
+  reviewed_by?: string | null;
+  created_at?: string;
+  updated_at?: string;
 };
 
 export function getCurrentUser(): CurrentUser | null {

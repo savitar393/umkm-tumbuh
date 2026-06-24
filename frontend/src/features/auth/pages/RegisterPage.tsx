@@ -1,6 +1,6 @@
 import { type FormEvent, useState } from "react";
 import { ArrowRight, Check, Handshake, HelpCircle, Store } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { register } from "../api";
 
 type RegisterStep = "role" | "account";
@@ -21,6 +21,8 @@ export default function RegisterPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const navigate = useNavigate();
 
   function chooseRole(nextRole: RegisterRole) {
     setRole(nextRole);
@@ -56,16 +58,18 @@ export default function RegisterPage() {
         role,
       });
 
-      setMessage(result.message);
-      setFullName("");
-      setEmail("");
-      setPhoneNumber("");
-      setNik("");
-      setPassword("");
-      setPasswordConfirmation("");
-      setAcceptedTerms(false);
-      setRole("UMKM");
-      setStep("role");
+      if (result.access_token) {
+      localStorage.setItem("access_token", result.access_token);
+      localStorage.setItem("current_user", JSON.stringify(result.user));
+
+      const nextPath =
+        role === "MITRA" ? "/register/mitra/details" : "/register/umkm/details";
+
+      navigate(nextPath, { replace: true });
+      return;
+    }
+
+    setMessage(result.message || "Akun berhasil dibuat. Silakan login untuk melanjutkan.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registrasi gagal");
     } finally {
@@ -237,7 +241,7 @@ export default function RegisterPage() {
               {error ? <div className="error-message">{error}</div> : null}
 
               <button type="submit" disabled={loading}>
-                {loading ? "Memproses..." : "Lanjutkan"}
+                {loading ? "Memproses..." : "Lanjut ke Data Profil"}
               </button>
 
               <button

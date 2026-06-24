@@ -50,7 +50,7 @@ export type LoginResponse = {
 };
 
 export function register(payload: RegisterPayload) {
-  return http<{ message: string; user: User }>("/auth/register", {
+  return http<{ message: string; access_token?: string; token_type?: string; user: User }>("/auth/register", {
     method: "POST",
     body: JSON.stringify(payload),
     auth: false,
@@ -90,5 +90,85 @@ export function reactivate(payload: ReactivatePayload) {
 export function getMe() {
   return http<User>("/auth/me", {
     service: "auth",
+  });
+}
+
+export type RegistrationDocumentCategory =
+  | "PARTNERSHIP_FILE"
+  | "PROFILE_FILE"
+  | "REGISTRATION_FILE";
+
+export type UploadedDocument = {
+  id: string;
+  original_filename: string;
+  content_type: string;
+  size_bytes: number;
+  public_url?: string;
+};
+
+export function uploadRegistrationDocument(
+  file: File,
+  category: RegistrationDocumentCategory = "PARTNERSHIP_FILE",
+) {
+  const formData = new FormData();
+  formData.append("category", category);
+  formData.append("file", file);
+
+  return http<{ document: UploadedDocument; message: string }>("/documents/upload", {
+    method: "POST",
+    body: formData,
+    service: "document",
+  });
+}
+
+export type UmkmRegistrationDetailsPayload = {
+  business_name: string;
+  business_category?: string;
+  business_description?: string;
+  owner_name?: string;
+  phone_number?: string;
+  nik?: string;
+  address?: string;
+  products?: string;
+  photo_document_id?: string | null;
+  legal_document_id?: string | null;
+};
+
+export type MitraRegistrationDetailsPayload = {
+  organization_name: string;
+  organization_type?: string | null;
+  legal_name?: string | null;
+  nib?: string | null;
+  npwp?: string | null;
+  description?: string | null;
+
+  contact_person?: string | null;
+  contact_person_title?: string | null;
+  phone_number?: string | null;
+  email?: string | null;
+
+  operational_area?: string | null;
+  cooperation_scale?: string | null;
+  partnership_field?: string | null;
+  support_type?: string | null;
+
+  legal_document_id?: string | null;
+  commitment_document_id?: string | null;
+  company_profile_document_id?: string | null;
+};
+
+export function saveUmkmRegistrationDetails(payload: UmkmRegistrationDetailsPayload) {
+  return http<{ profile: unknown; message?: string }>("/profiles/me", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+    service: "user",
+  });
+}
+
+export function saveMitraRegistrationDetails(payload: MitraRegistrationDetailsPayload) {
+  return http<{ profile: unknown; message?: string }>("/profiles/me", {
+    method: "PUT",
+    body: JSON.stringify(payload),
+    service: "user",
   });
 }

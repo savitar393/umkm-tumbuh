@@ -17,8 +17,10 @@ type LoginRequest struct {
 }
 
 type RegisterResponse struct {
-	Message string         `json:"message"`
-	User    users.Response `json:"user"`
+	Message     string         `json:"message"`
+	AccessToken string        `json:"access_token,omitempty"`
+	TokenType   string        `json:"token_type,omitempty"`
+	User        users.Response `json:"user"`
 }
 
 type TokenResponse struct {
