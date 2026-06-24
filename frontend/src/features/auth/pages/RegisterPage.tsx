@@ -2,6 +2,14 @@ import { type FormEvent, useState } from "react";
 import { ArrowRight, Check, Handshake, HelpCircle, Store } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { register } from "../api";
+import {
+  isStrongEnoughPassword,
+  isValidEmail,
+  isValidIndonesianPhone,
+  isValidNIK,
+  normalizeIndonesianPhone,
+  onlyDigits,
+} from "../../../shared/validation/forms";
 
 type RegisterStep = "role" | "account";
 type RegisterRole = "UMKM" | "MITRA";
@@ -31,18 +39,54 @@ export default function RegisterPage() {
     setMessage("");
   }
 
+  function validateRegisterForm() {
+    const cleanName = fullName.trim();
+    const cleanEmail = email.trim();
+
+    if (cleanName.length < 3) {
+      return "Nama lengkap wajib diisi minimal 3 karakter.";
+    }
+
+    if (!cleanEmail) {
+      return "Email wajib diisi.";
+    }
+
+    if (!isValidEmail(cleanEmail)) {
+      return "Format email tidak valid.";
+    }
+
+    if (!isValidIndonesianPhone(phoneNumber)) {
+      return "Nomor WhatsApp wajib 8–13 digit setelah kode +62.";
+    }
+
+    if (role === "UMKM" && !isValidNIK(nik)) {
+      return "NIK wajib 16 digit untuk akun UMKM.";
+    }
+
+    if (!isStrongEnoughPassword(password)) {
+      return "Password minimal 8 karakter.";
+    }
+
+    if (password !== passwordConfirmation) {
+      return "Konfirmasi password tidak sama.";
+    }
+
+    if (!acceptedTerms) {
+      return "Anda harus menyetujui Syarat & Ketentuan dan Kebijakan Privasi.";
+    }
+
+    return "";
+  }
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setMessage("");
     setError("");
 
-    if (password !== passwordConfirmation) {
-      setError("Konfirmasi password tidak sama.");
-      return;
-    }
+    const validationError = validateRegisterForm();
 
-    if (!acceptedTerms) {
-      setError("Anda harus menyetujui Syarat & Ketentuan dan Kebijakan Privasi.");
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -50,13 +94,13 @@ export default function RegisterPage() {
 
     try {
       const result = await register({
-        full_name: fullName,
-        email,
-        phone_number: phoneNumber,
-        nik,
-        password,
-        role,
-      });
+      full_name: fullName.trim(),
+      email: email.trim().toLowerCase(),
+      phone_number: `62${normalizeIndonesianPhone(phoneNumber)}`,
+      nik: role === "UMKM" ? onlyDigits(nik, 16) : undefined,
+      password,
+      role,
+    });
 
       if (result.access_token) {
       localStorage.setItem("access_token", result.access_token);
@@ -184,7 +228,7 @@ export default function RegisterPage() {
                   <span>+62</span>
                   <input
                     value={phoneNumber}
-                    onChange={(event) => setPhoneNumber(event.target.value)}
+                    onChange={(event) => setPhoneNumber(normalizeIndonesianPhone(event.target.value))}
                     placeholder="812xxxx"
                   />
                 </div>
@@ -195,7 +239,9 @@ export default function RegisterPage() {
                   NIK
                   <input
                     value={nik}
-                    onChange={(event) => setNik(event.target.value)}
+                    onChange={(event) => setNik(onlyDigits(event.target.value, 16))}
+                    inputMode="numeric"
+                    maxLength={16}
                     placeholder="Nomor Induk Kependudukan"
                   />
                 </label>

@@ -2,6 +2,7 @@ import { type FormEvent, useState } from "react";
 import { ArrowRight, Eye, Lock, Mail, Check } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { reactivate } from "../api";
+import { isValidEmail } from "../../../shared/validation/forms";
 
 export default function ReactivatePage() {
   const navigate = useNavigate();
@@ -13,19 +14,46 @@ export default function ReactivatePage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  function validateReactivateForm() {
+    const cleanEmail = email.trim();
+
+    if (!cleanEmail) {
+      return "Email wajib diisi.";
+    }
+
+    if (!isValidEmail(cleanEmail)) {
+      return "Format email tidak valid.";
+    }
+
+    if (!password) {
+      return "Kata sandi wajib diisi.";
+    }
+
+    if (!verified) {
+      return "Harap centang verifikasi untuk melanjutkan.";
+    }
+
+    return "";
+  }
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setError("");
 
-    if (!verified) {
-      setError("Harap centang verifikasi untuk melanjutkan.");
+    const validationError = validateReactivateForm();
+
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
     setLoading(true);
 
     try {
-      const result = await reactivate({ email, password });
+      const result = await reactivate({
+        email: email.trim().toLowerCase(),
+        password,
+      });
 
       localStorage.setItem("access_token", result.access_token);
       localStorage.setItem("current_user", JSON.stringify(result.user));

@@ -2,6 +2,7 @@ import { type FormEvent, useState } from "react";
 import { ArrowRight, Eye, Lock, Mail } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { login } from "../api";
+import { isValidEmail } from "../../../shared/validation/forms";
 
 const QUICK_LOGIN = {
   admin: {
@@ -31,13 +32,42 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  function validateLoginForm() {
+    const cleanEmail = email.trim();
+
+    if (!cleanEmail) {
+      return "Email wajib diisi.";
+    }
+
+    if (!isValidEmail(cleanEmail)) {
+      return "Format email tidak valid.";
+    }
+
+    if (!password) {
+      return "Kata sandi wajib diisi.";
+    }
+
+    return "";
+  }
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setError("");
+
+    const validationError = validateLoginForm();
+
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const result = await login({ email, password });
+      const result = await login({
+        email: email.trim().toLowerCase(),
+        password,
+      });
 
       localStorage.setItem("access_token", result.access_token);
       localStorage.setItem("current_user", JSON.stringify(result.user));
