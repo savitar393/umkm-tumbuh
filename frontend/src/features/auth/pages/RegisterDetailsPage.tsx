@@ -14,6 +14,7 @@ import {
   saveMitraRegistrationDetails,
   saveUmkmRegistrationDetails,
   uploadRegistrationDocument,
+  type RegistrationDocumentCategory,
 } from "../api";
 
 type RegisterDetailRole = "umkm" | "mitra";
@@ -57,6 +58,29 @@ const uploadRules = {
     accept: "application/pdf",
   },
 } as const;
+
+const UMKM_CATEGORY_OPTIONS = [
+  { value: "KULINER", label: "Makanan dan Minuman" },
+  { value: "DIGITAL", label: "Produk Digital" },
+  { value: "FASHION", label: "Fashion dan Tekstil" },
+  { value: "JASA", label: "Jasa Kreatif" },
+  { value: "PERDAGANGAN", label: "Perdagangan Eceran" },
+  { value: "KERAJINAN", label: "Kerajinan Tangan" },
+  { value: "AGRIBISNIS", label: "Pertanian Olahan" },
+  { value: "KECANTIKAN", label: "Kecantikan dan Perawatan" },
+  { value: "EDUKASI", label: "Edukasi" },
+  { value: "KESEHATAN", label: "Kesehatan" },
+  { value: "OTOMOTIF", label: "Otomotif" },
+  { value: "KRIYA", label: "Kriya" },
+] as const;
+
+const uploadCategoryByKey: Record<UploadKey, RegistrationDocumentCategory> = {
+  umkmPhoto: "PRODUCT_IMAGE",
+  umkmLegal: "GENERAL_DOCUMENT",
+  mitraLegal: "GENERAL_DOCUMENT",
+  mitraCommitment: "GENERAL_DOCUMENT",
+  mitraCompanyProfile: "GENERAL_DOCUMENT",
+};
 
 type UploadKey = keyof typeof uploadRules;
 
@@ -123,6 +147,8 @@ export default function RegisterDetailsPage() {
     kategoriUsaha: "",
     deskripsiUsaha: "",
     alamatUsaha: "",
+    kotaKabupaten: "",
+    provinsi: "",
     produkUtama: "",
   });
 
@@ -212,7 +238,7 @@ export default function RegisterDetailsPage() {
     }));
 
     try {
-      const result = await uploadRegistrationDocument(item.file, "PARTNERSHIP_FILE");
+      const result = await uploadRegistrationDocument(item.file, uploadCategoryByKey[key]);
       const documentId = result.document.id;
 
       setUploads((prev) => ({
@@ -229,7 +255,7 @@ export default function RegisterDetailsPage() {
     } catch (err) {
       const uploadError =
         err instanceof TypeError
-          ? "Gagal mengunggah dokumen. Pastikan file sesuai batas ukuran dan document-service aktif."
+          ? "Gagal terhubung ke document-service. Cek koneksi, CORS, atau batas ukuran upload di backend."
           : err instanceof Error
             ? err.message
             : "Gagal mengunggah dokumen.";
@@ -259,13 +285,26 @@ export default function RegisterDetailsPage() {
     }
 
     if (role === "umkm") {
+      const validUmkmCategory = UMKM_CATEGORY_OPTIONS.some(
+        (option) => option.value === umkmForm.kategoriUsaha
+      );
+
+      if (!validUmkmCategory) {
+        setError("Kategori usaha wajib dipilih dari daftar.");
+        return;
+      }
+
       if (umkmForm.nikPemilik.length !== 16) {
         setError("NIK pemilik wajib 16 digit.");
         return;
       }
 
-      if (!umkmForm.alamatUsaha.trim()) {
-        setError("Alamat usaha wajib diisi.");
+      if (
+        !umkmForm.alamatUsaha.trim() ||
+        !umkmForm.kotaKabupaten.trim() ||
+        !umkmForm.provinsi.trim()
+      ) {
+        setError("Alamat usaha, kota/kabupaten, dan provinsi wajib diisi.");
         return;
       }
     }
@@ -280,11 +319,14 @@ export default function RegisterDetailsPage() {
         await saveUmkmRegistrationDetails({
           business_name: umkmForm.namaUmkm.trim(),
           business_category: umkmForm.kategoriUsaha,
+          jenis_umkm_id: umkmForm.kategoriUsaha,
           business_description: umkmForm.deskripsiUsaha,
           owner_name: umkmForm.namaPemilik,
           phone_number: `62${umkmForm.phone}`,
           nik: umkmForm.nikPemilik,
-          address: umkmForm.alamatUsaha,
+          address: umkmForm.alamatUsaha.trim(),
+          city: umkmForm.kotaKabupaten.trim(),
+          province: umkmForm.provinsi.trim(),
           products: umkmForm.produkUtama,
           photo_document_id: photoDocumentId,
           legal_document_id: legalDocumentId,
@@ -543,16 +585,20 @@ function UmkmFields({
             Kategori Usaha
             <select
               value={form.kategoriUsaha}
-              onChange={(e) => setForm((p: any) => ({ ...p, kategoriUsaha: e.target.value }))}
+              onChange={(e) =>
+                setForm((p: any) => ({
+                  ...p,
+                  kategoriUsaha: e.target.value,
+                }))
+              }
               required
             >
               <option value="">Kategori Usaha</option>
-              <option value="Makanan">Makanan</option>
-              <option value="Minuman">Minuman</option>
-              <option value="Fashion dan Tekstil">Fashion dan Tekstil</option>
-              <option value="Kerajinan Tangan">Kerajinan Tangan</option>
-              <option value="Kecantikan dan Perawatan">Kecantikan dan Perawatan</option>
-              <option value="Jasa Kreatif">Jasa Kreatif</option>
+              {UMKM_CATEGORY_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
           </label>
         </div>
@@ -576,6 +622,32 @@ function UmkmFields({
             required
           />
         </label>
+
+        <div className="register-detail-grid">
+          <label>
+            Kota/Kabupaten
+            <input
+              value={form.kotaKabupaten}
+              onChange={(e) =>
+                setForm((p: any) => ({ ...p, kotaKabupaten: e.target.value }))
+              }
+              placeholder="Contoh: Surakarta"
+              required
+            />
+          </label>
+
+          <label>
+            Provinsi
+            <input
+              value={form.provinsi}
+              onChange={(e) =>
+                setForm((p: any) => ({ ...p, provinsi: e.target.value }))
+              }
+              placeholder="Contoh: Jawa Tengah"
+              required
+            />
+          </label>
+        </div>
 
         <SectionTitle number={5} title="Produk" />
         <div className="register-detail-grid register-detail-grid--single">
@@ -604,7 +676,7 @@ function UmkmFields({
             label="Upload Dokumen Pendukung"
             hint="NIB, SKU, atau IUMK (PDF/JPG)"
             value={uploads.umkmLegal}
-            accept={uploadRules.umkmPhoto.accept}
+            accept={uploadRules.umkmLegal.accept}
             onChange={(e) => selectFile("umkmLegal", e)}
           />
         </div>
@@ -787,7 +859,7 @@ function MitraFields({
             label="Upload legalitas perusahaan"
             hint="PDF, JPG, PNG (Max 5MB)"
             value={uploads.mitraLegal}
-            accept={uploadRules.umkmPhoto.accept}
+            accept={uploadRules.mitraLegal.accept}
             onChange={(e) => selectFile("mitraLegal", e)}
           />
           <UploadBox
@@ -795,7 +867,7 @@ function MitraFields({
             label="Upload surat komitmen"
             hint="PDF Only (Max 2MB)"
             value={uploads.mitraCommitment}
-            accept={uploadRules.umkmPhoto.accept}
+            accept={uploadRules.mitraCommitment.accept}
             onChange={(e) => selectFile("mitraCommitment", e)}
           />
           <UploadBox
@@ -803,7 +875,7 @@ function MitraFields({
             label="Upload profil perusahaan"
             hint="Company profile dalam format PDF (Max 10MB)"
             value={uploads.mitraCompanyProfile}
-            accept={uploadRules.umkmPhoto.accept}
+            accept={uploadRules.mitraCompanyProfile.accept}
             onChange={(e) => selectFile("mitraCompanyProfile", e)}
           />
         </div>

@@ -9780,3 +9780,50 @@ button.danger {
     width: 100%;
   }
 }
+
+.register-field-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.field-counter {
+  margin-left: auto;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  opacity: 0.85;
+}
+
+.field-counter.ok {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+  color: #64748b;
+}
+
+.register-upload-box.invalid {
+  border-color: #ef4444;
+  background: #fff1f2;
+}
+
+.register-upload-box.invalid span {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.register-upload-box.invalid strong {
+  color: #991b1b;
+}
+
+.register-upload-box.invalid small {
+  color: #dc2626;
+  font-weight: 800;
+}

@@ -94,9 +94,10 @@ export function getMe() {
 }
 
 export type RegistrationDocumentCategory =
+  | "PRODUCT_IMAGE"
+  | "CERTIFICATE"
   | "PARTNERSHIP_FILE"
-  | "PROFILE_FILE"
-  | "REGISTRATION_FILE";
+  | "GENERAL_DOCUMENT";
 
 export type UploadedDocument = {
   id: string;
@@ -106,29 +107,55 @@ export type UploadedDocument = {
   public_url?: string;
 };
 
-export function uploadRegistrationDocument(
-  file: File,
-  category: RegistrationDocumentCategory = "PARTNERSHIP_FILE",
-) {
+export async function uploadRegistrationDocument(file: File, category: string) {
+  const token =
+    localStorage.getItem("access_token") ||
+    localStorage.getItem("token") ||
+    "";
+
   const formData = new FormData();
   formData.append("category", category);
   formData.append("file", file);
 
-  return http<{ document: UploadedDocument; message: string }>("/documents/upload", {
+  const response = await fetch("/api/v1/documents/upload", {
     method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      // IMPORTANT: do NOT set Content-Type for FormData
+    },
     body: formData,
-    service: "document",
   });
-}
 
+  const text = await response.text();
+
+  let data: any = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = { raw: text };
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      data?.error ||
+        data?.message ||
+        `Upload gagal dengan status ${response.status}`
+    );
+  }
+
+  return data;
+}
 export type UmkmRegistrationDetailsPayload = {
   business_name: string;
   business_category?: string;
+  jenis_umkm_id?: string;
   business_description?: string;
   owner_name?: string;
   phone_number?: string;
   nik?: string;
   address?: string;
+  city?: string;
+  province?: string;
   products?: string;
   photo_document_id?: string | null;
   legal_document_id?: string | null;
