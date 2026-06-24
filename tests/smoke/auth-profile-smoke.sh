@@ -4,8 +4,28 @@ set -euo pipefail
 AUTH_URL="${AUTH_URL:-http://localhost:8080/api/v1}"
 USER_URL="${USER_URL:-http://localhost:8081/api/v1}"
 
-RUN_ID="$(date +%s)"
+RUN_ID="$(date +%s%N)"
 PASSWORD="password123"
+
+read -r UMKM_PHONE_SUFFIX MITRA_PHONE_SUFFIX RUN_NIK RUN_NIB <<EOF_IDS
+$(python3 - <<'PY'
+import random
+print(
+    random.randint(10_000_000, 99_999_999),
+    random.randint(10_000_000, 99_999_999),
+    random.randint(1_000_000_000_000_000, 9_999_999_999_999_999),
+    random.randint(1_000_000_000_000, 9_999_999_999_999),
+)
+PY
+)
+EOF_IDS
+
+RUN_NPWP="$(python3 - <<'PY'
+import random
+digits = f"{random.randint(0, 10**15 - 1):015d}"
+print(f"{digits[0:2]}.{digits[2:5]}.{digits[5:8]}.{digits[8]}-{digits[9:12]}.{digits[12:15]}")
+PY
+)"
 
 UMKM_EMAIL="smoke.umkm.${RUN_ID}@mail.com"
 MITRA_EMAIL="smoke.mitra.${RUN_ID}@mail.com"
@@ -68,8 +88,8 @@ echo "== 2. Register UMKM =="
 RAW="$(request_with_status POST "$AUTH_URL/auth/register" "{
   \"full_name\": \"Smoke UMKM\",
   \"email\": \"$UMKM_EMAIL\",
-  \"phone_number\": \"62812${RUN_ID: -8}\",
-  \"nik\": \"${RUN_ID: -10}123456\",
+  \"phone_number\": \"62812$UMKM_PHONE_SUFFIX\",
+  \"nik\": \"$RUN_NIK\",
   \"password\": \"$PASSWORD\",
   \"role\": \"UMKM\"
 }")"
@@ -94,8 +114,8 @@ RAW="$(request_with_status PUT "$USER_URL/profiles/me" "{
   \"jenis_umkm_id\": \"FASHION\",
   \"business_description\": \"Smoke test UMKM profile\",
   \"owner_name\": \"Smoke UMKM Owner\",
-  \"phone_number\": \"62812${RUN_ID: -8}\",
-  \"nik\": \"${RUN_ID: -10}123456\",
+  \"phone_number\": \"62812$UMKM_PHONE_SUFFIX\",
+  \"nik\": \"$RUN_NIK\",
   \"address\": \"Jl Smoke Test UMKM\",
   \"city\": \"Sleman\",
   \"province\": \"DI Yogyakarta\",
@@ -123,7 +143,7 @@ echo "== 5. Register Mitra =="
 RAW="$(request_with_status POST "$AUTH_URL/auth/register" "{
   \"full_name\": \"Smoke Mitra\",
   \"email\": \"$MITRA_EMAIL\",
-  \"phone_number\": \"62813${RUN_ID: -8}\",
+  \"phone_number\": \"62813$MITRA_PHONE_SUFFIX\",
   \"password\": \"$PASSWORD\",
   \"role\": \"MITRA\"
 }")"
@@ -146,8 +166,8 @@ RAW="$(request_with_status PUT "$USER_URL/profiles/me" "{
   \"organization_name\": \"Smoke Mitra Organization\",
   \"organization_type\": \"Inkubator Bisnis\",
   \"legal_name\": \"Smoke Mitra Organization\",
-  \"nib\": \"1234567890123\",
-  \"npwp\": \"00.000.000.0-000.000\",
+  \"nib\": \"$RUN_NIB\",
+  \"npwp\": \"$RUN_NPWP\",
   \"description\": \"Smoke test Mitra profile\",
   \"support_description\": \"Smoke test deskripsi tujuan kemitraan\",
   \"address\": \"Jl Smoke Test Mitra\",
@@ -155,7 +175,7 @@ RAW="$(request_with_status PUT "$USER_URL/profiles/me" "{
   \"province\": \"Jawa Tengah\",
   \"contact_person\": \"Smoke PIC\",
   \"contact_person_title\": \"Manager\",
-  \"phone_number\": \"62813${RUN_ID: -8}\",
+  \"phone_number\": \"62813$MITRA_PHONE_SUFFIX\",
   \"operational_area\": \"Jawa Tengah\",
   \"cooperation_scale\": \"Provinsi\",
   \"partnership_field\": \"Pelatihan\",
