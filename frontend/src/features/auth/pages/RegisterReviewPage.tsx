@@ -80,6 +80,7 @@ export default function RegisterReviewPage() {
 
   const [submitting, setSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState("");
+  const [submitted, setSubmitted] = useState(false);
 
   const expectedRole = role === "umkm" ? "UMKM" : "MITRA";
   const dashboardPath = role === "umkm" ? "/umkm" : "/mitra";
@@ -214,6 +215,7 @@ export default function RegisterReviewPage() {
     try {
       const response = await submitRegistration();
       setSubmitMessage(response.message || "Pendaftaran berhasil dikirim. Menunggu review Admin.");
+      setSubmitted(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal mengirim pendaftaran.");
     } finally {
@@ -291,10 +293,14 @@ export default function RegisterReviewPage() {
             <button
               type="button"
               className="primary-button"
-              disabled={loading || submitting || Boolean(error)}
+              disabled={loading || submitting || submitted || Boolean(error)}
               onClick={handleSubmitRegistration}
             >
-              {submitting ? "Mengirim..." : "Kirim untuk Review Admin"}
+              {submitting
+                ? "Mengirim..."
+                : submitted
+                  ? "Terkirim untuk Review Admin"
+                  : "Kirim untuk Review Admin"}
             </button>
           </div>
         </div>
