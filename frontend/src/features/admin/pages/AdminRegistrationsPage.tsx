@@ -102,6 +102,7 @@ export default function AdminRegistrationsPage() {
   function openRejectModal(user: UserListItem) {
     setSelectedUser(user);
     setAlasanTolak("");
+    setCatatanValidasi("");
     setShowRejectModal(true);
   }
 
@@ -110,6 +111,36 @@ export default function AdminRegistrationsPage() {
     setDeactivateReasonType("");
     setDeactivateCustomReason("");
     setShowDeactivateDialog(true);
+  }
+
+  function isProcessingSelectedUser() {
+    return Boolean(selectedUser && actionLoadingID === selectedUser.id);
+  }
+
+  function closeApproveModal() {
+    if (isProcessingSelectedUser()) return;
+
+    setShowApproveModal(false);
+    setSelectedUser(null);
+    setCatatanValidasi("");
+  }
+
+  function closeRejectModal() {
+    if (isProcessingSelectedUser()) return;
+
+    setShowRejectModal(false);
+    setSelectedUser(null);
+    setAlasanTolak("");
+    setCatatanValidasi("");
+  }
+
+  function closeDeactivateDialog() {
+    if (isProcessingSelectedUser()) return;
+
+    setShowDeactivateDialog(false);
+    setSelectedUser(null);
+    setDeactivateReasonType("");
+    setDeactivateCustomReason("");
   }
 
   async function handleApprove() {
@@ -122,6 +153,7 @@ export default function AdminRegistrationsPage() {
       setSuccess(res.message || "Akun berhasil disetujui.");
       setShowApproveModal(false);
       setSelectedUser(null);
+      setCatatanValidasi("");
       await fetchData();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal menyetujui");
@@ -144,6 +176,8 @@ export default function AdminRegistrationsPage() {
       setSuccess(res.message || "Akun berhasil ditolak.");
       setShowRejectModal(false);
       setSelectedUser(null);
+      setAlasanTolak("");
+      setCatatanValidasi("");
       await fetchData();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal menolak");
@@ -154,15 +188,30 @@ export default function AdminRegistrationsPage() {
 
   async function handleDeactivate() {
     if (!selectedUser) return;
+
     const reason = deactivateReasonType === "others" ? deactivateCustomReason.trim() : deactivateReasonType;
+
+    if (!reason) {
+      setError("Pilih alasan nonaktif terlebih dahulu.");
+      return;
+    }
+
+    if (deactivateReasonType === "others" && reason.length < 3) {
+      setError("Alasan nonaktif minimal 3 karakter.");
+      return;
+    }
+    
     setActionLoadingID(selectedUser.id);
     setError("");
     setSuccess("");
+
     try {
       const res: MessageResponse = await deactivateUser(selectedUser.id, reason || undefined);
       setSuccess(res.message || "Akun berhasil dinonaktifkan.");
       setShowDeactivateDialog(false);
       setSelectedUser(null);
+      setDeactivateReasonType("");
+      setDeactivateCustomReason("");
       await fetchData();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal menonaktifkan");
@@ -170,6 +219,13 @@ export default function AdminRegistrationsPage() {
       setActionLoadingID("");
     }
   }
+
+  const deactivateReason =
+    deactivateReasonType === "others" ? deactivateCustomReason.trim() : deactivateReasonType;
+
+  const canSubmitDeactivate =
+    Boolean(deactivateReason) &&
+    (deactivateReasonType !== "others" || deactivateReason.length >= 3);
 
   return (
     <AdminLayout>
@@ -286,7 +342,7 @@ export default function AdminRegistrationsPage() {
               </thead>
               <tbody>
                 {users.map((user) => (
-                    <tr key={user.id}>
+                  <tr key={user.id}>
                     <td className="td-name">{user.full_name}</td>
                     <td>{user.email}</td>
                     <td>{user.phone_number ?? "—"}</td>
@@ -417,7 +473,7 @@ export default function AdminRegistrationsPage() {
 
       {/* ─── Approve Modal ─────────────────────────────────────────────── */}
       {showApproveModal && selectedUser && (
-        <div className="modal-overlay" onClick={() => setShowApproveModal(false)}>
+        <div className="modal-overlay" onClick={closeApproveModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h3>Setujui Pendaftaran</h3>
             <p>
@@ -436,7 +492,8 @@ export default function AdminRegistrationsPage() {
             <div className="modal-actions">
               <button
                 className="btn btn-outline"
-                onClick={() => setShowApproveModal(false)}
+                onClick={closeApproveModal}
+                disabled={actionLoadingID === selectedUser.id}
               >
                 Batal
               </button>
@@ -454,7 +511,7 @@ export default function AdminRegistrationsPage() {
 
       {/* ─── Reject Modal ──────────────────────────────────────────────── */}
       {showRejectModal && selectedUser && (
-        <div className="modal-overlay" onClick={() => setShowRejectModal(false)}>
+        <div className="modal-overlay" onClick={closeRejectModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h3>Tolak Pendaftaran</h3>
             <p>
@@ -484,14 +541,15 @@ export default function AdminRegistrationsPage() {
             <div className="modal-actions">
               <button
                 className="btn btn-outline"
-                onClick={() => setShowRejectModal(false)}
+                onClick={closeRejectModal}
+                disabled={actionLoadingID === selectedUser.id}
               >
                 Batal
               </button>
               <button
                 className="btn btn-reject"
                 onClick={handleReject}
-                disabled={actionLoadingID === selectedUser.id}
+                disabled={actionLoadingID === selectedUser.id || alasanTolak.trim().length < 3}
               >
                 {actionLoadingID === selectedUser.id ? "Memproses..." : "Tolak"}
               </button>
@@ -502,7 +560,7 @@ export default function AdminRegistrationsPage() {
 
       {/* ─── Deactivate Confirmation Dialog ────────────────────────────── */}
       {showDeactivateDialog && selectedUser && (
-        <div className="modal-overlay" onClick={() => setShowDeactivateDialog(false)}>
+        <div className="modal-overlay" onClick={closeDeactivateDialog}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h3>Nonaktifkan Akun</h3>
             <p>
@@ -555,14 +613,15 @@ export default function AdminRegistrationsPage() {
             <div className="modal-actions">
               <button
                 className="btn btn-outline"
-                onClick={() => setShowDeactivateDialog(false)}
+                onClick={closeDeactivateDialog}
+                disabled={actionLoadingID === selectedUser.id}
               >
                 Batal
               </button>
               <button
                 className="btn btn-deactivate"
                 onClick={handleDeactivate}
-                disabled={actionLoadingID === selectedUser.id}
+                disabled={actionLoadingID === selectedUser.id || !canSubmitDeactivate}
               >
                 {actionLoadingID === selectedUser.id ? "Memproses..." : "Ya, Nonaktifkan"}
               </button>
