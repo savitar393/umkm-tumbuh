@@ -1,0 +1,181 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+AUTH_URL="${AUTH_URL:-http://localhost:8080/api/v1}"
+USER_URL="${USER_URL:-http://localhost:8081/api/v1}"
+
+RUN_ID="$(date +%s)"
+PASSWORD="password123"
+
+UMKM_EMAIL="smoke.umkm.${RUN_ID}@mail.com"
+MITRA_EMAIL="smoke.mitra.${RUN_ID}@mail.com"
+
+echo "== UMKM Tumbuh smoke test =="
+echo "AUTH_URL=$AUTH_URL"
+echo "USER_URL=$USER_URL"
+echo
+
+json_get() {
+  python3 -c "import sys,json; data=json.load(sys.stdin); print($1)"
+}
+
+expect_status() {
+  local actual="$1"
+  local expected="$2"
+  local label="$3"
+
+  if [ "$actual" != "$expected" ]; then
+    echo "❌ $label expected HTTP $expected, got $actual"
+    exit 1
+  fi
+
+  echo "✅ $label HTTP $actual"
+}
+
+request_with_status() {
+  local method="$1"
+  local url="$2"
+  local body="${3:-}"
+  local token="${4:-}"
+
+  local headers=(-H "Content-Type: application/json")
+
+  if [ -n "$token" ]; then
+    headers+=(-H "Authorization: Bearer $token")
+  fi
+
+  if [ -n "$body" ]; then
+    curl -sS -w "\n%{http_code}" -X "$method" "$url" "${headers[@]}" -d "$body"
+  else
+    curl -sS -w "\n%{http_code}" -X "$method" "$url" "${headers[@]}"
+  fi
+}
+
+split_response() {
+  local raw="$1"
+  RESPONSE_BODY="$(printf "%s" "$raw" | sed '$d')"
+  RESPONSE_STATUS="$(printf "%s" "$raw" | tail -n1)"
+}
+
+echo "== 1. Invalid login should return 401 =="
+RAW="$(request_with_status POST "$AUTH_URL/auth/login" \
+  '{"email":"notfound@example.com","password":"wrongpass"}')"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "401" "invalid login"
+echo
+
+echo "== 2. Register UMKM =="
+RAW="$(request_with_status POST "$AUTH_URL/auth/register" "{
+  \"full_name\": \"Smoke UMKM\",
+  \"email\": \"$UMKM_EMAIL\",
+  \"phone_number\": \"62812${RUN_ID: -8}\",
+  \"nik\": \"${RUN_ID: -10}123456\",
+  \"password\": \"$PASSWORD\",
+  \"role\": \"UMKM\"
+}")"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "201" "register UMKM"
+
+UMKM_TOKEN="$(printf "%s" "$RESPONSE_BODY" | json_get "data.get('access_token','')")"
+
+if [ -z "$UMKM_TOKEN" ]; then
+  echo "❌ register UMKM did not return access_token"
+  echo "$RESPONSE_BODY"
+  exit 1
+fi
+
+echo "✅ UMKM token received"
+echo
+
+echo "== 3. Save UMKM profile =="
+RAW="$(request_with_status PUT "$USER_URL/profiles/me" "{
+  \"business_name\": \"Smoke UMKM Store\",
+  \"business_category\": \"FASHION\",
+  \"jenis_umkm_id\": \"FASHION\",
+  \"business_description\": \"Smoke test UMKM profile\",
+  \"owner_name\": \"Smoke UMKM Owner\",
+  \"phone_number\": \"62812${RUN_ID: -8}\",
+  \"nik\": \"${RUN_ID: -10}123456\",
+  \"address\": \"Jl Smoke Test UMKM\",
+  \"city\": \"Sleman\",
+  \"province\": \"DI Yogyakarta\",
+  \"products\": \"Produk Smoke\"
+}" "$UMKM_TOKEN")"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "200" "save UMKM profile"
+echo
+
+echo "== 4. Get UMKM profile =="
+RAW="$(request_with_status GET "$USER_URL/profiles/me" "" "$UMKM_TOKEN")"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "200" "get UMKM profile"
+
+UMKM_NAME="$(printf "%s" "$RESPONSE_BODY" | json_get "data.get('profile',{}).get('business_name','')")"
+if [ "$UMKM_NAME" != "Smoke UMKM Store" ]; then
+  echo "❌ UMKM profile name mismatch: $UMKM_NAME"
+  exit 1
+fi
+
+echo "✅ UMKM profile verified"
+echo
+
+echo "== 5. Register Mitra =="
+RAW="$(request_with_status POST "$AUTH_URL/auth/register" "{
+  \"full_name\": \"Smoke Mitra\",
+  \"email\": \"$MITRA_EMAIL\",
+  \"phone_number\": \"62813${RUN_ID: -8}\",
+  \"password\": \"$PASSWORD\",
+  \"role\": \"MITRA\"
+}")"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "201" "register Mitra"
+
+MITRA_TOKEN="$(printf "%s" "$RESPONSE_BODY" | json_get "data.get('access_token','')")"
+
+if [ -z "$MITRA_TOKEN" ]; then
+  echo "❌ register Mitra did not return access_token"
+  echo "$RESPONSE_BODY"
+  exit 1
+fi
+
+echo "✅ Mitra token received"
+echo
+
+echo "== 6. Save Mitra profile =="
+RAW="$(request_with_status PUT "$USER_URL/profiles/me" "{
+  \"organization_name\": \"Smoke Mitra Organization\",
+  \"organization_type\": \"Inkubator Bisnis\",
+  \"legal_name\": \"Smoke Mitra Organization\",
+  \"nib\": \"1234567890123\",
+  \"npwp\": \"00.000.000.0-000.000\",
+  \"description\": \"Smoke test Mitra profile\",
+  \"support_description\": \"Smoke test deskripsi tujuan kemitraan\",
+  \"address\": \"Jl Smoke Test Mitra\",
+  \"city\": \"Surakarta\",
+  \"province\": \"Jawa Tengah\",
+  \"contact_person\": \"Smoke PIC\",
+  \"contact_person_title\": \"Manager\",
+  \"phone_number\": \"62813${RUN_ID: -8}\",
+  \"operational_area\": \"Jawa Tengah\",
+  \"cooperation_scale\": \"Provinsi\",
+  \"partnership_field\": \"Pelatihan\",
+  \"support_type\": \"Pendampingan\"
+}" "$MITRA_TOKEN")"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "200" "save Mitra profile"
+echo
+
+echo "== 7. Get Mitra profile =="
+RAW="$(request_with_status GET "$USER_URL/profiles/me" "" "$MITRA_TOKEN")"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "200" "get Mitra profile"
+
+MITRA_NAME="$(printf "%s" "$RESPONSE_BODY" | json_get "data.get('profile',{}).get('organization_name','')")"
+if [ "$MITRA_NAME" != "Smoke Mitra Organization" ]; then
+  echo "❌ Mitra profile name mismatch: $MITRA_NAME"
+  exit 1
+fi
+
+echo "✅ Mitra profile verified"
+echo
+echo "🎉 Smoke test passed."
