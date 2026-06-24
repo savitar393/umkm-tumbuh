@@ -53,6 +53,16 @@ func (s *Service) sendCodeEmail(data emailpkg.CodeEmailData) {
 	}()
 }
 
+func (s *Service) shouldExposeDevCode() bool {
+	appEnv := strings.ToLower(strings.TrimSpace(s.Config.AppEnv))
+
+	return appEnv == "" ||
+		appEnv == "development" ||
+		appEnv == "dev" ||
+		appEnv == "local" ||
+		appEnv == "test"
+}
+
 func (s *Service) Register(ctx context.Context, req RegisterRequest) (*RegisterResponse, error) {
 	req.FullName = strings.TrimSpace(req.FullName)
 	req.Email = strings.ToLower(strings.TrimSpace(req.Email))
@@ -284,10 +294,15 @@ func (s *Service) RequestEmailVerification(ctx context.Context, req RequestEmail
 		Purpose:  "EMAIL_VERIFICATION",
 	})
 
-	return map[string]any{
-		"message":  "Kode verifikasi email berhasil dibuat.",
-		"dev_code": code,
-	}, nil
+	response := map[string]any{
+		"message": "Kode verifikasi email berhasil dibuat.",
+	}
+
+	if s.shouldExposeDevCode() {
+		response["dev_code"] = code
+	}
+
+	return response, nil
 }
 
 func (s *Service) ConfirmEmailVerification(ctx context.Context, req ConfirmEmailVerificationRequest) (map[string]any, error) {
@@ -404,10 +419,15 @@ func (s *Service) RequestPasswordReset(ctx context.Context, req RequestPasswordR
 		Purpose:  "PASSWORD_RESET",
 	})
 
-	return map[string]string{
-		"message":  "Jika email terdaftar, instruksi reset password telah dikirim.",
-		"dev_code": code,
-	}, nil
+	response := map[string]string{
+		"message": "Jika email terdaftar, instruksi reset password telah dikirim.",
+	}
+
+	if s.shouldExposeDevCode() {
+		response["dev_code"] = code
+	}
+
+	return response, nil
 }
 
 func (s *Service) ResetPassword(ctx context.Context, req ResetPasswordRequest) (map[string]string, error) {
