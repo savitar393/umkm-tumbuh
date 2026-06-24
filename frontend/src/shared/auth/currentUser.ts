@@ -56,3 +56,23 @@ export function getDefaultRouteByRole(role: UserRole): string {
 
   return "/";
 }
+
+export function isApprovedStatus(status?: UserStatus | string | null) {
+  return status === "DISETUJUI" || status === "APPROVED" || status === "AKTIF";
+}
+
+export function isRejectedStatus(status?: UserStatus | string | null) {
+  return status === "DITOLAK" || status === "REJECTED";
+}
+
+export function getRegistrationStatusRoute(user: CurrentUser) {
+  if (isApprovedStatus(user.status)) {
+    return getDefaultRouteByRole(user.role);
+  }
+
+  if (isRejectedStatus(user.status)) {
+    return "/register/rejected";
+  }
+
+  return "/register/pending";
+}

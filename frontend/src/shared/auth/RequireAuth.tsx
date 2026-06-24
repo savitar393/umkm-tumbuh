@@ -1,5 +1,12 @@
 import { Navigate, Outlet } from "react-router-dom";
-import { getAccessToken, getCurrentUser, getDefaultRouteByRole, type UserRole } from "./currentUser";
+import {
+  getAccessToken,
+  getCurrentUser,
+  getDefaultRouteByRole,
+  getRegistrationStatusRoute,
+  isApprovedStatus,
+  type UserRole,
+} from "./currentUser";
 
 type RequireAuthProps = {
   allowedRole?: UserRole;
@@ -15,6 +22,14 @@ export function RequireAuth({ allowedRole }: RequireAuthProps) {
 
   if (allowedRole && user.role !== allowedRole) {
     return <Navigate to={getDefaultRouteByRole(user.role)} replace />;
+  }
+
+  if (
+    allowedRole &&
+    (allowedRole === "UMKM" || allowedRole === "MITRA") &&
+    !isApprovedStatus(user.status)
+  ) {
+    return <Navigate to={getRegistrationStatusRoute(user)} replace />;
   }
 
   return <Outlet />;

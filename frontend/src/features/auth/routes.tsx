@@ -4,6 +4,9 @@ import RegisterPage from "./pages/RegisterPage";
 import ReactivatePage from "./pages/ReactivatePage";
 import RegisterDetailsPage from "./pages/RegisterDetailsPage";
 import RegisterReviewPage from "./pages/RegisterReviewPage";
+import RegisterPendingPage from "./pages/RegisterPendingPage";
+import RegisterRejectedPage from "./pages/RegisterRejectedPage";
+import RegisterApprovedPage from "./pages/RegisterApprovedPage";
 
 export const authRoutes: RouteObject[] = [
   {
@@ -25,5 +28,17 @@ export const authRoutes: RouteObject[] = [
   {
     path: "/register/:role/review",
     element: <RegisterReviewPage />,
+  },
+  {
+    path: "/register/pending",
+    element: <RegisterPendingPage />,
+  },
+  {
+    path: "/register/rejected",
+    element: <RegisterRejectedPage />,
+  },
+  {
+    path: "/register/approved",
+    element: <RegisterApprovedPage />,
   },
 ];

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, Navigate, useLocation, useParams } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import { CheckCircle, Loader2 } from "lucide-react";
 import { getCurrentUser } from "../../../shared/auth/currentUser";
 import { http } from "../../../shared/api/http";
@@ -71,6 +71,8 @@ export default function RegisterReviewPage() {
   const params = useParams();
   const location = useLocation();
   const currentUser = getCurrentUser();
+
+  const navigate = useNavigate();
 
   const role: RegisterDetailRole = params.role === "mitra" ? "mitra" : "umkm";
 
@@ -216,6 +218,7 @@ export default function RegisterReviewPage() {
       const response = await submitRegistration();
       setSubmitMessage(response.message || "Pendaftaran berhasil dikirim. Menunggu review Admin.");
       setSubmitted(true);
+      navigate("/register/pending", { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal mengirim pendaftaran.");
     } finally {
