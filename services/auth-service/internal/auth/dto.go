@@ -12,19 +12,21 @@ type RegisterRequest struct {
 }
 
 type LoginRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Email      string `json:"email"`
+	Password   string `json:"password"`
+	RememberMe bool   `json:"remember_me,omitempty"`
 }
 
 type RegisterResponse struct {
 	Message     string         `json:"message"`
-	AccessToken string        `json:"access_token,omitempty"`
-	TokenType   string        `json:"token_type,omitempty"`
+	AccessToken string         `json:"access_token,omitempty"`
+	TokenType   string         `json:"token_type,omitempty"`
 	User        users.Response `json:"user"`
 }
 
 type TokenResponse struct {
-	AccessToken string         `json:"access_token"`
-	TokenType   string         `json:"token_type"`
-	User        users.Response `json:"user"`
+	AccessToken  string         `json:"access_token"`
+	TokenType    string         `json:"token_type"`
+	RefreshToken string         `json:"refresh_token,omitempty"`
+	User         users.Response `json:"user"`
 }

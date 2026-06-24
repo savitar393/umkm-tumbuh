@@ -169,10 +169,20 @@ func (s *Service) Login(ctx context.Context, req LoginRequest) (*TokenResponse, 
 		return nil, err
 	}
 
+	refreshToken := ""
+
+	if req.RememberMe {
+		refreshToken, err = s.createRememberToken(ctx, user.ID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &TokenResponse{
-		AccessToken: token,
-		TokenType:   "bearer",
-		User:        users.ToResponse(user),
+		AccessToken:  token,
+		TokenType:    "bearer",
+		RefreshToken: refreshToken,
+		User:         users.ToResponse(user),
 	}, nil
 }
 
@@ -524,6 +534,119 @@ func (s *Service) createAccessToken(user *users.User) (string, error) {
 	return token.SignedString([]byte(s.Config.JWTSecret))
 }
 
+func (s *Service) createRememberToken(ctx context.Context, userID string) (string, error) {
+	rawToken, err := generateOpaqueToken(32)
+	if err != nil {
+		return "", err
+	}
+
+	tokenHash := hashOpaqueToken(rawToken)
+
+	_, err = s.UserRepo.DB.Exec(ctx, `
+		INSERT INTO auth.transaksi_remember_tokens (
+			akun_id,
+			token_hash,
+			expires_at
+		)
+		VALUES ($1, $2, NOW() + INTERVAL '30 days')
+	`, userID, tokenHash)
+	if err != nil {
+		return "", err
+	}
+
+	return rawToken, nil
+}
+
+func (s *Service) RefreshToken(ctx context.Context, req RefreshTokenRequest) (*TokenResponse, error) {
+	rawRefreshToken := strings.TrimSpace(req.RefreshToken)
+
+	if rawRefreshToken == "" {
+		return nil, apperror.New(http.StatusBadRequest, "Refresh token wajib diisi.")
+	}
+
+	tokenHash := hashOpaqueToken(rawRefreshToken)
+
+	tx, err := s.UserRepo.DB.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	var userID string
+	err = tx.QueryRow(ctx, `
+		SELECT akun_id
+		FROM auth.transaksi_remember_tokens
+		WHERE token_hash = $1
+		  AND revoked_at IS NULL
+		  AND expires_at > NOW()
+		FOR UPDATE
+	`, tokenHash).Scan(&userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, apperror.New(http.StatusUnauthorized, "Refresh token tidak valid atau sudah kedaluwarsa.")
+		}
+
+		return nil, err
+	}
+
+	_, err = tx.Exec(ctx, `
+		UPDATE auth.transaksi_remember_tokens
+		SET revoked_at = NOW()
+		WHERE token_hash = $1
+	`, tokenHash)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := s.UserRepo.FindByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, apperror.New(http.StatusUnauthorized, "Pengguna tidak ditemukan.")
+		}
+
+		return nil, err
+	}
+
+	if !user.IsActive {
+		return nil, apperror.New(http.StatusForbidden, "Akun tidak aktif.")
+	}
+
+	accessToken, err := s.createAccessToken(user)
+	if err != nil {
+		return nil, err
+	}
+
+	newRefreshToken, err := generateOpaqueToken(32)
+	if err != nil {
+		return nil, err
+	}
+
+	newRefreshTokenHash := hashOpaqueToken(newRefreshToken)
+
+	_, err = tx.Exec(ctx, `
+		INSERT INTO auth.transaksi_remember_tokens (
+			akun_id,
+			token_hash,
+			expires_at
+		)
+		VALUES ($1, $2, NOW() + INTERVAL '30 days')
+	`, user.ID, newRefreshTokenHash)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+
+	return &TokenResponse{
+		AccessToken:  accessToken,
+		TokenType:    "bearer",
+		RefreshToken: newRefreshToken,
+		User:         users.ToResponse(user),
+	}, nil
+}
+
 func extractBearerToken(authorizationHeader string) (string, error) {
 	authorizationHeader = strings.TrimSpace(authorizationHeader)
 
@@ -653,4 +776,19 @@ func passwordResetGenericResponse() map[string]string {
 	return map[string]string{
 		"message": "Jika email terdaftar, instruksi reset password telah dikirim.",
 	}
+}
+
+func generateOpaqueToken(byteSize int) (string, error) {
+	bytes := make([]byte, byteSize)
+
+	if _, err := rand.Read(bytes); err != nil {
+		return "", err
+	}
+
+	return base64.RawURLEncoding.EncodeToString(bytes), nil
+}
+
+func hashOpaqueToken(token string) string {
+	sum := sha256.Sum256([]byte(strings.TrimSpace(token)))
+	return base64.RawURLEncoding.EncodeToString(sum[:])
 }

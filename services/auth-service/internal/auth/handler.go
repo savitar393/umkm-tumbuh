@@ -157,3 +157,20 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 
 	response.JSON(w, http.StatusOK, result)
 }
+
+func (h *Handler) RefreshToken(w http.ResponseWriter, r *http.Request) {
+	var req RefreshTokenRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.Error(w, http.StatusBadRequest, "Request body tidak valid.")
+		return
+	}
+
+	result, err := h.AuthService.RefreshToken(r.Context(), req)
+	if err != nil {
+		handleError(w, err)
+		return
+	}
+
+	response.JSON(w, http.StatusOK, result)
+}

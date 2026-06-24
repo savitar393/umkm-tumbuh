@@ -18,3 +18,7 @@ type ResetPasswordRequest struct {
 	Code        string `json:"code"`
 	NewPassword string `json:"new_password"`
 }
+
+type RefreshTokenRequest struct {
+	RefreshToken string `json:"refresh_token"`
+}
