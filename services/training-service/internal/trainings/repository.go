@@ -41,6 +41,7 @@ func (r *Repository) GetAllTrainings(ctx context.Context) ([]TrainingProgramResp
 			mpp.thumbnail_url,
 			mpp.syarat_ketentuan,
 			mpp.tanggal_publish,
+			mpp.status_pelatihan_id,
 			rjp.nama_jenis_pelatihan,
 			rsp.nama_status_pelatihan,
 			mpp.created_at,
@@ -68,7 +69,7 @@ func (r *Repository) GetAllTrainings(ctx context.Context) ([]TrainingProgramResp
 			&t.PelatihanID, &t.KodePelatihan, &t.JudulPelatihan, &t.DeskripsiPelatihan,
 			&t.MentorNama, &t.DurasiJam, &t.TotalModul, &t.Harga, &t.AksesSeumurHidup,
 			&t.MasaAksesHari, &t.RatingRataRata, &t.JumlahAlumni, &t.ThumbnailURL,
-			&t.SyaratKetentuan, &t.TanggalPublish, &t.JenisPelatihan, &t.StatusPelatihan,
+			&t.SyaratKetentuan, &t.TanggalPublish, &t.StatusPelatihanID, &t.JenisPelatihan, &t.StatusPelatihan,
 			&t.CreatedAt, &t.UpdatedAt,
 		)
 		if err != nil {
@@ -89,6 +90,7 @@ func (r *Repository) GetTrainingByID(ctx context.Context, pelatihanID string) (*
 			mpp.total_modul, mpp.harga, mpp.akses_seumur_hidup, 
 			mpp.masa_akses_hari, mpp.rating_rata_rata, mpp.jumlah_alumni, 
 			mpp.thumbnail_url, mpp.syarat_ketentuan, mpp.tanggal_publish,
+			mpp.status_pelatihan_id,
 			rjp.nama_jenis_pelatihan, rsp.nama_status_pelatihan,
 			mpp.created_at, mpp.updated_at
 		FROM training.master_programpelatihan mpp
@@ -102,7 +104,7 @@ func (r *Repository) GetTrainingByID(ctx context.Context, pelatihanID string) (*
 		&t.PelatihanID, &t.KodePelatihan, &t.JudulPelatihan, &t.DeskripsiPelatihan,
 		&t.MentorNama, &t.DurasiJam, &t.TotalModul, &t.Harga, &t.AksesSeumurHidup,
 		&t.MasaAksesHari, &t.RatingRataRata, &t.JumlahAlumni, &t.ThumbnailURL,
-		&t.SyaratKetentuan, &t.TanggalPublish, &t.JenisPelatihan, &t.StatusPelatihan,
+		&t.SyaratKetentuan, &t.TanggalPublish, &t.StatusPelatihanID, &t.JenisPelatihan, &t.StatusPelatihan,
 		&t.CreatedAt, &t.UpdatedAt,
 	)
 
@@ -427,6 +429,7 @@ func (r *Repository) GetAllTrainingsAdmin(ctx context.Context, filters TrainingF
 			mpp.total_modul, mpp.harga, mpp.akses_seumur_hidup, 
 			mpp.masa_akses_hari, mpp.rating_rata_rata, mpp.jumlah_alumni, 
 			mpp.thumbnail_url, mpp.syarat_ketentuan, mpp.tanggal_publish,
+			mpp.status_pelatihan_id,
 			rjp.nama_jenis_pelatihan, rsp.nama_status_pelatihan,
 			mpp.created_at, mpp.updated_at
 		FROM training.master_programpelatihan mpp
@@ -451,7 +454,7 @@ func (r *Repository) GetAllTrainingsAdmin(ctx context.Context, filters TrainingF
 			&t.PelatihanID, &t.KodePelatihan, &t.JudulPelatihan, &t.DeskripsiPelatihan,
 			&t.MentorNama, &t.DurasiJam, &t.TotalModul, &t.Harga, &t.AksesSeumurHidup,
 			&t.MasaAksesHari, &t.RatingRataRata, &t.JumlahAlumni, &t.ThumbnailURL,
-			&t.SyaratKetentuan, &t.TanggalPublish, &t.JenisPelatihan, &t.StatusPelatihan,
+			&t.SyaratKetentuan, &t.TanggalPublish, &t.StatusPelatihanID, &t.JenisPelatihan, &t.StatusPelatihan,
 			&t.CreatedAt, &t.UpdatedAt,
 		)
 		if err != nil {

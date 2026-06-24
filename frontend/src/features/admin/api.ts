@@ -478,3 +478,7 @@ export function updateTrainingStatus(id: string, status: string) {
     body: JSON.stringify({ status }),
   });
 }
+
+export function getAdminTrainingDetail(id: string) {
+  return http<AdminTrainingItem>(`/admin/training/${id}`, { service: "training" });
+}

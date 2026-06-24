@@ -70,6 +70,23 @@ func (h *AdminHandler) GetAllTrainingsAdmin(w http.ResponseWriter, r *http.Reque
 	})
 }
 
+// GetTrainingDetailAdmin gets a single training detail for admin
+func (h *AdminHandler) GetTrainingDetailAdmin(w http.ResponseWriter, r *http.Request) {
+	pelatihanID := chi.URLParam(r, "id")
+	if pelatihanID == "" {
+		response.Error(w, http.StatusBadRequest, "ID Pelatihan tidak valid")
+		return
+	}
+
+	training, err := h.Service.GetTrainingByID(r.Context(), pelatihanID)
+	if err != nil {
+		handleError(w, err)
+		return
+	}
+
+	response.JSON(w, http.StatusOK, training)
+}
+
 // CreateTraining creates a new training program
 func (h *AdminHandler) CreateTraining(w http.ResponseWriter, r *http.Request) {
 	var req CreateTrainingRequest

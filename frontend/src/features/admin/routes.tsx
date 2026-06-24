@@ -5,6 +5,7 @@ import AdminUsersPage from "./pages/AdminUsersPage";
 import AdminCertificatesPage from "./pages/AdminCertificatesPage";
 import AdminTrainingEvaluationPage from "./pages/AdminTrainingEvaluationPage";
 import AdminTrainingManagePage from "./pages/AdminTrainingManagePage";
+import AdminTrainingFormPage from "./pages/AdminTrainingFormPage";
 import ComingSoon from "./components/ComingSoon";
 
 export const adminRoutes: RouteObject[] = [
@@ -24,6 +25,8 @@ export const adminRoutes: RouteObject[] = [
     path: "training",
     children: [
       { index: true, element: <AdminTrainingManagePage /> },
+      { path: "new", element: <AdminTrainingFormPage /> },
+      { path: ":id/edit", element: <AdminTrainingFormPage /> },
       { path: "evaluation", element: <AdminTrainingEvaluationPage /> },
       { path: "certificates", element: <AdminCertificatesPage /> },
     ],

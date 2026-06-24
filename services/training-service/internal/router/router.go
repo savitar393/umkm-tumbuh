@@ -69,6 +69,7 @@ func NewRouter(
 			r.Use(middleware.AuthMiddleware(jwtSecret))
 			r.Get("/", adminTrainingHandler.GetAllTrainingsAdmin)
 			r.Get("/stats", adminTrainingHandler.GetTrainingStats)
+			r.Get("/{id}", adminTrainingHandler.GetTrainingDetailAdmin)
 			r.Post("/", adminTrainingHandler.CreateTraining)
 			r.Put("/{id}", adminTrainingHandler.UpdateTraining)
 			r.Delete("/{id}", adminTrainingHandler.DeleteTraining)

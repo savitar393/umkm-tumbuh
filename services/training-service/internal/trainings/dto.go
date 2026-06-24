@@ -20,6 +20,7 @@ type TrainingProgramResponse struct {
 	SyaratKetentuan    *string    `json:"syarat_ketentuan"`
 	TanggalPublish     *time.Time `json:"tanggal_publish"`
 	JenisPelatihan     string     `json:"jenis_pelatihan"`
+	StatusPelatihanID  string     `json:"status_pelatihan_id"`
 	StatusPelatihan    string     `json:"status_pelatihan"`
 	CreatedAt          time.Time  `json:"created_at"`
 	UpdatedAt          time.Time  `json:"updated_at"`

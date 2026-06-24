@@ -1,20 +1,16 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Filter, MoreVertical, Eye, Edit, Trash2, Archive, CheckCircle, X } from "lucide-react";
+import { Plus, Search, Filter, MoreVertical, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import AdminLayout from "../components/AdminLayout";
 import {
   getAdminTrainings,
   getTrainingStats,
-  createTraining,
-  updateTraining,
   deleteTraining,
   updateTrainingStatus,
   type AdminTrainingItem,
-  type TrainingStatsResponse,
-  type CreateTrainingPayload,
 } from "../api";
-import { getCurrentUser } from "../../../shared/auth/currentUser";
 
 type StatusFilterType = "ALL" | "PUBLISHED" | "DRAFT" | "ARCHIVED" | "ONGOING";
 
@@ -67,10 +63,9 @@ export default function AdminTrainingManagePage() {
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilterType>("ALL");
   const [page, setPage] = useState(1);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [selectedTraining, setSelectedTraining] = useState<AdminTrainingItem | null>(null);
 
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   // Fetch training stats
   const { data: statsData } = useQuery({
@@ -100,20 +95,6 @@ export default function AdminTrainingManagePage() {
 
   const trainings = trainingsData?.trainings || [];
   const pagination = trainingsData?.pagination || { page: 1, limit: 10, total: 0, total_pages: 0 };
-
-  // Create mutation
-  const createMutation = useMutation({
-    mutationFn: createTraining,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "trainings"] });
-      queryClient.invalidateQueries({ queryKey: ["admin", "training-stats"] });
-      toast.success("Pelatihan berhasil dibuat");
-      setShowCreateModal(false);
-    },
-    onError: (error: Error) => {
-      toast.error(error.message || "Gagal membuat pelatihan");
-    },
-  });
 
   // Delete mutation
   const deleteMutation = useMutation({
@@ -172,6 +153,7 @@ export default function AdminTrainingManagePage() {
           </h1>
           <div style={{ display: "flex", gap: 12 }}>
             <button
+              onClick={() => navigate("/admin/training")}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 8,
                 padding: "10px 20px", borderRadius: 12,
@@ -183,6 +165,7 @@ export default function AdminTrainingManagePage() {
               Dashboard Pelatihan
             </button>
             <button
+              onClick={() => navigate("/admin/training/certificates")}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 8,
                 padding: "10px 20px", borderRadius: 12,
@@ -194,7 +177,7 @@ export default function AdminTrainingManagePage() {
               Verifikasi Sertifikat
             </button>
             <button
-              onClick={() => setShowCreateModal(true)}
+              onClick={() => navigate("/admin/training/new")}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 8,
                 padding: "10px 20px", borderRadius: 12,
@@ -478,282 +461,6 @@ export default function AdminTrainingManagePage() {
           </div>
         )}
       </div>
-
-      {/* Create/Edit Training Modal */}
-      {showCreateModal && (
-        <TrainingFormModal
-          onClose={() => {
-            setShowCreateModal(false);
-            setSelectedTraining(null);
-          }}
-          onSubmit={(data) => {
-            const user = getCurrentUser();
-            if (!user) {
-              toast.error("User tidak ditemukan");
-              return;
-            }
-            
-            const payload: CreateTrainingPayload = {
-              dibuat_oleh_admin_id: user.id,
-              jenis_pelatihan_id: data.jenis_pelatihan_id,
-              judul_pelatihan: data.judul_pelatihan,
-              deskripsi_pelatihan: data.deskripsi_pelatihan,
-              mentor_nama: data.mentor_nama,
-              durasi_jam: data.durasi_jam,
-              total_modul: data.total_modul,
-              harga: data.harga,
-              akses_seumur_hidup: data.akses_seumur_hidup,
-              masa_akses_hari: data.masa_akses_hari,
-              thumbnail_url: data.thumbnail_url,
-              syarat_ketentuan: data.syarat_ketentuan,
-            };
-            createMutation.mutate(payload);
-          }}
-          training={selectedTraining}
-        />
-      )}
     </AdminLayout>
-  );
-}
-
-// Training Form Modal Component
-function TrainingFormModal({
-  onClose,
-  onSubmit,
-  training,
-}: {
-  onClose: () => void;
-  onSubmit: (data: any) => void;
-  training: AdminTrainingItem | null;
-}) {
-  const [formData, setFormData] = useState({
-    jenis_pelatihan_id: training?.jenis_pelatihan || "JP01",
-    judul_pelatihan: training?.judul_pelatihan || "",
-    deskripsi_pelatihan: training?.deskripsi_pelatihan || "",
-    mentor_nama: training?.mentor_nama || "",
-    durasi_jam: training?.durasi_jam || 1,
-    total_modul: training?.total_modul || 1,
-    harga: training?.harga || 0,
-    akses_seumur_hidup: true,
-    masa_akses_hari: 365,
-    thumbnail_url: "",
-    syarat_ketentuan: "",
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSubmit(formData);
-  };
-
-  return (
-    <div style={{
-      position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-      background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center",
-      zIndex: 1000, padding: 20,
-    }}>
-      <div style={{
-        background: "#fff", borderRadius: 20, maxWidth: 600, width: "100%",
-        maxHeight: "90vh", overflow: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
-      }}>
-        {/* Header */}
-        <div style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "24px 32px", borderBottom: "1px solid #f3f4f6",
-        }}>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: "#111827", margin: 0 }}>
-            {training ? "Edit Pelatihan" : "Buat Pelatihan Baru"}
-          </h2>
-          <button
-            onClick={onClose}
-            style={{
-              background: "transparent", border: "none", cursor: "pointer",
-              padding: 8, borderRadius: 8, display: "flex", alignItems: "center",
-            }}
-          >
-            <X size={20} style={{ color: "#6b7280" }} />
-          </button>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} style={{ padding: "24px 32px" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            {/* Judul Pelatihan */}
-            <div>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 8 }}>
-                Judul Pelatihan *
-              </label>
-              <input
-                type="text"
-                required
-                value={formData.judul_pelatihan}
-                onChange={(e) => setFormData({ ...formData, judul_pelatihan: e.target.value })}
-                style={{
-                  width: "100%", padding: "10px 14px", borderRadius: 10,
-                  border: "1px solid #e5e7eb", fontSize: 14, outline: "none",
-                }}
-                placeholder="Contoh: Digital Marketing 101"
-              />
-            </div>
-
-            {/* Jenis Pelatihan */}
-            <div>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 8 }}>
-                Jenis Pelatihan *
-              </label>
-              <select
-                required
-                value={formData.jenis_pelatihan_id}
-                onChange={(e) => setFormData({ ...formData, jenis_pelatihan_id: e.target.value })}
-                style={{
-                  width: "100%", padding: "10px 14px", borderRadius: 10,
-                  border: "1px solid #e5e7eb", fontSize: 14, outline: "none",
-                }}
-              >
-                {JENIS_PELATIHAN_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Deskripsi */}
-            <div>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 8 }}>
-                Deskripsi Pelatihan
-              </label>
-              <textarea
-                value={formData.deskripsi_pelatihan}
-                onChange={(e) => setFormData({ ...formData, deskripsi_pelatihan: e.target.value })}
-                rows={4}
-                style={{
-                  width: "100%", padding: "10px 14px", borderRadius: 10,
-                  border: "1px solid #e5e7eb", fontSize: 14, outline: "none",
-                  resize: "vertical", fontFamily: "inherit",
-                }}
-                placeholder="Jelaskan tujuan dan manfaat pelatihan..."
-              />
-            </div>
-
-            {/* Mentor */}
-            <div>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 8 }}>
-                Nama Mentor
-              </label>
-              <input
-                type="text"
-                value={formData.mentor_nama}
-                onChange={(e) => setFormData({ ...formData, mentor_nama: e.target.value })}
-                style={{
-                  width: "100%", padding: "10px 14px", borderRadius: 10,
-                  border: "1px solid #e5e7eb", fontSize: 14, outline: "none",
-                }}
-                placeholder="Nama mentor/instruktur"
-              />
-            </div>
-
-            {/* Durasi & Total Modul */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-              <div>
-                <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 8 }}>
-                  Durasi (Jam) *
-                </label>
-                <input
-                  type="number"
-                  required
-                  min={1}
-                  value={formData.durasi_jam}
-                  onChange={(e) => setFormData({ ...formData, durasi_jam: parseInt(e.target.value) })}
-                  style={{
-                    width: "100%", padding: "10px 14px", borderRadius: 10,
-                    border: "1px solid #e5e7eb", fontSize: 14, outline: "none",
-                  }}
-                />
-              </div>
-              <div>
-                <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 8 }}>
-                  Total Modul *
-                </label>
-                <input
-                  type="number"
-                  required
-                  min={1}
-                  value={formData.total_modul}
-                  onChange={(e) => setFormData({ ...formData, total_modul: parseInt(e.target.value) })}
-                  style={{
-                    width: "100%", padding: "10px 14px", borderRadius: 10,
-                    border: "1px solid #e5e7eb", fontSize: 14, outline: "none",
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Harga */}
-            <div>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 8 }}>
-                Harga (Rp)
-              </label>
-              <input
-                type="number"
-                min={0}
-                value={formData.harga}
-                onChange={(e) => setFormData({ ...formData, harga: parseInt(e.target.value) })}
-                style={{
-                  width: "100%", padding: "10px 14px", borderRadius: 10,
-                  border: "1px solid #e5e7eb", fontSize: 14, outline: "none",
-                }}
-                placeholder="0 untuk gratis"
-              />
-            </div>
-
-            {/* Masa Akses */}
-            <div>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 8 }}>
-                Masa Akses (Hari)
-              </label>
-              <input
-                type="number"
-                min={1}
-                value={formData.masa_akses_hari}
-                onChange={(e) => setFormData({ ...formData, masa_akses_hari: parseInt(e.target.value) })}
-                style={{
-                  width: "100%", padding: "10px 14px", borderRadius: 10,
-                  border: "1px solid #e5e7eb", fontSize: 14, outline: "none",
-                }}
-                placeholder="365"
-              />
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "flex-end",
-            gap: 12, marginTop: 32, paddingTop: 24, borderTop: "1px solid #f3f4f6",
-          }}>
-            <button
-              type="button"
-              onClick={onClose}
-              style={{
-                padding: "10px 20px", borderRadius: 10,
-                background: "#f3f4f6", border: "none",
-                color: "#374151", fontSize: 14, fontWeight: 600,
-                cursor: "pointer", fontFamily: "inherit",
-              }}
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              style={{
-                padding: "10px 20px", borderRadius: 10,
-                background: "#1f45b6", border: "none",
-                color: "#fff", fontSize: 14, fontWeight: 600,
-                cursor: "pointer", fontFamily: "inherit",
-              }}
-            >
-              {training ? "Simpan Perubahan" : "Buat Pelatihan"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
   );
 }
