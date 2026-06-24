@@ -171,6 +171,88 @@ split_response "$RAW"
 expect_status "$RESPONSE_STATUS" "401" "revoked token should fail"
 echo
 
+echo "== Email verification and remember-me refresh token flow =="
+REMEMBER_EMAIL="remember.smoke.$RUN_ID@mail.com"
+REMEMBER_PASSWORD="password123"
+
+RAW="$(request_with_status POST "$AUTH_URL/auth/register" "{
+  \"full_name\":\"Remember Smoke User\",
+  \"email\":\"$REMEMBER_EMAIL\",
+  \"phone_number\":\"62816$MITRA_PHONE_SUFFIX\",
+  \"password\":\"$REMEMBER_PASSWORD\",
+  \"role\":\"UMKM\"
+}")"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "201" "register remember-me smoke user"
+
+RAW="$(request_with_status POST "$AUTH_URL/auth/verify-email/request" "{
+  \"email\":\"$REMEMBER_EMAIL\"
+}")"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "200" "request email verification"
+
+VERIFY_CODE="$(printf '%s' "$RESPONSE_BODY" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("dev_code",""))')"
+
+if [ -z "$VERIFY_CODE" ]; then
+  echo "❌ email verification dev_code missing"
+  echo "$RESPONSE_BODY"
+  exit 1
+fi
+
+RAW="$(request_with_status POST "$AUTH_URL/auth/verify-email/confirm" "{
+  \"email\":\"$REMEMBER_EMAIL\",
+  \"code\":\"$VERIFY_CODE\"
+}")"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "200" "confirm email verification"
+
+RAW="$(request_with_status POST "$AUTH_URL/auth/login" "{
+  \"email\":\"$REMEMBER_EMAIL\",
+  \"password\":\"$REMEMBER_PASSWORD\",
+  \"remember_me\":true
+}")"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "200" "login with remember me"
+
+REMEMBER_ACCESS_TOKEN="$(printf '%s' "$RESPONSE_BODY" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("access_token",""))')"
+REMEMBER_REFRESH_TOKEN="$(printf '%s' "$RESPONSE_BODY" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("refresh_token",""))')"
+
+if [ -z "$REMEMBER_ACCESS_TOKEN" ] || [ -z "$REMEMBER_REFRESH_TOKEN" ]; then
+  echo "❌ remember-me tokens missing"
+  echo "$RESPONSE_BODY"
+  exit 1
+fi
+
+RAW="$(request_with_status GET "$AUTH_URL/auth/me" "" "$REMEMBER_ACCESS_TOKEN")"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "200" "remember access token works"
+
+RAW="$(request_with_status POST "$AUTH_URL/auth/refresh" "{
+  \"refresh_token\":\"$REMEMBER_REFRESH_TOKEN\"
+}")"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "200" "refresh token rotates"
+
+NEW_ACCESS_TOKEN="$(printf '%s' "$RESPONSE_BODY" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("access_token",""))')"
+NEW_REFRESH_TOKEN="$(printf '%s' "$RESPONSE_BODY" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("refresh_token",""))')"
+
+if [ -z "$NEW_ACCESS_TOKEN" ] || [ -z "$NEW_REFRESH_TOKEN" ]; then
+  echo "❌ rotated tokens missing"
+  echo "$RESPONSE_BODY"
+  exit 1
+fi
+
+RAW="$(request_with_status POST "$AUTH_URL/auth/refresh" "{
+  \"refresh_token\":\"$REMEMBER_REFRESH_TOKEN\"
+}")"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "401" "old refresh token should be revoked"
+
+RAW="$(request_with_status GET "$AUTH_URL/auth/me" "" "$NEW_ACCESS_TOKEN")"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "200" "new access token works"
+echo
+
 echo "== 2. Register UMKM =="
 RAW="$(request_with_status POST "$AUTH_URL/auth/register" "{
   \"full_name\": \"Smoke UMKM\",
