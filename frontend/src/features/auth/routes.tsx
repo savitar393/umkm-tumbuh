@@ -3,6 +3,7 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import ReactivatePage from "./pages/ReactivatePage";
 import RegisterDetailsPage from "./pages/RegisterDetailsPage";
+import RegisterReviewPage from "./pages/RegisterReviewPage";
 
 export const authRoutes: RouteObject[] = [
   {
@@ -20,5 +21,9 @@ export const authRoutes: RouteObject[] = [
   {
     path: "/register/:role/details",
     element: <RegisterDetailsPage />,
+  },
+  {
+    path: "/register/:role/review",
+    element: <RegisterReviewPage />,
   },
 ];

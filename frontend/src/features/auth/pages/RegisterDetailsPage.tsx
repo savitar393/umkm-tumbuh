@@ -161,6 +161,9 @@ export default function RegisterDetailsPage() {
     jabatanPic: "",
     emailPic: currentUser?.email ?? "",
     phonePic: normalizePhone(currentUser?.phone_number),
+    alamatKantor: "",
+    kotaKabupaten: "",
+    provinsi: "",
     bidangKemitraan: "",
     wilayahOperasional: "",
     jenisDukungan: "",
@@ -273,6 +276,101 @@ export default function RegisterDetailsPage() {
     }
   }
 
+  function validateUmkmDetails() {
+    const requiredUmkmFields: Array<[string, string]> = [
+      [umkmForm.namaUmkm, "Nama UMKM wajib diisi."],
+      [umkmForm.namaPemilik, "Nama pemilik wajib diisi."],
+      [umkmForm.phone, "Nomor WhatsApp wajib diisi."],
+      [umkmForm.kategoriUsaha, "Kategori usaha wajib dipilih."],
+      [umkmForm.deskripsiUsaha, "Deskripsi usaha wajib diisi."],
+      [umkmForm.alamatUsaha, "Alamat usaha wajib diisi."],
+      [umkmForm.kotaKabupaten, "Kota/kabupaten wajib diisi."],
+      [umkmForm.provinsi, "Provinsi wajib diisi."],
+      [umkmForm.produkUtama, "Produk utama wajib diisi."],
+    ];
+
+    const missingUmkmField = requiredUmkmFields.find(([value]) => !value.trim());
+
+    if (missingUmkmField) {
+      return missingUmkmField[1];
+    }
+
+    const validUmkmCategory = UMKM_CATEGORY_OPTIONS.some(
+      (option) => option.value === umkmForm.kategoriUsaha
+    );
+
+    if (!validUmkmCategory) {
+      return "Kategori usaha wajib dipilih dari daftar.";
+    }
+
+    if (umkmForm.nikPemilik.length !== 16) {
+      return "NIK pemilik wajib 16 digit.";
+    }
+
+    if (umkmForm.phone.length < 8 || umkmForm.phone.length > 13) {
+      return "Nomor WhatsApp wajib 8–13 digit setelah kode +62.";
+    }
+
+    if (!uploads.umkmPhoto.file && !uploads.umkmPhoto.documentId) {
+      return "Foto usaha wajib diunggah.";
+    }
+
+    if (!uploads.umkmLegal.file && !uploads.umkmLegal.documentId) {
+      return "Dokumen pendukung wajib diunggah.";
+    }
+
+    return "";
+  }
+
+  function validateMitraDetails() {
+    const requiredMitraFields: Array<[string, string]> = [
+      [mitraForm.namaOrganisasi, "Nama perusahaan/institusi wajib diisi."],
+      [mitraForm.jenisMitra, "Jenis mitra wajib dipilih."],
+      [mitraForm.namaPic, "Nama PIC wajib diisi."],
+      [mitraForm.phonePic, "Nomor WhatsApp PIC wajib diisi."],
+      [mitraForm.alamatKantor, "Alamat kantor wajib diisi."],
+      [mitraForm.kotaKabupaten, "Kota/kabupaten wajib diisi."],
+      [mitraForm.provinsi, "Provinsi wajib diisi."],
+      [mitraForm.bidangKemitraan, "Bidang kemitraan wajib dipilih."],
+      [mitraForm.wilayahOperasional, "Wilayah operasional wajib diisi."],
+      [mitraForm.jenisDukungan, "Jenis dukungan wajib diisi."],
+      [mitraForm.skalaKerjaSama, "Skala kerja sama wajib dipilih."],
+      [mitraForm.deskripsiTujuan, "Deskripsi tujuan kemitraan wajib diisi."],
+    ];
+
+    const missingMitraField = requiredMitraFields.find(([value]) => !value.trim());
+
+    if (missingMitraField) {
+      return missingMitraField[1];
+    }
+
+    if (mitraForm.phonePic.length < 8 || mitraForm.phonePic.length > 13) {
+      return "Nomor WhatsApp PIC wajib 8–13 digit setelah kode +62.";
+    }
+
+    if (mitraForm.emailPic.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mitraForm.emailPic.trim())) {
+      return "Format email PIC tidak valid.";
+    }
+
+    if (mitraForm.nib.trim() && mitraForm.nib.length !== 13) {
+      return "NIB perusahaan wajib 13 digit jika diisi.";
+    }
+
+    if (!uploads.mitraLegal.file && !uploads.mitraLegal.documentId) {
+      return "Dokumen legalitas perusahaan wajib diunggah.";
+    }
+
+    if (!uploads.mitraCommitment.file && !uploads.mitraCommitment.documentId) {
+      return "Surat komitmen wajib diunggah.";
+    }
+
+    if (!uploads.mitraCompanyProfile.file && !uploads.mitraCompanyProfile.documentId) {
+      return "Profil perusahaan wajib diunggah.";
+    }
+
+    return "";
+  }
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setError("");
@@ -285,26 +383,17 @@ export default function RegisterDetailsPage() {
     }
 
     if (role === "umkm") {
-      const validUmkmCategory = UMKM_CATEGORY_OPTIONS.some(
-        (option) => option.value === umkmForm.kategoriUsaha
-      );
+      const validationError = validateUmkmDetails();
 
-      if (!validUmkmCategory) {
-        setError("Kategori usaha wajib dipilih dari daftar.");
+      if (validationError) {
+        setError(validationError);
         return;
       }
+    } else {
+      const validationError = validateMitraDetails();
 
-      if (umkmForm.nikPemilik.length !== 16) {
-        setError("NIK pemilik wajib 16 digit.");
-        return;
-      }
-
-      if (
-        !umkmForm.alamatUsaha.trim() ||
-        !umkmForm.kotaKabupaten.trim() ||
-        !umkmForm.provinsi.trim()
-      ) {
-        setError("Alamat usaha, kota/kabupaten, dan provinsi wajib diisi.");
+      if (validationError) {
+        setError(validationError);
         return;
       }
     }
@@ -344,6 +433,10 @@ export default function RegisterDetailsPage() {
           npwp: mitraForm.npwp,
           description: mitraForm.deskripsiTujuan,
 
+          address: mitraForm.alamatKantor.trim(),
+          city: mitraForm.kotaKabupaten.trim(),
+          province: mitraForm.provinsi.trim(),
+
           contact_person: mitraForm.namaPic,
           contact_person_title: mitraForm.jabatanPic,
           email: mitraForm.emailPic,
@@ -360,7 +453,11 @@ export default function RegisterDetailsPage() {
         });
       }
 
-      setMessage("Data berhasil disimpan. Anda dapat melanjutkan ke proses review.");
+      navigate(`/register/${role}/review`, {
+        state: {
+          message: "Data berhasil disimpan. Silakan review pendaftaran Anda.",
+        },
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal menyimpan data pendaftaran.");
     } finally {
@@ -789,6 +886,36 @@ function MitraFields({
                 placeholder="812xxxxxx"
               />
             </div>
+          </label>
+        </div>
+
+        <SectionTitle title="Alamat Kantor" icon="line" />
+        <div className="register-detail-grid">
+          <label>
+            Alamat kantor
+            <textarea
+              value={form.alamatKantor}
+              onChange={(e) => setForm((p: any) => ({ ...p, alamatKantor: e.target.value }))}
+              placeholder="Alamat lengkap kantor / institusi"
+            />
+          </label>
+
+          <label>
+            Kota/Kabupaten
+            <input
+              value={form.kotaKabupaten}
+              onChange={(e) => setForm((p: any) => ({ ...p, kotaKabupaten: e.target.value }))}
+              placeholder="Contoh: Surakarta"
+            />
+          </label>
+
+          <label>
+            Provinsi
+            <input
+              value={form.provinsi}
+              onChange={(e) => setForm((p: any) => ({ ...p, provinsi: e.target.value }))}
+              placeholder="Contoh: Jawa Tengah"
+            />
           </label>
         </div>
 

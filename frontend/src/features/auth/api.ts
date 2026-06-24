@@ -168,6 +168,10 @@ export type MitraRegistrationDetailsPayload = {
   nib?: string | null;
   npwp?: string | null;
   description?: string | null;
+  
+  address?: string | null;
+  city?: string | null;
+  province?: string | null;
 
   contact_person?: string | null;
   contact_person_title?: string | null;
