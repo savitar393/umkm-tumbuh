@@ -302,7 +302,7 @@ func (h *Handler) upsertUMKMProfile(ctx context.Context, accountID string, req U
 		)
 		VALUES (
 			$1, $2, $3, $4,
-			'UMKM', 'MIKRO', $5,
+			$5, 'MIKRO', $5,
 			'AKTIF', $6, $7,
 			$8, $9, $10,
 			$11, $12,
