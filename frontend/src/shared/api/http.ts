@@ -53,6 +53,74 @@ export type RequestOptions = RequestInit & {
   skipJsonContentType?: boolean;
 };
 
+export type ErrorPayload = {
+  error?: string;
+  message?: string;
+  details?: unknown;
+  [key: string]: unknown;
+};
+
+export class ApiError extends Error {
+  status: number;
+  payload: unknown;
+
+  constructor(status: number, message: string, payload?: unknown) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.payload = payload;
+  }
+}
+
+function getPayloadMessage(payload: unknown) {
+  if (!payload || typeof payload !== "object") return "";
+
+  const candidate = payload as ErrorPayload;
+
+  if (typeof candidate.error === "string" && candidate.error.trim()) {
+    return candidate.error.trim();
+  }
+
+  if (typeof candidate.message === "string" && candidate.message.trim()) {
+    return candidate.message.trim();
+  }
+
+  return "";
+}
+
+function getFallbackErrorMessage(status: number) {
+  switch (status) {
+    case 0:
+      return "Gagal terhubung ke server. Cek koneksi, CORS, atau service backend.";
+    case 400:
+      return "Data yang dikirim belum valid. Periksa kembali isian formulir.";
+    case 401:
+      return "Sesi tidak valid atau sudah berakhir. Silakan login kembali.";
+    case 403:
+      return "Anda tidak memiliki akses untuk melakukan aksi ini.";
+    case 404:
+      return "Data atau endpoint tidak ditemukan.";
+    case 409:
+      return "Data sudah digunakan atau bertabrakan dengan data yang ada.";
+    case 413:
+      return "Ukuran file terlalu besar.";
+    case 422:
+      return "Validasi data gagal. Periksa kembali isian formulir.";
+    case 500:
+      return "Server sedang bermasalah. Coba lagi beberapa saat.";
+    case 502:
+    case 503:
+    case 504:
+      return "Service backend sedang tidak tersedia. Coba lagi beberapa saat.";
+    default:
+      return "Terjadi kesalahan pada server.";
+  }
+}
+
+function getHttpErrorMessage(status: number, payload: unknown) {
+  return getPayloadMessage(payload) || getFallbackErrorMessage(status);
+}
+
 function getBaseURL(service: ServiceName = "default"): string {
   switch (service) {
     case "auth":
@@ -194,24 +262,39 @@ async function requestWithBaseURL<T>(
     }
   }
 
-  const response = await fetch(`${baseUrl}${path}`, {
-    ...rest,
-    headers: requestHeaders,
-  });
+  let response: Response;
 
-  const isJson = response.headers
-    .get("content-type")
-    ?.includes("application/json");
+  try {
+    response = await fetch(`${baseUrl}${path}`, {
+      ...rest,
+      headers: requestHeaders,
+    });
+  } catch (err) {
+    throw new ApiError(
+      0,
+      getFallbackErrorMessage(0),
+      err,
+    );
+  }
 
-  const payload = isJson ? await response.json() : null;
+  const contentType = response.headers.get("content-type") ?? "";
+  const isJson = contentType.includes("application/json");
+
+  let payload: unknown = null;
+
+  if (isJson) {
+    payload = await response.json().catch(() => null);
+  } else if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    payload = text ? { message: text } : null;
+  }
 
   if (!response.ok) {
-    const message =
-      payload?.error ||
-      payload?.message ||
-      "Terjadi kesalahan pada server.";
-
-    throw new Error(message);
+    throw new ApiError(
+      response.status,
+      getHttpErrorMessage(response.status, payload),
+      payload,
+    );
   }
 
   return payload as T;
