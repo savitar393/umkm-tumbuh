@@ -20,12 +20,14 @@ import (
 
 	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/apperror"
 	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/config"
+	emailpkg "github.com/savitar393/umkm-tumbuh/services/auth-service/internal/email"
 	"github.com/savitar393/umkm-tumbuh/services/auth-service/internal/users"
 )
 
 type Service struct {
-	UserRepo *users.Repository
-	Config   config.Config
+	UserRepo    *users.Repository
+	Config      config.Config
+	EmailSender *emailpkg.Sender
 }
 
 func NewService(userRepo *users.Repository, cfg config.Config) *Service {
@@ -33,6 +35,22 @@ func NewService(userRepo *users.Repository, cfg config.Config) *Service {
 		UserRepo: userRepo,
 		Config:   cfg,
 	}
+}
+
+func (s *Service) SetEmailSender(sender *emailpkg.Sender) {
+	s.EmailSender = sender
+}
+
+func (s *Service) sendCodeEmail(data emailpkg.CodeEmailData) {
+	if s.EmailSender == nil {
+		return
+	}
+
+	go func() {
+		if err := s.EmailSender.SendCodeEmail(data); err != nil {
+			log.Printf("[EMAIL][ERROR] failed to send %s code to %s: %v", data.Purpose, data.To, err)
+		}
+	}()
 }
 
 func (s *Service) Register(ctx context.Context, req RegisterRequest) (*RegisterResponse, error) {
@@ -258,6 +276,14 @@ func (s *Service) RequestEmailVerification(ctx context.Context, req RequestEmail
 
 	log.Printf("DEV email verification code for %s: %s", email, code)
 
+	s.sendCodeEmail(emailpkg.CodeEmailData{
+		To:       user.Email,
+		FullName: user.FullName,
+		Subject:  "Kode Verifikasi Email UMKM Tumbuh",
+		Code:     code,
+		Purpose:  "EMAIL_VERIFICATION",
+	})
+
 	return map[string]any{
 		"message":  "Kode verifikasi email berhasil dibuat.",
 		"dev_code": code,
@@ -369,6 +395,14 @@ func (s *Service) RequestPasswordReset(ctx context.Context, req RequestPasswordR
 	}
 
 	log.Printf("DEV password reset code for %s: %s", email, code)
+
+	s.sendCodeEmail(emailpkg.CodeEmailData{
+		To:       user.Email,
+		FullName: user.FullName,
+		Subject:  "Kode Reset Password UMKM Tumbuh",
+		Code:     code,
+		Purpose:  "PASSWORD_RESET",
+	})
 
 	return map[string]string{
 		"message":  "Jika email terdaftar, instruksi reset password telah dikirim.",
