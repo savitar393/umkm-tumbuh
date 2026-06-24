@@ -10,7 +10,7 @@ const navItems = [
 ];
 
 const trainingSubMenus = [
-  { label: "Dashboard Pelatihan", to: "/admin/training/dashboard" },
+  { label: "Evaluasi Pelatihan", to: "/admin/training" },
   { label: "Daftar Pelatihan", to: "/admin/training/list" },
   { label: "Sertifikat", to: "/admin/training/certificates" },
 ];

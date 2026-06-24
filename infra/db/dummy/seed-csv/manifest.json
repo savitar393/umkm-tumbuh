@@ -1,9 +1,9 @@
 {
-  "schema": "STAGING_SQLSERVER_Mandat.sql",
-  "generator_version": "1",
+  "schema": "SOURCE_POSTGRE_Mandat.sql",
+  "generator_version": "2.2",
   "seed": 20260602,
-  "generated_at": "2026-06-20 00:34:11",
-  "transaction_rows_per_transaction_table": 50000,
+  "generated_at": "2026-06-06 23:09:24",
+  "transaction_rows_per_transaction_table": 25000,
   "master_rows": {
     "admin": 250,
     "umkm": 5000,
@@ -16,8 +16,6 @@
   },
   "business_rules": [
     "master_programpelatihan.harga is always 0",
-    "master_produkumkm.stok_saat_ini is generated for stock analysis",
-    "sales, sales item, and stock mutation transaction tables are generated for BI/warehouse analysis",
     "assignments are file-upload/project/report/presentation based only",
     "status and date fields are lifecycle-aware",
     "UMKM category influences products, prices, documents, training choices, partnerships, and monitoring trends",
@@ -25,8 +23,8 @@
     "v2.2 generates varied per-account plaintext passwords and password_hash values; staging plaintext credentials are written to metadata/generated_credentials.csv unless disabled"
   ],
   "password_generation": {
-    "password_mode": "shared",
-    "password_hash_algo": "bcrypt",
+    "password_mode": "random",
+    "password_hash_algo": "sha256",
     "credentials_file": "metadata/generated_credentials.csv",
     "bcrypt_note": "Use --password-hash-algo bcrypt only if your app expects bcrypt and the Python bcrypt package is installed."
   },
@@ -203,52 +201,37 @@
     },
     {
       "table": "transaksi_dokumenterunggah",
-      "rows": 50000,
+      "rows": 25000,
       "file": "csv/transaksi_dokumenterunggah.csv"
     },
     {
       "table": "transaksi_registrasipengguna",
-      "rows": 6000,
+      "rows": 25000,
       "file": "csv/transaksi_registrasipengguna.csv"
     },
     {
       "table": "transaksi_pendaftaranpelatihan",
-      "rows": 50000,
+      "rows": 25000,
       "file": "csv/transaksi_pendaftaranpelatihan.csv"
     },
     {
       "table": "transaksi_submissionassignment",
-      "rows": 50000,
+      "rows": 25000,
       "file": "csv/transaksi_submissionassignment.csv"
     },
     {
       "table": "transaksi_sertifikatpelatihan",
-      "rows": 50000,
+      "rows": 25000,
       "file": "csv/transaksi_sertifikatpelatihan.csv"
     },
     {
       "table": "transaksi_pengajuankerjasama",
-      "rows": 50000,
+      "rows": 25000,
       "file": "csv/transaksi_pengajuankerjasama.csv"
     },
     {
-      "table": "transaksi_penjualan",
-      "rows": 50000,
-      "file": "csv/transaksi_penjualan.csv"
-    },
-    {
-      "table": "transaksi_penjualan_item",
-      "rows": 50000,
-      "file": "csv/transaksi_penjualan_item.csv"
-    },
-    {
-      "table": "transaksi_stokproduk",
-      "rows": 50000,
-      "file": "csv/transaksi_stokproduk.csv"
-    },
-    {
       "table": "transaksi_monitoringperkembangan",
-      "rows": 50000,
+      "rows": 25000,
       "file": "csv/transaksi_monitoringperkembangan.csv"
     }
   ]

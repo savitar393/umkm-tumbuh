@@ -82,13 +82,13 @@ func bulanTahunClause(bulan, tahun, col string, argIdx int) (string, []any) {
 // ─── Summary ─────────────────────────────────────────────────────────────────
 
 func (r *Repository) GetSummary(ctx context.Context) (*SummaryResponse, error) {
-	return r.GetSummaryFiltered(ctx, "", "")
+	return r.GetSummaryFiltered(ctx, "", "", "", "")
 }
 
-func (r *Repository) GetSummaryFiltered(ctx context.Context, provinsi, statusUMKM string) (*SummaryResponse, error) {
+func (r *Repository) GetSummaryFiltered(ctx context.Context, provinsi, statusUMKM, bulan, tahun string) (*SummaryResponse, error) {
 	var s SummaryResponse
 
-	if provinsi == "" && statusUMKM == "" {
+	if provinsi == "" && statusUMKM == "" && bulan == "" && tahun == "" {
 		query := `
 			SELECT total_umkm, total_umkm_aktif, total_umkm_berkembang,
 			       total_umkm_tidak_aktif, total_laba, total_mitra,
@@ -113,6 +113,23 @@ func (r *Repository) GetSummaryFiltered(ctx context.Context, provinsi, statusUMK
 	if statusUMKM != "" && statusUMKM != "Semua Status" {
 		where += fmt.Sprintf(" AND u.status_umkm_id = $%d", i)
 		args = append(args, statusUMKM)
+		i++
+	}
+
+	// Date filter on UMKM registration date (tanggal_terdaftar)
+	btClause, btArgs := bulanTahunClause(bulan, tahun, "u.tanggal_terdaftar", i)
+	if btClause != "" {
+		where += " AND " + btClause
+		args = append(args, btArgs...)
+		i += len(btArgs)
+	}
+
+	// Date filter on monitoring data (laba) — separate arg index
+	monitoringJoin := "LEFT JOIN dashboard.transaksi_monitoringperkembangan mp ON mp.umkm_id = u.umkm_id"
+	btClause2, btArgs2 := bulanTahunClause(bulan, tahun, "mp.created_at", i)
+	if btClause2 != "" {
+		monitoringJoin += " AND " + btClause2
+		args = append(args, btArgs2...)
 	}
 
 	query := fmt.Sprintf(`
@@ -128,8 +145,8 @@ func (r *Repository) GetSummaryFiltered(ctx context.Context, provinsi, statusUMK
 			NOW()
 		FROM user_mgmt.master_umkm u
 		JOIN user_mgmt.master_lokasi l ON l.lokasi_id = u.lokasi_id
-		LEFT JOIN dashboard.transaksi_monitoringperkembangan mp ON mp.umkm_id = u.umkm_id
-		%s`, where)
+		%s
+		%s`, monitoringJoin, where)
 
 	err := r.DB.QueryRow(ctx, query, args...).Scan(
 		&s.TotalUMKM, &s.TotalUMKMActive, &s.TotalUMKMBerkembang,

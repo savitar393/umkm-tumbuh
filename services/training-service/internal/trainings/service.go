@@ -104,3 +104,63 @@ func (s *Service) CompleteTraining(ctx context.Context, pendaftaranID string, do
 
 	return s.Repo.MarkTrainingComplete(ctx, pendaftaranID, dokumenEvaluasiID)
 }
+
+
+// ============= ADMIN SERVICE METHODS =============
+
+func (s *Service) GetAllTrainingsAdmin(ctx context.Context, filters TrainingFilters) ([]TrainingProgramResponse, int, error) {
+	return s.Repo.GetAllTrainingsAdmin(ctx, filters)
+}
+
+func (s *Service) CreateTraining(ctx context.Context, req CreateTrainingRequest) (*TrainingProgramResponse, error) {
+	// Validate required fields
+	if req.JudulPelatihan == "" {
+		return nil, apperror.New(http.StatusBadRequest, "Judul pelatihan wajib diisi")
+	}
+	if req.JenisPelatihanID == "" {
+		return nil, apperror.New(http.StatusBadRequest, "Jenis pelatihan wajib dipilih")
+	}
+	if req.DurasiJam <= 0 {
+		return nil, apperror.New(http.StatusBadRequest, "Durasi pelatihan harus lebih dari 0")
+	}
+
+	return s.Repo.CreateTraining(ctx, req)
+}
+
+func (s *Service) UpdateTraining(ctx context.Context, pelatihanID string, req UpdateTrainingRequest) (*TrainingProgramResponse, error) {
+	// Validate required fields
+	if req.JudulPelatihan == "" {
+		return nil, apperror.New(http.StatusBadRequest, "Judul pelatihan wajib diisi")
+	}
+	if req.JenisPelatihanID == "" {
+		return nil, apperror.New(http.StatusBadRequest, "Jenis pelatihan wajib dipilih")
+	}
+
+	return s.Repo.UpdateTraining(ctx, pelatihanID, req)
+}
+
+func (s *Service) DeleteTraining(ctx context.Context, pelatihanID string) error {
+	return s.Repo.DeleteTraining(ctx, pelatihanID)
+}
+
+func (s *Service) UpdateTrainingStatus(ctx context.Context, pelatihanID, status string) error {
+	// Validate status
+	validStatuses := map[string]bool{
+		"DRAFT":      true,
+		"PUBLISHED":  true,
+		"ONGOING":    true,
+		"COMPLETED":  true,
+		"SCHEDULED":  true,
+		"ARCHIVED":   true,
+	}
+
+	if !validStatuses[status] {
+		return apperror.New(http.StatusBadRequest, "Status pelatihan tidak valid")
+	}
+
+	return s.Repo.UpdateTrainingStatus(ctx, pelatihanID, status)
+}
+
+func (s *Service) GetTrainingStats(ctx context.Context) (*TrainingStatsResponse, error) {
+	return s.Repo.GetTrainingStats(ctx)
+}

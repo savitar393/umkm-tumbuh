@@ -15,6 +15,7 @@ import (
 func NewRouter(
 	healthHandler *health.Handler,
 	trainingHandler *trainings.Handler,
+	adminTrainingHandler *trainings.AdminHandler,
 	certHandler *certificates.Handler,
 	frontendURL string,
 	jwtSecret string,
@@ -61,6 +62,17 @@ func NewRouter(
 			r.Get("/{id}", certHandler.GetCertificateByID)
 			r.Get("/{id}/download", certHandler.DownloadCertificate)
 			r.Post("/request", certHandler.RequestCertificate)
+		})
+
+		// Admin endpoints (protected)
+		r.Route("/admin/training", func(r chi.Router) {
+			r.Use(middleware.AuthMiddleware(jwtSecret))
+			r.Get("/", adminTrainingHandler.GetAllTrainingsAdmin)
+			r.Get("/stats", adminTrainingHandler.GetTrainingStats)
+			r.Post("/", adminTrainingHandler.CreateTraining)
+			r.Put("/{id}", adminTrainingHandler.UpdateTraining)
+			r.Delete("/{id}", adminTrainingHandler.DeleteTraining)
+			r.Patch("/{id}/status", adminTrainingHandler.UpdateTrainingStatus)
 		})
 	})
 

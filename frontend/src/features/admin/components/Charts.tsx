@@ -37,7 +37,7 @@ export function RegistrationTrendChart({ data }: { data: RegistrationTrendItem[]
       <div className="chart-card__header">
         <div>
           <div className="chart-card__title">Tren Pendaftaran UMKM Baru</div>
-          <div className="chart-card__sub">Jumlah pendaftaran per minggu</div>
+          <div className="chart-card__sub">Jumlah pendaftaran tiap bulan</div>
         </div>
         <span className="chart-badge">+Rincian</span>
       </div>
@@ -54,7 +54,7 @@ export function RegistrationTrendChart({ data }: { data: RegistrationTrendItem[]
         <div className="chart-stats-row">
           <div className="chart-stat">
             <span className="label">Total Periode</span>
-            <span className="value">{chartData.length} minggu</span>
+            <span className="value">{chartData.length} bulan</span>
           </div>
           <div className="chart-stat">
             <span className="label">Terbanyak</span>

@@ -79,3 +79,53 @@ type TrainingDetailResponse struct {
 	Training TrainingProgramResponse  `json:"training"`
 	Modules  []TrainingModuleResponse `json:"modules"`
 }
+
+
+// Admin DTOs
+
+type TrainingFilters struct {
+	Page      int
+	Limit     int
+	Status    string
+	Search    string
+	SortBy    string
+	SortOrder string
+}
+
+type CreateTrainingRequest struct {
+	DibuatOlehAdminID   string   `json:"dibuat_oleh_admin_id"`
+	JenisPelatihanID    string   `json:"jenis_pelatihan_id"`
+	JudulPelatihan      string   `json:"judul_pelatihan"`
+	DeskripsiPelatihan  *string  `json:"deskripsi_pelatihan"`
+	MentorNama          *string  `json:"mentor_nama"`
+	DurasiJam           int      `json:"durasi_jam"`
+	TotalModul          int      `json:"total_modul"`
+	Harga               float64  `json:"harga"`
+	AksesSeumurHidup    bool     `json:"akses_seumur_hidup"`
+	MasaAksesHari       *int     `json:"masa_akses_hari"`
+	ThumbnailURL        *string  `json:"thumbnail_url"`
+	SyaratKetentuan     *string  `json:"syarat_ketentuan"`
+}
+
+type UpdateTrainingRequest struct {
+	JenisPelatihanID    string   `json:"jenis_pelatihan_id"`
+	JudulPelatihan      string   `json:"judul_pelatihan"`
+	DeskripsiPelatihan  *string  `json:"deskripsi_pelatihan"`
+	MentorNama          *string  `json:"mentor_nama"`
+	DurasiJam           int      `json:"durasi_jam"`
+	TotalModul          int      `json:"total_modul"`
+	Harga               float64  `json:"harga"`
+	AksesSeumurHidup    bool     `json:"akses_seumur_hidup"`
+	MasaAksesHari       *int     `json:"masa_akses_hari"`
+	ThumbnailURL        *string  `json:"thumbnail_url"`
+	SyaratKetentuan     *string  `json:"syarat_ketentuan"`
+}
+
+type TrainingStatsResponse struct {
+	TotalTrainings    int `json:"total_trainings"`
+	PublishedCount    int `json:"published_count"`
+	DraftCount        int `json:"draft_count"`
+	ArchivedCount     int `json:"archived_count"`
+	TotalEnrollments  int `json:"total_enrollments"`
+	TotalCompletions  int `json:"total_completions"`
+}

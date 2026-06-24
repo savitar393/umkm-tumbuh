@@ -24,7 +24,7 @@ func (s *Service) GetDashboardWithFilter(ctx context.Context, f DashboardFilter)
 		days = "180"
 	}
 
-	summary, err := s.Repo.GetSummaryFiltered(ctx, f.Provinsi, f.StatusUMKM)
+	summary, err := s.Repo.GetSummaryFiltered(ctx, f.Provinsi, f.StatusUMKM, f.Bulan, f.Tahun)
 	if err != nil {
 		return nil, err
 	}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertCircle, Banknote, Handshake, RotateCcw, Search, Store } from "lucide-react";
+import { AlertCircle, Banknote, Handshake, Search, Store } from "lucide-react";
 import AdminLayout from "../components/AdminLayout";
 import StatCard from "../components/StatCard";
 import IndonesiaMap from "../components/IndoMaps";
@@ -13,14 +13,16 @@ import {
 import { getDashboard, type DashboardData } from "../api";
 
 const PROVINSI_LIST = [
-  "Seluruh Indonesia", "Aceh", "Sumatera Utara", "Sumatera Barat", "Riau", "Jambi",
-  "Sumatera Selatan", "Bengkulu", "Lampung", "Bangka Belitung", "Kepulauan Riau",
-  "DKI Jakarta", "Jawa Barat", "Jawa Tengah", "DI Yogyakarta", "Jawa Timur",
-  "Banten", "Bali", "Nusa Tenggara Barat", "Nusa Tenggara Timur", "Kalimantan Barat",
-  "Kalimantan Tengah", "Kalimantan Selatan", "Kalimantan Timur", "Kalimantan Utara",
-  "Sulawesi Utara", "Sulawesi Tengah", "Sulawesi Selatan", "Sulawesi Tenggara",
-  "Gorontalo", "Sulawesi Barat", "Maluku", "Maluku Utara", "Papua", "Papua Barat",
-  "Papua Selatan", "Papua Tengah", "Papua Pegunungan",
+  "Seluruh Indonesia",
+  "Bali",
+  "DI Yogyakarta",
+  "DKI Jakarta",
+  "Jawa Barat",
+  "Jawa Tengah",
+  "Jawa Timur",
+  "Sulawesi Selatan",
+  "Sumatera Selatan",
+  "Sumatera Utara",
 ];
 
 const MONTHS = [
@@ -41,7 +43,15 @@ const MONTHS = [
 
 const YEARS = [2026, 2025, 2024];
 
-const STATUS_OPTIONS = ["Semua Status", "AKTIF", "NONAKTIF", "SUSPEND", "ARSIP"];
+const STATUS_OPTIONS = [
+  "Semua Status",
+  "AKTIF",
+  "ARSIP",
+  "DITOLAK",
+  "MENUNGGU_VERIFIKASI",
+  "NONAKTIF",
+  "SUSPEND",
+];
 
 function formatRupiah(value: number): string {
   if (value >= 1_000_000_000_000) return `Rp ${(value / 1_000_000_000_000).toFixed(1)} T`;
@@ -65,26 +75,24 @@ export default function AdminDashboardPage() {
   const [tahun, setTahun] = useState(new Date().getFullYear());
   const [statusUmkm, setStatusUmkm] = useState("Semua Status");
 
-  function buildFilterParams() {
+  function buildQuery(filters: { prov: string; bln: number; thn: number; statusUmkm: string }) {
     const params = new URLSearchParams();
-    if (provinsi !== "Seluruh Indonesia") params.set("provinsi", provinsi);
-    if (bulan >= 0) {
-      const monthStr = `${tahun}-${String(bulan + 1).padStart(2, "0")}`;
+    if (filters.prov !== "Seluruh Indonesia") params.set("provinsi", filters.prov);
+    if (filters.bln >= 0) {
+      const monthStr = `${filters.thn}-${String(filters.bln + 1).padStart(2, "0")}`;
       params.set("bulan", monthStr);
     }
-    params.set("tahun", String(tahun));
-    if (statusUmkm !== "Semua Status") params.set("status_umkm", statusUmkm);
-    return params;
+    params.set("tahun", String(filters.thn));
+    if (filters.statusUmkm !== "Semua Status") params.set("status_umkm", filters.statusUmkm);
+    return params.toString() ? `?${params.toString()}` : "";
   }
 
-  function fetchDashboard() {
+  function fetchDashboard(filters?: { prov: string; bln: number; thn: number; statusUmkm: string }) {
+    const f = filters ?? { prov: provinsi, bln: bulan, thn: tahun, statusUmkm };
     setLoading(true);
     setError("");
 
-    const params = buildFilterParams();
-    const qs = params.toString() ? `?${params.toString()}` : "";
-
-    getDashboard(qs)
+    getDashboard(buildQuery(f))
       .then((result) => {
         setData(result);
         setError("");
@@ -95,18 +103,9 @@ export default function AdminDashboardPage() {
       .finally(() => setLoading(false));
   }
 
-  function resetFilters() {
-    setProvinsi("Seluruh Indonesia");
-    setBulan(-1);
-    setTahun(new Date().getFullYear());
-    setStatusUmkm("Semua Status");
-    fetchDashboard();
-  }
-
   useEffect(() => {
     let ignore = false;
-    const params = buildFilterParams();
-    const qs = params.toString() ? `?${params.toString()}` : "";
+    const qs = buildQuery({ prov: provinsi, bln: bulan, thn: tahun, statusUmkm });
 
     getDashboard(qs)
       .then((result) => { if (!ignore) { setData(result); setError(""); } })
@@ -175,11 +174,8 @@ export default function AdminDashboardPage() {
         </div>
         <div className="filter-group filter-group--btn">
           <label className="filter-label">&nbsp;</label>
-          <button className="filter-btn" onClick={fetchDashboard}>
+          <button className="filter-btn" onClick={() => fetchDashboard()}>
             <Search size={16} style={{ marginRight: 8 }} /> Terapkan
-          </button>
-          <button className="filter-btn filter-btn--secondary" onClick={resetFilters} style={{ marginLeft: 8 }}>
-            <RotateCcw size={16} style={{ marginRight: 8 }} /> Reset
           </button>
         </div>
       </div>

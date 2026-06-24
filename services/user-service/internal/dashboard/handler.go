@@ -440,11 +440,13 @@ func (h *Handler) GetMitraDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	selectedUMKMID := r.URL.Query().Get("umkm_id")
+	dateFrom := r.URL.Query().Get("from")
+	dateTo := r.URL.Query().Get("to")
 
 	repo := NewRepository(h.DB)
 	svc := NewService(repo)
 
-	data, err := svc.GetMitraDashboard(r.Context(), user.ID, selectedUMKMID)
+	data, err := svc.GetMitraDashboard(r.Context(), user.ID, selectedUMKMID, dateFrom, dateTo)
 	if err != nil {
 		handleError(w, err, "Gagal memuat data dashboard mitra.")
 		return
