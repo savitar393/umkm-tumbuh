@@ -41,11 +41,13 @@ export type RegisterPayload = {
 export type LoginPayload = {
   email: string;
   password: string;
+  remember_me?: boolean;
 };
 
 export type LoginResponse = {
   access_token: string;
   token_type: string;
+  refresh_token?: string;
   user: User;
 };
 
@@ -62,6 +64,15 @@ export function login(payload: LoginPayload) {
   return http<LoginResponse>("/auth/login", {
     method: "POST",
     body: JSON.stringify(payload),
+    auth: false,
+    service: "auth",
+  });
+}
+
+export function refreshToken(refresh_token: string) {
+  return http<LoginResponse>("/auth/refresh", {
+    method: "POST",
+    body: JSON.stringify({ refresh_token }),
     auth: false,
     service: "auth",
   });

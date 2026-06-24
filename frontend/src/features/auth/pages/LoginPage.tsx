@@ -3,7 +3,14 @@ import { ArrowRight, Eye, Lock, Mail } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { login } from "../api";
 import { isValidEmail } from "../../../shared/validation/forms";
-import { getPostLoginRoute, setCurrentUser } from "../../../shared/auth/currentUser";
+import {
+  clearRefreshToken,
+  getPostLoginRoute,
+  setAccessToken,
+  setCurrentUser,
+  setRefreshToken,
+} from "../../../shared/auth/currentUser";
+
 
 const QUICK_LOGIN = {
   admin: {
@@ -68,14 +75,17 @@ export default function LoginPage() {
       const result = await login({
         email: email.trim().toLowerCase(),
         password,
+        remember_me: rememberMe,
       });
 
-      localStorage.setItem("access_token", result.access_token);
+      setAccessToken(result.access_token);
       setCurrentUser(result.user);
 
-      if (rememberMe) {
+      if (rememberMe && result.refresh_token) {
+        setRefreshToken(result.refresh_token);
         localStorage.setItem("remember_me", "true");
       } else {
+        clearRefreshToken();
         localStorage.removeItem("remember_me");
       }
 
@@ -101,8 +111,10 @@ export default function LoginPage() {
         password: creds.password,
       });
 
-      localStorage.setItem("access_token", result.access_token);
+      setAccessToken(result.access_token);
       setCurrentUser(result.user);
+      clearRefreshToken();
+      localStorage.removeItem("remember_me");
 
       navigate(getPostLoginRoute(result.user), { replace: true });
     } catch (err) {

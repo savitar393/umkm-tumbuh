@@ -51,11 +51,29 @@ export function isEmailVerified(user: CurrentUser) {
 
 export function clearAuthStorage() {
   localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
+  localStorage.removeItem("remember_me");
   localStorage.removeItem("current_user");
 }
 
 export function getAccessToken(): string | null {
   return localStorage.getItem("access_token");
+}
+
+export function setAccessToken(token: string) {
+  localStorage.setItem("access_token", token);
+}
+
+export function getRefreshToken(): string | null {
+  return localStorage.getItem("refresh_token");
+}
+
+export function setRefreshToken(token: string) {
+  localStorage.setItem("refresh_token", token);
+}
+
+export function clearRefreshToken() {
+  localStorage.removeItem("refresh_token");
 }
 
 export function getDefaultRouteByRole(role: UserRole): string {
