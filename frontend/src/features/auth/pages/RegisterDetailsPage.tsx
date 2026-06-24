@@ -11,6 +11,7 @@ import { ArrowLeft, ArrowRight, Bell, HelpCircle, Upload, UserCircle } from "luc
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { getCurrentUser } from "../../../shared/auth/currentUser";
 import {
+  getRegistrationProfile,
   saveMitraRegistrationDetails,
   saveUmkmRegistrationDetails,
   uploadRegistrationDocument,
@@ -126,18 +127,72 @@ function normalizePhone(value?: string | null) {
   return value.replace(/^\+?62/, "").replace(/^0/, "").replace(/\D/g, "");
 }
 
+function stringValue(value: unknown) {
+  if (value === null || value === undefined) return "";
+  return String(value);
+}
+
+function registrationDraftKey(role: RegisterDetailRole, accountID?: string) {
+  return accountID ? `registration-details:${role}:${accountID}` : "";
+}
+
+function readRegistrationDraft(key: string) {
+  if (!key) return null;
+
+  try {
+    return JSON.parse(sessionStorage.getItem(key) || "null") as {
+      umkmForm?: Record<string, unknown>;
+      mitraForm?: Record<string, unknown>;
+      uploads?: Record<string, { documentId?: string | null }>;
+    } | null;
+  } catch {
+    return null;
+  }
+}
+
+function writeRegistrationDraft(
+  key: string,
+  value: {
+    umkmForm?: Record<string, unknown>;
+    mitraForm?: Record<string, unknown>;
+    uploads?: Record<string, { documentId?: string | null }>;
+  },
+) {
+  if (!key) return;
+  sessionStorage.setItem(key, JSON.stringify(value));
+}
+
+function uploadStateWithDocumentId(current: UploadState, documentId?: string | null): UploadState {
+  if (!documentId) return current;
+
+  return {
+    ...current,
+    documentId,
+    uploading: false,
+    error: "",
+  };
+}
+
 export default function RegisterDetailsPage() {
   const params = useParams();
   const navigate = useNavigate();
   const currentUser = getCurrentUser();
+  const currentUserID = currentUser?.id ?? "";
+  const currentUserRole = currentUser?.role ?? "";
 
   const role = useMemo<RegisterDetailRole>(() => {
     return params.role === "mitra" ? "mitra" : "umkm";
   }, [params.role]);
 
+  const draftKey = useMemo(() => {
+    return registrationDraftKey(role, currentUserID);
+  }, [role, currentUserID]);
+
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  const [loadingExistingProfile, setLoadingExistingProfile] = useState(false);
 
   const [umkmForm, setUmkmForm] = useState({
     namaUmkm: "",
@@ -180,19 +235,124 @@ export default function RegisterDetailsPage() {
   });
 
   useEffect(() => {
-    if (!currentUser) {
+    if (!currentUserID) {
       navigate("/login", { replace: true });
       return;
     }
 
-    if (role === "umkm" && currentUser.role !== "UMKM") {
+    if (role === "umkm" && currentUserRole !== "UMKM") {
       navigate("/register/mitra/details", { replace: true });
     }
 
-    if (role === "mitra" && currentUser.role !== "MITRA") {
+    if (role === "mitra" && currentUserRole !== "MITRA") {
       navigate("/register/umkm/details", { replace: true });
     }
-  }, [currentUser, navigate, role]);
+  }, [currentUserID, currentUserRole, navigate, role]);
+
+  useEffect(() => {
+    if (!currentUserID) return;
+
+    let cancelled = false;
+
+    async function loadExistingProfile() {
+      setLoadingExistingProfile(true);
+
+      const draft = readRegistrationDraft(draftKey);
+      const draftUploads = draft?.uploads ?? {};
+
+      try {
+        const response = await getRegistrationProfile();
+        const profile = response.profile;
+
+        if (cancelled) return;
+
+        if (role === "umkm") {
+          const draftUmkm = draft?.umkmForm ?? {};
+
+          setUmkmForm((prev) => ({
+            ...prev,
+            namaUmkm: stringValue(profile.business_name) || prev.namaUmkm,
+            nikPemilik: onlyDigits(stringValue(profile.nik), 16) || prev.nikPemilik,
+            namaPemilik: stringValue(profile.owner_name) || prev.namaPemilik,
+            phone: normalizePhone(stringValue(profile.phone_number)) || prev.phone,
+            kategoriUsaha: stringValue(profile.business_category) || prev.kategoriUsaha,
+            deskripsiUsaha: stringValue(profile.business_description) || prev.deskripsiUsaha,
+            alamatUsaha: stringValue(profile.address) || prev.alamatUsaha,
+            kotaKabupaten: stringValue(profile.city) || prev.kotaKabupaten,
+            provinsi: stringValue(profile.province) || prev.provinsi,
+
+            // backend currently does not return products from /profiles/me,
+            // so keep it from session draft if user came back from review.
+            produkUtama: stringValue(draftUmkm.produkUtama) || prev.produkUtama,
+          }));
+
+          setUploads((prev) => ({
+            ...prev,
+            umkmPhoto: uploadStateWithDocumentId(
+              prev.umkmPhoto,
+              draftUploads.umkmPhoto?.documentId,
+            ),
+            umkmLegal: uploadStateWithDocumentId(
+              prev.umkmLegal,
+              draftUploads.umkmLegal?.documentId,
+            ),
+          }));
+        } else {
+          const draftMitra = draft?.mitraForm ?? {};
+
+          setMitraForm((prev) => ({
+            ...prev,
+            namaOrganisasi: stringValue(profile.organization_name) || prev.namaOrganisasi,
+            jenisMitra: stringValue(profile.organization_type) || prev.jenisMitra,
+            nib: stringValue(profile.nib) || prev.nib,
+            npwp: stringValue(profile.npwp) || prev.npwp,
+            namaPic: stringValue(profile.contact_person) || prev.namaPic,
+            jabatanPic: stringValue(profile.contact_person_title) || prev.jabatanPic,
+            emailPic: stringValue(profile.email) || prev.emailPic,
+            phonePic: normalizePhone(stringValue(profile.phone_number)) || prev.phonePic,
+            alamatKantor: stringValue(profile.address) || prev.alamatKantor,
+            kotaKabupaten: stringValue(profile.city) || prev.kotaKabupaten,
+            provinsi: stringValue(profile.province) || prev.provinsi,
+            wilayahOperasional: stringValue(profile.operational_area) || prev.wilayahOperasional,
+            skalaKerjaSama: stringValue(profile.cooperation_scale) || prev.skalaKerjaSama,
+            deskripsiTujuan: stringValue(profile.description) || prev.deskripsiTujuan,
+
+            // backend does not return these as separate fields yet.
+            bidangKemitraan: stringValue(draftMitra.bidangKemitraan) || prev.bidangKemitraan,
+            jenisDukungan: stringValue(draftMitra.jenisDukungan) || prev.jenisDukungan,
+          }));
+
+          setUploads((prev) => ({
+            ...prev,
+            mitraLegal: uploadStateWithDocumentId(
+              prev.mitraLegal,
+              draftUploads.mitraLegal?.documentId,
+            ),
+            mitraCommitment: uploadStateWithDocumentId(
+              prev.mitraCommitment,
+              draftUploads.mitraCommitment?.documentId,
+            ),
+            mitraCompanyProfile: uploadStateWithDocumentId(
+              prev.mitraCompanyProfile,
+              draftUploads.mitraCompanyProfile?.documentId,
+            ),
+          }));
+        }
+      } catch {
+        // First-time users may not have a profile yet. Keep the form empty.
+      } finally {
+        if (!cancelled) {
+          setLoadingExistingProfile(false);
+        }
+      }
+    }
+
+    loadExistingProfile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUserID, draftKey, role]);
 
   function selectFile(key: UploadKey, event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
@@ -420,6 +580,13 @@ export default function RegisterDetailsPage() {
           photo_document_id: photoDocumentId,
           legal_document_id: legalDocumentId,
         });
+        writeRegistrationDraft(draftKey, {
+          umkmForm,
+          uploads: {
+            umkmPhoto: { documentId: photoDocumentId },
+            umkmLegal: { documentId: legalDocumentId },
+          },
+        });
       } else {
         const legalDocumentId = await uploadIfNeeded("mitraLegal");
         const commitmentDocumentId = await uploadIfNeeded("mitraCommitment");
@@ -450,6 +617,14 @@ export default function RegisterDetailsPage() {
           legal_document_id: legalDocumentId,
           commitment_document_id: commitmentDocumentId,
           company_profile_document_id: companyProfileDocumentId,
+        });
+        writeRegistrationDraft(draftKey, {
+          mitraForm,
+          uploads: {
+            mitraLegal: { documentId: legalDocumentId },
+            mitraCommitment: { documentId: commitmentDocumentId },
+            mitraCompanyProfile: { documentId: companyProfileDocumentId },
+          },
         });
       }
 
@@ -499,7 +674,9 @@ export default function RegisterDetailsPage() {
             </p>
           </div>
 
-          <span className="register-detail-draft">● Draft</span>
+          <span className="register-detail-draft">
+            {loadingExistingProfile ? "• Memuat data..." : "• Draft"}
+          </span>
         </div>
 
         <form className="register-detail-form" onSubmit={handleSubmit}>

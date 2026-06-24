@@ -93,6 +93,16 @@ export function getMe() {
   });
 }
 
+export type RegistrationProfileResponse = {
+  profile: Record<string, unknown>;
+};
+
+export function getRegistrationProfile() {
+  return http<RegistrationProfileResponse>("/profiles/me", {
+    service: "user",
+  });
+}
+
 export type RegistrationDocumentCategory =
   | "PRODUCT_IMAGE"
   | "CERTIFICATE"
