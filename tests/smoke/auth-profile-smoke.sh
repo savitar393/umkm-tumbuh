@@ -136,6 +136,41 @@ split_response "$RAW"
 expect_status "$RESPONSE_STATUS" "403" "new password should pass password check but fail email verification"
 echo
 
+echo "== Logout token revocation flow =="
+LOGOUT_EMAIL="logout.smoke.$RUN_ID@mail.com"
+LOGOUT_PHONE="62815${RUN_ID: -9}"
+
+RAW="$(request_with_status POST "$AUTH_URL/auth/register" "{
+  \"full_name\":\"Logout Smoke User\",
+  \"email\":\"$LOGOUT_EMAIL\",
+  \"phone_number\":\"$LOGOUT_PHONE\",
+  \"password\":\"password123\",
+  \"role\":\"UMKM\"
+}")"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "201" "register logout smoke user"
+
+LOGOUT_TOKEN="$(printf '%s' "$RESPONSE_BODY" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("access_token",""))')"
+
+if [ -z "$LOGOUT_TOKEN" ]; then
+  echo "❌ logout smoke token missing"
+  echo "$RESPONSE_BODY"
+  exit 1
+fi
+
+RAW="$(request_with_status GET "$AUTH_URL/auth/me" "" "$LOGOUT_TOKEN")"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "200" "token works before logout"
+
+RAW="$(request_with_status POST "$AUTH_URL/auth/logout" "{}" "$LOGOUT_TOKEN")"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "200" "logout revokes token"
+
+RAW="$(request_with_status GET "$AUTH_URL/auth/me" "" "$LOGOUT_TOKEN")"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "401" "revoked token should fail"
+echo
+
 echo "== 2. Register UMKM =="
 RAW="$(request_with_status POST "$AUTH_URL/auth/register" "{
   \"full_name\": \"Smoke UMKM\",
