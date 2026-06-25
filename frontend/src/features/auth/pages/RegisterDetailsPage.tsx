@@ -306,8 +306,8 @@ export default function RegisterDetailsPage() {
             ...prev,
             namaOrganisasi: stringValue(profile.organization_name) || prev.namaOrganisasi,
             jenisMitra: stringValue(profile.organization_type) || prev.jenisMitra,
-            nib: stringValue(profile.nib) || prev.nib,
-            npwp: stringValue(profile.npwp) || prev.npwp,
+            nib: onlyDigits(stringValue(profile.nib), 13) || prev.nib,
+            npwp: onlyDigits(stringValue(profile.npwp), 15) || prev.npwp,
             namaPic: stringValue(profile.contact_person) || prev.namaPic,
             jabatanPic: stringValue(profile.contact_person_title) || prev.jabatanPic,
             emailPic: stringValue(profile.email) || prev.emailPic,
@@ -533,6 +533,10 @@ export default function RegisterDetailsPage() {
 
     if (mitraForm.nib.trim() && mitraForm.nib.length !== 13) {
       return "NIB perusahaan wajib 13 digit jika diisi.";
+    }
+
+    if (mitraForm.npwp.trim() && mitraForm.npwp.length !== 15) {
+      return "NPWP Badan wajib 15 digit jika diisi.";
     }
 
     if (!uploads.mitraLegal.file && !uploads.mitraLegal.documentId) {
@@ -1059,20 +1063,46 @@ function MitraFields({
           </label>
 
           <label>
-            NIB perusahaan
+            <div className="register-field-label-row">
+              <span>NIB perusahaan</span>
+              <span className={form.nib.length === 13 ? "field-counter ok" : "field-counter"}>
+                {form.nib.length}/13
+              </span>
+            </div>
+
             <input
               value={form.nib}
-              onChange={(e) => setForm((p: any) => ({ ...p, nib: e.target.value.replace(/\D/g, "") }))}
+              onChange={(e) =>
+                setForm((p: any) => ({
+                  ...p,
+                  nib: onlyDigits(e.target.value, 13),
+                }))
+              }
+              inputMode="numeric"
+              maxLength={13}
               placeholder="Masukkan 13 digit NIB"
             />
           </label>
 
           <label>
-            NPWP Badan
+            <div className="register-field-label-row">
+              <span>NPWP Badan</span>
+              <span className={form.npwp.length === 15 ? "field-counter ok" : "field-counter"}>
+                {form.npwp.length}/15
+              </span>
+            </div>
+
             <input
               value={form.npwp}
-              onChange={(e) => setForm((p: any) => ({ ...p, npwp: e.target.value }))}
-              placeholder="00.000.000.0-000.000"
+              onChange={(e) =>
+                setForm((p: any) => ({
+                  ...p,
+                  npwp: onlyDigits(e.target.value, 15),
+                }))
+              }
+              inputMode="numeric"
+              maxLength={15}
+              placeholder="15 digit NPWP badan"
             />
           </label>
         </div>
