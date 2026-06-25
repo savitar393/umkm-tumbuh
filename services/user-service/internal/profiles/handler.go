@@ -1079,8 +1079,8 @@ func scanMitraProfile(row scanner) (map[string]any, error) {
 		status             string
 		operationalArea    *string
 		cooperationScale   *string
-		partnershipField sql.NullString
-		supportType      sql.NullString
+		partnershipField   sql.NullString
+		supportType        sql.NullString
 		createdAt          time.Time
 		updatedAt          time.Time
 	)
@@ -1137,8 +1137,8 @@ func scanMitraProfile(row scanner) (map[string]any, error) {
 		"status":               status,
 		"operational_area":     operationalArea,
 		"cooperation_scale":    cooperationScale,
-		"partnership_field": 	nil,
-		"support_type":      	nil,
+		"partnership_field":    nil,
+		"support_type":         nil,
 		"created_at":           createdAt,
 		"updated_at":           updatedAt,
 	}, nil

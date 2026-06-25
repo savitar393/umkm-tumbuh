@@ -350,7 +350,7 @@ func scanAdminMitraProfile(row scanner) (map[string]any, error) {
 		&operationalArea,
 		&cooperationScale,
 		&partnershipField,
-		@supportType
+		&supportType,
 		&createdAt,
 		&updatedAt,
 	); err != nil {
@@ -379,8 +379,8 @@ func scanAdminMitraProfile(row scanner) (map[string]any, error) {
 		"status":               status,
 		"operational_area":     nil,
 		"cooperation_scale":    nil,
-		"partnership_field": nil,
-		"support_type":      nil,
+		"partnership_field":    nil,
+		"support_type":         nil,
 		"created_at":           createdAt,
 		"updated_at":           updatedAt,
 	}

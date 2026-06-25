@@ -22,6 +22,8 @@ type UpsertProfileRequest struct {
 	OperationalArea    string `json:"operational_area"`
 	SupportDescription string `json:"support_description"`
 	CooperationScale   string `json:"cooperation_scale"`
+	PartnershipField string `json:"partnership_field"`
+	SupportType      string `json:"support_type"`
 
 	PhoneNumber string `json:"phone_number"`
 	Address     string `json:"address"`
