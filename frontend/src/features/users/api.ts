@@ -10,6 +10,8 @@ export type UmkmProfile = {
   business_email?: string | null;
   operating_hours?: string | null;
   social_media_marketplace?: string | null;
+  logo_url?: string | null;
+  foto_cover_url?: string | null;
   owner_name: string;
   nik: string;
   phone_number: string;
@@ -32,6 +34,8 @@ export type UmkmProfilePayload = {
   business_email?: string | null;
   operating_hours?: string | null;
   social_media_marketplace?: string | null;
+  logo_url?: string | null;
+  foto_cover_url?: string | null;
   owner_name: string;
   nik: string;
   phone_number: string;

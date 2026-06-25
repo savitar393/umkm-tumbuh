@@ -29,6 +29,7 @@ import {
   serializeSocialMediaValue,
   type SocialMediaLinks,
 } from "../../../shared/utils/socialMedia";
+import { uploadRegistrationDocument } from "../../auth/api";
 
 type FieldErrors = Partial<Record<keyof UmkmProfilePayload, string>>;
 
@@ -54,6 +55,8 @@ const emptyForm: UmkmProfilePayload = {
   business_email: "",
   operating_hours: "",
   social_media_marketplace: "",
+  logo_url: "",
+  foto_cover_url: "",
   owner_name: "",
   nik: "",
   phone_number: "",
@@ -74,6 +77,8 @@ function mapProfileToForm(profile: UmkmProfile): UmkmProfilePayload {
     business_email: profile.business_email ?? "",
     operating_hours: profile.operating_hours ?? "",
     social_media_marketplace: profile.social_media_marketplace ?? "",
+    logo_url: profile.logo_url ?? "",
+    foto_cover_url: profile.foto_cover_url ?? "",
     owner_name: profile.owner_name ?? "",
     nik: profile.nik ?? "",
     phone_number: profile.phone_number ?? "",
@@ -315,6 +320,8 @@ export default function ProfileEditPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const socialLinks = parseSocialMediaValue(form.social_media_marketplace);
+  const [imageUploadError, setImageUploadError] = useState("");
+  const [uploadingImageType, setUploadingImageType] = useState<"" | "logo" | "cover">("");
 
   const fullAddress = useMemo(() => buildFullAddress(form), [form]);
 
@@ -432,6 +439,57 @@ export default function ProfileEditPage() {
     updateField("social_media_marketplace", serializeSocialMediaValue(nextLinks));
   }
 
+  async function handleProfileImageUpload(type: "logo" | "cover", file: File | null) {
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setImageUploadError("File harus berupa gambar JPG, PNG, atau WebP.");
+      return;
+    }
+
+    const maxSize = type === "logo" ? 2 * 1024 * 1024 : 5 * 1024 * 1024;
+
+    if (file.size > maxSize) {
+      setImageUploadError(
+        type === "logo"
+          ? "Ukuran logo maksimal 2MB."
+          : "Ukuran foto utama maksimal 5MB.",
+      );
+      return;
+    }
+
+    try {
+      setError("");
+      setMessage("");
+      setImageUploadError("");
+      setUploadingImageType(type);
+
+      const result = await uploadRegistrationDocument(file, "PRODUCT_IMAGE");
+      const documentID = result?.document?.id;
+
+      if (!documentID) {
+        throw new Error("Upload berhasil, tetapi ID dokumen tidak ditemukan.");
+      }
+
+      const publicPath = `/api/v1/public/documents/${documentID}/view`;
+
+      setForm((current) => ({
+        ...current,
+        [type === "logo" ? "logo_url" : "foto_cover_url"]: publicPath,
+      }));
+
+      setMessage(
+        type === "logo"
+          ? "Logo berhasil diunggah. Klik Simpan Perubahan untuk menyimpan profil."
+          : "Foto utama berhasil diunggah. Klik Simpan Perubahan untuk menyimpan profil.",
+      );
+    } catch (err) {
+      setImageUploadError(err instanceof Error ? err.message : "Gagal mengunggah gambar.");
+    } finally {
+      setUploadingImageType("");
+    }
+  }
+
   function resetForm() {
     navigate("/umkm/profile");
   }
@@ -468,6 +526,8 @@ export default function ProfileEditPage() {
         business_email: form.business_email?.trim() || "",
         operating_hours: form.operating_hours?.trim() || "",
         social_media_marketplace: form.social_media_marketplace?.trim() || "",
+        logo_url: form.logo_url?.trim() || null,
+        foto_cover_url: form.foto_cover_url?.trim() || null,
         owner_name: form.owner_name.trim(),
         nik: onlyDigits(form.nik ?? ""),
         phone_number: buildPhoneWithIndonesiaPrefix(form.phone_number ?? ""),
@@ -874,32 +934,78 @@ export default function ProfileEditPage() {
               </h2>
 
               <div className="umkm-gallery-edit-grid">
-                <label>
-                  Logo Usaha
-                  <div className="umkm-placeholder-image" style={{ width: 160, maxWidth: 160, height: 160 }}>
-                    <ImagePlus size={28} />
-                    <span>Logo belum tersedia</span>
+                <label className="umkm-gallery-upload-field">
+                  <span>Logo Usaha</span>
+
+                  <div
+                    className="umkm-placeholder-image umkm-profile-image-upload umkm-profile-image-upload--logo"
+                    style={{ width: 160, maxWidth: 160, height: 160 }}
+                  >
+                    {form.logo_url ? (
+                      <img src={form.logo_url} alt="Logo usaha" />
+                    ) : (
+                      <>
+                        <ImagePlus size={28} />
+                        <span>Logo belum tersedia</span>
+                      </>
+                    )}
                   </div>
+
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    hidden
+                    onChange={(event) =>
+                      handleProfileImageUpload("logo", event.target.files?.[0] ?? null)
+                    }
+                  />
                 </label>
 
-                <label>
-                  Foto Utama Usaha
-                  <div className="umkm-placeholder-image">
-                    <ImagePlus size={28} />
-                    <span>Foto produk/toko belum tersedia</span>
+                <label className="umkm-gallery-upload-field">
+                  <span>Foto Utama Usaha</span>
+
+                  <div className="umkm-placeholder-image umkm-profile-image-upload umkm-profile-image-upload--cover">
+                    {form.foto_cover_url ? (
+                      <img src={form.foto_cover_url} alt="Foto utama usaha" />
+                    ) : (
+                      <>
+                        <ImagePlus size={28} />
+                        <span>Foto produk/toko belum tersedia</span>
+                      </>
+                    )}
                   </div>
+
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    hidden
+                    onChange={(event) =>
+                      handleProfileImageUpload("cover", event.target.files?.[0] ?? null)
+                    }
+                  />
                 </label>
 
-                <div className="umkm-soft-note">
-                  <ImagePlus size={20} />
-                  <div>
-                    <strong>Upload gambar belum tersambung.</strong>
-                    <p>
-                      Bagian ini disiapkan untuk logo dan foto usaha. Integrasi upload akan
-                      disambungkan melalui document-service/Garage pada milestone berikutnya.
-                    </p>
+                {uploadingImageType ? (
+                  <div className="umkm-soft-note">
+                    <ImagePlus size={20} />
+                    <div>
+                      <strong>
+                        Mengunggah {uploadingImageType === "logo" ? "logo" : "foto utama"}...
+                      </strong>
+                      <p>Mohon tunggu sampai proses upload selesai.</p>
+                    </div>
                   </div>
-                </div>
+                ) : null}
+
+                {imageUploadError ? (
+                  <div className="umkm-soft-note umkm-soft-note--error">
+                    <ImagePlus size={20} />
+                    <div>
+                      <strong>Upload gambar gagal.</strong>
+                      <p>{imageUploadError}</p>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </section>
 
