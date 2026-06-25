@@ -14,6 +14,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { getCurrentUser } from "../../../shared/auth/currentUser";
 import {
   getRegistrationProfile,
+  getRegistrationFlowStatus,
   saveMitraRegistrationDetails,
   saveUmkmRegistrationDetails,
   uploadRegistrationDocument,
@@ -189,6 +190,49 @@ export default function RegisterDetailsPage() {
   const draftKey = useMemo(() => {
     return registrationDraftKey(role, currentUserID);
   }, [role, currentUserID]);
+
+  const [checkingFlowStatus, setCheckingFlowStatus] = useState(true);
+
+  useEffect(() => {
+    if (!currentUser) return;
+
+    if (currentUser.role !== "UMKM" && currentUser.role !== "MITRA") {
+      setCheckingFlowStatus(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function checkFlowStatus() {
+      try {
+        const flowStatus = await getRegistrationFlowStatus();
+
+        if (cancelled) return;
+
+        if (
+          flowStatus.next_route === "/register/pending" ||
+          flowStatus.next_route === "/register/rejected" ||
+          flowStatus.next_route === "/umkm" ||
+          flowStatus.next_route === "/mitra"
+        ) {
+          navigate(flowStatus.next_route, { replace: true });
+          return;
+        }
+      } catch {
+        // Keep details page usable if status check fails.
+      } finally {
+        if (!cancelled) {
+          setCheckingFlowStatus(false);
+        }
+      }
+    }
+
+    checkFlowStatus();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser?.id, currentUser?.role, navigate]);
 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -668,6 +712,18 @@ export default function RegisterDetailsPage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  if (checkingFlowStatus) {
+    return (
+      <main className="register-detail-page">
+        <section className="register-detail-shell">
+          <div className="register-detail-card">
+            <p>Memeriksa status pendaftaran...</p>
+          </div>
+        </section>
+      </main>
+    );
   }
 
   return (
