@@ -67,6 +67,11 @@ export default defineConfig({
         changeOrigin: true,
       },
 
+      "/api/v1/public/documents": {
+        target: "http://127.0.0.1:8083",
+        changeOrigin: true,
+      },
+
       "/api/v1/trainings": {
         target: "http://127.0.0.1:8084",
         changeOrigin: true,
