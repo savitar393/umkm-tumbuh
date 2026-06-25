@@ -195,6 +195,8 @@ export default function RegisterReviewPage() {
       {
         title: "Profil Kemitraan",
         items: [
+          ["Bidang Kemitraan", profile.partnership_field],
+          ["Jenis Dukungan", profile.support_type],
           ["Wilayah Operasional", profile.operational_area],
           ["Skala Kerja Sama", profile.cooperation_scale],
           ["Deskripsi Dukungan", profile.description],
