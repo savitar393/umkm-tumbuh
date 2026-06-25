@@ -722,6 +722,16 @@ func (h *Handler) upsertMitraProfile(ctx context.Context, accountID string, req 
 	contactPerson := trim(req.ContactPerson)
 	phoneNumber := trim(req.PhoneNumber)
 
+	nib, err := optionalFixedDigits(req.NIB, 13, "NIB perusahaan")
+	if err != nil {
+		return nil, err
+	}
+
+	npwp, err := optionalFixedDigits(req.NPWP, 15, "NPWP Badan")
+	if err != nil {
+		return nil, err
+	}
+
 	_, err = tx.Exec(ctx, `
 		INSERT INTO user_mgmt.master_mitra (
 			mitra_id, kode_mitra, akun_id, lokasi_id,
@@ -758,7 +768,7 @@ func (h *Handler) upsertMitraProfile(ctx context.Context, accountID string, req 
 			updated_at = NOW()
 	`, ids.MitraID, "KODE-"+ids.MitraID, accountID, ids.LokasiID,
 		mitraTypeID, cooperationScaleID,
-		organizationName, nullableTrim(req.LegalName), nullableTrim(req.NIB), nullableTrim(req.NPWP),
+		organizationName, nullableTrim(req.LegalName), nullableTrim(nib), nullableTrim(npwp),
 		contactPerson, nullableTrim(req.ContactPersonTitle), phoneNumber, account.Email,
 		address, nullableTrim(req.OperationalArea), nullableTrim(req.SupportDescription),
 	)
@@ -1022,13 +1032,13 @@ func (h *Handler) ListMitra(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 
 	type mitraItem struct {
-		ID               string  `json:"id"`
-		Name             string  `json:"name"`
-		Type             string  `json:"type"`
-		City             string  `json:"city"`
-		Province         string  `json:"province"`
-		Description      *string `json:"description"`
-		OperationalArea  *string `json:"operational_area"`
+		ID              string  `json:"id"`
+		Name            string  `json:"name"`
+		Type            string  `json:"type"`
+		City            string  `json:"city"`
+		Province        string  `json:"province"`
+		Description     *string `json:"description"`
+		OperationalArea *string `json:"operational_area"`
 	}
 
 	var mitraList []mitraItem
@@ -1181,6 +1191,20 @@ func nullableTrim(value string) *string {
 	}
 
 	return &value
+}
+
+func optionalFixedDigits(value string, length int, fieldName string) (string, error) {
+	digits := digitsOnly(strings.TrimSpace(value))
+
+	if digits == "" {
+		return "", nil
+	}
+
+	if len(digits) != length {
+		return "", fmt.Errorf("%s wajib %d digit jika diisi", fieldName, length)
+	}
+
+	return digits, nil
 }
 
 func valueOrDefault(value string, fallback string) string {
