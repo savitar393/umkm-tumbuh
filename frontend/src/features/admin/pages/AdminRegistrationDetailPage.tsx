@@ -128,6 +128,36 @@ export default function AdminRegistrationDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
+  function openApproveModal() {
+    setError("");
+    setSuccess("");
+    setCatatanValidasi(user?.catatan_validasi || "");
+    setShowApproveModal(true);
+  }
+
+  function openRejectModal() {
+    setError("");
+    setSuccess("");
+    setAlasanTolak("");
+    setCatatanValidasi(user?.catatan_validasi || "");
+    setShowRejectModal(true);
+  }
+
+  function closeApproveModal() {
+    if (actionLoading) return;
+
+    setShowApproveModal(false);
+    setCatatanValidasi("");
+  }
+
+  function closeRejectModal() {
+    if (actionLoading) return;
+
+    setShowRejectModal(false);
+    setAlasanTolak("");
+    setCatatanValidasi("");
+  }
+
   async function handleApprove() {
     if (!userId) return;
 
@@ -139,6 +169,7 @@ export default function AdminRegistrationDetailPage() {
       const res: MessageResponse = await approveUser(userId, catatanValidasi);
       setSuccess(res.message || "Pendaftaran berhasil disetujui.");
       setShowApproveModal(false);
+      setCatatanValidasi("");
       reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal menyetujui pendaftaran.");
@@ -167,6 +198,8 @@ export default function AdminRegistrationDetailPage() {
       );
       setSuccess(res.message || "Pendaftaran berhasil ditolak.");
       setShowRejectModal(false);
+      setAlasanTolak("");
+      setCatatanValidasi("");
       reload();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal menolak pendaftaran.");
@@ -447,14 +480,14 @@ export default function AdminRegistrationDetailPage() {
             <>
               <button
                 className="admin-reg-btn admin-reg-btn--danger"
-                onClick={() => setShowRejectModal(true)}
+                onClick={openRejectModal}
                 disabled={actionLoading}
               >
                 Tolak Pendaftaran
               </button>
               <button
                 className="admin-reg-btn admin-reg-btn--success"
-                onClick={() => setShowApproveModal(true)}
+                onClick={openApproveModal}
                 disabled={actionLoading}
               >
                 Setujui & Aktifkan Akun
@@ -469,7 +502,7 @@ export default function AdminRegistrationDetailPage() {
       </div>
 
       {showApproveModal ? (
-        <div className="modal-overlay" onClick={() => setShowApproveModal(false)}>
+        <div className="modal-overlay" onClick={closeApproveModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h3>Setujui Pendaftaran</h3>
             <p>
@@ -486,7 +519,7 @@ export default function AdminRegistrationDetailPage() {
               />
             </label>
             <div className="modal-actions">
-              <button className="btn btn-outline" onClick={() => setShowApproveModal(false)}>
+              <button className="btn btn-outline" onClick={closeApproveModal} disabled={actionLoading}>
                 Batal
               </button>
               <button className="btn btn-approve" onClick={handleApprove} disabled={actionLoading}>
@@ -498,7 +531,7 @@ export default function AdminRegistrationDetailPage() {
       ) : null}
 
       {showRejectModal ? (
-        <div className="modal-overlay" onClick={() => setShowRejectModal(false)}>
+        <div className="modal-overlay" onClick={closeRejectModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h3>Tolak Pendaftaran</h3>
             <p>
@@ -526,10 +559,14 @@ export default function AdminRegistrationDetailPage() {
               />
             </label>
             <div className="modal-actions">
-              <button className="btn btn-outline" onClick={() => setShowRejectModal(false)}>
+              <button className="btn btn-outline" onClick={closeRejectModal} disabled={actionLoading}>
                 Batal
               </button>
-              <button className="btn btn-reject" onClick={handleReject} disabled={actionLoading}>
+              <button
+                className="btn btn-reject"
+                onClick={handleReject}
+                disabled={actionLoading || alasanTolak.trim().length < 3}
+              >
                 {actionLoading ? "Memproses..." : "Tolak"}
               </button>
             </div>
