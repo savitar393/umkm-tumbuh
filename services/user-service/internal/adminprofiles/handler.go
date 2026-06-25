@@ -126,6 +126,8 @@ func (h *Handler) getMitraProfile(r *http.Request, userID string) (map[string]an
 			m.status_mitra_id,
 			m.wilayah_operasional,
 			s.nama_skala_kerjasama,
+			pf.nama_bidang_kemitraan,
+			st.nama_bentuk_dukungan,
 			m.created_at,
 			m.updated_at
 		FROM user_mgmt.master_mitra m
@@ -319,6 +321,8 @@ func scanAdminMitraProfile(row scanner) (map[string]any, error) {
 		status             string
 		operationalArea    sql.NullString
 		cooperationScale   sql.NullString
+		partnershipField   sql.NullString
+		supportType        sql.NullString
 		createdAt          any
 		updatedAt          any
 	)
@@ -345,6 +349,8 @@ func scanAdminMitraProfile(row scanner) (map[string]any, error) {
 		&status,
 		&operationalArea,
 		&cooperationScale,
+		&partnershipField,
+		@supportType
 		&createdAt,
 		&updatedAt,
 	); err != nil {
@@ -373,6 +379,8 @@ func scanAdminMitraProfile(row scanner) (map[string]any, error) {
 		"status":               status,
 		"operational_area":     nil,
 		"cooperation_scale":    nil,
+		"partnership_field": nil,
+		"support_type":      nil,
 		"created_at":           createdAt,
 		"updated_at":           updatedAt,
 	}
@@ -406,6 +414,13 @@ func scanAdminMitraProfile(row scanner) (map[string]any, error) {
 	}
 	if cooperationScale.Valid {
 		profile["cooperation_scale"] = cooperationScale.String
+	}
+	if partnershipField.Valid {
+		profile["partnership_field"] = partnershipField.String
+	}
+
+	if supportType.Valid {
+		profile["support_type"] = supportType.String
 	}
 
 	return profile, nil

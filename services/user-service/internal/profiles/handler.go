@@ -639,6 +639,8 @@ func (h *Handler) getMitraProfile(ctx context.Context, accountID string) (map[st
 			m.status_mitra_id,
 			m.wilayah_operasional,
 			s.nama_skala_kerjasama,
+			pf.nama_bidang_kemitraan,
+			st.nama_bentuk_dukungan,
 			m.created_at,
 			m.updated_at
 		FROM user_mgmt.master_mitra m
@@ -648,6 +650,22 @@ func (h *Handler) getMitraProfile(ctx context.Context, accountID string) (map[st
 			ON j.jenis_mitra_id = m.jenis_mitra_id
 		LEFT JOIN ref.ref_skalakerjasama s
 			ON s.skala_kerjasama_id = m.skala_kerjasama_id
+		LEFT JOIN LATERAL (
+			SELECT b.nama_bidang_kemitraan
+			FROM user_mgmt.master_mitrabidangkemitraan mb
+			JOIN ref.ref_bidangkemitraan b
+				ON b.bidang_kemitraan_id = mb.bidang_kemitraan_id
+			WHERE mb.mitra_id = m.mitra_id
+			LIMIT 1
+		) pf ON TRUE
+		LEFT JOIN LATERAL (
+			SELECT d.nama_bentuk_dukungan
+			FROM user_mgmt.master_mitrabentukdukungan md
+			JOIN ref.ref_bentukdukungan d
+				ON d.bentuk_dukungan_id = md.bentuk_dukungan_id
+			WHERE md.mitra_id = m.mitra_id
+			LIMIT 1
+		) st ON TRUE
 		WHERE m.akun_id = $1
 		  AND m.is_deleted = FALSE
 		LIMIT 1
@@ -1061,6 +1079,8 @@ func scanMitraProfile(row scanner) (map[string]any, error) {
 		status             string
 		operationalArea    *string
 		cooperationScale   *string
+		partnershipField sql.NullString
+		supportType      sql.NullString
 		createdAt          time.Time
 		updatedAt          time.Time
 	)
@@ -1087,6 +1107,8 @@ func scanMitraProfile(row scanner) (map[string]any, error) {
 		&status,
 		&operationalArea,
 		&cooperationScale,
+		&partnershipField,
+		&supportType,
 		&createdAt,
 		&updatedAt,
 	); err != nil {
@@ -1115,6 +1137,8 @@ func scanMitraProfile(row scanner) (map[string]any, error) {
 		"status":               status,
 		"operational_area":     operationalArea,
 		"cooperation_scale":    cooperationScale,
+		"partnership_field": 	nil,
+		"support_type":      	nil,
 		"created_at":           createdAt,
 		"updated_at":           updatedAt,
 	}, nil

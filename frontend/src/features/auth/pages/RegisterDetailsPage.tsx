@@ -320,8 +320,14 @@ export default function RegisterDetailsPage() {
             deskripsiTujuan: stringValue(profile.description) || prev.deskripsiTujuan,
 
             // backend does not return these as separate fields yet.
-            bidangKemitraan: stringValue(draftMitra.bidangKemitraan) || prev.bidangKemitraan,
-            jenisDukungan: stringValue(draftMitra.jenisDukungan) || prev.jenisDukungan,
+            bidangKemitraan:
+              stringValue(profile.partnership_field) ||
+              stringValue(draftMitra.bidangKemitraan) ||
+              prev.bidangKemitraan,
+            jenisDukungan:
+              stringValue(profile.support_type) ||
+              stringValue(draftMitra.jenisDukungan) ||
+              prev.jenisDukungan,
           }));
 
           setUploads((prev) => ({
