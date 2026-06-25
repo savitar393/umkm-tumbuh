@@ -678,6 +678,16 @@ func (h *Handler) upsertMitraProfile(ctx context.Context, accountID string, req 
 		return nil, err
 	}
 
+	partnershipFieldID, err := ensurePartnershipField(ctx, tx, req.PartnershipField)
+	if err != nil {
+		return nil, err
+	}
+
+	supportTypeID, err := ensureSupportType(ctx, tx, req.SupportType)
+	if err != nil {
+		return nil, err
+	}
+
 	ids, err := getExistingMitraIDs(ctx, tx, accountID)
 	if err != nil {
 		return nil, err
@@ -773,6 +783,14 @@ func (h *Handler) upsertMitraProfile(ctx context.Context, accountID string, req 
 		address, nullableTrim(req.OperationalArea), nullableTrim(req.SupportDescription),
 	)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := replaceMitraPartnershipField(ctx, tx, ids.MitraID, partnershipFieldID); err != nil {
+		return nil, err
+	}
+
+	if err := replaceMitraSupportType(ctx, tx, ids.MitraID, supportTypeID); err != nil {
 		return nil, err
 	}
 
@@ -890,6 +908,134 @@ func ensureCooperationScale(ctx context.Context, tx pgx.Tx, scaleName string) (*
 	`, scaleID, scaleName)
 
 	return &scaleID, err
+}
+
+func ensurePartnershipField(ctx context.Context, tx pgx.Tx, fieldName string) (*string, error) {
+	fieldName = strings.TrimSpace(fieldName)
+	if fieldName == "" {
+		return nil, nil
+	}
+
+	var existingID string
+	err := tx.QueryRow(ctx, `
+		SELECT bidang_kemitraan_id
+		FROM ref.ref_bidangkemitraan
+		WHERE lower(nama_bidang_kemitraan) = lower($1)
+		   OR lower(bidang_kemitraan_id) = lower($1)
+		LIMIT 1
+	`, fieldName).Scan(&existingID)
+
+	if err == nil {
+		return &existingID, nil
+	}
+
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, err
+	}
+
+	fieldID := makeCategoryID(fieldName)
+
+	_, err = tx.Exec(ctx, `
+		INSERT INTO ref.ref_bidangkemitraan (
+			bidang_kemitraan_id, nama_bidang_kemitraan
+		)
+		VALUES ($1, $2)
+		ON CONFLICT (bidang_kemitraan_id)
+		DO UPDATE SET nama_bidang_kemitraan = EXCLUDED.nama_bidang_kemitraan
+	`, fieldID, fieldName)
+	if err != nil {
+		return nil, err
+	}
+
+	return &fieldID, nil
+}
+
+func ensureSupportType(ctx context.Context, tx pgx.Tx, supportName string) (*string, error) {
+	supportName = strings.TrimSpace(supportName)
+	if supportName == "" {
+		return nil, nil
+	}
+
+	var existingID string
+	err := tx.QueryRow(ctx, `
+		SELECT bentuk_dukungan_id
+		FROM ref.ref_bentukdukungan
+		WHERE lower(nama_bentuk_dukungan) = lower($1)
+		   OR lower(bentuk_dukungan_id) = lower($1)
+		LIMIT 1
+	`, supportName).Scan(&existingID)
+
+	if err == nil {
+		return &existingID, nil
+	}
+
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, err
+	}
+
+	supportID := makeCategoryID(supportName)
+
+	_, err = tx.Exec(ctx, `
+		INSERT INTO ref.ref_bentukdukungan (
+			bentuk_dukungan_id, nama_bentuk_dukungan
+		)
+		VALUES ($1, $2)
+		ON CONFLICT (bentuk_dukungan_id)
+		DO UPDATE SET nama_bentuk_dukungan = EXCLUDED.nama_bentuk_dukungan
+	`, supportID, supportName)
+	if err != nil {
+		return nil, err
+	}
+
+	return &supportID, nil
+}
+
+func replaceMitraPartnershipField(ctx context.Context, tx pgx.Tx, mitraID string, fieldID *string) error {
+	_, err := tx.Exec(ctx, `
+		DELETE FROM user_mgmt.master_mitrabidangkemitraan
+		WHERE mitra_id = $1
+	`, mitraID)
+	if err != nil {
+		return err
+	}
+
+	if fieldID == nil {
+		return nil
+	}
+
+	_, err = tx.Exec(ctx, `
+		INSERT INTO user_mgmt.master_mitrabidangkemitraan (
+			mitra_id, bidang_kemitraan_id
+		)
+		VALUES ($1, $2)
+		ON CONFLICT (mitra_id, bidang_kemitraan_id) DO NOTHING
+	`, mitraID, *fieldID)
+
+	return err
+}
+
+func replaceMitraSupportType(ctx context.Context, tx pgx.Tx, mitraID string, supportID *string) error {
+	_, err := tx.Exec(ctx, `
+		DELETE FROM user_mgmt.master_mitrabentukdukungan
+		WHERE mitra_id = $1
+	`, mitraID)
+	if err != nil {
+		return err
+	}
+
+	if supportID == nil {
+		return nil
+	}
+
+	_, err = tx.Exec(ctx, `
+		INSERT INTO user_mgmt.master_mitrabentukdukungan (
+			mitra_id, bentuk_dukungan_id
+		)
+		VALUES ($1, $2)
+		ON CONFLICT (mitra_id, bentuk_dukungan_id) DO NOTHING
+	`, mitraID, *supportID)
+
+	return err
 }
 
 func scanMitraProfile(row scanner) (map[string]any, error) {
