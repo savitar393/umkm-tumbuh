@@ -98,7 +98,11 @@ func (h *Handler) GetUserDetail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	userID := chi.URLParam(r, "userID")
-	result, err := h.AdminService.GetRegistrationDetail(r.Context(), userID)
+	result, err := h.AdminService.GetRegistrationDetail(
+		r.Context(),
+		userID,
+		r.Header.Get("Authorization"),
+	)
 	if err != nil {
 		handleError(w, err)
 		return

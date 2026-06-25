@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -26,13 +27,24 @@ func NewClient(baseURL string) *Client {
 	}
 }
 
-func (c *Client) GetProfile(ctx context.Context, userID string, role string) (any, error) {
+func addAuthorizationHeader(req *http.Request, authorizationHeader string) {
+	authorizationHeader = strings.TrimSpace(authorizationHeader)
+	if authorizationHeader == "" {
+		return
+	}
+
+	req.Header.Set("Authorization", authorizationHeader)
+}
+
+func (c *Client) GetProfile(ctx context.Context, userID string, role string, authorizationHeader string) (any, error) {
 	url := fmt.Sprintf("%s/api/v1/admin/profiles/%s?role=%s", c.BaseURL, userID, role)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
+
+	addAuthorizationHeader(req, authorizationHeader)
 
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
@@ -54,13 +66,15 @@ func (c *Client) GetProfile(ctx context.Context, userID string, role string) (an
 	return result.Profile, nil
 }
 
-func (c *Client) GetDocuments(ctx context.Context, userID string) (any, error) {
+func (c *Client) GetDocuments(ctx context.Context, userID string, authorizationHeader string) (any, error) {
 	url := fmt.Sprintf("%s/api/v1/admin/users/%s/documents", c.BaseURL, userID)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
+
+	addAuthorizationHeader(req, authorizationHeader)
 
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
@@ -82,13 +96,15 @@ func (c *Client) GetDocuments(ctx context.Context, userID string) (any, error) {
 	return result.Documents, nil
 }
 
-func (c *Client) GetDocumentChecklist(ctx context.Context, userID string, role string) any {
+func (c *Client) GetDocumentChecklist(ctx context.Context, userID string, role string, authorizationHeader string) any {
 	url := fmt.Sprintf("%s/api/v1/admin/users/%s/documents?role=%s", c.BaseURL, userID, role)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil
 	}
+
+	addAuthorizationHeader(req, authorizationHeader)
 
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {

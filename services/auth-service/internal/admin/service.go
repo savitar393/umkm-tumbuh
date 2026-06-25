@@ -224,7 +224,7 @@ func (s *Service) DeactivateAccount(ctx context.Context, userID string) (*Messag
 	}, nil
 }
 
-func (s *Service) GetRegistrationDetail(ctx context.Context, userID string) (*UserDetailResponse, error) {
+func (s *Service) GetRegistrationDetail(ctx context.Context, userID string, authorizationHeader string) (*UserDetailResponse, error) {
 	user, err := s.UserRepo.FindByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -238,15 +238,15 @@ func (s *Service) GetRegistrationDetail(ctx context.Context, userID string) (*Us
 	}
 
 	if s.Client != nil {
-		profile, profileErr := s.Client.GetProfile(ctx, userID, user.Role)
+		profile, profileErr := s.Client.GetProfile(ctx, userID, user.Role, authorizationHeader)
 		if profileErr == nil {
 			detail.Profile = profile
 		}
 
-		docs, docsErr := s.Client.GetDocuments(ctx, userID)
+		docs, docsErr := s.Client.GetDocuments(ctx, userID, authorizationHeader)
 		if docsErr == nil {
 			detail.Documents = docs
-			detail.Checklist = s.Client.GetDocumentChecklist(ctx, userID, user.Role)
+			detail.Checklist = s.Client.GetDocumentChecklist(ctx, userID, user.Role, authorizationHeader)
 		}
 	}
 
