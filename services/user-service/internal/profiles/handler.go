@@ -82,14 +82,16 @@ func (h *Handler) canEditRegistrationProfile(ctx context.Context, accountID stri
 		return err
 	}
 
-	switch status {
-	case "DISETUJUI", "APPROVED", "AKTIF":
-		return fmt.Errorf("Pendaftaran sudah disetujui. Profil tidak dapat diubah dari alur registrasi.")
-	case "DITOLAK", "REJECTED":
-		return fmt.Errorf("Pendaftaran sudah ditolak. Perubahan data belum tersedia untuk status ini.")
+	status = strings.ToUpper(strings.TrimSpace(status))
+
+	// Approved users are already past registration review.
+	// They must be allowed to edit profile from dashboard Kelola Informasi.
+	if status == "DISETUJUI" || status == "APPROVED" || status == "AKTIF" {
+		return nil
 	}
 
-	if sudahSubmit {
+	// Block only active submitted registrations that are still waiting for admin review.
+	if sudahSubmit && (status == "MENUNGGU" || status == "PENDING") {
 		return fmt.Errorf("Pendaftaran sudah dikirim dan sedang menunggu review Admin.")
 	}
 
