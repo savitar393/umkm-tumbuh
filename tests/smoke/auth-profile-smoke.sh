@@ -71,6 +71,24 @@ request_with_status() {
   fi
 }
 
+expect_json_value() {
+  local body="$1"
+  local expr="$2"
+  local expected="$3"
+  local label="$4"
+
+  local actual
+  actual="$(printf '%s' "$body" | python3 -c "import sys,json; data=json.load(sys.stdin); print($expr)")"
+
+  if [ "$actual" != "$expected" ]; then
+    echo "❌ $label expected '$expected', got '$actual'"
+    echo "$body"
+    exit 1
+  fi
+
+  echo "✅ $label = $actual"
+}
+
 split_response() {
   local raw="$1"
   RESPONSE_BODY="$(printf "%s" "$raw" | sed '$d')"
@@ -275,6 +293,15 @@ fi
 echo "✅ UMKM token received"
 echo
 
+echo "== 2b. UMKM registration status before profile =="
+RAW="$(request_with_status GET "$USER_URL/register/status" "" "$UMKM_TOKEN")"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "200" "UMKM registration status before profile"
+expect_json_value "$RESPONSE_BODY" "data.get('profile_complete')" "False" "UMKM profile_complete before profile"
+expect_json_value "$RESPONSE_BODY" "data.get('submitted')" "False" "UMKM submitted before profile"
+expect_json_value "$RESPONSE_BODY" "data.get('next_route')" "/register/umkm/details" "UMKM next_route before profile"
+echo
+
 echo "== 3. Save UMKM profile =="
 RAW="$(request_with_status PUT "$USER_URL/profiles/me" "{
   \"business_name\": \"Smoke UMKM Store\",
@@ -291,6 +318,15 @@ RAW="$(request_with_status PUT "$USER_URL/profiles/me" "{
 }" "$UMKM_TOKEN")"
 split_response "$RAW"
 expect_status "$RESPONSE_STATUS" "200" "save UMKM profile"
+echo
+
+echo "== 3b. UMKM registration status after profile save =="
+RAW="$(request_with_status GET "$USER_URL/register/status" "" "$UMKM_TOKEN")"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "200" "UMKM registration status after profile save"
+expect_json_value "$RESPONSE_BODY" "data.get('profile_complete')" "True" "UMKM profile_complete after profile save"
+expect_json_value "$RESPONSE_BODY" "data.get('submitted')" "False" "UMKM submitted after profile save"
+expect_json_value "$RESPONSE_BODY" "data.get('next_route')" "/register/umkm/review" "UMKM next_route after profile save"
 echo
 
 echo "== 4. Get UMKM profile =="
@@ -315,6 +351,20 @@ split_response "$RAW"
 expect_status "$RESPONSE_STATUS" "200" "submit UMKM registration"
 echo
 
+echo "== 5b. UMKM registration status after submit =="
+RAW="$(request_with_status GET "$USER_URL/register/status" "" "$UMKM_TOKEN")"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "200" "UMKM registration status after submit"
+expect_json_value "$RESPONSE_BODY" "data.get('submitted')" "True" "UMKM submitted after submit"
+expect_json_value "$RESPONSE_BODY" "data.get('next_route')" "/register/pending" "UMKM next_route after submit"
+
+RAW="$(request_with_status POST "$USER_URL/register/submit" \
+  '{"action":"submit"}' \
+  "$UMKM_TOKEN")"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "409" "duplicate UMKM submit should fail"
+echo
+
 echo "== 6. Register Mitra =="
 RAW="$(request_with_status POST "$AUTH_URL/auth/register" "{
   \"full_name\": \"Smoke Mitra\",
@@ -335,6 +385,15 @@ if [ -z "$MITRA_TOKEN" ]; then
 fi
 
 echo "✅ Mitra token received"
+echo
+
+echo "== 6b. Mitra registration status before profile =="
+RAW="$(request_with_status GET "$USER_URL/register/status" "" "$MITRA_TOKEN")"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "200" "Mitra registration status before profile"
+expect_json_value "$RESPONSE_BODY" "data.get('profile_complete')" "False" "Mitra profile_complete before profile"
+expect_json_value "$RESPONSE_BODY" "data.get('submitted')" "False" "Mitra submitted before profile"
+expect_json_value "$RESPONSE_BODY" "data.get('next_route')" "/register/mitra/details" "Mitra next_route before profile"
 echo
 
 echo "== 7. Save Mitra profile =="
@@ -361,6 +420,15 @@ split_response "$RAW"
 expect_status "$RESPONSE_STATUS" "200" "save Mitra profile"
 echo
 
+echo "== 7b. Mitra registration status after profile save =="
+RAW="$(request_with_status GET "$USER_URL/register/status" "" "$MITRA_TOKEN")"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "200" "Mitra registration status after profile save"
+expect_json_value "$RESPONSE_BODY" "data.get('profile_complete')" "True" "Mitra profile_complete after profile save"
+expect_json_value "$RESPONSE_BODY" "data.get('submitted')" "False" "Mitra submitted after profile save"
+expect_json_value "$RESPONSE_BODY" "data.get('next_route')" "/register/mitra/review" "Mitra next_route after profile save"
+echo
+
 echo "== 8. Get Mitra profile =="
 RAW="$(request_with_status GET "$USER_URL/profiles/me" "" "$MITRA_TOKEN")"
 split_response "$RAW"
@@ -381,6 +449,20 @@ RAW="$(request_with_status POST "$USER_URL/register/submit" \
   "$MITRA_TOKEN")"
 split_response "$RAW"
 expect_status "$RESPONSE_STATUS" "200" "submit Mitra registration"
+echo
+
+echo "== 9b. Mitra registration status after submit =="
+RAW="$(request_with_status GET "$USER_URL/register/status" "" "$MITRA_TOKEN")"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "200" "Mitra registration status after submit"
+expect_json_value "$RESPONSE_BODY" "data.get('submitted')" "True" "Mitra submitted after submit"
+expect_json_value "$RESPONSE_BODY" "data.get('next_route')" "/register/pending" "Mitra next_route after submit"
+
+RAW="$(request_with_status POST "$USER_URL/register/submit" \
+  '{"action":"submit"}' \
+  "$MITRA_TOKEN")"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "409" "duplicate Mitra submit should fail"
 echo
 
 echo "🎉 Smoke test passed."
