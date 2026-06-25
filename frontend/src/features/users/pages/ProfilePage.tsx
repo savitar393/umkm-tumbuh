@@ -10,6 +10,7 @@ import {
   Mail,
   MapPin,
   MapPinned,
+  PackageCheck,
   Phone,
   ShieldCheck,
   Store,
@@ -23,6 +24,7 @@ import {
   parseSocialMediaValue,
 } from "../../../shared/utils/socialMedia";
 import { Icon } from "@iconify/react";
+import logoPlaceholder from "../../../assets/logo-umkm-tumbuh.png";
 
 function onlyDigits(value: string) {
   return value.replace(/\D/g, "");
@@ -69,6 +71,14 @@ function formatDate(value?: string | null) {
     month: "long",
     year: "numeric",
   }).format(new Date(value));
+}
+
+function formatRupiah(value: number) {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(value);
 }
 
 function getCompletenessItems(profile: UmkmProfile) {
@@ -477,6 +487,45 @@ export default function ProfilePage() {
                 </div>
               </article>
             </section>
+
+            {profile.featured_products?.length ? (
+              <section className="umkm-form-section umkm-profile-view-card">
+                <h2>
+                  <span className="umkm-section-icon">
+                    <PackageCheck size={18} />
+                  </span>
+                  Produk Utama
+                </h2>
+
+                <p>Maksimal 5 produk pilihan yang tampil di profil UMKM.</p>
+
+                <div className="product-card-grid">
+                  {profile.featured_products.slice(0, 5).map((product) => (
+                    <article className="product-card" key={product.id}>
+                      <div className="product-card__image">
+                        {product.thumbnail_url ? (
+                          <img className="product-card__photo" src={product.thumbnail_url} alt={product.name} />
+                        ) : (
+                          <div className="product-card__placeholder">
+                            <img src={logoPlaceholder} alt="" aria-hidden="true" />
+                            <span>Belum ada foto</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="product-card__body">
+                        <span className="product-card__category">
+                          Kategori: {product.category_name || "-"}
+                        </span>
+                        <h3>{product.name}</h3>
+                        <strong>{formatRupiah(product.price)}</strong>
+                        <p>{product.description || "Belum ada deskripsi produk."}</p>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            ) : null}
 
             <section className="umkm-form-section umkm-profile-view-card">
               <h2>

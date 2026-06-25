@@ -68,6 +68,8 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 			p.thumbnail_content_type,
 			p.thumbnail_size_bytes,
 			p.thumbnail_updated_at,
+			p.tampil_di_profil,
+			p.urutan_tampil_profil,
 			p.created_at,
 			p.updated_at
 		FROM user_mgmt.master_produkumkm p
@@ -419,12 +421,18 @@ func (h *Handler) AttachThumbnail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	req.DocumentID = strings.TrimSpace(req.DocumentID)
 	req.ObjectKey = strings.TrimSpace(req.ObjectKey)
 	req.PublicURL = strings.TrimSpace(req.PublicURL)
 	req.ContentType = strings.TrimSpace(req.ContentType)
 
 	if req.ObjectKey == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Object key thumbnail wajib diisi."})
+		return
+	}
+
+	if req.DocumentID == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Document ID thumbnail wajib diisi."})
 		return
 	}
 
@@ -445,6 +453,8 @@ func (h *Handler) AttachThumbnail(w http.ResponseWriter, r *http.Request) {
 
 	productID := chi.URLParam(r, "id")
 
+	thumbnailURL := fmt.Sprintf("/api/v1/public/documents/%s/view", req.DocumentID)
+
 	tag, err := h.DB.Exec(r.Context(), `
 		UPDATE user_mgmt.master_produkumkm
 		SET
@@ -457,7 +467,7 @@ func (h *Handler) AttachThumbnail(w http.ResponseWriter, r *http.Request) {
 		WHERE produk_id = $1
 		  AND umkm_id = $2
 		  AND is_deleted = FALSE
-	`, productID, umkmID, req.ObjectKey, nullableTrim(req.PublicURL), req.ContentType, req.SizeBytes)
+	`, productID, umkmID, req.ObjectKey, nullableTrim(thumbnailURL), req.ContentType, req.SizeBytes)
 
 	if err != nil {
 		handleError(w, err, "Gagal menyimpan metadata thumbnail produk.")
@@ -477,6 +487,136 @@ func (h *Handler) AttachThumbnail(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"message": "Thumbnail produk berhasil diperbarui.",
+		"product": product,
+	})
+}
+
+func (h *Handler) ToggleFeatured(w http.ResponseWriter, r *http.Request) {
+	user, ok := currentUMKMUser(w, r)
+	if !ok {
+		return
+	}
+
+	var req ToggleFeaturedRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Request body tidak valid."})
+		return
+	}
+
+	umkmID, err := h.getUMKMID(r.Context(), user.ID)
+	if err != nil {
+		handleError(w, err, "Gagal mengambil data UMKM.")
+		return
+	}
+
+	productID := chi.URLParam(r, "id")
+
+	tx, err := h.DB.Begin(r.Context())
+	if err != nil {
+		handleError(w, err, "Gagal memulai transaksi.")
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	var exists bool
+	err = tx.QueryRow(r.Context(), `
+		SELECT EXISTS (
+			SELECT 1
+			FROM user_mgmt.master_produkumkm
+			WHERE produk_id = $1
+			  AND umkm_id = $2
+			  AND is_deleted = FALSE
+		)
+	`, productID, umkmID).Scan(&exists)
+	if err != nil {
+		handleError(w, err, "Gagal memeriksa produk.")
+		return
+	}
+
+	if !exists {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "Produk tidak ditemukan."})
+		return
+	}
+
+	if req.Featured {
+		var featuredCount int
+		err = tx.QueryRow(r.Context(), `
+			SELECT COUNT(*)
+			FROM user_mgmt.master_produkumkm
+			WHERE umkm_id = $1
+			  AND tampil_di_profil = TRUE
+			  AND is_deleted = FALSE
+			  AND produk_id <> $2
+		`, umkmID, productID).Scan(&featuredCount)
+		if err != nil {
+			handleError(w, err, "Gagal menghitung produk utama.")
+			return
+		}
+
+		if featuredCount >= 5 {
+			writeJSON(w, http.StatusConflict, map[string]string{
+				"error": "Maksimal 5 produk utama yang dapat ditampilkan di profil.",
+			})
+			return
+		}
+
+		var nextOrder int
+		err = tx.QueryRow(r.Context(), `
+			SELECT COALESCE(MAX(urutan_tampil_profil), 0) + 1
+			FROM user_mgmt.master_produkumkm
+			WHERE umkm_id = $1
+			  AND tampil_di_profil = TRUE
+			  AND is_deleted = FALSE
+		`, umkmID).Scan(&nextOrder)
+		if err != nil {
+			handleError(w, err, "Gagal menentukan urutan produk utama.")
+			return
+		}
+
+		_, err = tx.Exec(r.Context(), `
+			UPDATE user_mgmt.master_produkumkm
+			SET tampil_di_profil = TRUE,
+			    urutan_tampil_profil = COALESCE(urutan_tampil_profil, $3),
+			    featured_at = COALESCE(featured_at, NOW()),
+			    updated_at = NOW()
+			WHERE produk_id = $1
+			  AND umkm_id = $2
+			  AND is_deleted = FALSE
+		`, productID, umkmID, nextOrder)
+		if err != nil {
+			handleError(w, err, "Gagal menampilkan produk di profil.")
+			return
+		}
+	} else {
+		_, err = tx.Exec(r.Context(), `
+			UPDATE user_mgmt.master_produkumkm
+			SET tampil_di_profil = FALSE,
+			    urutan_tampil_profil = NULL,
+			    featured_at = NULL,
+			    updated_at = NOW()
+			WHERE produk_id = $1
+			  AND umkm_id = $2
+			  AND is_deleted = FALSE
+		`, productID, umkmID)
+		if err != nil {
+			handleError(w, err, "Gagal menghapus produk dari profil.")
+			return
+		}
+	}
+
+	if err := tx.Commit(r.Context()); err != nil {
+		handleError(w, err, "Gagal menyimpan perubahan produk utama.")
+		return
+	}
+
+	product, err := h.findProductByID(r.Context(), umkmID, productID)
+	if err != nil {
+		handleError(w, err, "Produk diperbarui, tetapi gagal dibaca kembali.")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"message": "Pengaturan produk utama berhasil diperbarui.",
 		"product": product,
 	})
 }
@@ -589,6 +729,8 @@ func (h *Handler) findProductByID(ctx context.Context, umkmID string, productID 
 			p.thumbnail_content_type,
 			p.thumbnail_size_bytes,
 			p.thumbnail_updated_at,
+			p.tampil_di_profil,
+			p.urutan_tampil_profil,
 			p.created_at,
 			p.updated_at
 		FROM user_mgmt.master_produkumkm p
@@ -662,6 +804,8 @@ func scanProduct(row scanner) (ProductResponse, error) {
 		&p.ThumbnailContentType,
 		&p.ThumbnailSizeBytes,
 		&p.ThumbnailUpdatedAt,
+		&p.Featured,
+		&p.FeaturedOrder,
 		&p.CreatedAt,
 		&p.UpdatedAt,
 	)

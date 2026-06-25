@@ -21,6 +21,7 @@ import {
   hasAnySocialMedia,
   parseSocialMediaValue,
 } from "../../../shared/utils/socialMedia";
+import logoPlaceholder from "../../../assets/logo-umkm-tumbuh.png";
 
 type PartnershipProfileDetail = UMKMDetail & MitraDetail;
 
@@ -49,6 +50,14 @@ function getCoverUrl(detail: PartnershipProfileDetail) {
   if (!("foto_cover_url" in detail)) return "";
 
   return typeof detail.foto_cover_url === "string" ? detail.foto_cover_url.trim() : "";
+}
+
+function formatRupiah(value: number) {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(value);
 }
 
 // function hasGalleryImages(detail: PartnershipProfileDetail) {
@@ -456,6 +465,39 @@ export default function PartnershipDetailPage() {
                       : `Deskripsi ${profileKind.toLowerCase()} belum tersedia.`}
                   </p>
                 </article>
+
+                {"featured_products" in data && data.featured_products?.length ? (
+                  <article className="partnership-detail-card">
+                    <h2>Produk Utama</h2>
+                    <p>Produk pilihan yang ditampilkan oleh UMKM ini.</p>
+
+                    <div className="product-card-grid">
+                      {data.featured_products.slice(0, 5).map((product) => (
+                        <article className="product-card" key={product.id}>
+                          <div className="product-card__image">
+                            {product.thumbnail_url ? (
+                              <img className="product-card__photo" src={product.thumbnail_url} alt={product.name} />
+                            ) : (
+                              <div className="product-card__placeholder">
+                                <img src={logoPlaceholder} alt="" aria-hidden="true" />
+                                <span>Belum ada foto</span>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="product-card__body">
+                            <span className="product-card__category">
+                              Kategori: {product.category_name || "-"}
+                            </span>
+                            <h3>{product.name}</h3>
+                            <strong>{formatRupiah(product.price)}</strong>
+                            <p>{product.description || "Belum ada deskripsi produk."}</p>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  </article>
+                ) : null}
 
                 {isMitra && (coverUrl || logoUrl) ? (
                   <article className="partnership-detail-card">

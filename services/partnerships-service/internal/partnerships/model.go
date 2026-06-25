@@ -151,6 +151,7 @@ type UMKMDetail struct {
 	SocialMediaMarketplace string `json:"social_media_marketplace"`
 	LogoURL                string `json:"logo_url"`
 	FotoCoverURL           string `json:"foto_cover_url"`
+	FeaturedProducts 	   []FeaturedProduct `json:"featured_products"`
 }
 
 // MitraDetail represents full detail of a Mitra
@@ -171,4 +172,15 @@ type MitraDetail struct {
 	NIB              string `json:"nib"`
 	NPWP             string `json:"npwp"`
 	CooperationScale string `json:"cooperation_scale"`
+}
+
+type FeaturedProduct struct {
+	ID           string  `json:"id"`
+	Name         string  `json:"name"`
+	CategoryName string `json:"category_name"`
+	Description  string `json:"description"`
+	Price        float64 `json:"price"`
+	Stock        int     `json:"stock"`
+	ThumbnailURL string  `json:"thumbnail_url"`
+	Legalitas    string  `json:"legalitas"`
 }

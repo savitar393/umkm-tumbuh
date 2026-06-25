@@ -21,6 +21,17 @@ interface DocumentUrlResponse {
   content_type?: string;
 }
 
+export type FeaturedProduct = {
+  id: string;
+  name: string;
+  category_name: string;
+  description?: string | null;
+  price: number;
+  stock: number;
+  thumbnail_url?: string | null;
+  legalitas?: string | null;
+};
+
 export interface PartnershipStatusResponse {
   pengajuan: Array<{
     pengajuanID: string;
@@ -103,6 +114,7 @@ export interface UMKMDetail {
   social_media_marketplace?: string | null;
   logo_url?: string | null;
   foto_cover_url?: string | null;
+  featured_products?: FeaturedProduct[];
 }
 
 export interface MitraDetail {

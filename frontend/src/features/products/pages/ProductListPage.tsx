@@ -22,6 +22,7 @@ import {
   createProduct,
   deleteProduct,
   getProducts,
+  toggleProductFeatured,
   updateProduct,
   updateProductStock,
   uploadProductThumbnail,
@@ -195,6 +196,7 @@ export default function ProductListPage() {
     [products],
   );
   const activeProducts = products.filter((product) => product.status === "AKTIF").length;
+  const featuredCount = products.filter((product) => product.featured).length;
 
   const categories = useMemo(() => {
     const unique = new Set<string>();
@@ -323,7 +325,7 @@ export default function ProductListPage() {
 
   function clearSelectedThumbnail() {
     updateField("thumbnailFile", null);
-    setThumbnailPreview(editingProduct?.thumbnail_url ?? "");
+    setThumbnailPreview("");
     setThumbnailInputKey((current) => current + 1);
   }
 
@@ -455,6 +457,30 @@ export default function ProductListPage() {
       await loadProducts();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal mengubah status produk.");
+    }
+  }
+
+  async function handleToggleFeatured(product: Product) {
+    setError("");
+    setMessage("");
+
+    if (!product.featured && product.status !== "AKTIF") {
+      setError("Hanya produk aktif yang dapat ditampilkan sebagai produk utama.");
+      return;
+    }
+
+    try {
+      await toggleProductFeatured(product.id, !product.featured);
+
+      setMessage(
+        product.featured
+          ? "Produk dihapus dari profil."
+          : "Produk ditampilkan sebagai produk utama.",
+      );
+
+      await loadProducts();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal mengubah produk utama.");
     }
   }
 
@@ -656,7 +682,9 @@ export default function ProductListPage() {
           <div className="product-catalog-section__header">
             <div>
               <h2>Daftar Produk</h2>
-              <p>{filteredProducts.length} produk dalam tampilan saat ini.</p>
+              <p>
+                {filteredProducts.length} produk dalam tampilan saat ini. {featuredCount}/5 produk utama dipilih.
+              </p>
             </div>
           </div>
 
@@ -731,6 +759,22 @@ export default function ProductListPage() {
                       <RefreshCw size={16} />
                       Restock
                     </button>
+
+                    <button
+                      type="button"
+                      className={`button secondary ${product.featured ? "success" : ""}`}
+                      onClick={() => handleToggleFeatured(product)}
+                      disabled={!product.featured && product.status !== "AKTIF"}
+                      title={
+                        product.status !== "AKTIF" && !product.featured
+                          ? "Aktifkan produk terlebih dahulu sebelum ditampilkan di profil."
+                          : undefined
+                      }
+                    >
+                      <PackageCheck size={16} />
+                      {product.featured ? "Tampil di Profil" : "Jadikan Utama"}
+                    </button>
+
                     <button
                       type="button"
                       className={`button secondary product-status-action ${

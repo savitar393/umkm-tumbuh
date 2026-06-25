@@ -416,7 +416,99 @@ func (h *Handler) getUMKMProfile(ctx context.Context, accountID string) (map[str
 		LIMIT 1
 	`, accountID)
 
-	return scanUMKMProfile(row)
+	profile, err := scanUMKMProfile(row)
+	if err != nil {
+		return nil, err
+	}
+
+	umkmID, ok := profile["id"].(string)
+	if !ok || strings.TrimSpace(umkmID) == "" {
+		return nil, errors.New("ID UMKM tidak valid")
+	}
+
+	featuredProducts, err := h.getFeaturedProducts(ctx, umkmID)
+	if err != nil {
+		return nil, err
+	}
+
+	profile["featured_products"] = featuredProducts
+
+	return profile, nil
+}
+
+func (h *Handler) getFeaturedProducts(ctx context.Context, umkmID string) ([]map[string]any, error) {
+	rows, err := h.DB.Query(ctx, `
+		SELECT
+			p.produk_id,
+			p.nama_produk,
+			COALESCE(k.nama_kategori_produk, '') AS kategori,
+			COALESCE(p.deskripsi_produk, '') AS deskripsi,
+			p.harga,
+			p.stok_saat_ini,
+			p.thumbnail_url,
+			p.legalitas_produk
+		FROM user_mgmt.master_produkumkm p
+		LEFT JOIN ref.ref_kategoriproduk k
+			ON k.kategori_produk_id = p.kategori_produk_id
+		WHERE p.umkm_id = $1
+		  AND p.tampil_di_profil = TRUE
+		  AND p.status_produk = 'AKTIF'
+		  AND p.is_deleted = FALSE
+		ORDER BY
+		  COALESCE(p.urutan_tampil_profil, 999),
+		  p.featured_at DESC,
+		  p.updated_at DESC
+		LIMIT 5
+	`, umkmID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	products := []map[string]any{}
+
+	for rows.Next() {
+		var (
+			id           string
+			name         string
+			category     string
+			description  string
+			price        float64
+			stock        int
+			thumbnailURL *string
+			legalitas    *string
+		)
+
+		if err := rows.Scan(
+			&id,
+			&name,
+			&category,
+			&description,
+			&price,
+			&stock,
+			&thumbnailURL,
+			&legalitas,
+		); err != nil {
+			return nil, err
+		}
+
+		products = append(products, map[string]any{
+			"id":            id,
+			"name":          name,
+			"category_name": category,
+			"description":   description,
+			"price":         price,
+			"stock":         stock,
+			"thumbnail_url": thumbnailURL,
+			"legalitas":     legalitas,
+		})
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return products, nil
 }
 
 func (h *Handler) upsertUMKMProfile(ctx context.Context, accountID string, req UpsertProfileRequest) (map[string]any, error) {

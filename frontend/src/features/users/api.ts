@@ -1,5 +1,16 @@
 import { userHttp as http } from "../../shared/api/userHttp";
 
+export type FeaturedProduct = {
+  id: string;
+  name: string;
+  category_name: string;
+  description?: string | null;
+  price: number;
+  stock: number;
+  thumbnail_url?: string | null;
+  legalitas?: string | null;
+};
+
 export type UmkmProfile = {
   id: string;
   user_id: string;
@@ -12,6 +23,7 @@ export type UmkmProfile = {
   social_media_marketplace?: string | null;
   logo_url?: string | null;
   foto_cover_url?: string | null;
+  featured_products?: FeaturedProduct[];
   owner_name: string;
   nik: string;
   phone_number: string;

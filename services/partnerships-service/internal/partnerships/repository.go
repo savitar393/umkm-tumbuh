@@ -620,7 +620,66 @@ func (r *repository) FindUMKMDetail(ctx context.Context, umkmID string) (*UMKMDe
 		return nil, fmt.Errorf("failed to find UMKM detail: %w", err)
 	}
 
+	products, err := r.FindFeaturedProductsByUMKMID(ctx, umkmID)
+	if err != nil {
+		return nil, err
+	}
+
+	d.FeaturedProducts = products
+
 	return &d, nil
+}
+
+func (r *repository) FindFeaturedProductsByUMKMID(ctx context.Context, umkmID string) ([]FeaturedProduct, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT
+			p.produk_id,
+			p.nama_produk,
+			COALESCE(k.nama_kategori_produk, '') AS kategori,
+			COALESCE(p.deskripsi_produk, '') AS deskripsi,
+			p.harga,
+			p.stok_saat_ini,
+			COALESCE(p.thumbnail_url, '') AS thumbnail_url,
+			COALESCE(p.legalitas_produk, '') AS legalitas
+		FROM user_mgmt.master_produkumkm p
+		LEFT JOIN ref.ref_kategoriproduk k
+			ON k.kategori_produk_id = p.kategori_produk_id
+		WHERE p.umkm_id = $1
+		  AND p.tampil_di_profil = TRUE
+		  AND p.status_produk = 'AKTIF'
+		  AND p.is_deleted = FALSE
+		ORDER BY
+		  COALESCE(p.urutan_tampil_profil, 999),
+		  p.featured_at DESC,
+		  p.updated_at DESC
+		LIMIT 5
+	`, umkmID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	products := []FeaturedProduct{}
+
+	for rows.Next() {
+		var item FeaturedProduct
+		if err := rows.Scan(
+			&item.ID,
+			&item.Name,
+			&item.CategoryName,
+			&item.Description,
+			&item.Price,
+			&item.Stock,
+			&item.ThumbnailURL,
+			&item.Legalitas,
+		); err != nil {
+			return nil, err
+		}
+
+		products = append(products, item)
+	}
+
+	return products, rows.Err()
 }
 
 // FindMitraDetail retrieves full detail of a Mitra by its mitra_id
