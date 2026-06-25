@@ -90,6 +90,78 @@ function getReadableRole(role?: string) {
   return role || "—";
 }
 
+const UMKM_PROFILE_FIELDS: Array<[string, string]> = [
+  ["business_name", "Nama UMKM"],
+  ["owner_name", "Nama Pemilik"],
+  ["nik", "NIK Pemilik"],
+  ["phone_number", "Nomor WhatsApp"],
+  ["business_category", "Kategori Usaha"],
+  ["business_description", "Deskripsi Usaha"],
+  ["business_email", "Email Bisnis"],
+  ["established_year", "Tahun Berdiri"],
+  ["operating_hours", "Jam Operasional"],
+  ["social_media_marketplace", "Media Sosial / Marketplace"],
+  ["address", "Alamat"],
+  ["city", "Kota/Kabupaten"],
+  ["province", "Provinsi"],
+  ["district", "Kecamatan"],
+  ["village", "Kelurahan"],
+  ["postal_code", "Kode Pos"],
+  ["status", "Status Profil"],
+];
+
+const MITRA_PROFILE_FIELDS: Array<[string, string]> = [
+  ["organization_name", "Nama Organisasi"],
+  ["organization_type", "Jenis Mitra"],
+  ["legal_name", "Nama Badan Hukum"],
+  ["nib", "NIB"],
+  ["npwp", "NPWP"],
+  ["contact_person", "Nama PIC"],
+  ["contact_person_title", "Jabatan PIC"],
+  ["email", "Email PIC"],
+  ["phone_number", "Nomor WhatsApp PIC"],
+  ["address", "Alamat Kantor"],
+  ["city", "Kota/Kabupaten"],
+  ["province", "Provinsi"],
+  ["district", "Kecamatan"],
+  ["village", "Kelurahan"],
+  ["postal_code", "Kode Pos"],
+  ["partnership_field", "Bidang Kemitraan"],
+  ["support_type", "Jenis Dukungan"],
+  ["operational_area", "Wilayah Operasional"],
+  ["cooperation_scale", "Skala Kerja Sama"],
+  ["description", "Deskripsi Umum"],
+  ["support_description", "Deskripsi Dukungan"],
+  ["status", "Status Profil"],
+];
+
+function buildProfileEntries(profile: unknown, role?: string) {
+  if (!profile || typeof profile !== "object") {
+    return [];
+  }
+
+  const record = profile as Record<string, unknown>;
+  const fieldDefs = role === "MITRA" ? MITRA_PROFILE_FIELDS : UMKM_PROFILE_FIELDS;
+  const usedKeys = new Set<string>();
+
+  const orderedEntries = fieldDefs
+    .filter(([key]) => record[key] !== null && record[key] !== undefined && record[key] !== "")
+    .map(([key, label]) => {
+      usedKeys.add(key);
+      return [key, label, record[key]] as const;
+    });
+
+  const extraEntries = Object.entries(record)
+    .filter(([key, value]) => {
+      if (usedKeys.has(key)) return false;
+      if (key === "id" || key === "user_id" || key === "created_at" || key === "updated_at") return false;
+      return value !== null && value !== undefined && value !== "";
+    })
+    .map(([key, value]) => [key, labelize(key), value] as const);
+
+  return [...orderedEntries, ...extraEntries];
+}
+
 function getDocumentID(doc: any) {
   return doc.id ?? doc.dokumen_id ?? doc.document_id ?? "";
 }
@@ -316,9 +388,7 @@ export default function AdminRegistrationDetailPage() {
     return ["PENDING", "MENUNGGU"].includes(status);
   }, [user?.status]);
 
-  const profileEntries = data?.profile && typeof data.profile === "object"
-    ? Object.entries(data.profile).filter(([_, value]) => value !== null && value !== undefined && value !== "")
-    : [];
+  const profileEntries = buildProfileEntries(data?.profile, user?.role);
 
   if (loading) {
     return (
@@ -431,7 +501,7 @@ export default function AdminRegistrationDetailPage() {
 
               {profileEntries.length > 0 ? (
                 <div className="admin-reg-field-grid">
-                  {profileEntries.map(([key, value]) => (
+                  {profileEntries.map(([key, label, value]) => (
                     <div
                       key={key}
                       className={
@@ -440,7 +510,7 @@ export default function AdminRegistrationDetailPage() {
                           : "admin-reg-field"
                       }
                     >
-                      <span>{labelize(key)}</span>
+                      <span>{label}</span>
                       <strong>{String(value)}</strong>
                     </div>
                   ))}
