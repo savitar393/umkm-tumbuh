@@ -246,6 +246,7 @@ export default function AdminTrainingFormPage() {
         </div>
         <div style={{ display: "flex", gap: 12 }}>
           <button
+            onClick={() => navigate("/admin/training")}
             style={{
               padding: "10px 20px", borderRadius: 12,
               background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)",
@@ -256,6 +257,7 @@ export default function AdminTrainingFormPage() {
             Dashboard Pelatihan
           </button>
           <button
+            onClick={() => navigate("/admin/training/certificates")}
             style={{
               padding: "10px 20px", borderRadius: 12,
               background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)",
@@ -266,7 +268,7 @@ export default function AdminTrainingFormPage() {
             Verifikasi Sertifikat
           </button>
           <button
-            onClick={() => navigate("/admin/training")}
+            onClick={() => navigate("/admin/training/new")}
             style={{
               padding: "10px 20px", borderRadius: 12,
               background: "#fff", border: "none",

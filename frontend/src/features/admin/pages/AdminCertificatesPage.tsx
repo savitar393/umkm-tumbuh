@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Search, CheckCircle, XCircle, Download, FileText, Clock, Award } from "lucide-react";
+import { Search, CheckCircle, XCircle, Download, FileText, Clock, Award, Plus } from "lucide-react";
 import { toast } from "sonner";
 import AdminLayout from "../components/AdminLayout";
 import type { Certificate } from "../../certificates/types";
@@ -50,6 +51,7 @@ export default function AdminCertificatesPage() {
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
 
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const limit = 15;
 
   // Fetch stats
@@ -125,9 +127,51 @@ export default function AdminCertificatesPage() {
     <AdminLayout>
       {/* Page header */}
       <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 800, color: "#fff", margin: "0 0 4px", lineHeight: 1.2 }}>
-          Verifikasi Sertifikat
-        </h1>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 4 }}>
+          <h1 style={{ fontSize: 28, fontWeight: 800, color: "#fff", margin: 0, lineHeight: 1.2 }}>
+            Verifikasi Sertifikat
+          </h1>
+          <div style={{ display: "flex", gap: 12, flexShrink: 0 }}>
+            <button
+              onClick={() => navigate("/admin/training")}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 8,
+                padding: "10px 20px", borderRadius: 12,
+                background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)",
+                color: "#fff", fontSize: 14, fontWeight: 600,
+                cursor: "pointer", fontFamily: "inherit",
+              }}
+            >
+              Dashboard Pelatihan
+            </button>
+            <button
+              onClick={() => navigate("/admin/training/certificates")}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 8,
+                padding: "10px 20px", borderRadius: 12,
+                background: "#fff", border: "none",
+                color: "#1f45b6", fontSize: 14, fontWeight: 700,
+                cursor: "pointer", fontFamily: "inherit",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+              }}
+            >
+              Verifikasi Sertifikat
+            </button>
+            <button
+              onClick={() => navigate("/admin/training/new")}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 8,
+                padding: "10px 20px", borderRadius: 12,
+                background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)",
+                color: "#fff", fontSize: 14, fontWeight: 600,
+                cursor: "pointer", fontFamily: "inherit",
+              }}
+            >
+              <Plus size={18} />
+              Buat Pelatihan Baru
+            </button>
+          </div>
+        </div>
         <p style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", margin: 0 }}>
           Kelola pengajuan sertifikat dari peserta pelatihan
         </p>

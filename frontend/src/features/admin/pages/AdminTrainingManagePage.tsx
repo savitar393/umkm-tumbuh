@@ -157,9 +157,10 @@ export default function AdminTrainingManagePage() {
               style={{
                 display: "inline-flex", alignItems: "center", gap: 8,
                 padding: "10px 20px", borderRadius: 12,
-                background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)",
-                color: "#fff", fontSize: 14, fontWeight: 600,
+                background: "#fff", border: "none",
+                color: "#1f45b6", fontSize: 14, fontWeight: 700,
                 cursor: "pointer", fontFamily: "inherit",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
               }}
             >
               Dashboard Pelatihan
@@ -181,10 +182,9 @@ export default function AdminTrainingManagePage() {
               style={{
                 display: "inline-flex", alignItems: "center", gap: 8,
                 padding: "10px 20px", borderRadius: 12,
-                background: "#fff", border: "none",
-                color: "#1f45b6", fontSize: 14, fontWeight: 700,
+                background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)",
+                color: "#fff", fontSize: 14, fontWeight: 600,
                 cursor: "pointer", fontFamily: "inherit",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
               }}
             >
               <Plus size={18} />

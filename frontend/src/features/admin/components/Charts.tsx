@@ -129,7 +129,7 @@ export function StatusDonutChart({ data }: { data: StatusDistributionItem[] }) {
 // ─── Laba / Omzet Trend ───────────────────────────────────────────────────────
 
 export function OmzetTrendChart({ data }: { data: LabaTimeseriesItem[] }) {
-  if (data.length === 0) return <div className="chart-card full-width"><div className="chart-card__header"><div><div className="chart-card__title">Tren Laba UMKM</div><div className="chart-card__sub">Total laba per bulan (dalam juta Rp)</div></div><span className="chart-badge">+Rincian</span></div><EmptyChart /></div>;
+  if (data.length === 0) return <div className="chart-card full-width"><div className="chart-card__header"><div><div className="chart-card__title">Tren Omzet UMKM</div><div className="chart-card__sub">Total omzet per bulan (dalam juta Rp)</div></div><span className="chart-badge">+Rincian</span></div><EmptyChart /></div>;
 
   const chartData = data.map((d) => ({
     bulan: d.tanggal.slice(0, 7),
@@ -148,7 +148,7 @@ export function OmzetTrendChart({ data }: { data: LabaTimeseriesItem[] }) {
         <span className="chart-badge">+Rincian</span>
       </div>
       <ResponsiveContainer width="100%" height={200}>
-        <BarChart data={chartData}>
+        <LineChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
           <XAxis dataKey="bulan" tick={{ fontSize: 11 }} />
           <YAxis tick={{ fontSize: 12 }} />
@@ -158,8 +158,8 @@ export function OmzetTrendChart({ data }: { data: LabaTimeseriesItem[] }) {
               return [`Rp ${omzet} Jt`, "Omzet"];
             }}
           />
-          <Bar dataKey="omzet" fill="#1f45b6" radius={[4, 4, 0, 0]} />
-        </BarChart>
+          <Line type="monotone" dataKey="omzet" stroke="#1f45b6" strokeWidth={2} dot={{ r: 3 }} />
+        </LineChart>
       </ResponsiveContainer>
       <div className="chart-stats-row">
         <div className="chart-stat">
