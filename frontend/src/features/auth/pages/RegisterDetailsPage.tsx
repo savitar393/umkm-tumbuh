@@ -80,8 +80,8 @@ const UMKM_CATEGORY_OPTIONS = [
 const uploadCategoryByKey: Record<UploadKey, RegistrationDocumentCategory> = {
   umkmPhoto: "PRODUCT_IMAGE",
   umkmLegal: "GENERAL_DOCUMENT",
-  mitraLegal: "GENERAL_DOCUMENT",
-  mitraCommitment: "GENERAL_DOCUMENT",
+  mitraLegal: "CERTIFICATE",
+  mitraCommitment: "PARTNERSHIP_FILE",
   mitraCompanyProfile: "GENERAL_DOCUMENT",
 };
 

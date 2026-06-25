@@ -350,20 +350,18 @@ func buildAdminDocumentChecklist(role string, uploadedCategories map[string]int)
 		}
 
 	case "MITRA":
-		generalCount := uploadedCategories["GENERAL_DOCUMENT"]
-
 		return []map[string]any{
 			{
 				"label":    "Legalitas perusahaan",
-				"uploaded": generalCount >= 1,
+				"uploaded": uploadedCategories["CERTIFICATE"] > 0,
 			},
 			{
 				"label":    "Surat komitmen",
-				"uploaded": generalCount >= 2,
+				"uploaded": uploadedCategories["PARTNERSHIP_FILE"] > 0,
 			},
 			{
 				"label":    "Profil perusahaan",
-				"uploaded": generalCount >= 3,
+				"uploaded": uploadedCategories["GENERAL_DOCUMENT"] > 0,
 			},
 		}
 
