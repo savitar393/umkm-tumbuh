@@ -22,7 +22,9 @@ import {
   type UserDetailResponse,
 } from "../api";
 import AdminLayout from "../components/AdminLayout";
+import { getAccessToken } from "../../../shared/auth/currentUser";
 import "./admin.css";
+
 
 function formatDate(value?: string) {
   if (!value) return "—";
@@ -86,6 +88,10 @@ function getReadableRole(role?: string) {
   if (role === "MITRA") return "Mitra";
   if (role === "UMKM") return "UMKM";
   return role || "—";
+}
+
+function getDocumentID(doc: any) {
+  return doc.id ?? doc.dokumen_id ?? doc.document_id ?? "";
 }
 
 export default function AdminRegistrationDetailPage() {
@@ -205,6 +211,99 @@ export default function AdminRegistrationDetailPage() {
       setError(err instanceof Error ? err.message : "Gagal menolak pendaftaran.");
     } finally {
       setActionLoading(false);
+    }
+  }
+
+  async function openDocument(doc: any) {
+    const documentID = getDocumentID(doc);
+
+    if (!documentID) {
+      setError("ID dokumen tidak ditemukan.");
+      return;
+    }
+
+    const token = getAccessToken();
+
+    if (!token) {
+      setError("Sesi admin tidak valid. Silakan login ulang.");
+      return;
+    }
+
+    try {
+      setError("");
+
+      const response = await fetch(`/api/v1/documents/${documentID}/url`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Gagal membuka dokumen.");
+      }
+
+      const url = data?.data?.url;
+
+      if (!url) {
+        throw new Error("URL dokumen tidak tersedia.");
+      }
+
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal membuka dokumen.");
+    }
+  }
+
+  async function downloadDocument(doc: any) {
+    const documentID = getDocumentID(doc);
+
+    if (!documentID) {
+      setError("ID dokumen tidak ditemukan.");
+      return;
+    }
+
+    const token = getAccessToken();
+
+    if (!token) {
+      setError("Sesi admin tidak valid. Silakan login ulang.");
+      return;
+    }
+
+    try {
+      setError("");
+
+      const response = await fetch(`/api/v1/documents/${documentID}/download`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.error || "Gagal mengunduh dokumen.");
+      }
+
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const fileName =
+        doc.original_filename ??
+        doc.nama_dokumen ??
+        doc.file_name ??
+        doc.name ??
+        `${documentID}.bin`;
+
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      URL.revokeObjectURL(objectUrl);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal mengunduh dokumen.");
     }
   }
 
@@ -406,7 +505,6 @@ export default function AdminRegistrationDetailPage() {
               {data?.documents && data.documents.length > 0 ? (
                 <div className="admin-reg-doc-list">
                   {data.documents.map((doc: any, index: number) => {
-                    const docUrl = doc.url ?? doc.file_url ?? doc.path ?? "";
                     const docName =
                       doc.original_filename ??
                       doc.nama_dokumen ??
@@ -423,16 +521,24 @@ export default function AdminRegistrationDetailPage() {
                           <strong>{docName}</strong>
                           <span>{doc.status ?? doc.type ?? "Dokumen"}</span>
                         </div>
-                        {docUrl ? (
-                          <div className="admin-reg-doc-actions">
-                            <a href={docUrl} target="_blank" rel="noreferrer" title="Lihat dokumen">
-                              <Eye size={16} />
-                            </a>
-                            <a href={docUrl} download title="Unduh dokumen">
-                              <Download size={16} />
-                            </a>
-                          </div>
-                        ) : null}
+                        <div className="admin-reg-doc-actions">
+                          <button
+                            type="button"
+                            className="admin-reg-doc-action-btn"
+                            onClick={() => openDocument(doc)}
+                            title="Lihat dokumen"
+                          >
+                            <Eye size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            className="admin-reg-doc-action-btn"
+                            onClick={() => downloadDocument(doc)}
+                            title="Unduh dokumen"
+                          >
+                            <Download size={16} />
+                          </button>
+                        </div>
                       </div>
                     );
                   })}

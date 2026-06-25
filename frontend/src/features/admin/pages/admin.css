@@ -2449,47 +2449,51 @@
 }
 
 .admin-reg-doc-card {
-  display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
+  gap: 12px;
 }
 
-.admin-reg-empty {
+.admin-reg-doc-card > div:nth-child(2) {
+  min-width: 0;
+}
+
+.admin-reg-doc-card > div:nth-child(2) strong {
+  display: block;
+  max-width: 100%;
+  line-height: 1.25;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
 
-@media (max-width: 1100px) {
-  .admin-reg-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .admin-reg-side {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 20px;
-  }
+.admin-reg-doc-actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: max-content;
 }
 
-@media (max-width: 720px) {
-  .admin-reg-side {
-    grid-template-columns: 1fr;
-  }
+.admin-reg-doc-actions .admin-reg-doc-action-btn {
+  all: unset;
+  box-sizing: border-box;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #1d4ed8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  line-height: 1;
+}
 
-  .admin-reg-summary > div {
-    grid-template-columns: 1fr;
-  }
+.admin-reg-doc-actions .admin-reg-doc-action-btn:hover {
+  background: #dbeafe;
+}
 
-  .admin-reg-summary strong {
-    text-align: left;
-  }
-
-  .admin-reg-actionbar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .admin-reg-actionbar button {
-    width: 100%;
-  }
+.admin-reg-doc-actions .admin-reg-doc-action-btn:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
 }
