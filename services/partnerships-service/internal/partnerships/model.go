@@ -117,6 +117,8 @@ type UMKMListItem struct {
 	Province        string `json:"province"`         // provinsi
 	Description     string `json:"description"`      // deskripsi_usaha
 	OperationalArea string `json:"operational_area"` // wilayah_operasional
+	LogoURL         string `json:"logo_url"`
+	FotoCoverURL    string `json:"foto_cover_url"`
 }
 
 // MitraListItem represents a Mitra entity for listing purposes
@@ -147,6 +149,8 @@ type UMKMDetail struct {
 	Products               string `json:"products"`
 	YearEstablished        int    `json:"year_established"`
 	SocialMediaMarketplace string `json:"social_media_marketplace"`
+	LogoURL                string `json:"logo_url"`
+	FotoCoverURL           string `json:"foto_cover_url"`
 }
 
 // MitraDetail represents full detail of a Mitra

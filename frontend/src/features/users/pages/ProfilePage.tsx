@@ -32,6 +32,10 @@ function hasValue(value?: string | null) {
   return Boolean(value && value.trim());
 }
 
+function hasBusinessVisual(profile: UmkmProfile) {
+  return hasValue(profile.logo_url) || hasValue(profile.foto_cover_url);
+}
+
 function isValidEmail(value?: string | null) {
   if (!hasValue(value)) return true;
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value).trim());
@@ -91,7 +95,7 @@ function getCompletenessItems(profile: UmkmProfile) {
     },
     {
       label: "Visual usaha",
-      done: false,
+      done: hasBusinessVisual(profile),
     },
     {
       label: "Dokumen legalitas",
@@ -483,14 +487,26 @@ export default function ProfilePage() {
               </h2>
 
               <div className="umkm-gallery-view-grid">
-                <div className="umkm-placeholder-image">
-                  <ImagePlus size={30} />
-                  <span>Logo usaha belum tersedia</span>
+                <div className="umkm-placeholder-image umkm-profile-gallery-image umkm-profile-gallery-image--logo">
+                  {profile.logo_url ? (
+                    <img src={profile.logo_url} alt={`Logo ${profile.business_name}`} />
+                  ) : (
+                    <>
+                      <ImagePlus size={30} />
+                      <span>Logo usaha belum tersedia</span>
+                    </>
+                  )}
                 </div>
 
-                <div className="umkm-placeholder-image">
-                  <ImagePlus size={30} />
-                  <span>Foto utama usaha belum tersedia</span>
+                <div className="umkm-placeholder-image umkm-profile-gallery-image umkm-profile-gallery-image--cover">
+                  {profile.foto_cover_url ? (
+                    <img src={profile.foto_cover_url} alt={`Foto utama ${profile.business_name}`} />
+                  ) : (
+                    <>
+                      <ImagePlus size={30} />
+                      <span>Foto utama usaha belum tersedia</span>
+                    </>
+                  )}
                 </div>
               </div>
             </section>

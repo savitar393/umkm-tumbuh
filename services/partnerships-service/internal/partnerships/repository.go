@@ -414,6 +414,8 @@ func (r *repository) FindUMKMList(ctx context.Context, search string, filterType
 			COALESCE(l.provinsi, '') as province,
 			COALESCE(u.deskripsi_usaha, '') as description,
 			'' as operational_area,
+			COALESCE(u.logo_url, '') as logo_url,
+			COALESCE(u.foto_cover_url, '') as foto_cover_url,
 			COUNT(*) OVER() as total_count
 		FROM user_mgmt.master_umkm u
 		LEFT JOIN ref.ref_jenisumkm juk ON u.jenis_umkm_id = juk.jenis_umkm_id
@@ -440,7 +442,9 @@ func (r *repository) FindUMKMList(ctx context.Context, search string, filterType
 		var item UMKMListItem
 		err := rows.Scan(
 			&item.ID, &item.Name, &item.Type, &item.City,
-			&item.Province, &item.Description, &item.OperationalArea, &totalCount,
+			&item.Province, &item.Description, &item.OperationalArea,
+			&item.LogoURL, &item.FotoCoverURL,
+			&totalCount,
 		)
 		if err != nil {
 			return nil, 0, fmt.Errorf("failed to scan UMKM row: %w", err)
@@ -591,7 +595,9 @@ func (r *repository) FindUMKMDetail(ctx context.Context, umkmID string) (*UMKMDe
 			COALESCE(p.alamat, '') as address,
 			COALESCE(u.produk_utama, '') as products,
 			COALESCE(u.tahun_berdiri, 0) as year_established,
-			COALESCE(u.media_sosial_marketplace, '') as social_media_marketplace
+			COALESCE(u.media_sosial_marketplace, '') as social_media_marketplace,
+			COALESCE(u.logo_url, '') as logo_url,
+			COALESCE(u.foto_cover_url, '') as foto_cover_url
 		FROM user_mgmt.master_umkm u
 		LEFT JOIN ref.ref_jenisumkm juk ON u.jenis_umkm_id = juk.jenis_umkm_id
 		LEFT JOIN user_mgmt.master_lokasi l ON u.lokasi_id = l.lokasi_id
@@ -605,6 +611,7 @@ func (r *repository) FindUMKMDetail(ctx context.Context, umkmID string) (*UMKMDe
 		&d.Description, &d.OperationalArea,
 		&d.OwnerName, &d.PhoneNumber, &d.Email, &d.Address,
 		&d.Products, &d.YearEstablished, &d.SocialMediaMarketplace,
+		&d.LogoURL, &d.FotoCoverURL,
 	)
 	if err != nil {
 		if err == pgx.ErrNoRows {

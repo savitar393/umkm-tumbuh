@@ -9913,3 +9913,125 @@ button.danger {
   background: #fef2f2;
   color: #991b1b;
 }
+
+.umkm-profile-gallery-image {
+  overflow: hidden;
+}
+
+.umkm-profile-gallery-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.umkm-profile-gallery-image--logo img {
+  object-fit: contain;
+  padding: 14px;
+  background: #ffffff;
+}
+
+.umkm-profile-gallery-image--cover {
+  min-height: 160px;
+}
+
+.umkm-profile-gallery-image {
+  overflow: hidden;
+}
+
+.umkm-profile-gallery-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.umkm-profile-gallery-image--logo img {
+  object-fit: contain;
+  padding: 14px;
+  background: #ffffff;
+}
+
+.umkm-profile-gallery-image--cover {
+  min-height: 160px;
+}
+
+.partnership-detail-hero {
+  position: relative;
+  overflow: hidden;
+}
+
+.partnership-detail-hero--with-cover {
+  min-height: 220px;
+  align-items: flex-end;
+}
+
+.partnership-detail-hero-cover {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.partnership-detail-hero-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.72)),
+    linear-gradient(135deg, rgba(30, 64, 175, 0.16), rgba(255, 214, 10, 0.18));
+  pointer-events: none;
+}
+
+.partnership-detail-avatar,
+.partnership-detail-hero-content {
+  position: relative;
+  z-index: 1;
+}
+
+.partnership-detail-avatar {
+  overflow: hidden;
+}
+
+.partnership-detail-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.partnership-detail-gallery {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(180px, 0.6fr);
+  gap: 16px;
+}
+
+.partnership-detail-gallery-item {
+  margin: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #f8fafc;
+}
+
+.partnership-detail-gallery-item img {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+  display: block;
+}
+
+.partnership-detail-gallery-item--logo img {
+  object-fit: contain;
+  padding: 18px;
+  background: #ffffff;
+}
+
+.partnership-detail-gallery-item figcaption {
+  padding: 12px 16px;
+  font-weight: 800;
+  color: #475569;
+}
+
+@media (max-width: 900px) {
+  .partnership-detail-gallery {
+    grid-template-columns: 1fr;
+  }
+}

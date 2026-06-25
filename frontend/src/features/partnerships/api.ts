@@ -71,6 +71,8 @@ export interface PartnerListItem {
   province: string;
   description: string | null;
   operational_area?: string | null;
+  logo_url?: string | null;
+  foto_cover_url?: string | null;
 }
 
 export interface PartnerListResponse {
@@ -99,6 +101,8 @@ export interface UMKMDetail {
   products: string;
   year_established: number;
   social_media_marketplace?: string | null;
+  logo_url?: string | null;
+  foto_cover_url?: string | null;
 }
 
 export interface MitraDetail {

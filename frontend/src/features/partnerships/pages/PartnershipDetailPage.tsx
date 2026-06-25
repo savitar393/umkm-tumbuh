@@ -39,6 +39,22 @@ function hasValue(value?: string | null) {
   return Boolean(value && value.trim());
 }
 
+function getLogoUrl(detail: PartnershipProfileDetail) {
+  if (!("logo_url" in detail)) return "";
+
+  return typeof detail.logo_url === "string" ? detail.logo_url.trim() : "";
+}
+
+function getCoverUrl(detail: PartnershipProfileDetail) {
+  if (!("foto_cover_url" in detail)) return "";
+
+  return typeof detail.foto_cover_url === "string" ? detail.foto_cover_url.trim() : "";
+}
+
+// function hasGalleryImages(detail: PartnershipProfileDetail) {
+//   return Boolean(getLogoUrl(detail) || getCoverUrl(detail));
+// }
+
 function formatIndonesiaPhone(value?: string | null) {
   const digits = (value || "").replace(/\D/g, "");
 
@@ -349,6 +365,9 @@ export default function PartnershipDetailPage() {
     navigate(`${basePath}/create?${query.toString()}`);
   }
 
+  const logoUrl = data ? getLogoUrl(data) : "";
+  const coverUrl = data ? getCoverUrl(data) : "";
+
   return (
     <UmkmLayout
       title="Detail Kemitraan"
@@ -375,10 +394,33 @@ export default function PartnershipDetailPage() {
           </section>
         ) : (
           <>
-            <section className="partnership-detail-hero">
-              <div className="partnership-detail-avatar">{getInitials(data.name)}</div>
+            <section
+              className={[
+                "partnership-detail-hero",
+                coverUrl ? "partnership-detail-hero--with-cover" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+                          >
+              {coverUrl ? (
+                <img
+                  className="partnership-detail-hero-cover"
+                  src={coverUrl}
+                  alt={`Foto utama ${data.name}`}
+                />
+              ) : null}
 
-              <div>
+              <div className="partnership-detail-hero-overlay" />
+
+              <div className="partnership-detail-avatar">
+                {logoUrl ? (
+                  <img src={logoUrl} alt={`Logo ${data.name}`} />
+                ) : (
+                  getInitials(data.name)
+                )}
+              </div>
+
+              <div className="partnership-detail-hero-content">
                 <span className="partnership-eyebrow">
                   <Handshake size={16} />
                   Profil {profileKind}
@@ -414,6 +456,28 @@ export default function PartnershipDetailPage() {
                       : `Deskripsi ${profileKind.toLowerCase()} belum tersedia.`}
                   </p>
                 </article>
+
+                {isMitra && (coverUrl || logoUrl) ? (
+                  <article className="partnership-detail-card">
+                    <h2>Galeri Usaha</h2>
+
+                    <div className="partnership-detail-gallery">
+                      {coverUrl ? (
+                        <figure className="partnership-detail-gallery-item partnership-detail-gallery-item--cover">
+                          <img src={coverUrl} alt={`Foto utama ${data.name}`} />
+                          <figcaption>Foto utama usaha</figcaption>
+                        </figure>
+                      ) : null}
+
+                      {logoUrl ? (
+                        <figure className="partnership-detail-gallery-item partnership-detail-gallery-item--logo">
+                          <img src={logoUrl} alt={`Logo ${data.name}`} />
+                          <figcaption>Logo usaha</figcaption>
+                        </figure>
+                      ) : null}
+                    </div>
+                  </article>
+                ) : null}
 
                 <article className="partnership-detail-card">
                   <h2>Informasi Profil</h2>
