@@ -3,6 +3,7 @@ package partnerships
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -14,7 +15,6 @@ var (
 	pgjCounter int
 	pgjOnce    sync.Once
 )
-
 
 type Service interface {
 	GetPartnershipSummary(
@@ -89,6 +89,11 @@ type Service interface {
 		ctx context.Context,
 		mitraID string,
 	) (*MitraDetail, error)
+
+	GetIncomingPartnershipSummary(
+		ctx context.Context,
+		userID string,
+	) (map[string]int, error)
 }
 
 type service struct {
@@ -99,6 +104,17 @@ func NewService(repo Repository) Service {
 	return &service{
 		repo: repo,
 	}
+}
+
+func (s *service) GetIncomingPartnershipSummary(
+	ctx context.Context,
+	userID string,
+) (map[string]int, error) {
+	if strings.TrimSpace(userID) == "" {
+		return nil, apperror.New(401, "user not authenticated")
+	}
+
+	return s.repo.GetIncomingSummary(ctx, userID)
 }
 
 func (s *service) ValidatePartnershipRequest(
@@ -190,6 +206,15 @@ func (s *service) CreatePartnership(
 			500,
 			"failed to create partnership request: "+err.Error(),
 		)
+	}
+
+	if len(req.AttachmentFiles) > 0 {
+		if err := s.repo.CreateAttachments(ctx, partnership.ID, req.AttachmentFiles); err != nil {
+			return nil, apperror.New(
+				500,
+				"failed to save partnership attachments: "+err.Error(),
+			)
+		}
 	}
 
 	return s.repo.FindByID(ctx, partnership.ID)
@@ -291,9 +316,16 @@ func (s *service) UpdatePartnershipStatus(
 	)
 
 	if err != nil {
+		code := 500
+		msg := err.Error()
+		if strings.Contains(msg, "not found") {
+			code = 404
+		} else if strings.Contains(msg, "violates check constraint") {
+			code = 409
+		}
 		return apperror.New(
-			500,
-			"failed to update partnership status: "+err.Error(),
+			code,
+			"failed to update partnership status: "+msg,
 		)
 	}
 
@@ -325,7 +357,7 @@ func (s *service) SignPartnership(
 	if err != nil {
 		return apperror.New(
 			500,
-			"failed to sign partnership",
+			"failed to sign partnership: "+err.Error(),
 		)
 	}
 
@@ -356,24 +388,24 @@ func (s *service) GetUMKMList(
 	if page < 1 {
 		page = 1
 	}
-	
+
 	if limit < 1 {
 		limit = 10
 	}
-	
+
 	if limit > 100 {
 		limit = 100
 	}
-	
+
 	// Calculate offset for database query
 	offset := (page - 1) * limit
-	
+
 	// Fetch UMKM list from repository
 	umkmList, totalCount, err := s.repo.FindUMKMList(ctx, search, filterType, limit, offset)
 	if err != nil {
 		return nil, 0, apperror.New(500, "failed to fetch UMKM list: "+err.Error())
 	}
-	
+
 	return umkmList, totalCount, nil
 }
 
@@ -389,24 +421,24 @@ func (s *service) GetMitraList(
 	if page < 1 {
 		page = 1
 	}
-	
+
 	if limit < 1 {
 		limit = 10
 	}
-	
+
 	if limit > 100 {
 		limit = 100
 	}
-	
+
 	// Calculate offset for database query
 	offset := (page - 1) * limit
-	
+
 	// Fetch Mitra list from repository
 	mitraList, totalCount, err := s.repo.FindMitraList(ctx, search, filterType, limit, offset)
 	if err != nil {
 		return nil, 0, apperror.New(500, "failed to fetch Mitra list: "+err.Error())
 	}
-	
+
 	return mitraList, totalCount, nil
 }
 

@@ -41,6 +41,8 @@ func main() {
 	emailSender := email.NewSender(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUser, cfg.SMTPPassword, cfg.SMTPFrom)
 	adminService.SetEmailSender(emailSender)
 
+	authService.SetEmailSender(emailSender)
+
 	healthHandler := health.NewHandler(db)
 	authHandler := auth.NewHandler(authService)
 	adminHandler := admin.NewHandler(adminService, authService)

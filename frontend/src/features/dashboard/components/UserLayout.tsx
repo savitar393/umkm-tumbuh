@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { BookOpen, Bell, Handshake, LayoutDashboard, LogOut, Search, Settings2, User2 } from "lucide-react";
 import { getCurrentUser, clearAuthStorage } from "../../../shared/auth/currentUser";
 import type { UserRole } from "../../../shared/auth/currentUser";
+import { logout as logoutApi } from "../../auth/api";
 
 type NavItem = { label: string; to: string; icon: ReactNode };
 
@@ -34,9 +35,15 @@ export default function UserLayout({ children, role, title, subtitle }: Props) {
   const navItems = role === "UMKM" ? umkmNav : mitraNav;
   const brandColor = role === "UMKM" ? "#1f45b6" : "#1d4ed8";
 
-  function logout() {
-    clearAuthStorage();
-    navigate("/login");
+  async function logout() {
+    try {
+      await logoutApi();
+    } catch {
+      // Local logout should still happen even if backend logout fails.
+    } finally {
+      clearAuthStorage();
+      navigate("/", { replace: true });
+    }
   }
 
   return (

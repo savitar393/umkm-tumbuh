@@ -16,6 +16,11 @@ interface SuccessResponse<T> {
   data: T;
 }
 
+interface DocumentUrlResponse {
+  url: string;
+  content_type?: string;
+}
+
 export interface PartnershipStatusResponse {
   pengajuan: Array<{
     pengajuanID: string;
@@ -45,6 +50,16 @@ export interface IncomingPartnershipsResponse {
     limit: number;
     total: number;
     totalPages: number;
+  };
+}
+
+export interface IncomingPartnershipSummaryResponse {
+  summary: {
+    menunggu: number;
+    disetujui: number;
+    ditolak: number;
+    dibatalkan?: number;
+    total: number;
   };
 }
 
@@ -83,6 +98,7 @@ export interface UMKMDetail {
   address: string;
   products: string;
   year_established: number;
+  social_media_marketplace?: string | null;
 }
 
 export interface MitraDetail {
@@ -119,6 +135,7 @@ export const partnershipsApi = {
     if (params?.page) queryParams.append("page", params.page.toString());
     if (params?.limit) queryParams.append("limit", params.limit.toString());
     if (params?.status) queryParams.append("status", params.status);
+    
     const url = `/partnerships/status${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
     return httpPartnerships.get<SuccessResponse<PartnershipStatusResponse>>(url);
   },
@@ -133,13 +150,32 @@ export const partnershipsApi = {
     if (params?.page) queryParams.append("page", params.page.toString());
     if (params?.limit) queryParams.append("limit", params.limit.toString());
     if (params?.status) queryParams.append("status", params.status);
+    
     const url = `/partnerships/incoming${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
     return httpPartnerships.get<SuccessResponse<IncomingPartnershipsResponse>>(url);
   },
 
+  getIncomingSummary: async (): Promise<SuccessResponse<IncomingPartnershipSummaryResponse>> => {
+    return httpPartnerships.get<SuccessResponse<IncomingPartnershipSummaryResponse>>(
+      "/partnerships/incoming/summary",
+    );
+  },
+
   // GET /api/v1/partnerships/{id}
-  getDetail: async (id: string): Promise<SuccessResponse<any>> => {
-    return httpPartnerships.get<SuccessResponse<any>>(`/partnerships/${id}`);
+  getDetail: async (id: string): Promise<SuccessResponse<Record<string, unknown>>> => {
+    const response = await httpPartnerships.get<SuccessResponse<Record<string, unknown>>>(`/partnerships/${id}`);
+    const raw = response.data;
+    const maybePengajuan = raw?.pengajuan;
+
+    const data =
+      maybePengajuan && typeof maybePengajuan === "object" && !Array.isArray(maybePengajuan)
+        ? (maybePengajuan as Record<string, unknown>)
+        : raw;
+
+    return {
+      ...response,
+      data,
+    };
   },
 
   // GET /api/v1/partnerships/summary
@@ -171,6 +207,11 @@ export const partnershipsApi = {
     });
   },
 
+  // PATCH /api/v1/partnerships/{id}/cancel
+  cancel: async (id: string): Promise<SuccessResponse<void>> => {
+    return httpPartnerships.patch<SuccessResponse<void>>(`/partnerships/${id}/cancel`, {});
+  },
+
   // GET /api/v1/umkm/{id}
   getUMKMDetail: async (id: string): Promise<SuccessResponse<{ umkm: UMKMDetail }>> => {
     return httpPartnerships.get<SuccessResponse<{ umkm: UMKMDetail }>>(`/umkm/${id}`);
@@ -193,10 +234,11 @@ export const partnershipsApi = {
     if (params?.filterType && params.filterType !== "all") queryParams.append("filterType", params.filterType);
     if (params?.page) queryParams.append("page", params.page.toString());
     if (params?.limit) queryParams.append("limit", params.limit.toString());
-
+    
     const url = `/mitra${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
-    const response = await httpPartnerships.get<BackendResponse<{ mitra: PartnerListItem[]; pagination: any }>>(url);
-
+    interface PaginationInfo { page: number; limit: number; total: number; totalPages: number; }
+    const response = await httpPartnerships.get<BackendResponse<{ mitra: PartnerListItem[]; pagination: PaginationInfo }>>(url);
+    
     return {
       mitra: response.data.mitra,
       pagination: response.data.pagination,
@@ -215,10 +257,11 @@ export const partnershipsApi = {
     if (params?.filterType && params.filterType !== "all") queryParams.append("filterType", params.filterType);
     if (params?.page) queryParams.append("page", params.page.toString());
     if (params?.limit) queryParams.append("limit", params.limit.toString());
-
+    
     const url = `/umkm${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
-    const response = await httpPartnerships.get<BackendResponse<{ umkm: PartnerListItem[]; pagination: any }>>(url);
-
+    interface PaginationInfo { page: number; limit: number; total: number; totalPages: number; }
+    const response = await httpPartnerships.get<BackendResponse<{ umkm: PartnerListItem[]; pagination: PaginationInfo }>>(url);
+    
     return {
       umkm: response.data.umkm,
       pagination: response.data.pagination,
@@ -226,31 +269,76 @@ export const partnershipsApi = {
   },
 
   // POST /api/v1/documents/upload - upload dokumen
-  uploadDocument: async (file: File, uploaderAkunId: string): Promise<string> => {
+  uploadDocument: async (file: File): Promise<string> => {
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("jenis_dokumen_id", "PERJANJIAN_KERJASAMA");
-    formData.append("uploader_akun_id", uploaderAkunId);
-    formData.append("owner_type", "PENGAJUAN_KERJASAMA");
-    formData.append("owner_id", uploaderAkunId);
-    formData.append("context_type", "partnership");
-    formData.append("is_public", "false");
-    formData.append("display_order", "1");
+    formData.append("category", "PARTNERSHIP_FILE");
 
     const userRole = getCurrentUser()?.role || "UMKM";
     const token = getAccessToken();
+
     const headers: Record<string, string> = {
       "X-User-Role": userRole,
     };
-    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    if (token) headers.Authorization = `Bearer ${token}`;
 
     const resp = await fetch("/api/v1/documents/upload", {
       method: "POST",
       headers,
       body: formData,
     });
+
     const json = await resp.json();
-    if (!resp.ok) throw new Error(json.message || "Upload gagal");
-    return json.data?.dokumen_id || json.data?.DokumenID;
+
+    if (!resp.ok) {
+      throw new Error(json.error || json.message || "Upload gagal");
+    }
+
+    const documentId =
+      json.document?.id ||
+      json.data?.document_id ||
+      json.data?.dokumen_id ||
+      json.data?.DokumenID;
+
+    if (!documentId) {
+      throw new Error("Upload berhasil, tetapi ID dokumen tidak ditemukan.");
+    }
+
+    return documentId;
+  },
+
+  // GET /api/v1/documents/{id}/url - ambil URL dokumen untuk preview
+  getDocumentUrl: async (documentId: string): Promise<SuccessResponse<DocumentUrlResponse>> => {
+    const userRole = getCurrentUser()?.role || "UMKM";
+    const token = getAccessToken();
+
+    const headers: Record<string, string> = {
+      "X-User-Role": userRole,
+    };
+
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    const resp = await fetch(`/api/v1/documents/${documentId}/url`, {
+      method: "GET",
+      headers,
+    });
+
+    const json = await resp.json();
+
+    if (!resp.ok) {
+      throw new Error(json.error || json.message || "Gagal mengambil URL dokumen");
+    }
+
+    const data = json.data || json.document || json;
+
+    return {
+      success: json.success ?? true,
+      message: json.message,
+      data: {
+        url: data.url || data.file_url || data.download_url || data.presigned_url || "",
+        content_type: data.content_type || data.mime_type || data.file_type || "application/pdf",
+      },
+    };
   },
 };

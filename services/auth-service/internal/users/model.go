@@ -29,6 +29,7 @@ type User struct {
 	CatatanValidasi *string
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
+	EmailVerifiedAt *time.Time
 }
 
 type Response struct {
@@ -47,6 +48,7 @@ type Response struct {
 	CatatanValidasi *string    `json:"catatan_validasi,omitempty"`
 	CreatedAt       time.Time  `json:"created_at"`
 	UpdatedAt       time.Time  `json:"updated_at"`
+	EmailVerifiedAt *time.Time `json:"email_verified_at,omitempty"`
 }
 
 type RegistrationDetailResponse struct {
@@ -73,5 +75,6 @@ func ToResponse(user *User) Response {
 		CatatanValidasi: user.CatatanValidasi,
 		CreatedAt:       user.CreatedAt,
 		UpdatedAt:       user.UpdatedAt,
+		EmailVerifiedAt: user.EmailVerifiedAt,
 	}
 }

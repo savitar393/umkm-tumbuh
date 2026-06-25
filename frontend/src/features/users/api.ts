@@ -27,20 +27,20 @@ export type UmkmProfile = {
 export type UmkmProfilePayload = {
   business_name: string;
   business_category: string;
-  business_description?: string;
-  established_year?: number;
-  business_email?: string;
-  operating_hours?: string;
-  social_media_marketplace?: string;
+  business_description?: string | null;
+  established_year?: number | null;
+  business_email?: string | null;
+  operating_hours?: string | null;
+  social_media_marketplace?: string | null;
   owner_name: string;
   nik: string;
   phone_number: string;
   address: string;
   city: string;
   province: string;
-  district?: string;
-  village?: string;
-  postal_code?: string;
+  district?: string | null;
+  village?: string | null;
+  postal_code?: string | null;
 };
 
 export type MitraProfile = {
@@ -72,21 +72,21 @@ export type MitraProfile = {
 export type MitraProfilePayload = {
   organization_name: string;
   organization_type: string;
-  legal_name?: string;
-  nib?: string;
-  npwp?: string;
-  description?: string;
+  legal_name?: string | null;
+  nib?: string | null;
+  npwp?: string | null;
+  description?: string | null;
   contact_person: string;
-  contact_person_title?: string;
+  contact_person_title?: string | null;
   phone_number: string;
   address: string;
   city: string;
   province: string;
-  district?: string;
-  village?: string;
-  postal_code?: string;
-  operational_area?: string;
-  cooperation_scale?: string;
+  district?: string | null;
+  village?: string | null;
+  postal_code?: string | null;
+  operational_area?: string | null;
+  cooperation_scale?: string | null;
 };
 
 export function getMyProfile() {

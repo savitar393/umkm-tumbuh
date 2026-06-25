@@ -1,57 +1,76 @@
-import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { partnershipsApi } from "../api";
-import type { UMKMDetail, MitraDetail } from "../api";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import {
+  ArrowLeft,
+  Building2,
+  CalendarDays,
+  Download,
+  Handshake,
+  Mail,
+  MapPin,
+  Phone,
+  ScrollText,
+  ShieldCheck,
+  UserRound,
+} from "lucide-react";
+import UmkmLayout from "../../umkm/components/UmkmLayout";
 import { getCurrentUser } from "../../../shared/auth/currentUser";
-import PartnershipSidebar from "../components/PartnershipSidebar";
+import { partnershipsApi, type MitraDetail, type UMKMDetail } from "../api";
+import { Icon } from "@iconify/react";
+import {
+  hasAnySocialMedia,
+  parseSocialMediaValue,
+} from "../../../shared/utils/socialMedia";
 
-const PartnershipDetailPage: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const user = getCurrentUser();
-  const isMitra = user?.role === "MITRA";
-  const basePath = isMitra ? "/mitra/partnerships" : "/umkm/partnerships";
+type PartnershipProfileDetail = UMKMDetail & MitraDetail;
 
-  const [detail, setDetail] = useState<UMKMDetail | MitraDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+function getInitials(name: string) {
+  return (
+    name
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "P"
+  );
+}
 
-  useEffect(() => {
-    if (!id) return;
-    const fetchDetail = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        if (isMitra) {
-          const resp = await partnershipsApi.getUMKMDetail(id);
-          if (resp.success === true && resp.data?.umkm) {
-            setDetail(resp.data.umkm);
-          } else {
-            setError("UMKM tidak ditemukan");
-          }
-        } else {
-          const resp = await partnershipsApi.getMitraDetail(id);
-          if (resp.success === true && resp.data?.mitra) {
-            setDetail(resp.data.mitra);
-          } else {
-            setError("Mitra tidak ditemukan");
-          }
-        }
-      } catch {
-        setError("Gagal memuat data");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchDetail();
-  }, [id, isMitra]);
+function hasValue(value?: string | null) {
+  return Boolean(value && value.trim());
+}
 
-  const handleAjukanKemitraan = () => {
-    navigate(`${basePath}/create?receiver_id=${id}`);
-  };
+function formatIndonesiaPhone(value?: string | null) {
+  const digits = (value || "").replace(/\D/g, "");
 
-  const downloadTemplate = () => {
-    const html = `<!DOCTYPE html>
+  if (!digits) return "Belum tersedia";
+
+  if (digits.startsWith("62")) {
+    return `+${digits}`;
+  }
+
+  if (digits.startsWith("0")) {
+    return `+62 ${digits.slice(1)}`;
+  }
+
+  return `+62 ${digits}`;
+}
+
+function getFullLocation(detail: PartnershipProfileDetail) {
+  return [detail.city, detail.province].filter(Boolean).join(", ");
+}
+
+function getFullAddress(detail: PartnershipProfileDetail) {
+  return [detail.address, detail.city, detail.province].filter(Boolean).join(", ");
+}
+
+function getBasePath(role?: string) {
+  if (role === "MITRA") return "/mitra/partnerships";
+  if (role === "UMKM") return "/umkm/partnerships";
+  return "/partnerships";
+}
+
+function downloadPartnershipTemplate() {
+  const html = `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
@@ -68,7 +87,6 @@ const PartnershipDetailPage: React.FC = () => {
 </style>
 </head>
 <body>
-
 <h1>SURAT PENGAJUAN KEMITRAAN<br>UMKM Tumbuh</h1>
 
 <table>
@@ -81,23 +99,16 @@ const PartnershipDetailPage: React.FC = () => {
   <tr><td class="label">No. Telepon/WhatsApp</td><td class="field">............................</td></tr>
   <tr><td class="label">Email</td><td class="field">............................</td></tr>
   <tr><td class="label">Tahun Berdiri</td><td class="field">............................</td></tr>
-  <tr><td class="label">NIB (jika ada)</td><td class="field">............................</td></tr>
+  <tr><td class="label">NIB / Legalitas</td><td class="field">............................</td></tr>
 </table>
 
-<h2>Deskripsi Usaha</h2>
+<h2>Deskripsi Usaha / Profil Mitra</h2>
 <p>............................<br>............................<br>............................</p>
-
-<h2>Produk Unggulan</h2>
-<ol>
-  <li>............................</li>
-  <li>............................</li>
-  <li>............................</li>
-</ol>
 
 <h2>Alasan Bermitra</h2>
 <p>............................<br>............................<br>............................</p>
 
-<h2>Bentuk Dukungan yang Diharapkan</h2>
+<h2>Bentuk Dukungan / Kolaborasi yang Diharapkan</h2>
 <p>............................<br>............................<br>............................</p>
 
 <br><br>
@@ -115,236 +126,367 @@ const PartnershipDetailPage: React.FC = () => {
     </td>
   </tr>
 </table>
-
 </body>
 </html>`;
-    const blob = new Blob([html], { type: "application/msword" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "Template_Pengajuan_Kemitraan.doc";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
 
-  const d = detail as UMKMDetail & MitraDetail;
-  const hasDescription = d?.description && d.description.trim().length > 0;
-  const hasYear = typeof d?.year_established === "number" && d.year_established > 0;
-  const bgLayers = (
-    <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundImage: "url(/background.png)", backgroundSize: "cover", backgroundPosition: "center", zIndex: 0, opacity: 0.7 }} />
-  );
+  const blob = new Blob([html], { type: "application/msword" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
 
-  if (loading) {
-    return (
-      <div style={{ display: "flex", minHeight: "100vh", position: "relative" }}>
-        {bgLayers}
-        <div style={{ position: "relative", zIndex: 1, display: "flex", width: "100%" }}>
-          <PartnershipSidebar />
-          <main style={{ marginLeft: 260, flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <div style={{ textAlign: "center" }}>
-              <div style={{ display: "inline-block", width: 40, height: 40, borderRadius: "50%", border: "3px solid #E8E7E2", borderTopColor: "#1A3A6B", animation: "spin 0.8s linear infinite" }} />
-              <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-              <p style={{ marginTop: 16, color: "#888780" }}>Memuat detail...</p>
-            </div>
-          </main>
-        </div>
-      </div>
-    );
-  }
+  anchor.href = url;
+  anchor.download = "Template_Pengajuan_Kemitraan.doc";
 
-  if (error || !detail) {
-    return (
-      <div style={{ display: "flex", minHeight: "100vh", position: "relative" }}>
-        {bgLayers}
-        <div style={{ position: "relative", zIndex: 1, display: "flex", width: "100%" }}>
-          <PartnershipSidebar />
-          <main style={{ marginLeft: 260, flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <div style={{ background: "white", borderRadius: 16, padding: "40px", textAlign: "center", maxWidth: 400 }}>
-              <div style={{ width: 64, height: 64, background: "#FEF2F2", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#E24B4A" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10" /><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </div>
-              <h3 style={{ margin: "0 0 8px", fontSize: 20, color: "#2C2C2A" }}>{isMitra ? "UMKM Tidak Ditemukan" : "Mitra Tidak Ditemukan"}</h3>
-              <p style={{ margin: "0 0 24px", color: "#888780" }}>{error || "Data tidak tersedia"}</p>
-              <button onClick={() => navigate(basePath)} style={{ padding: "10px 24px", background: "#1A3A6B", border: "none", borderRadius: 8, color: "white", cursor: "pointer" }}>Kembali</button>
-            </div>
-          </main>
-        </div>
-      </div>
-    );
-  }
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  URL.revokeObjectURL(url);
+}
 
+function InfoItem({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value?: string | number | null;
+}) {
   return (
-    <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'Segoe UI', Roboto, sans-serif", position: "relative" }}>
-      {bgLayers}
-      <div style={{ position: "relative", zIndex: 1, display: "flex", width: "100%" }}>
-        <PartnershipSidebar />
-        <main style={{ marginLeft: 260, flex: 1, display: "flex", justifyContent: "center", padding: "32px 40px", boxSizing: "border-box" }}>
-          <div style={{ width: "100%", maxWidth: 1400 }}>
-
-            {/* Breadcrumb */}
-            <button onClick={() => navigate(basePath)}
-              style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "none", border: "none", color: "#1A3A6B", cursor: "pointer", marginBottom: 24, fontSize: 14, padding: "6px 12px", whiteSpace: "nowrap", borderRadius: 8 }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
-              Kembali ke Daftar
-            </button>
-
-            {/* Two-column layout */}
-            <div style={{ display: "flex", gap: 32, alignItems: "flex-start" }}>
-
-              {/* ── LEFT COLUMN: Profile ─────────────────────────────────────────── */}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ background: "white", borderRadius: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.05)", padding: 32 }}>
-                  {/* Avatar + Name Header */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 20, marginBottom: 24 }}>
-                    <div style={{ width: 80, height: 80, borderRadius: 20, background: "#1A3A6B", display: "flex", alignItems: "center", justifyContent: "center", color: "#F5A623", fontWeight: "bold", fontSize: 32, flexShrink: 0 }}>
-                      {d.name.charAt(0)}
-                    </div>
-                    <div>
-                      <h1 style={{ margin: "0 0 4px", fontSize: 28, fontWeight: 700, color: "#1A3A6B" }}>{d.name}</h1>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                        {d.type && <span style={{ fontSize: 12, color: "#1D9E75", background: "#E8F5F0", padding: "3px 12px", borderRadius: 20, fontWeight: 600 }}>{d.type}</span>}
-                        {(d.city || d.province) && <span style={{ fontSize: 13, color: "#888780" }}>{d.city}{d.city && d.province ? `, ${d.province}` : d.province}</span>}
-                        {hasYear && <span style={{ fontSize: 13, color: "#888780" }}>• Berdiri {d.year_established}</span>}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Description */}
-                  {hasDescription && (
-                    <>
-                      <h2 style={{ fontSize: 16, fontWeight: 700, color: "#1A3A6B", margin: "0 0 12px", paddingBottom: 8, borderBottom: "2px solid #F5A623", display: "inline-block" }}>
-                        Deskripsi {isMitra ? "UMKM" : "Mitra"}
-                      </h2>
-                      <p style={{ fontSize: 14, lineHeight: 1.7, color: "#5F5E5A", margin: "0 0 20px", whiteSpace: "pre-wrap" }}>{d.description}</p>
-                    </>
-                  )}
-
-
-                </div>
-              </div>
-
-              {/* ── RIGHT COLUMN: Action Card ──────────────────────────────────── */}
-              <div style={{ width: 340, flexShrink: 0 }}>
-                <div style={{
-                  background: "white",
-                  borderRadius: 16,
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-                  overflow: "hidden",
-                  border: "1px solid #E8E7E2"
-                }}>
-                  {/* Header */}
-                  <div style={{ padding: "20px 24px", borderBottom: "1px solid #E8E7E2", textAlign: "center", background: "#FAFAF8" }}>
-                    <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#1A3A6B" }}>Ajukan Kemitraan</h3>
-                  </div>
-
-                  {/* Download Template */}
-                  <div style={{ padding: "16px 24px", borderBottom: "1px solid #E8E7E2" }}>
-                    <button
-                      onClick={downloadTemplate}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 10,
-                        width: "100%",
-                        color: "#1A3A6B",
-                        fontSize: 13,
-                        fontWeight: 600,
-                        textDecoration: "none",
-                        cursor: "pointer",
-                        padding: "10px 14px",
-                        borderRadius: 8,
-                        background: "#F5F4F0",
-                        border: "none",
-                        transition: "all 0.2s",
-                        justifyContent: "center"
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = "#EDEBE4"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = "#F5F4F0"; }}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                        <polyline points="7 10 12 15 17 10" />
-                        <line x1="12" y1="15" x2="12" y2="3" />
-                      </svg>
-                      Download Template Pengajuan
-                    </button>
-                  </div>
-
-                  {/* Informasi Kemitraan */}
-                  <div style={{ padding: "20px 24px", borderBottom: "1px solid #E8E7E2" }}>
-                    <h4 style={{ margin: "0 0 14px", fontSize: 12, fontWeight: 700, color: "#888780", letterSpacing: 0.5, textTransform: "uppercase" }}>
-                      Informasi Kemitraan
-                    </h4>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span style={{ fontSize: 13, color: "#888780" }}>Jenis</span>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: "#2C2C2A" }}>{d.type || "-"}</span>
-                      </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span style={{ fontSize: 13, color: "#888780" }}>Lokasi</span>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: "#2C2C2A", textAlign: "right" }}>
-                          {d.city || "-"}{d.city && d.province ? `, ${d.province}` : d.province ? d.province : ""}
-                        </span>
-                      </div>
-                      {hasYear && (
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <span style={{ fontSize: 13, color: "#888780" }}>Berdiri</span>
-                          <span style={{ fontSize: 13, fontWeight: 600, color: "#2C2C2A" }}>{d.year_established}</span>
-                        </div>
-                      )}
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span style={{ fontSize: 13, color: "#888780" }}>Status</span>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: "#1D9E75", background: "#E8F5F0", padding: "2px 10px", borderRadius: 12 }}>Terverifikasi</span>
-                      </div>
-                    </div>
-                  </div>
-
-
-
-                  {/* Ajukan Button */}
-                  <div style={{ padding: "16px 24px 20px" }}>
-                    <button
-                      onClick={handleAjukanKemitraan}
-                      style={{
-                        width: "100%",
-                        padding: "14px 0",
-                        background: "#1D9E75",
-                        border: "none",
-                        borderRadius: 10,
-                        fontSize: 15,
-                        fontWeight: 600,
-                        color: "white",
-                        cursor: "pointer",
-                        transition: "all 0.2s",
-                        boxShadow: "0 4px 14px rgba(29, 158, 117, 0.3)"
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "#0F6E56";
-                        e.currentTarget.style.transform = "translateY(-2px)";
-                        e.currentTarget.style.boxShadow = "0 6px 20px rgba(29, 158, 117, 0.4)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "#1D9E75";
-                        e.currentTarget.style.transform = "translateY(0)";
-                        e.currentTarget.style.boxShadow = "0 4px 14px rgba(29, 158, 117, 0.3)";
-                      }}
-                    >
-                      Ajukan Kemitraan
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-          </div>
-        </main>
+    <div className="partnership-detail-info-item">
+      {icon}
+      <div>
+        <span>{label}</span>
+        <strong>{value || "Belum tersedia"}</strong>
       </div>
     </div>
   );
+}
+
+type SocialPlatform = "instagram" | "tiktok" | "shopee" | "tokopedia" | "website";
+
+const socialIconMap: Record<SocialPlatform, string> = {
+  instagram: "simple-icons:instagram",
+  tiktok: "simple-icons:tiktok",
+  shopee: "simple-icons:shopee",
+  tokopedia: "simple-icons:tokopedia",
+  website: "lucide:globe",
 };
 
-export default PartnershipDetailPage;
+function withoutAt(value: string) {
+  return value.trim().replace(/^@+/, "");
+}
+
+function normalizeWebsiteUrl(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}
+
+function getSocialDisplayLabel(platform: SocialPlatform, label: string) {
+  const value = label.trim();
+
+  if (platform === "website") {
+    try {
+      const url = new URL(normalizeWebsiteUrl(value));
+      return url.hostname.replace(/^www\./, "");
+    } catch {
+      return value.replace(/^https?:\/\//i, "").replace(/^www\./, "");
+    }
+  }
+
+  return value;
+}
+
+function getSocialUrl(platform: SocialPlatform, label: string) {
+  const value = label.trim();
+  if (!value) return "";
+
+  switch (platform) {
+    case "instagram":
+      return `https://www.instagram.com/${withoutAt(value)}`;
+    case "tiktok":
+      return `https://www.tiktok.com/@${withoutAt(value)}`;
+    case "shopee":
+      return `https://shopee.co.id/search?keyword=${encodeURIComponent(value)}`;
+    case "tokopedia":
+      return `https://www.tokopedia.com/search?st=shop&q=${encodeURIComponent(value)}`;
+    case "website":
+      return normalizeWebsiteUrl(value);
+    default:
+      return "";
+  }
+}
+
+function SocialBrandIcon({ platform }: { platform: SocialPlatform }) {
+  return (
+    <span className={`partnership-social-brand-icon ${platform}`}>
+      <Icon icon={socialIconMap[platform]} width={16} height={16} />
+    </span>
+  );
+}
+
+function SocialProfileLinks({ value }: { value?: string | null }) {
+  const socialLinks = parseSocialMediaValue(value);
+
+  if (!hasAnySocialMedia(socialLinks)) return null;
+
+  const items = [
+    socialLinks.instagram ? { platform: "instagram" as const, label: socialLinks.instagram } : null,
+    socialLinks.tiktok ? { platform: "tiktok" as const, label: socialLinks.tiktok } : null,
+    socialLinks.shopee ? { platform: "shopee" as const, label: socialLinks.shopee } : null,
+    socialLinks.tokopedia ? { platform: "tokopedia" as const, label: socialLinks.tokopedia } : null,
+    socialLinks.website ? { platform: "website" as const, label: socialLinks.website } : null,
+  ].filter(Boolean) as Array<{ platform: SocialPlatform; label: string }>;
+
+  return (
+    <div className="partnership-social-chip-list">
+      {items.map((item) => (
+        <a
+          key={`${item.platform}-${item.label}`}
+          href={getSocialUrl(item.platform, item.label)}
+          target="_blank"
+          rel="noreferrer"
+          title={item.label}
+        >
+          <SocialBrandIcon platform={item.platform} />
+          <strong>{getSocialDisplayLabel(item.platform, item.label)}</strong>
+        </a>
+      ))}
+    </div>
+  );
+}
+
+export default function PartnershipDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const user = getCurrentUser();
+
+  const isMitra = user?.role === "MITRA";
+  const basePath = getBasePath(user?.role);
+  const rawReturnTo = searchParams.get("returnTo");
+  const decodedReturnTo = rawReturnTo ? decodeURIComponent(rawReturnTo) : "";
+
+  const returnPath = decodedReturnTo.startsWith(basePath)
+    ? decodedReturnTo
+    : basePath;
+
+  function goBackToList() {
+    navigate(returnPath);
+  }
+  const profileKind = isMitra ? "UMKM" : "Mitra";
+
+  const [detail, setDetail] = useState<UMKMDetail | MitraDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const data = detail as PartnershipProfileDetail | null;
+
+  const fullLocation = useMemo(() => (data ? getFullLocation(data) : ""), [data]);
+  const fullAddress = useMemo(() => (data ? getFullAddress(data) : ""), [data]);
+
+  useEffect(() => {
+    if (!id) {
+      setError("ID profil kemitraan tidak ditemukan.");
+      setLoading(false);
+      return;
+    }
+
+    const detailId = id;
+    let ignore = false;
+
+    async function fetchDetail() {
+      setLoading(true);
+      setError("");
+
+      try {
+        if (isMitra) {
+          const response = await partnershipsApi.getUMKMDetail(detailId);
+
+          if (!ignore) {
+            if (response.success === true && response.data?.umkm) {
+              setDetail(response.data.umkm);
+            } else {
+              setError("UMKM tidak ditemukan.");
+            }
+          }
+
+          return;
+        }
+
+        const response = await partnershipsApi.getMitraDetail(detailId);
+
+        if (!ignore) {
+          if (response.success === true && response.data?.mitra) {
+            setDetail(response.data.mitra);
+          } else {
+            setError("Mitra tidak ditemukan.");
+          }
+        }
+      } catch (err) {
+        if (!ignore) {
+          setError(err instanceof Error ? err.message : "Gagal memuat detail kemitraan.");
+        }
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    }
+
+    fetchDetail();
+
+    return () => {
+      ignore = true;
+    };
+  }, [id, isMitra]);
+
+  function handleApplyPartnership() {
+    const query = new URLSearchParams();
+
+    if (id) query.set("receiver_id", id);
+    if (data?.name) query.set("receiver_name", data.name);
+
+    navigate(`${basePath}/create?${query.toString()}`);
+  }
+
+  return (
+    <UmkmLayout
+      title="Detail Kemitraan"
+      subtitle={`Lihat detail ${profileKind.toLowerCase()} sebelum mengajukan kerja sama.`}
+    >
+      <main className="partnership-detail-page">
+        <button className="partnership-back-button" type="button" onClick={goBackToList}>
+          <ArrowLeft size={17} />
+          Kembali ke Daftar
+        </button>
+
+        {loading ? (
+          <section className="partnership-state-card">
+            <div className="partnership-spinner" />
+            <p>Memuat detail {profileKind.toLowerCase()}...</p>
+          </section>
+        ) : error || !data ? (
+          <section className="partnership-state-card error">
+            <strong>{profileKind} tidak ditemukan</strong>
+            <p>{error || "Data tidak tersedia."}</p>
+            <button type="button" onClick={goBackToList}>
+              Kembali
+            </button>
+          </section>
+        ) : (
+          <>
+            <section className="partnership-detail-hero">
+              <div className="partnership-detail-avatar">{getInitials(data.name)}</div>
+
+              <div>
+                <span className="partnership-eyebrow">
+                  <Handshake size={16} />
+                  Profil {profileKind}
+                </span>
+                <h1>{data.name}</h1>
+
+                <div className="partnership-detail-chip-row">
+                  {data.type ? <span>{data.type}</span> : null}
+                  {fullLocation ? <span>{fullLocation}</span> : null}
+                  {"year_established" in data && data.year_established ? (
+                    <span>Berdiri {data.year_established}</span>
+                  ) : null}
+                  <span className="verified">
+                    <ShieldCheck size={14} />
+                    Terverifikasi
+                  </span>
+                </div>
+                {"social_media_marketplace" in data && hasValue(data.social_media_marketplace) ? (
+                  <div className="partnership-detail-hero-social">
+                    <SocialProfileLinks value={data.social_media_marketplace} />
+                  </div>
+                ) : null}
+              </div>
+            </section>
+
+            <section className="partnership-detail-layout">
+              <div className="partnership-detail-main">
+                <article className="partnership-detail-card">
+                  <h2>Deskripsi {profileKind}</h2>
+                  <p>
+                    {hasValue(data.description)
+                      ? data.description
+                      : `Deskripsi ${profileKind.toLowerCase()} belum tersedia.`}
+                  </p>
+                </article>
+
+                <article className="partnership-detail-card">
+                  <h2>Informasi Profil</h2>
+
+                  <div className="partnership-detail-info-grid">
+                    <InfoItem icon={<UserRound size={18} />} label="Penanggung Jawab" value={data.owner_name} />
+                    <InfoItem icon={<Building2 size={18} />} label="Jenis/Kategori" value={data.type} />
+                    <InfoItem icon={<MapPin size={18} />} label="Alamat" value={fullAddress} />
+                    <InfoItem icon={<MapPin size={18} />} label="Wilayah Operasional" value={data.operational_area} />
+                    <InfoItem
+                      icon={<Phone size={18} />}
+                      label="Telepon/WhatsApp"
+                      value={formatIndonesiaPhone(data.phone_number)}
+                    />
+                    <InfoItem icon={<Mail size={18} />} label="Email" value={data.email} />
+                    {"year_established" in data ? (
+                      <InfoItem
+                        icon={<CalendarDays size={18} />}
+                        label="Tahun Berdiri"
+                        value={data.year_established}
+                      />
+                    ) : null}
+                    <InfoItem icon={<ScrollText size={18} />} label="Produk/Layanan" value={data.products} />
+                  </div>
+                </article>
+              </div>
+
+              <aside className="partnership-action-panel">
+                <div className="partnership-action-panel__header">
+                  <Handshake size={24} />
+                  <div>
+                    <span>Pengajuan Kemitraan</span>
+                    <strong>Siap mengajukan?</strong>
+                  </div>
+                </div>
+
+                <p>
+                  Unduh template bila diperlukan, lalu lanjutkan ke formulir pengajuan untuk mengirim proposal kerja sama.
+                </p>
+
+                <button className="partnership-template-button" type="button" onClick={downloadPartnershipTemplate}>
+                  <Download size={17} />
+                  Download Template
+                </button>
+
+                <div className="partnership-action-summary">
+                  <div>
+                    <span>Target</span>
+                    <strong>{data.name}</strong>
+                  </div>
+                  <div>
+                    <span>Jenis</span>
+                    <strong>{data.type || "-"}</strong>
+                  </div>
+                  <div>
+                    <span>Lokasi</span>
+                    <strong>{fullLocation || "-"}</strong>
+                  </div>
+                  <div>
+                    <span>Status</span>
+                    <strong className="verified">Terverifikasi</strong>
+                  </div>
+                </div>
+
+                <button className="partnership-apply-button" type="button" onClick={handleApplyPartnership}>
+                  Ajukan Kemitraan
+                  <Handshake size={17} />
+                </button>
+              </aside>
+            </section>
+          </>
+        )}
+      </main>
+    </UmkmLayout>
+  );
+}

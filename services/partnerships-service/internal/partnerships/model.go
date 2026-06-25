@@ -56,11 +56,21 @@ type PartnershipRequest struct {
 	UpdatedAt            time.Time         `json:"updated_at" db:"updated_at"`
 }
 
+type PartnershipAttachment struct {
+	DocumentID       string    `json:"document_id"`
+	Type             string    `json:"type"`
+	FileName         string    `json:"file_name"`
+	OriginalFilename string    `json:"original_filename"`
+	ContentType      string    `json:"content_type"`
+	SizeBytes        int64     `json:"size_bytes"`
+	CreatedAt        time.Time `json:"created_at"`
+}
+
 type CreatePartnershipRequest struct {
-	ReceiverID          string `json:"receiver_id" validate:"required"`
-	ProposalTitle       string    `json:"proposal_title" validate:"required,min=10,max=200"`
-	ProposalDescription string    `json:"proposal_description" validate:"required,min=30,max=1000"`
-	AttachmentFiles     []string  `json:"attachment_files,omitempty"`
+	ReceiverID          string   `json:"receiver_id" validate:"required"`
+	ProposalTitle       string   `json:"proposal_title" validate:"required,min=10,max=200"`
+	ProposalDescription string   `json:"proposal_description" validate:"required,min=30,max=1000"`
+	AttachmentFiles     []string `json:"attachment_files,omitempty"`
 }
 
 type UpdatePartnershipStatus struct {
@@ -74,22 +84,23 @@ type SignPartnershipRequest struct {
 
 type PartnershipResponse struct {
 	PartnershipRequest
-	RequesterName string `json:"requester_name"`
-	ReceiverName  string `json:"receiver_name"`
+	RequesterName string                  `json:"requester_name"`
+	ReceiverName  string                  `json:"receiver_name"`
+	Attachments   []PartnershipAttachment `json:"attachments"`
 }
 
 type PartnershipListResponse struct {
-	ID                  string            `json:"id"`
-	RequestCode         string            `json:"request_code"`
-	RequesterName       string            `json:"requester_name"`
-	ReceiverName        string            `json:"receiver_name"`
-	RequesterBusinessName string          `json:"requester_business_name"`
-	ReceiverBusinessName  string          `json:"receiver_business_name"`
-	ProposalTitle       string            `json:"proposal_title"`
-	Status              PartnershipStatus `json:"status"`
-	SubmittedAt         *time.Time        `json:"submitted_at"`
-	DecidedAt           *time.Time        `json:"decided_at"`
-	Category            string            `json:"category"`
+	ID                    string            `json:"id"`
+	RequestCode           string            `json:"request_code"`
+	RequesterName         string            `json:"requester_name"`
+	ReceiverName          string            `json:"receiver_name"`
+	RequesterBusinessName string            `json:"requester_business_name"`
+	ReceiverBusinessName  string            `json:"receiver_business_name"`
+	ProposalTitle         string            `json:"proposal_title"`
+	Status                PartnershipStatus `json:"status"`
+	SubmittedAt           *time.Time        `json:"submitted_at"`
+	DecidedAt             *time.Time        `json:"decided_at"`
+	Category              string            `json:"category"`
 }
 
 // ============================================================
@@ -99,60 +110,61 @@ type PartnershipListResponse struct {
 // UMKMListItem represents an UMKM entity for listing purposes
 // Used when MITRA wants to see list of UMKM to partner with
 type UMKMListItem struct {
-	ID              string `json:"id"`                // umkm_id from database
-	Name            string `json:"name"`              // nama_umkm
-	Type            string `json:"type"`              // jenis UMKM (from ref table)
-	City            string `json:"city"`              // kabupaten/kota
-	Province        string `json:"province"`          // provinsi
-	Description     string `json:"description"`       // deskripsi_usaha
-	OperationalArea string `json:"operational_area"`  // wilayah_operasional
+	ID              string `json:"id"`               // umkm_id from database
+	Name            string `json:"name"`             // nama_umkm
+	Type            string `json:"type"`             // jenis UMKM (from ref table)
+	City            string `json:"city"`             // kabupaten/kota
+	Province        string `json:"province"`         // provinsi
+	Description     string `json:"description"`      // deskripsi_usaha
+	OperationalArea string `json:"operational_area"` // wilayah_operasional
 }
 
 // MitraListItem represents a Mitra entity for listing purposes
 // Used when UMKM wants to see list of Mitra to partner with
 type MitraListItem struct {
-	ID              string `json:"id"`                // mitra_id from database
-	Name            string `json:"name"`              // nama_mitra
-	Type            string `json:"type"`              // jenis mitra (from ref table)
-	City            string `json:"city"`              // kabupaten/kota
-	Province        string `json:"province"`          // provinsi
-	Description     string `json:"description"`       // deskripsi_dukungan
-	OperationalArea string `json:"operational_area"`  // wilayah_operasional
+	ID              string `json:"id"`               // mitra_id from database
+	Name            string `json:"name"`             // nama_mitra
+	Type            string `json:"type"`             // jenis mitra (from ref table)
+	City            string `json:"city"`             // kabupaten/kota
+	Province        string `json:"province"`         // provinsi
+	Description     string `json:"description"`      // deskripsi_dukungan
+	OperationalArea string `json:"operational_area"` // wilayah_operasional
 }
 
 // UMKMDetail represents full detail of an UMKM
 type UMKMDetail struct {
-	ID              string `json:"id"`
-	Name            string `json:"name"`
-	Type            string `json:"type"`
-	City            string `json:"city"`
-	Province        string `json:"province"`
-	Description     string `json:"description"`
-	OperationalArea string `json:"operational_area"`
-	OwnerName       string `json:"owner_name"`
-	PhoneNumber     string `json:"phone_number"`
-	Email           string `json:"email"`
-	Address         string `json:"address"`
-	Products        string `json:"products"`
-	YearEstablished int    `json:"year_established"`
+	ID                     string `json:"id"`
+	Name                   string `json:"name"`
+	Type                   string `json:"type"`
+	City                   string `json:"city"`
+	Province               string `json:"province"`
+	Description            string `json:"description"`
+	OperationalArea        string `json:"operational_area"`
+	OwnerName              string `json:"owner_name"`
+	PhoneNumber            string `json:"phone_number"`
+	Email                  string `json:"email"`
+	Address                string `json:"address"`
+	Products               string `json:"products"`
+	YearEstablished        int    `json:"year_established"`
+	SocialMediaMarketplace string `json:"social_media_marketplace"`
 }
 
 // MitraDetail represents full detail of a Mitra
 type MitraDetail struct {
-	ID                string `json:"id"`
-	Name              string `json:"name"`
-	Type              string `json:"type"`
-	City              string `json:"city"`
-	Province          string `json:"province"`
-	Description       string `json:"description"`
-	OperationalArea   string `json:"operational_area"`
-	ContactPerson     string `json:"contact_person"`
-	ContactTitle      string `json:"contact_title"`
-	PhoneNumber       string `json:"phone_number"`
-	Email             string `json:"email"`
-	Address           string `json:"address"`
-	LegalName         string `json:"legal_name"`
-	NIB               string `json:"nib"`
-	NPWP              string `json:"npwp"`
-	CooperationScale  string `json:"cooperation_scale"`
+	ID               string `json:"id"`
+	Name             string `json:"name"`
+	Type             string `json:"type"`
+	City             string `json:"city"`
+	Province         string `json:"province"`
+	Description      string `json:"description"`
+	OperationalArea  string `json:"operational_area"`
+	ContactPerson    string `json:"contact_person"`
+	ContactTitle     string `json:"contact_title"`
+	PhoneNumber      string `json:"phone_number"`
+	Email            string `json:"email"`
+	Address          string `json:"address"`
+	LegalName        string `json:"legal_name"`
+	NIB              string `json:"nib"`
+	NPWP             string `json:"npwp"`
+	CooperationScale string `json:"cooperation_scale"`
 }

@@ -235,7 +235,7 @@ export default function MitraProfilePage() {
                 <label>
                   Nama Legal
                   <input
-                    value={form.legal_name}
+                    value={form.legal_name ?? ""}
                     onChange={(e) => updateField("legal_name", e.target.value)}
                     placeholder="Contoh: PT Mitra Sejahtera Indonesia"
                   />
@@ -249,7 +249,7 @@ export default function MitraProfilePage() {
                 <label>
                   NIB
                   <input
-                    value={form.nib}
+                    value={form.nib ?? ""}
                     onChange={(e) => updateField("nib", e.target.value)}
                   />
                 </label>
@@ -257,7 +257,7 @@ export default function MitraProfilePage() {
                 <label>
                   NPWP
                   <input
-                    value={form.npwp}
+                    value={form.npwp ?? ""}
                     onChange={(e) => updateField("npwp", e.target.value)}
                   />
                 </label>
@@ -265,7 +265,7 @@ export default function MitraProfilePage() {
                 <label className="umkm-field-full">
                   Deskripsi Organisasi
                   <textarea
-                    value={form.description}
+                    value={form.description ?? ""}
                     onChange={(e) => updateField("description", e.target.value)}
                     rows={4}
                     placeholder="Jelaskan bidang, pengalaman, dan bentuk dukungan organisasi."
@@ -295,7 +295,7 @@ export default function MitraProfilePage() {
                 <label>
                   Jabatan Contact Person
                   <input
-                    value={form.contact_person_title}
+                    value={form.contact_person_title ?? ""}
                     onChange={(e) => updateField("contact_person_title", e.target.value)}
                     placeholder="Contoh: Partnership Manager"
                   />
@@ -331,7 +331,7 @@ export default function MitraProfilePage() {
                 <label>
                   Kecamatan
                   <input
-                    value={form.district}
+                    value={form.district ?? ""}
                     onChange={(e) => updateField("district", e.target.value)}
                   />
                 </label>
@@ -339,7 +339,7 @@ export default function MitraProfilePage() {
                 <label>
                   Kelurahan/Desa
                   <input
-                    value={form.village}
+                    value={form.village ?? ""}
                     onChange={(e) => updateField("village", e.target.value)}
                   />
                 </label>
@@ -347,7 +347,7 @@ export default function MitraProfilePage() {
                 <label>
                   Kode Pos
                   <input
-                    value={form.postal_code}
+                    value={form.postal_code ?? ""}
                     onChange={(e) => updateField("postal_code", e.target.value)}
                   />
                 </label>
@@ -376,7 +376,7 @@ export default function MitraProfilePage() {
                 <label>
                   Skala Kerja Sama
                   <select
-                    value={form.cooperation_scale}
+                    value={form.cooperation_scale ?? ""}
                     onChange={(e) => updateField("cooperation_scale", e.target.value)}
                   >
                     <option value="">Pilih skala</option>
@@ -390,7 +390,7 @@ export default function MitraProfilePage() {
                 <label>
                   Wilayah Operasional
                   <input
-                    value={form.operational_area}
+                    value={form.operational_area ?? ""}
                     onChange={(e) => updateField("operational_area", e.target.value)}
                     placeholder="Contoh: Surakarta dan sekitarnya"
                   />

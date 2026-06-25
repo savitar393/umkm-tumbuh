@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
   Gauge,
   BookOpen,
@@ -10,27 +10,75 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  Inbox,
+  ClipboardList,
+  Search,
 } from "lucide-react";
 import { clearAuthStorage, getCurrentUser } from "../auth/currentUser";
 
-const navItems = [
-  { label: "Dashboard", to: "/umkm", icon: Gauge },
-  { label: "Pelatihan Saya", to: "/umkm/trainings", icon: BookOpen },
-  { label: "Kelola Informasi", to: "/umkm/profile", icon: Building2 },
-  { label: "Kelola Produk", to: "/umkm/products", icon: Package },
-  { label: "Catatan Transaksi", to: "/umkm/sales", icon: Receipt },
-  { label: "Pengajuan Kemitraan", to: "/umkm/partnerships", icon: Handshake },
-  { label: "Pengaturan", to: "/umkm/settings", icon: Settings },
-];
+type NavChild = {
+  label: string;
+  to: string;
+  icon: React.ElementType;
+};
+
+type NavItem = {
+  label: string;
+  to: string;
+  icon: React.ElementType;
+  children?: NavChild[];
+};
 
 type SidebarProps = {
   collapsed: boolean;
   onToggle: () => void;
 };
 
+function getNavItems(role?: string): NavItem[] {
+  if (role === "MITRA") {
+    return [
+      { label: "Dashboard", to: "/mitra", icon: Gauge },
+      {
+        label: "Kemitraan",
+        to: "/mitra/partnerships",
+        icon: Handshake,
+        children: [
+          { label: "Direktori UMKM", to: "/mitra/partnerships", icon: Search },
+          { label: "Status", to: "/mitra/partnerships/status", icon: ClipboardList },
+          { label: "Inbox", to: "/mitra/partnerships/inbox", icon: Inbox },
+        ],
+      },
+      { label: "Kelola Informasi", to: "/mitra/profile", icon: Building2 },
+    ];
+  }
+
+  return [
+    { label: "Dashboard", to: "/umkm", icon: Gauge },
+    { label: "Pelatihan Saya", to: "/umkm/trainings", icon: BookOpen },
+    { label: "Kelola Informasi", to: "/umkm/profile", icon: Building2 },
+    { label: "Kelola Produk", to: "/umkm/products", icon: Package },
+    { label: "Catatan Transaksi", to: "/umkm/sales", icon: Receipt },
+    {
+      label: "Pengajuan Kemitraan",
+      to: "/umkm/partnerships",
+      icon: Handshake,
+      children: [
+        { label: "Direktori Mitra", to: "/umkm/partnerships", icon: Search },
+        { label: "Status", to: "/umkm/partnerships/status", icon: ClipboardList },
+        { label: "Inbox", to: "/umkm/partnerships/inbox", icon: Inbox },
+      ],
+    },
+    { label: "Pengaturan", to: "/umkm/settings", icon: Settings },
+  ];
+}
+
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const user = getCurrentUser();
+  const role = user?.role;
+  const homePath = role === "MITRA" ? "/mitra" : "/umkm";
+  const navItems = getNavItems(role);
 
   function logout() {
     clearAuthStorage();
@@ -47,7 +95,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
       </button>
 
-      <NavLink to="/umkm" className="umkm-brand">
+      <NavLink to={homePath} className="umkm-brand">
         <img src="/tumbuh.png" alt="UMKM Tumbuh" />
         {!collapsed && <span>UMKM Tumbuh</span>}
       </NavLink>
@@ -55,19 +103,50 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       <nav className="umkm-nav">
         {navItems.map((item) => {
           const Icon = item.icon;
+          const isHomeItem = item.to === homePath;
+
+          const isGroupActive = isHomeItem
+            ? location.pathname === item.to
+            : location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
+
           return (
-            <NavLink
+            <div
               key={item.to}
-              to={item.to}
-              end={item.to === "/umkm"}
-              className={({ isActive }) =>
-                `umkm-nav-link ${isActive ? "active" : ""}`
-              }
-              title={collapsed ? item.label : undefined}
+              className={`umkm-nav-group ${isGroupActive ? "active" : ""}`}
             >
-              <Icon size={18} />
-              {!collapsed && <span>{item.label}</span>}
-            </NavLink>
+              <NavLink
+                to={item.to}
+                end={item.to === homePath}
+                className={({ isActive }) =>
+                  `umkm-nav-link ${isActive || isGroupActive ? "active" : ""}`
+                }
+                title={collapsed ? item.label : undefined}
+              >
+                <Icon size={18} />
+                {!collapsed && <span>{item.label}</span>}
+              </NavLink>
+
+              {!collapsed && item.children && isGroupActive ? (
+                <div className="umkm-nav-sublist">
+                  {item.children.map((child) => {
+                    const ChildIcon = child.icon;
+                    return (
+                      <NavLink
+                        key={child.to}
+                        to={child.to}
+                        end={child.to === item.to}
+                        className={({ isActive }) =>
+                          `umkm-nav-sub-link ${isActive ? "active" : ""}`
+                        }
+                      >
+                        <ChildIcon size={14} />
+                        <span>{child.label}</span>
+                      </NavLink>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
           );
         })}
       </nav>

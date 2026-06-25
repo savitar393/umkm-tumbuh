@@ -1,1049 +1,706 @@
-import React, { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
+import {
+  ArrowLeft,
+  Building2,
+  CalendarDays,
+  CheckCircle2,
+  ClipboardCheck,
+  FileText,
+  Handshake,
+  Mail,
+  MessageSquareText,
+  Phone,
+  ScrollText,
+  ShieldCheck,
+  UserRound,
+  XCircle,
+} from "lucide-react";
+import UmkmLayout from "../../umkm/components/UmkmLayout";
+import { getCurrentUser } from "../../../shared/auth/currentUser";
 import { partnershipsApi } from "../api";
-import PartnershipSidebar from "../components/PartnershipSidebar";
 
-function formatOptionalDate(value: unknown) {
-  if (typeof value !== "string" && typeof value !== "number" && !(value instanceof Date)) {
-    return "-";
+type PartnershipDetail = Record<string, unknown>;
+
+const STATUS_LABELS: Record<string, string> = {
+  DRAFT: "Draft",
+  DIAJUKAN: "Diajukan",
+  SUBMITTED: "Diajukan",
+  DITINJAU: "Ditinjau",
+  REVIEWED: "Ditinjau",
+  MENUNGGU_DOKUMEN_TTD: "Menunggu Dokumen",
+  WAITING_DOCUMENT: "Menunggu Dokumen",
+  APPROVED: "Disetujui",
+  AKTIF: "Aktif",
+  ACTIVE: "Aktif",
+  DITOLAK: "Ditolak",
+  REJECTED: "Ditolak",
+  SELESAI: "Selesai",
+  COMPLETED: "Selesai",
+  DIBATALKAN: "Dibatalkan",
+  CANCELLED: "Dibatalkan",
+};
+
+type PartnershipAttachment = {
+  document_id?: string;
+  type?: string;
+  file_name?: string;
+  original_filename?: string;
+  content_type?: string;
+  size_bytes?: number;
+};
+
+const REJECTION_REASONS = [
+  { value: "tidak_sesuai_kriteria", label: "Tidak sesuai dengan kriteria kemitraan" },
+  { value: "dokumen_tidak_lengkap", label: "Dokumen tidak lengkap atau tidak valid" },
+  { value: "proposal_tidak_jelas", label: "Proposal kurang jelas atau belum realistis" },
+  { value: "duplikat_pengajuan", label: "Duplikat pengajuan yang sudah ada" },
+  { value: "lainnya", label: "Lainnya" },
+];
+
+function getBasePath(role?: string, pathname = "") {
+  if (pathname.includes("/mitra/") || role === "MITRA") return "/mitra/partnerships";
+  if (pathname.includes("/umkm/") || role === "UMKM") return "/umkm/partnerships";
+  return "/partnerships";
+}
+
+function getText(data: PartnershipDetail | null, keys: string[], fallback = "-") {
+  if (!data) return fallback;
+
+  for (const key of keys) {
+    const value = data[key];
+
+    if (typeof value === "string" && value.trim()) return value.trim();
+    if (typeof value === "number" && Number.isFinite(value)) return String(value);
   }
+
+  return fallback;
+}
+
+function getOptionalText(data: PartnershipDetail | null, keys: string[]) {
+  const value = getText(data, keys, "");
+  return value || "";
+}
+
+function getStatusLabel(status: string) {
+  if (!status) return "-";
+  return STATUS_LABELS[status] ?? status;
+}
+
+function getStatusClass(status: string) {
+  const normalized = status.toUpperCase();
+
+  if (["SUBMITTED", "DIAJUKAN", "DRAFT"].includes(normalized)) return "submitted";
+  if (["REVIEWED", "DITINJAU"].includes(normalized)) return "reviewed";
+  if (["WAITING_DOCUMENT", "MENUNGGU_DOKUMEN_TTD", "APPROVED"].includes(normalized)) return "waiting";
+  if (["ACTIVE", "AKTIF", "COMPLETED", "SELESAI"].includes(normalized)) return "active";
+  if (["REJECTED", "DITOLAK"].includes(normalized)) return "rejected";
+  if (["CANCELLED", "DIBATALKAN"].includes(normalized)) return "cancelled";
+
+  return "default";
+}
+
+function canReceiverReview(status: string) {
+  return ["DRAFT", "SUBMITTED", "DIAJUKAN", "REVIEWED", "DITINJAU"].includes(status.toUpperCase());
+}
+
+function formatDate(value: unknown) {
+  if (typeof value !== "string" && typeof value !== "number" && !(value instanceof Date)) return "-";
 
   const date = new Date(value);
 
-  if (Number.isNaN(date.getTime())) {
-    return "-";
+  if (Number.isNaN(date.getTime())) return "-";
+
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+}
+
+function formatDateTime(value: unknown) {
+  if (typeof value !== "string" && typeof value !== "number" && !(value instanceof Date)) return "-";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return "-";
+
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function getInitials(name: string) {
+  return (
+    name
+      .trim()
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "P"
+  );
+}
+
+function splitProposalDescription(value: string) {
+  const [descriptionPart, reasonPart] = value.split(/\n\s*\nAlasan Bermitra:\s*/i);
+
+  return {
+    description: descriptionPart?.trim() || value,
+    reason: reasonPart?.trim() || "",
+  };
+}
+
+function StatusBadge({ status }: { status: string }) {
+  return (
+    <span className={`partnership-status-badge ${getStatusClass(status)}`}>
+      {getStatusLabel(status)}
+    </span>
+  );
+}
+
+function getStatusMeta(status: string) {
+  const normalized = status.toUpperCase();
+  const label = getStatusLabel(status);
+  const tone = getStatusClass(status);
+
+  if (["SUBMITTED", "DIAJUKAN", "DRAFT"].includes(normalized)) {
+    return {
+      tone,
+      label,
+      description: "Pengajuan sudah dikirim dan menunggu pihak tujuan meninjau detail proposal.",
+      nextStep: "Pihak tujuan dapat menyetujui atau menolak pengajuan ini.",
+    };
   }
 
-  return date.toLocaleDateString("id-ID");
-}
+  if (["REVIEWED", "DITINJAU"].includes(normalized)) {
+    return {
+      tone,
+      label,
+      description: "Pengajuan sedang dalam proses peninjauan oleh pihak tujuan.",
+      nextStep: "Tunggu keputusan akhir atau lanjutkan proses persetujuan bila Anda pihak tujuan.",
+    };
+  }
 
-// ─── Logo Components ──────────────────────────────────────────────────────────
+  if (["WAITING_DOCUMENT", "MENUNGGU_DOKUMEN_TTD", "APPROVED"].includes(normalized)) {
+    return {
+      tone,
+      label,
+      description: "Pengajuan telah disetujui awal dan membutuhkan kontrak yang sudah ditandatangani.",
+      nextStep: "Unggah kontrak final untuk mengaktifkan kemitraan.",
+    };
+  }
 
-const LogoKementrian: React.FC<{ size?: number }> = ({ size = 36 }) => (
-  <svg width={size} height={size} viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="18" cy="18" r="17" stroke="white" strokeWidth="1.5" fill="none" />
-    <path d="M18 6 L20 13 L27 13 L21.5 17.5 L23.5 24.5 L18 20 L12.5 24.5 L14.5 17.5 L9 13 L16 13 Z" fill="white" />
-    <text x="18" y="32" textAnchor="middle" fill="white" fontSize="5" fontFamily="serif" fontWeight="bold">KEMENKOP</text>
-  </svg>
-);
+  if (["ACTIVE", "AKTIF"].includes(normalized)) {
+    return {
+      tone,
+      label,
+      description: "Pengajuan telah disetujui dan kerja sama sudah aktif.",
+      nextStep: "Kemitraan dapat dilanjutkan melalui monitoring dan aktivitas kerja sama.",
+    };
+  }
 
-// ─── Confirmation Modal Component ─────────────────────────────────────────────
+  if (["COMPLETED", "SELESAI"].includes(normalized)) {
+    return {
+      tone,
+      label,
+      description: "Kerja sama pada pengajuan ini sudah selesai.",
+      nextStep: "Riwayat pengajuan tetap dapat dilihat sebagai arsip.",
+    };
+  }
 
-interface CancelConfirmationModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: (reason: string, additionalNotes: string) => void;
-  businessName: string;
-  isSubmitting?: boolean;
-}
+  if (["REJECTED", "DITOLAK"].includes(normalized)) {
+    return {
+      tone,
+      label,
+      description: "Pengajuan tidak disetujui oleh pihak tujuan.",
+      nextStep: "Pengaju dapat memperbaiki proposal atau mengajukan kerja sama lain.",
+    };
+  }
 
-const CancelConfirmationModal: React.FC<CancelConfirmationModalProps> = ({
-  isOpen,
-  onClose,
-  onConfirm,
-  businessName,
-  isSubmitting = false,
-}) => {
-  const [selectedReason, setSelectedReason] = useState("");
-  const [additionalNotes, setAdditionalNotes] = useState("");
-  const [error, setError] = useState("");
+  if (["CANCELLED", "DIBATALKAN"].includes(normalized)) {
+    return {
+      tone,
+      label,
+      description: "Pengajuan ini sudah dibatalkan dan tidak lagi diproses.",
+      nextStep: "Buat pengajuan baru bila kerja sama masih ingin dilanjutkan.",
+    };
+  }
 
-  const cancelReasons = [
-    { value: "tidak_sesuai_kriteria", label: "Tidak sesuai dengan kriteria kemitraan" },
-    { value: "dokumen_tidak_lengkap", label: "Dokumen tidak lengkap atau tidak valid" },
-    { value: "proposal_tidak_jelas", label: "Proposal kurang jelas atau tidak realistis" },
-    { value: "duplikat_pengajuan", label: "Duplikat pengajuan yang sudah ada" },
-    { value: "permintaan_pengaju", label: "Permintaan pembatalan dari pengaju" },
-    { value: "lainnya", label: "Lainnya" },
-  ];
-
-  const handleConfirm = () => {
-    if (!selectedReason) {
-      setError("ERR-VAL-02: Alasan pembatalan wajib dipilih.");
-      return;
-    }
-    setError("");
-    onConfirm(selectedReason, additionalNotes);
+  return {
+    tone: "default",
+    label,
+    description: "Status pengajuan belum dikenali oleh sistem.",
+    nextStep: "Periksa kembali detail pengajuan.",
   };
-
-  if (!isOpen) return null;
-
-  return (
-    <>
-      {/* Backdrop */}
-      <div
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: "rgba(0, 0, 0, 0.5)",
-          zIndex: 1000,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-        onClick={onClose}
-      />
-      
-      {/* Modal */}
-      <div
-        style={{
-          position: "fixed",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          width: "90%",
-          maxWidth: 520,
-          background: "white",
-          borderRadius: 20,
-          boxShadow: "0 20px 40px rgba(0, 0, 0, 0.2)",
-          zIndex: 1001,
-          overflow: "hidden",
-        }}
-      >
-        {/* Header */}
-        <div style={{
-          padding: "24px 28px 16px",
-          borderBottom: "1px solid #E8E7E2",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{
-              width: 44,
-              height: 44,
-              borderRadius: 44,
-              background: "#FEF2F2",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#E24B4A" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </div>
-            <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#2C2C2A" }}>
-              Batalkan Pengajuan Kemitraan?
-            </h3>
-          </div>
-          <p style={{ margin: "12px 0 0 56px", fontSize: 14, color: "#5F5E5A", lineHeight: 1.5 }}>
-            Anda akan membatalkan pengajuan kerjasama dengan <strong>{businessName}</strong>. Tindakan ini tidak dapat dibatalkan.
-          </p>
-        </div>
-
-        {/* Body */}
-        <div style={{ padding: "20px 28px" }}>
-          {/* Alasan Pembatalan */}
-          <div style={{ marginBottom: 20 }}>
-            <label style={{
-              display: "block",
-              fontSize: 14,
-              fontWeight: 600,
-              color: "#2C2C2A",
-              marginBottom: 8,
-            }}>
-              Alasan Pembatalan <span style={{ color: "#E24B4A" }}>*</span>
-            </label>
-            <select
-              value={selectedReason}
-              onChange={(e) => {
-                setSelectedReason(e.target.value);
-                setError("");
-              }}
-              style={{
-                width: "100%",
-                padding: "12px 14px",
-                border: error ? "1px solid #E24B4A" : "1px solid #D3D1C7",
-                borderRadius: 10,
-                fontSize: 14,
-                color: selectedReason ? "#2C2C2A" : "#888780",
-                background: "white",
-                outline: "none",
-                cursor: "pointer",
-                fontFamily: "inherit",
-              }}
-            >
-              <option value="">Pilih alasan pembatalan...</option>
-              {cancelReasons.map((reason) => (
-                <option key={reason.value} value={reason.value}>
-                  {reason.label}
-                </option>
-              ))}
-            </select>
-            {error && (
-              <p style={{ margin: "6px 0 0", fontSize: 12, color: "#E24B4A" }}>{error}</p>
-            )}
-          </div>
-
-          {/* Keterangan Tambahan */}
-          <div style={{ marginBottom: 20 }}>
-            <label style={{
-              display: "block",
-              fontSize: 14,
-              fontWeight: 600,
-              color: "#2C2C2A",
-              marginBottom: 8,
-            }}>
-              Keterangan Tambahan <span style={{ fontWeight: 400, color: "#888780" }}>(Opsional)</span>
-            </label>
-            <textarea
-              value={additionalNotes}
-              onChange={(e) => setAdditionalNotes(e.target.value)}
-              placeholder="Berikan detail singkat terkait pembatalan Anda..."
-              rows={3}
-              style={{
-                width: "100%",
-                padding: "12px 14px",
-                border: "1px solid #D3D1C7",
-                borderRadius: 10,
-                fontSize: 14,
-                color: "#2C2C2A",
-                background: "white",
-                outline: "none",
-                resize: "vertical",
-                fontFamily: "inherit",
-                boxSizing: "border-box",
-              }}
-            />
-          </div>
-
-          {/* Warning Message */}
-          <div style={{
-            padding: "12px 16px",
-            background: "#FEF2F2",
-            borderRadius: 10,
-            border: "1px solid #FEE2E2",
-            marginTop: 8,
-          }}>
-            <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#E24B4A" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="12" />
-                <circle cx="12" cy="16" r="0.5" fill="#E24B4A" stroke="none" />
-              </svg>
-              <p style={{ margin: 0, fontSize: 12, color: "#991B1B", lineHeight: 1.4 }}>
-                Data pengajuan ini akan diarsipkan dan Anda tidak dapat mengajukan kemitraan yang sama selama 30 hari ke depan.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div style={{
-          padding: "16px 28px 24px",
-          borderTop: "1px solid #E8E7E2",
-          display: "flex",
-          justifyContent: "flex-end",
-          gap: 12,
-        }}>
-          <button
-            onClick={onClose}
-            disabled={isSubmitting}
-            style={{
-              padding: "10px 24px",
-              background: "white",
-              border: "1px solid #D3D1C7",
-              borderRadius: 10,
-              fontSize: 14,
-              fontWeight: 500,
-              color: "#5F5E5A",
-              cursor: isSubmitting ? "not-allowed" : "pointer",
-              transition: "background 0.15s",
-            }}
-          >
-            Kembali
-          </button>
-          <button
-            onClick={handleConfirm}
-            disabled={isSubmitting}
-            style={{
-              padding: "10px 28px",
-              background: isSubmitting ? "#B4B2A9" : "#E24B4A",
-              border: "none",
-              borderRadius: 10,
-              fontSize: 14,
-              fontWeight: 600,
-              color: "white",
-              cursor: isSubmitting ? "not-allowed" : "pointer",
-              transition: "background 0.15s",
-            }}
-          >
-            {isSubmitting ? "Memproses..." : "Konfirmasi Batalkan"}
-          </button>
-        </div>
-      </div>
-    </>
-  );
-};
-
-// ─── Document Card Component ──────────────────────────────────────────────────
-
-interface DocumentCardProps {
-  fileName: string;
-  fileSize: string;
-  lastUpdated: string;
-  onDownload: () => void;
 }
 
-const DocumentCard: React.FC<DocumentCardProps> = ({ fileName, fileSize, lastUpdated, onDownload }) => {
+// function StatusTimeline({ progress }: { progress: number }) {
+//   const steps = ["Dikirim", "Ditinjau", "Dokumen", "Keputusan"];
+
+//   return (
+//     <div className="partnership-status-timeline">
+//       {steps.map((step, index) => {
+//         const active = index + 1 <= progress;
+
+//         return (
+//           <div className={active ? "active" : ""} key={step}>
+//             <span>{active ? <CheckCircle2 size={13} /> : index + 1}</span>
+//             <strong>{step}</strong>
+//           </div>
+//         );
+//       })}
+//     </div>
+//   );
+// }
+
+function InfoItem({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+}) {
   return (
-    <div style={{
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      padding: "16px 20px",
-      background: "#F5F4F0",
-      borderRadius: 12,
-      border: "1px solid #E8E7E2",
-    }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{
-          width: 40,
-          height: 40,
-          background: "#E24B4A",
-          borderRadius: 8,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8">
-            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-            <polyline points="14 2 14 8 20 8" />
-            <text x="8" y="20" fontSize="8" fill="white" fontFamily="monospace">PDF</text>
-          </svg>
-        </div>
-        <div>
-          <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#2C2C2A" }}>
-            {fileName}
-          </p>
-          <p style={{ margin: "4px 0 0", fontSize: 12, color: "#888780" }}>
-            {fileSize} • {lastUpdated}
-          </p>
-        </div>
+    <div className="partnership-review-info-item">
+      {icon}
+      <div>
+        <span>{label}</span>
+        <strong>{value || "-"}</strong>
       </div>
-      <button
-        onClick={onDownload}
-        style={{
-          padding: "8px 16px",
-          background: "white",
-          border: "1px solid #D3D1C7",
-          borderRadius: 8,
-          fontSize: 13,
-          fontWeight: 500,
-          color: "#1A3A6B",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-        }}
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-          <polyline points="7 10 12 15 17 10" />
-          <line x1="12" y1="15" x2="12" y2="3" />
-        </svg>
-        Unduh PDF
-      </button>
     </div>
   );
-};
-
-// ─── Upload Card Component ────────────────────────────────────────────────────
-
-interface UploadCardProps {
-  onFileSelect: (file: File | null) => void;
-  onError?: (error: string | null) => void;
-  fileName: string | null;
-  error?: string;
 }
 
-const UploadCard: React.FC<UploadCardProps> = ({ onFileSelect, onError, fileName, error }) => {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
+function getAttachments(data: PartnershipDetail | null): PartnershipAttachment[] {
+  const raw = data?.attachments;
 
-  const handleFile = (file: File | null) => {
-    if (!file) return;
-    
-    if (!["application/pdf", "image/jpeg", "image/png"].includes(file.type)) {
-      if (onError) onError("ERR-FILE-02: Hanya file PDF, JPG, dan PNG yang diperbolehkan. Maksimal 10MB.");
-      return;
-    }
-    
-    if (file.size > 10 * 1024 * 1024) {
-      if (onError) onError("ERR-FILE-02: File terlalu besar. Maksimal 10MB.");
-      return;
-    }
-    
-    if (onError) onError(null);
-    onFileSelect(file);
-  };
+  if (!Array.isArray(raw)) return [];
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) handleFile(file);
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsDragging(false);
-  };
-
-  return (
-    <div
-      onClick={() => inputRef.current?.click()}
-      onDrop={handleDrop}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      style={{
-        border: error
-          ? "2px dashed #E24B4A"
-          : fileName
-          ? "2px solid #1D9E75"
-          : isDragging
-          ? "2px dashed #F5A623"
-          : "2px dashed #D3D1C7",
-        borderRadius: 16,
-        padding: "40px 24px",
-        textAlign: "center",
-        cursor: "pointer",
-        background: fileName ? "#F0FAF6" : isDragging ? "#FFF8E7" : "#FAFAF8",
-        transition: "all 0.2s",
-      }}
-    >
-      <input
-        ref={inputRef}
-        type="file"
-        accept=".pdf,.jpg,.jpeg,.png"
-        style={{ display: "none" }}
-        onChange={(e) => handleFile(e.target.files?.[0] || null)}
-      />
-      
-      {fileName ? (
-        <>
-          <div style={{
-            width: 48,
-            height: 48,
-            background: "#1D9E75",
-            borderRadius: 12,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            margin: "0 auto 12px",
-          }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-              <line x1="9" y1="15" x2="15" y2="15" />
-              <line x1="9" y1="11" x2="15" y2="11" />
-            </svg>
-          </div>
-          <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#1D9E75" }}>
-            {fileName}
-          </p>
-          <p style={{ margin: "4px 0 0", fontSize: 12, color: "#888780" }}>
-            Klik atau seret untuk mengganti file
-          </p>
-        </>
-      ) : (
-        <>
-          <div style={{
-            width: 48,
-            height: 48,
-            background: "#E8E7E2",
-            borderRadius: 12,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            margin: "0 auto 12px",
-          }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#888780" strokeWidth="1.8">
-              <path d="M12 16v-6m0 0L9 9m3 1l3-1m-3 9h.01M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              <line x1="9" y1="13" x2="15" y2="13" />
-            </svg>
-          </div>
-          <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#2C2C2A" }}>
-            Unggah Dokumen yang Sudah Ditandatangani
-          </p>
-          <p style={{ margin: "8px 0 0", fontSize: 12, color: "#B4B2A9" }}>
-            Seret dan lepas file PDF Anda di sini, atau klik untuk memilih file
-          </p>
-          <p style={{ margin: "4px 0 0", fontSize: 11, color: "#B4B2A9" }}>
-            MAKSIMAL 10MB • PDF, JPG, PNG
-          </p>
-        </>
-      )}
-      {error && (
-        <p style={{ margin: "8px 0 0", fontSize: 12, color: "#E24B4A" }}>{error}</p>
-      )}
-    </div>
-  );
-};
-
-// ─── Signed Document Card Component ───────────────────────────────────────────
-
-interface SignedDocumentCardProps {
-  document: { name: string; size: string; uploadedAt: string };
-  onDownload: () => void;
+  return raw
+    .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
+    .map((item) => ({
+      document_id: typeof item.document_id === "string" ? item.document_id : "",
+      type: typeof item.type === "string" ? item.type : "",
+      file_name: typeof item.file_name === "string" ? item.file_name : "",
+      original_filename: typeof item.original_filename === "string" ? item.original_filename : "",
+      content_type: typeof item.content_type === "string" ? item.content_type : "",
+      size_bytes: typeof item.size_bytes === "number" ? item.size_bytes : 0,
+    }))
+    .filter((item) => item.document_id);
 }
 
-const SignedDocumentCard: React.FC<SignedDocumentCardProps> = ({ document, onDownload }) => {
-  return (
-    <div style={{
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      padding: "16px 20px",
-      background: "#F0FAF6",
-      borderRadius: 12,
-      border: "1px solid #1D9E75",
-    }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{
-          width: 40,
-          height: 40,
-          background: "#1D9E75",
-          borderRadius: 8,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-            <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-            <polyline points="14 2 14 8 20 8" />
-            <line x1="9" y1="15" x2="15" y2="15" />
-          </svg>
-        </div>
-        <div>
-          <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#1D9E75" }}>
-            {document.name}
-          </p>
-          <p style={{ margin: "4px 0 0", fontSize: 12, color: "#888780" }}>
-            {document.size} • Diunggah {document.uploadedAt}
-          </p>
-        </div>
-      </div>
-      <button
-        onClick={onDownload}
-        style={{
-          padding: "8px 16px",
-          background: "white",
-          border: "1px solid #1D9E75",
-          borderRadius: 8,
-          fontSize: 13,
-          fontWeight: 500,
-          color: "#1D9E75",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-        }}
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-          <polyline points="7 10 12 15 17 10" />
-          <line x1="12" y1="15" x2="12" y2="3" />
-        </svg>
-        Unduh
-      </button>
-    </div>
-  );
-};
-
-// ─── Main Page ────────────────────────────────────────────────────────────────
-
-const PartnershipReviewPage: React.FC = () => {
+export default function PartnershipReviewPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const isMitraRoute = location.pathname.includes("/mitra/");
-  
-  const [partnership, setPartnership] = useState<any | null>(null);
+  const user = getCurrentUser();
+
+  const basePath = getBasePath(user?.role, location.pathname);
+
+  const [partnership, setPartnership] = useState<PartnershipDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [signedFile, setSignedFile] = useState<File | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [error, setError] = useState("");
+
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [rejectionNotes, setRejectionNotes] = useState("");
+  const [rejectionError, setRejectionError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [isSigned, setIsSigned] = useState(false);
-  const [signedDocument, setSignedDocument] = useState<{ name: string; size: string; uploadedAt: string } | null>(null);
-  
-  // Modal state
-  const [showCancelModal, setShowCancelModal] = useState(false);
-  const [isRejecting, setIsRejecting] = useState(false);
 
-  const sidebarWidth = 260;
+  const status = getText(partnership, ["status", "statusPengajuan", "status_pengajuan"], "");
+  const statusMeta = getStatusMeta(status);
+  const requesterID = getOptionalText(partnership, ["requester_id", "requesterID", "pengaju_akun_id"]);
+  const receiverID = getOptionalText(partnership, ["receiver_id", "receiverID", "penerima_akun_id"]);
+  const isReceiver = Boolean(user?.id && receiverID && user.id === receiverID);
+  const isRequester = Boolean(user?.id && requesterID && user.id === requesterID);
 
-  const fetchPartnership = async (partnershipId: string) => {
-    setLoading(true);
+  const requesterName = getText(partnership, ["requester_name", "pengirim", "business_name", "nama_pengaju"], "Pengaju");
+  const receiverName = getText(partnership, ["receiver_name", "mitraUmkmTujuan", "nama_penerima"], "Tujuan Kemitraan");
+  const proposalTitle = getText(
+    partnership,
+    ["proposal_title", "proposalTitle"],
+    requesterName !== "Pengaju" ? `Pengajuan Kemitraan - ${requesterName}` : "Proposal kemitraan",
+  );
+  const proposalDescription = getText(partnership, ["proposal_description", "proposalDescription"], "");
+  const requestCode = getText(partnership, ["request_code", "pengajuanID", "id"], id ?? "-");
+  const contactPerson = getOptionalText(partnership, ["contact_person", "email", "phone_number"]);
+  const category = getOptionalText(partnership, ["category", "business_category", "type"]);
+  const submittedAt = partnership?.submitted_at ?? partnership?.tanggalPengajuan ?? partnership?.created_at;
+  const updatedAt = partnership?.updated_at;
+
+  const parsedProposal = useMemo(() => splitProposalDescription(proposalDescription), [proposalDescription]);
+
+  const attachments = useMemo(() => getAttachments(partnership), [partnership]);
+
+  async function handleOpenAttachment(documentId: string) {
     try {
-      const response = await partnershipsApi.getDetail(partnershipId);
-      if (response.success === true && response.data) {
-        const data = response.data as any;
-        setPartnership(data);
-        if (data.status === "ACTIVE" || data.contract_signed_at) {
-          setIsSigned(true);
-          setSignedDocument({
-            name: "Dokumen_Persetujuan_Kemitraan.pdf",
-            size: "2.4 MB",
-            uploadedAt: formatOptionalDate(data.contract_signed_at || data.updated_at),
-          });
-        }
+      const response = await partnershipsApi.getDocumentUrl(documentId);
+      if (response.success && response.data.url) {
+        window.open(response.data.url, "_blank", "noopener,noreferrer");
       }
-    } catch {
-      setPartnership(null);
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      window.alert(err instanceof Error ? err.message : "Gagal membuka dokumen.");
     }
-  };
+  }
 
   useEffect(() => {
-    if (id) {
-      fetchPartnership(id);
-    }
-  }, [id]);
-
-  const handleDownloadContract = () => {
-    alert("Mengunduh draf kontrak...");
-  };
-
-  const handleDownloadSignedDocument = () => {
-    alert("Mengunduh dokumen persetujuan kemitraan...");
-  };
-
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        const base64 = result.split(",")[1];
-        resolve(base64);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const handleSignAndApprove = async () => {
-    if (!isSigned && !signedFile) {
-      setUploadError("ERR-FILE-01: Harap unggah dokumen kontrak yang sudah ditandatangani.");
+    if (!id) {
+      setError("ID pengajuan tidak ditemukan.");
+      setLoading(false);
       return;
     }
-    
+
+    const detailId = id;
+    let ignore = false;
+
+    async function fetchPartnership() {
+      setLoading(true);
+      setError("");
+
+      try {
+        const response = await partnershipsApi.getDetail(detailId);
+
+        if (!ignore) {
+          if (response.success === true && response.data) {
+            setPartnership(response.data);
+          } else {
+            setError(response.message || "Data pengajuan tidak ditemukan.");
+          }
+        }
+      } catch (err) {
+        if (!ignore) {
+          setError(err instanceof Error ? err.message : "Gagal memuat data pengajuan.");
+          setPartnership(null);
+        }
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    }
+
+    fetchPartnership();
+
+    return () => {
+      ignore = true;
+    };
+  }, [id]);
+
+  function handleBack() {
+    if (location.pathname.includes("/inbox") || isReceiver) {
+      navigate(`${basePath}/inbox`);
+      return;
+    }
+
+    if (isRequester) {
+      navigate(`${basePath}/status`);
+      return;
+    }
+
+    navigate(basePath);
+  }
+
+  function handleContinueApproval() {
+    if (!id) return;
+    navigate(`${basePath}/approve/${id}`);
+  }
+
+  async function handleReject() {
+    if (!id) return;
+
+    if (!rejectionReason) {
+      setRejectionError("Alasan penolakan wajib dipilih.");
+      return;
+    }
+
+    const selectedReason =
+      REJECTION_REASONS.find((reason) => reason.value === rejectionReason)?.label ?? rejectionReason;
+
+    const finalReason = rejectionNotes.trim()
+      ? `${selectedReason} - ${rejectionNotes.trim()}`
+      : selectedReason;
+
     setSubmitting(true);
+    setRejectionError("");
+
     try {
-      if (!id) throw new Error("ID pengajuan tidak ditemukan");
-
-      // Upload dokumen yang sudah ditandatangani
-      if (signedFile) {
-        const base64 = await fileToBase64(signedFile);
-        await partnershipsApi.sign(id, base64);
-      }
-
-      // For MITRA route, navigate to approve page after signing
-      if (isMitraRoute) {
-        navigate(`/mitra/partnerships/approve/${id}`);
-        return;
-      }
-
-      // For UMKM route, approve directly
-      await partnershipsApi.approve(id);
-      
-      setIsSigned(true);
-      setSignedDocument({
-        name: signedFile ? signedFile.name : "Dokumen_Persetujuan_Kemitraan.pdf",
-        size: `${(signedFile!.size / (1024 * 1024)).toFixed(1)} MB`,
-        uploadedAt: "hari ini",
-      });
-      
-      alert("Kontrak berhasil ditandatangani! Kemitraan telah aktif.");
-    } catch (error: any) {
-      alert(`Terjadi kesalahan: ${error.message || "Gagal memproses"}`);
+      await partnershipsApi.reject(id, finalReason);
+      setShowRejectModal(false);
+      navigate(`${basePath}/inbox`, { state: { toast: "Pengajuan berhasil ditolak." } });
+    } catch (err) {
+      setRejectionError(err instanceof Error ? err.message : "Gagal menolak pengajuan.");
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const handleReject = async (reason: string, additionalNotes: string) => {
-    setIsRejecting(true);
-    try {
-      if (!id) throw new Error("ID pengajuan tidak ditemukan");
-      
-      let rejection_reason = reason;
-      if (additionalNotes.trim()) {
-        rejection_reason += ` - ${additionalNotes.trim()}`;
-      }
-      
-      await partnershipsApi.reject(id, rejection_reason);
-      setShowCancelModal(false);
-      if (isMitraRoute) {
-        navigate("/mitra/partnerships/inbox", { state: { toast: "Pengajuan berhasil ditolak." } });
-      } else {
-        navigate(`/umkm/partnerships/${id}`);
-      }
-    } catch (error: any) {
-      alert(`Terjadi kesalahan: ${error.message || "Gagal menolak pengajuan"}`);
-    } finally {
-      setIsRejecting(false);
-    }
-  };
-
-  const handleOpenCancelModal = () => {
-    setShowCancelModal(true);
-  };
-
-  if (loading) {
-    return (
-      <div style={{ display: "flex", minHeight: "100vh", position: "relative", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundImage: "url(/background.png)", backgroundSize: "cover", backgroundPosition: "center", zIndex: 0, opacity: 0.7 }} />
-        <div style={{ position: "relative", zIndex: 1, textAlign: "center" }}>
-          <div style={{
-            display: "inline-block",
-            width: 40,
-            height: 40,
-            borderRadius: "50%",
-            border: "3px solid #E8E7E2",
-            borderTopColor: "#1A3A6B",
-            animation: "spin 0.8s linear infinite",
-          }} />
-          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-          <p style={{ marginTop: 16, color: "#888780" }}>Memuat data kontrak...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!partnership) {
-    return (
-      <div style={{ display: "flex", minHeight: "100vh", position: "relative", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundImage: "url(/background.png)", backgroundSize: "cover", backgroundPosition: "center", zIndex: 0, opacity: 0.7 }} />
-        <div style={{ position: "relative", zIndex: 1 }}>
-          <p>Data tidak ditemukan</p>
-        </div>
-      </div>
-    );
   }
 
   return (
-    <div style={{
-      display: "flex",
-      minHeight: "100vh",
-      fontFamily: "'Segoe UI', Roboto, sans-serif",
-      position: "relative",
-    }}>
-      <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", backgroundImage: "url(/background.png)", backgroundSize: "cover", backgroundPosition: "center", zIndex: 0, opacity: 0.7 }} />
-      <div style={{ position: "relative", zIndex: 1, display: "flex", width: "100%" }}>
-      {/* Cancel Confirmation Modal */}
-      <CancelConfirmationModal
-        isOpen={showCancelModal}
-        onClose={() => setShowCancelModal(false)}
-        onConfirm={handleReject}
-        businessName={partnership.business_name || "Jati Luhur Furniture"}
-        isSubmitting={isRejecting}
-      />
+    <UmkmLayout
+      title="Review Pengajuan"
+      subtitle="Tinjau detail pengajuan kemitraan sebelum mengambil keputusan."
+    >
+      <main className="partnership-review-page">
+        <button className="partnership-back-button" type="button" onClick={handleBack}>
+          <ArrowLeft size={17} />
+          Kembali
+        </button>
 
-      <PartnershipSidebar />
-
-      {/* Main Content */}
-      <main style={{
-        marginLeft: sidebarWidth,
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-      }}>
-        {/* Top Bar */}
-        <header style={{
-          background: "white",
-          borderBottom: "1px solid #E8E7E2",
-          padding: "0 32px",
-          height: 60,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "flex-end",
-          position: "sticky",
-          top: 0,
-          zIndex: 50,
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <button style={{
-              background: "#1A3A6B",
-              border: "none",
-              borderRadius: 12,
-              width: 44,
-              height: 44,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8">
-                <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                <path d="M13.73 21a2 2 0 01-3.46 0" />
-              </svg>
+        {loading ? (
+          <section className="partnership-state-card">
+            <div className="partnership-spinner" />
+            <p>Memuat detail pengajuan...</p>
+          </section>
+        ) : error || !partnership ? (
+          <section className="partnership-state-card error">
+            <strong>Data pengajuan tidak ditemukan</strong>
+            <p>{error || "Data tidak tersedia."}</p>
+            <button type="button" onClick={handleBack}>
+              Kembali
             </button>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ textAlign: "right" }}>
-                <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#1A7A5E" }}>Nusantara Ventures</p>
-                <p style={{ margin: 0, fontSize: 11, color: "#888780" }}>MITRA</p>
-              </div>
-              <LogoKementrian size={36} />
-            </div>
-          </div>
-        </header>
-
-        {/* Content */}
-        <div style={{ padding: "32px 40px", maxWidth: 900, margin: "0 auto", width: "100%" }}>
-          {/* Banner */}
-          <div style={{
-            background: "linear-gradient(90deg, #1A3A6B 0%, #2A5DA8 100%)",
-            borderRadius: 18,
-            padding: "28px 32px",
-            marginBottom: 32,
-          }}>
-            <span style={{
-              display: "inline-block",
-              background: "white",
-              color: "#1A3A6B",
-              fontSize: 12,
-              fontWeight: 700,
-              padding: "6px 20px",
-              borderRadius: 40,
-            }}>
-              TAHAP AKHIR
-            </span>
-            <h2 style={{
-              margin: "16px 0 8px",
-              fontSize: 28,
-              fontWeight: 700,
-              color: "#F5A623",
-            }}>
-              Hampir Selesai, UMKM Tumbuh!
-            </h2>
-            <p style={{
-              margin: 0,
-              fontSize: 14,
-              color: "rgba(255,255,255,0.85)",
-              lineHeight: 1.5,
-            }}>
-              Silakan tinjau draf kontrak kemitraan Anda. Pastikan semua data profil usaha sudah sesuai sebelum menandatangani secara digital.
-            </p>
-          </div>
-
-          {/* Profile Usaha Section */}
-          <div style={{
-            background: "white",
-            borderRadius: 16,
-            border: "1px solid #E8E7E2",
-            marginBottom: 24,
-            overflow: "hidden",
-          }}>
-            <div style={{
-              padding: "20px 24px",
-              borderBottom: "1px solid #E8E7E2",
-              background: "#FAFAF8",
-            }}>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#1A3A6B" }}>Profil Usaha</h3>
-            </div>
-            <div style={{ padding: "24px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16, marginBottom: 20 }}>
-                <div>
-                  <h4 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#2C2C2A" }}>
-                    {partnership.business_name}
-                  </h4>
-                  <p style={{ margin: "4px 0 0", fontSize: 13, color: "#888780" }}>
-                    {partnership.product_description}
-                  </p>
-                </div>
-                <div style={{
-                  background: "#F1EFE8",
-                  padding: "4px 12px",
-                  borderRadius: 20,
-                  fontSize: 12,
-                  color: "#5F5E5A",
-                }}>
-                  {partnership.category || "Tekstil & Kerajinan Tangan"}
-                </div>
-              </div>
-              
-              <div style={{ marginBottom: 20 }}>
-                <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#888780", marginBottom: 4 }}>
-                  SEKTOR BISNIS
-                </p>
-                <p style={{ margin: 0, fontSize: 14, color: "#2C2C2A" }}>
-                  Tekstil & Kerajinan Tangan
-                </p>
-              </div>
-              
-              <div style={{ marginBottom: 20 }}>
-                <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#888780", marginBottom: 4 }}>
-                  SEJARAH SINGKAT
-                </p>
-                <p style={{ margin: 0, fontSize: 14, color: "#5F5E5A", lineHeight: 1.5 }}>
-                  {partnership.reason_for_partnership}
-                </p>
-              </div>
+          </section>
+        ) : (
+          <>
+            <section className="partnership-review-hero">
+              <div className="partnership-review-avatar">{getInitials(requesterName)}</div>
 
               <div>
-                <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "#888780", marginBottom: 4 }}>
-                  TUJUAN KEMITRAAN SPESIFIK
-                </p>
-                <ul style={{ margin: 0, paddingLeft: 20, fontSize: 14, color: "#5F5E5A", lineHeight: 1.6 }}>
-                  <li>Digitalisasi katalog produk untuk pasar internasional.</li>
-                  <li>Akses pendanaan modal kerja sebesar Rp 500.000.000.</li>
-                  <li>Sistem manajemen inventory terintegrasi.</li>
-                </ul>
-              </div>
-            </div>
-          </div>
+                <span className="partnership-eyebrow">
+                  <ClipboardCheck size={16} />
+                  Detail Pengajuan
+                </span>
 
-          {/* Draf Kontrak Section */}
-          <div style={{
-            background: "white",
-            borderRadius: 16,
-            border: "1px solid #E8E7E2",
-            marginBottom: 24,
-            overflow: "hidden",
-          }}>
-            <div style={{
-              padding: "20px 24px",
-              borderBottom: "1px solid #E8E7E2",
-              background: "#FAFAF8",
-            }}>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#1A3A6B" }}>Draf Kontrak Kemitraan</h3>
-            </div>
-            <div style={{ padding: "24px" }}>
-              <DocumentCard
-                fileName="Draf Kontrak Kemitraan_v2.pdf"
-                fileSize="2.4 MB"
-                lastUpdated="Terakhir diperbarui 2 jam lalu"
-                onDownload={handleDownloadContract}
-              />
-              
-              {/* Contract Preview */}
-              <div style={{
-                marginTop: 20,
-                padding: "20px",
-                background: "#FAFAF8",
-                borderRadius: 12,
-                border: "1px solid #E8E7E2",
-              }}>
-                <h4 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 700, color: "#2C2C2A" }}>
-                  {partnership.proposal_title}
-                </h4>
-                <p style={{ margin: "0 0 16px", fontSize: 12, color: "#888780" }}>
-                  Nomor: {partnership.request_code}
-                </p>
-                
-                <div style={{ marginBottom: 16 }}>
-                  <h5 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: "#1A3A6B" }}>
-                    PASAL 1: DEFINISI DAN RUANG LINGKUP
-                  </h5>
-                  <p style={{ margin: 0, fontSize: 13, color: "#5F5E5A", lineHeight: 1.6 }}>
-                    Perjanjian ini mengatur hubungan kerja sama antara Mitra Artisan (Pihak Pertama) dan Pemilik Usaha (Pihak Kedua) dalam hal penyediaan produk kriya eksklusif melalui platform digital...
-                  </p>
+                <h1>{proposalTitle}</h1>
+
+                <div className="partnership-review-chip-row">
+                  <span>#{requestCode}</span>
+                  <StatusBadge status={status} />
+                  {category ? <span>{category}</span> : null}
                 </div>
-                
+              </div>
+            </section>
+
+            <section className="partnership-review-layout">
+              <div className="partnership-review-main">
+                <article className="partnership-review-card">
+                  <h2>
+                    <UserRound size={20} />
+                    Ringkasan Pengajuan
+                  </h2>
+
+                  <div className="partnership-review-info-grid">
+                    <InfoItem icon={<Building2 size={18} />} label="Pengaju" value={requesterName} />
+                    <InfoItem icon={<Handshake size={18} />} label="Tujuan" value={receiverName} />
+                    <InfoItem icon={<CalendarDays size={18} />} label="Tanggal Pengajuan" value={formatDate(submittedAt)} />
+                    <InfoItem icon={<CalendarDays size={18} />} label="Terakhir Diperbarui" value={formatDateTime(updatedAt)} />
+                    <InfoItem icon={<Phone size={18} />} label="Kontak" value={contactPerson || "-"} />
+                    <InfoItem icon={<Mail size={18} />} label="Kode Pengajuan" value={requestCode} />
+                  </div>
+                </article>
+
+                <article className="partnership-review-card">
+                  <h2>
+                    <MessageSquareText size={20} />
+                    Deskripsi Produk / Profil
+                  </h2>
+
+                  <p>{parsedProposal.description || "Deskripsi pengajuan belum tersedia."}</p>
+                </article>
+
+                <article className="partnership-review-card">
+                  <h2>
+                    <Handshake size={20} />
+                    Alasan Bermitra
+                  </h2>
+
+                  <p>{parsedProposal.reason || "Alasan bermitra belum tersedia."}</p>
+                </article>
+
+                <article className="partnership-review-card">
+                  <h2>
+                    <FileText size={20} />
+                    Dokumen Pendukung
+                  </h2>
+
+                  {attachments.length > 0 ? (
+                    <div className="partnership-review-document-grid">
+                      {attachments.map((item) => (
+                        <button
+                          type="button"
+                          className="partnership-review-document"
+                          key={item.document_id}
+                          onClick={() => item.document_id && handleOpenAttachment(item.document_id)}
+                        >
+                          <ScrollText size={18} />
+                          <span>
+                            <strong>{item.original_filename || item.file_name || item.document_id}</strong>
+                            <small>{item.type || "Dokumen pendukung"}</small>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <>
+                      <p className="partnership-review-note">
+                        Belum ada dokumen pendukung yang tersimpan untuk pengajuan ini.
+                      </p>
+
+                      <div className="partnership-review-document-grid">
+                        <div className="partnership-review-document empty">
+                          <ScrollText size={18} />
+                          <strong>Belum ada lampiran terbaca</strong>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </article>
+              </div>
+
+              <aside className={`partnership-review-action-panel status-${statusMeta.tone}`}>
+                <div className="partnership-status-card-header">
+                  <div className="partnership-status-card-icon">
+                    {statusMeta.tone === "active" ? (
+                      <CheckCircle2 size={24} />
+                    ) : statusMeta.tone === "rejected" || statusMeta.tone === "cancelled" ? (
+                      <XCircle size={24} />
+                    ) : (
+                      <ShieldCheck size={24} />
+                    )}
+                  </div>
+
+                  <div>
+                    <span>Status Pengajuan</span>
+                    <strong>{statusMeta.label}</strong>
+                  </div>
+                </div>
+
+                <p className="partnership-status-description">{statusMeta.description}</p>
+
+                <div className="partnership-action-summary">
+                  <div>
+                    <span>Pengaju</span>
+                    <strong>{requesterName}</strong>
+                  </div>
+                  <div>
+                    <span>Tujuan</span>
+                    <strong>{receiverName}</strong>
+                  </div>
+                  <div>
+                    <span>Tanggal</span>
+                    <strong>{formatDate(submittedAt)}</strong>
+                  </div>
+                  <div>
+                    <span>ID</span>
+                    <strong>#{requestCode}</strong>
+                  </div>
+                </div>
+
+                <div className="partnership-status-next-step">
+                  <ClipboardCheck size={17} />
+                  <p>{statusMeta.nextStep}</p>
+                </div>
+
+                {isReceiver && canReceiverReview(status) ? (
+                  <div className="partnership-review-actions">
+                    <button
+                      type="button"
+                      className="partnership-apply-button"
+                      onClick={handleContinueApproval}
+                    >
+                      Lanjut ke Persetujuan
+                      <CheckCircle2 size={17} />
+                    </button>
+
+                    <button
+                      type="button"
+                      className="partnership-danger-button"
+                      onClick={() => setShowRejectModal(true)}
+                    >
+                      Tolak Pengajuan
+                      <XCircle size={17} />
+                    </button>
+                  </div>
+                ) : (
+                  <p className="partnership-review-note">
+                    {isRequester
+                      ? "Anda adalah pengaju. Keputusan hanya dapat dilakukan oleh pihak tujuan kemitraan."
+                      : "Pengajuan ini tidak berada pada status yang memerlukan tindakan review."}
+                  </p>
+                )}
+              </aside>
+            </section>
+          </>
+        )}
+
+        {showRejectModal ? (
+          <div className="partnership-modal-backdrop" role="presentation" onClick={() => setShowRejectModal(false)}>
+            <section
+              className="partnership-reject-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="reject-title"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <header>
+                <XCircle size={24} />
                 <div>
-                  <h5 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: "#1A3A6B" }}>
-                    PASAL 2: KOMITMEN KUALITAS
-                  </h5>
-                  <p style={{ margin: 0, fontSize: 13, color: "#5F5E5A", lineHeight: 1.6 }}>
-                    Pihak Kedua berkewajiban menjaga standar kualitas kerajinan tangan sesuai dengan spesifikasi yang telah disepakati pada saat kurasi awal. Kegagalan dalam menjaga kualitas dapat menyebabkan peninjauan ulang status kemitraan...
-                  </p>
+                  <h2 id="reject-title">Tolak Pengajuan?</h2>
+                  <p>Berikan alasan agar pengaju memahami keputusan review.</p>
                 </div>
-              </div>
-            </div>
-          </div>
+              </header>
 
-          {/* Upload / Signed Document Section */}
-          <div style={{
-            background: "white",
-            borderRadius: 16,
-            border: "1px solid #E8E7E2",
-            marginBottom: 32,
-            overflow: "hidden",
-          }}>
-            <div style={{
-              padding: "20px 24px",
-              borderBottom: "1px solid #E8E7E2",
-              background: "#FAFAF8",
-            }}>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#1A3A6B" }}>
-                {isSigned ? "Dokumen Persetujuan Kemitraan" : "Unggah Dokumen yang Sudah Ditandatangani"}
-              </h3>
-            </div>
-            <div style={{ padding: "24px" }}>
-              {isSigned && signedDocument ? (
-                <SignedDocumentCard
-                  document={signedDocument}
-                  onDownload={handleDownloadSignedDocument}
-                />
-              ) : (
-                <UploadCard
-                  onFileSelect={(file) => {
-                    setSignedFile(file);
-                    setUploadError(null);
+              <label>
+                <span>Alasan Penolakan</span>
+                <select
+                  value={rejectionReason}
+                  onChange={(event) => {
+                    setRejectionReason(event.target.value);
+                    setRejectionError("");
                   }}
-                  onError={(err) => setUploadError(err)}
-                  fileName={signedFile?.name || null}
-                  error={uploadError ?? undefined}
+                >
+                  <option value="">Pilih alasan...</option>
+                  {REJECTION_REASONS.map((reason) => (
+                    <option value={reason.value} key={reason.value}>
+                      {reason.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label>
+                <span>Keterangan Tambahan</span>
+                <textarea
+                  value={rejectionNotes}
+                  onChange={(event) => setRejectionNotes(event.target.value)}
+                  rows={4}
+                  placeholder="Tambahkan catatan opsional..."
                 />
-              )}
-            </div>
-          </div>
+              </label>
 
-          {/* Action Buttons */}
-          <div style={{
-            display: "flex",
-            justifyContent: "space-between",
-            gap: 16,
-            paddingTop: 8,
-          }}>
-            <button
-              onClick={handleOpenCancelModal}
-              disabled={isSigned}
-              style={{
-                padding: "12px 32px",
-                background: "white",
-                border: `1px solid ${isSigned ? "#D3D1C7" : "#E24B4A"}`,
-                borderRadius: 12,
-                fontSize: 14,
-                fontWeight: 600,
-                color: isSigned ? "#B4B2A9" : "#E24B4A",
-                cursor: isSigned ? "not-allowed" : "pointer",
-                transition: "all 0.15s",
-              }}
-            >
-              Tolak Persetujuan
-            </button>
-            <button
-              onClick={handleSignAndApprove}
-              disabled={submitting || isSigned}
-              style={{
-                padding: "12px 40px",
-                background: submitting || isSigned ? "#888780" : "#1D9E75",
-                border: "none",
-                borderRadius: 12,
-                fontSize: 14,
-                fontWeight: 600,
-                color: "white",
-                cursor: (submitting || isSigned) ? "not-allowed" : "pointer",
-                transition: "background 0.15s",
-              }}
-            >
-              {submitting ? "Memproses..." : (isSigned ? "Sudah Ditandatangani" : "Tanda Tangani & Setujui")}
-            </button>
+              {rejectionError ? <p className="partnership-modal-error">{rejectionError}</p> : null}
+
+              <footer>
+                <button
+                  type="button"
+                  className="umkm-secondary-btn"
+                  disabled={submitting}
+                  onClick={() => setShowRejectModal(false)}
+                >
+                  Kembali
+                </button>
+
+                <button type="button" disabled={submitting} onClick={handleReject}>
+                  {submitting ? "Memproses..." : "Konfirmasi Tolak"}
+                </button>
+              </footer>
+            </section>
           </div>
-        </div>
+        ) : null}
       </main>
-      </div>
-    </div>
+    </UmkmLayout>
   );
-};
-
-export default PartnershipReviewPage;
+}

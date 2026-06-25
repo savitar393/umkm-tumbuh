@@ -73,6 +73,17 @@ func extractBearerToken(authHeader string) string {
 	return parts[1]
 }
 
+func formatPartnershipListTitle(p PartnershipListResponse) string {
+	name := strings.TrimSpace(p.RequesterBusinessName)
+	if name == "" {
+		name = strings.TrimSpace(p.RequesterName)
+	}
+	if name == "" {
+		return "Pengajuan Kemitraan"
+	}
+	return "Pengajuan Kemitraan - " + name
+}
+
 // CreatePartnership - POST /api/v1/partnerships
 func (h *Handler) CreatePartnership(w http.ResponseWriter, r *http.Request) {
 	userID := extractUserIDFromRequest(r)
@@ -146,14 +157,14 @@ func (h *Handler) GetPartnershipStatus(w http.ResponseWriter, r *http.Request) {
 	var formattedData []map[string]interface{}
 	for _, p := range partnerships {
 		formattedData = append(formattedData, map[string]interface{}{
-			"pengajuanID":        p.ID,
-			"statusPengajuan":    p.Status,
-			"tanggalPengajuan":   p.SubmittedAt,
-			"mitraUmkmTujuan":    p.ReceiverName,
-			"mitraUmkmUsaha":     p.ReceiverBusinessName,
-			"pengirim":           p.RequesterName,
-			"pengirimUsaha":      p.RequesterBusinessName,
-			"proposalTitle":      p.ProposalTitle,
+			"pengajuanID":      p.ID,
+			"statusPengajuan":  p.Status,
+			"tanggalPengajuan": p.SubmittedAt,
+			"mitraUmkmTujuan":  p.ReceiverName,
+			"mitraUmkmUsaha":   p.ReceiverBusinessName,
+			"pengirim":         p.RequesterName,
+			"pengirimUsaha":    p.RequesterBusinessName,
+			"proposalTitle":    formatPartnershipListTitle(p),
 		})
 	}
 
@@ -198,6 +209,42 @@ func (h *Handler) GetPartnershipSummary(w http.ResponseWriter, r *http.Request) 
 	}, "")
 }
 
+// GetIncomingPartnershipSummary - GET /api/v1/partnerships/incoming/summary
+func (h *Handler) GetIncomingPartnershipSummary(w http.ResponseWriter, r *http.Request) {
+	userID := extractUserIDFromRequest(r)
+	if userID == "" {
+		response.Error(w, http.StatusUnauthorized, "User not authenticated", nil)
+		return
+	}
+
+	summary, err := h.service.GetIncomingPartnershipSummary(r.Context(), userID)
+	if err != nil {
+		if appErr, ok := err.(*apperror.AppError); ok {
+			response.Error(w, appErr.Code, appErr.Message, nil)
+			return
+		}
+		response.Error(w, http.StatusInternalServerError, "Failed to get incoming partnership summary", nil)
+		return
+	}
+
+	total := 0
+	for _, count := range summary {
+		total += count
+	}
+
+	kpi := map[string]int{
+		"menunggu":   summary["DIAJUKAN"] + summary["DITINJAU"],
+		"disetujui":  summary["MENUNGGU_DOKUMEN_TTD"] + summary["APPROVED"] + summary["AKTIF"] + summary["SELESAI"],
+		"ditolak":    summary["DITOLAK"],
+		"dibatalkan": summary["DIBATALKAN"],
+		"total":      total,
+	}
+
+	response.Success(w, http.StatusOK, map[string]interface{}{
+		"summary": kpi,
+	}, "")
+}
+
 // GetIncomingPartnerships - GET /api/v1/partnerships/incoming
 func (h *Handler) GetIncomingPartnerships(w http.ResponseWriter, r *http.Request) {
 	userID := extractUserIDFromRequest(r)
@@ -235,7 +282,7 @@ func (h *Handler) GetIncomingPartnerships(w http.ResponseWriter, r *http.Request
 		formattedData = append(formattedData, map[string]interface{}{
 			"pengajuanID":      p.ID,
 			"pengirim":         p.RequesterName,
-			"proposal_title":   p.ProposalTitle,
+			"proposal_title":   formatPartnershipListTitle(p),
 			"tanggalPengajuan": p.SubmittedAt,
 			"status":           p.Status,
 		})
@@ -322,6 +369,45 @@ func (h *Handler) SignPartnership(w http.ResponseWriter, r *http.Request) {
 	response.Success(w, http.StatusOK, nil, "Dokumen berhasil diunggah. Pengajuan siap disetujui.")
 }
 
+func canDecidePartnership(status PartnershipStatus) bool {
+	switch status {
+	case StatusSubmitted, StatusReviewed:
+		return true
+	default:
+		return false
+	}
+}
+
+func (h *Handler) authorizeReceiverDecision(w http.ResponseWriter, r *http.Request, id string) (*PartnershipResponse, bool) {
+	userID := extractUserIDFromRequest(r)
+	if userID == "" {
+		response.Error(w, http.StatusUnauthorized, "User not authenticated", nil)
+		return nil, false
+	}
+
+	partnership, err := h.service.GetPartnershipByID(r.Context(), id)
+	if err != nil {
+		if appErr, ok := err.(*apperror.AppError); ok {
+			response.Error(w, appErr.Code, appErr.Message, nil)
+			return nil, false
+		}
+		response.Error(w, http.StatusNotFound, "Pengajuan kemitraan tidak ditemukan", nil)
+		return nil, false
+	}
+
+	if partnership.ReceiverID != userID {
+		response.Error(w, http.StatusForbidden, "Hanya penerima pengajuan yang dapat mengambil keputusan", nil)
+		return nil, false
+	}
+
+	if !canDecidePartnership(partnership.Status) {
+		response.Error(w, http.StatusConflict, "Pengajuan tidak berada pada status yang dapat diputuskan", nil)
+		return nil, false
+	}
+
+	return partnership, true
+}
+
 // MarkAsRead - PATCH /api/v1/partnerships/{id}/read
 func (h *Handler) MarkAsRead(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
@@ -340,13 +426,13 @@ func (h *Handler) ApprovePartnership(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get user info from JWT - TODO: use for authorization
-	_ = extractUserIDFromRequest(r)
+	if _, ok := h.authorizeReceiverDecision(w, r, id); !ok {
+		return
+	}
 
 	var req UpdatePartnershipStatus
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response.Error(w, http.StatusBadRequest, "Invalid request body", nil)
-		return
+	if r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&req)
 	}
 
 	// Set status to AKTIF (Active)
@@ -381,7 +467,9 @@ func (h *Handler) RejectPartnership(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_ = extractUserIDFromRequest(r)
+	if _, ok := h.authorizeReceiverDecision(w, r, id); !ok {
+		return
+	}
 
 	var req UpdatePartnershipStatus
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -417,6 +505,45 @@ func (h *Handler) RejectPartnership(w http.ResponseWriter, r *http.Request) {
 	response.Success(w, http.StatusOK, nil, "Pengajuan ditolak.")
 }
 
+// CancelPartnership - PATCH /api/v1/partnerships/{id}/cancel
+func (h *Handler) CancelPartnership(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		response.Error(w, http.StatusBadRequest, "Invalid partnership ID", nil)
+		return
+	}
+
+	_ = extractUserIDFromRequest(r)
+
+	var req UpdatePartnershipStatus
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.Error(w, http.StatusBadRequest, "Invalid request body", nil)
+		return
+	}
+
+	req.Status = StatusCancelled
+
+	if err := h.service.UpdatePartnershipStatus(r.Context(), id, req); err != nil {
+		if appErr, ok := err.(*apperror.AppError); ok {
+			switch appErr.Code {
+			case http.StatusForbidden:
+				response.Error(w, http.StatusForbidden, appErr.Message, nil)
+				return
+			case http.StatusNotFound:
+				response.Error(w, http.StatusNotFound, appErr.Message, nil)
+				return
+			default:
+				response.Error(w, appErr.Code, appErr.Message, nil)
+				return
+			}
+		}
+		response.Error(w, http.StatusInternalServerError, "Failed to cancel partnership", nil)
+		return
+	}
+
+	response.Success(w, http.StatusOK, nil, "Pengajuan dibatalkan.")
+}
+
 // ============================================================
 // NEW HANDLERS FOR UMKM AND MITRA LISTS
 // ============================================================
@@ -429,7 +556,7 @@ func (h *Handler) GetUMKMList(w http.ResponseWriter, r *http.Request) {
 	if page < 1 {
 		page = 1
 	}
-	
+
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	if limit < 1 {
 		limit = 10
@@ -437,17 +564,17 @@ func (h *Handler) GetUMKMList(w http.ResponseWriter, r *http.Request) {
 	if limit > 50 {
 		limit = 50
 	}
-	
+
 	search := r.URL.Query().Get("q")
 	filterType := r.URL.Query().Get("filterType")
-	
+
 	// Extract user role - hanya MITRA yang bisa melihat UMKM
 	userRole := extractUserRoleFromRequest(r)
 	if userRole != RoleMitra {
 		response.Error(w, http.StatusForbidden, "Hanya mitra yang dapat melihat daftar UMKM", nil)
 		return
 	}
-	
+
 	// Get UMKM list from service
 	umkmList, totalCount, err := h.service.GetUMKMList(r.Context(), search, filterType, page, limit)
 	if err != nil {
@@ -458,13 +585,13 @@ func (h *Handler) GetUMKMList(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, http.StatusInternalServerError, "Gagal mengambil daftar UMKM", nil)
 		return
 	}
-	
+
 	// Calculate total pages
 	totalPages := 0
 	if totalCount > 0 {
 		totalPages = (totalCount + limit - 1) / limit
 	}
-	
+
 	// Return success response
 	response.Success(w, http.StatusOK, map[string]interface{}{
 		"umkm": umkmList,
@@ -485,7 +612,7 @@ func (h *Handler) GetMitraList(w http.ResponseWriter, r *http.Request) {
 	if page < 1 {
 		page = 1
 	}
-	
+
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	if limit < 1 {
 		limit = 10
@@ -493,17 +620,17 @@ func (h *Handler) GetMitraList(w http.ResponseWriter, r *http.Request) {
 	if limit > 50 {
 		limit = 50
 	}
-	
+
 	search := r.URL.Query().Get("q")
 	filterType := r.URL.Query().Get("filterType")
-	
+
 	// Extract user role - hanya UMKM yang bisa melihat mitra
 	userRole := extractUserRoleFromRequest(r)
 	if userRole != RoleUMKM {
 		response.Error(w, http.StatusForbidden, "Hanya UMKM yang dapat melihat daftar mitra", nil)
 		return
 	}
-	
+
 	// Get Mitra list from service
 	mitraList, totalCount, err := h.service.GetMitraList(r.Context(), search, filterType, page, limit)
 	if err != nil {
@@ -514,13 +641,13 @@ func (h *Handler) GetMitraList(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, http.StatusInternalServerError, "Gagal mengambil daftar mitra", nil)
 		return
 	}
-	
+
 	// Calculate total pages
 	totalPages := 0
 	if totalCount > 0 {
 		totalPages = (totalCount + limit - 1) / limit
 	}
-	
+
 	// Return success response
 	response.Success(w, http.StatusOK, map[string]interface{}{
 		"mitra": mitraList,

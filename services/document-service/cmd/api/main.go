@@ -20,7 +20,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -225,12 +224,27 @@ func (a *app) handleUploadDocument(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	documentID := "DOC" + strings.ToUpper(strings.ReplaceAll(uuid.NewString(), "-", ""))
+	documentID, err := a.generateDocumentID(r.Context())
+	if err != nil {
+		log.Printf("failed to generate document id: %v", err)
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Gagal membuat ID dokumen."})
+		return
+	}
+
 	extension := strings.ToLower(filepath.Ext(header.Filename))
 	objectKey := fmt.Sprintf("%s/%s/%s%s", strings.ToLower(category), user.ID, documentID, extension)
 	publicURL := publicObjectURL(bucket, objectKey)
 
-	if err := storageClient.putObject(r.Context(), objectKey, file, contentType); err != nil {
+	if err := storageClient.putObject(r.Context(), objectKey, file, header.Header.Get("Content-Type")); err != nil {
+		log.Printf(
+			"failed to upload document to object storage: bucket=%s key=%s content_type=%s size=%d err=%v",
+			bucket,
+			objectKey,
+			header.Header.Get("Content-Type"),
+			header.Size,
+			err,
+		)
+
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Gagal mengunggah file ke object storage."})
 		return
 	}
@@ -260,18 +274,41 @@ func (a *app) handleUploadDocument(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *app) handleDocumentByID(w http.ResponseWriter, r *http.Request) {
-	documentID := strings.TrimPrefix(r.URL.Path, "/api/v1/documents/")
-	documentID = strings.TrimSpace(documentID)
+	pathValue := strings.TrimPrefix(r.URL.Path, "/api/v1/documents/")
+	pathValue = strings.Trim(strings.TrimSpace(pathValue), "/")
+
+	if pathValue == "" {
+		writeJSON(w, http.StatusNotFound, errorResponse{Error: "Dokumen tidak ditemukan."})
+		return
+	}
+
+	parts := strings.Split(pathValue, "/")
+	if len(parts) > 2 {
+		writeJSON(w, http.StatusNotFound, errorResponse{Error: "Endpoint dokumen tidak ditemukan."})
+		return
+	}
+
+	documentID := strings.TrimSpace(parts[0])
+	action := ""
+	if len(parts) == 2 {
+		action = strings.ToLower(strings.TrimSpace(parts[1]))
+	}
 
 	if documentID == "" {
 		writeJSON(w, http.StatusNotFound, errorResponse{Error: "Dokumen tidak ditemukan."})
 		return
 	}
 
-	switch r.Method {
-	case http.MethodGet:
+	switch {
+	case r.Method == http.MethodGet && action == "":
 		a.handleGetDocument(w, r, documentID)
-	case http.MethodDelete:
+	case r.Method == http.MethodGet && action == "url":
+		a.handleGetDocumentURL(w, r, documentID)
+	case r.Method == http.MethodGet && action == "view":
+		a.handleStreamDocument(w, r, documentID, true)
+	case r.Method == http.MethodGet && action == "download":
+		a.handleStreamDocument(w, r, documentID, false)
+	case r.Method == http.MethodDelete && action == "":
 		a.handleDeleteDocument(w, r, documentID)
 	default:
 		writeJSON(w, http.StatusMethodNotAllowed, errorResponse{Error: "Method not allowed."})
@@ -301,7 +338,7 @@ func (a *app) handleGetDocument(w http.ResponseWriter, r *http.Request, document
 		return
 	}
 
-	if !canAccessDocument(user, document) {
+	if !a.canAccessDocument(r.Context(), user, document) {
 		writeJSON(w, http.StatusForbidden, errorResponse{Error: "Anda tidak memiliki akses ke dokumen ini."})
 		return
 	}
@@ -309,6 +346,121 @@ func (a *app) handleGetDocument(w http.ResponseWriter, r *http.Request, document
 	writeJSON(w, http.StatusOK, map[string]any{
 		"document": document,
 	})
+}
+
+func (a *app) handleGetDocumentURL(w http.ResponseWriter, r *http.Request, documentID string) {
+	user, ok := userFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "User tidak ditemukan pada konteks."})
+		return
+	}
+
+	document, err := a.findDocumentByID(r.Context(), documentID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			writeJSON(w, http.StatusNotFound, errorResponse{Error: "Dokumen tidak ditemukan."})
+			return
+		}
+
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Gagal memuat dokumen."})
+		return
+	}
+
+	if document.Status == "DIHAPUS" {
+		writeJSON(w, http.StatusNotFound, errorResponse{Error: "Dokumen tidak ditemukan."})
+		return
+	}
+
+	if !a.canAccessDocument(r.Context(), user, document) {
+		writeJSON(w, http.StatusForbidden, errorResponse{Error: "Anda tidak memiliki akses ke dokumen ini."})
+		return
+	}
+
+	publicEndpoint := strings.TrimSpace(os.Getenv("OBJECT_STORAGE_PUBLIC_ENDPOINT"))
+	if publicEndpoint == "" {
+		publicEndpoint = strings.TrimSpace(os.Getenv("OBJECT_STORAGE_ENDPOINT"))
+	}
+
+	storageClient, err := newS3ClientWithEndpoint(r.Context(), document.Bucket, publicEndpoint)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Gagal membuat akses dokumen."})
+		return
+	}
+
+	presignedURL, err := storageClient.presignGetObject(r.Context(), document.ObjectKey, 15*time.Minute)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Gagal membuat URL dokumen."})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success": true,
+		"message": "",
+		"data": map[string]any{
+			"url":          presignedURL,
+			"content_type": document.ContentType,
+			"file_name":    document.OriginalFilename,
+			"expires_in":   900,
+		},
+	})
+}
+
+func (a *app) handleStreamDocument(w http.ResponseWriter, r *http.Request, documentID string, inline bool) {
+	user, ok := userFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "User tidak ditemukan pada konteks."})
+		return
+	}
+
+	document, err := a.findDocumentByID(r.Context(), documentID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			writeJSON(w, http.StatusNotFound, errorResponse{Error: "Dokumen tidak ditemukan."})
+			return
+		}
+
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Gagal memuat dokumen."})
+		return
+	}
+
+	if document.Status == "DIHAPUS" {
+		writeJSON(w, http.StatusNotFound, errorResponse{Error: "Dokumen tidak ditemukan."})
+		return
+	}
+
+	if !a.canAccessDocument(r.Context(), user, document) {
+		writeJSON(w, http.StatusForbidden, errorResponse{Error: "Anda tidak memiliki akses ke dokumen ini."})
+		return
+	}
+
+	storageClient, err := newS3Client(r.Context(), document.Bucket)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Gagal membuka koneksi object storage."})
+		return
+	}
+
+	object, err := storageClient.getObject(r.Context(), document.ObjectKey)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Gagal membaca dokumen dari object storage."})
+		return
+	}
+	defer object.Body.Close()
+
+	fileName := strings.ReplaceAll(document.OriginalFilename, `"`, "")
+	disposition := "attachment"
+	if inline {
+		disposition = "inline"
+	}
+
+	w.Header().Set("Content-Type", document.ContentType)
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`%s; filename="%s"`, disposition, fileName))
+	if document.SizeBytes > 0 {
+		w.Header().Set("Content-Length", fmt.Sprintf("%d", document.SizeBytes))
+	}
+
+	if _, err := io.Copy(w, object.Body); err != nil {
+		log.Printf("failed to stream document %s: %v", document.ID, err)
+	}
 }
 
 func (a *app) handleDeleteDocument(w http.ResponseWriter, r *http.Request, documentID string) {
@@ -329,7 +481,7 @@ func (a *app) handleDeleteDocument(w http.ResponseWriter, r *http.Request, docum
 		return
 	}
 
-	if !canAccessDocument(user, document) {
+	if !a.canAccessDocument(r.Context(), user, document) {
 		writeJSON(w, http.StatusForbidden, errorResponse{Error: "Anda tidak memiliki akses ke dokumen ini."})
 		return
 	}
@@ -358,6 +510,21 @@ func (a *app) handleDeleteDocument(w http.ResponseWriter, r *http.Request, docum
 
 func (a *app) handleNotFound(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusNotFound, errorResponse{Error: "Endpoint not found."})
+}
+
+func (a *app) generateDocumentID(ctx context.Context) (string, error) {
+	const query = `
+		SELECT COALESCE(MAX(SUBSTRING(dokumen_id FROM 4)::int), 0) + 1
+		FROM documents.master_dokumen
+		WHERE dokumen_id ~ '^DOK[0-9]+$'
+	`
+
+	var next int
+	if err := a.db.QueryRow(ctx, query).Scan(&next); err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("DOK%06d", next), nil
 }
 
 func (a *app) insertDocumentMetadata(
@@ -488,7 +655,10 @@ type s3Client struct {
 }
 
 func newS3Client(ctx context.Context, bucket string) (*s3Client, error) {
-	endpoint := strings.TrimSpace(os.Getenv("OBJECT_STORAGE_ENDPOINT"))
+	return newS3ClientWithEndpoint(ctx, bucket, strings.TrimSpace(os.Getenv("OBJECT_STORAGE_ENDPOINT")))
+}
+
+func newS3ClientWithEndpoint(ctx context.Context, bucket string, endpoint string) (*s3Client, error) {
 	accessKey := strings.TrimSpace(os.Getenv("OBJECT_STORAGE_ACCESS_KEY"))
 	secretKey := strings.TrimSpace(os.Getenv("OBJECT_STORAGE_SECRET_KEY"))
 	region := strings.TrimSpace(env("OBJECT_STORAGE_REGION", "garage"))
@@ -528,6 +698,31 @@ func (c *s3Client) putObject(ctx context.Context, key string, body io.Reader, co
 	})
 
 	return err
+}
+
+func (c *s3Client) getObject(ctx context.Context, key string) (*s3.GetObjectOutput, error) {
+	return c.client.GetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(c.bucket),
+		Key:    aws.String(key),
+	})
+}
+
+func (c *s3Client) presignGetObject(ctx context.Context, key string, expires time.Duration) (string, error) {
+	presigner := s3.NewPresignClient(c.client)
+
+	result, err := presigner.PresignGetObject(
+		ctx,
+		&s3.GetObjectInput{
+			Bucket: aws.String(c.bucket),
+			Key:    aws.String(key),
+		},
+		s3.WithPresignExpires(expires),
+	)
+	if err != nil {
+		return "", err
+	}
+
+	return result.URL, nil
 }
 
 func (c *s3Client) deleteObject(ctx context.Context, key string) error {
@@ -573,12 +768,39 @@ func isAllowedContentType(category string, contentType string) bool {
 	return allowed[contentType]
 }
 
-func canAccessDocument(user currentUser, document documentResponse) bool {
+func (a *app) canAccessDocument(ctx context.Context, user currentUser, document documentResponse) bool {
 	if user.Role == "ADMIN" {
 		return true
 	}
 
-	return document.UploaderAccount == user.ID
+	if document.UploaderAccount == user.ID {
+		return true
+	}
+
+	var allowed bool
+	const query = `
+		SELECT EXISTS (
+			SELECT 1
+			FROM partnership.transaksi_pengajuankerjasama pk
+			WHERE pk.dokumen_perjanjian_id = $1
+			AND (pk.pengaju_akun_id = $2 OR pk.penerima_akun_id = $2)
+
+			UNION
+
+			SELECT 1
+			FROM partnership.transaksi_pengajuankerjasama_lampiran l
+			JOIN partnership.transaksi_pengajuankerjasama pk
+			ON pk.pengajuan_id = l.pengajuan_id
+			WHERE l.dokumen_id = $1
+			AND (pk.pengaju_akun_id = $2 OR pk.penerima_akun_id = $2)
+		)
+	`
+
+	if err := a.db.QueryRow(ctx, query, document.ID, user.ID).Scan(&allowed); err != nil {
+		return false
+	}
+
+	return allowed
 }
 
 func bucketForCategory(category string) string {

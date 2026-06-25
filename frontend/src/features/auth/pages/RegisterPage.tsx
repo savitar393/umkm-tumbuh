@@ -1,7 +1,13 @@
 import { type FormEvent, useState } from "react";
 import { ArrowRight, Check, Handshake, HelpCircle, Store } from "lucide-react";
-import { Link } from "react-router-dom";
-import { register } from "../api";
+import { Link, useNavigate } from "react-router-dom";
+import { register, requestEmailVerification } from "../api";
+import {
+  isStrongEnoughPassword,
+  isValidEmail,
+  isValidIndonesianPhone,
+  normalizeIndonesianPhone,
+} from "../../../shared/validation/forms";
 
 type RegisterStep = "role" | "account";
 type RegisterRole = "UMKM" | "MITRA";
@@ -13,7 +19,6 @@ export default function RegisterPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [nik, setNik] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
@@ -22,6 +27,8 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const navigate = useNavigate();
+
   function chooseRole(nextRole: RegisterRole) {
     setRole(nextRole);
     setStep("account");
@@ -29,18 +36,50 @@ export default function RegisterPage() {
     setMessage("");
   }
 
+  function validateRegisterForm() {
+    const cleanName = fullName.trim();
+    const cleanEmail = email.trim();
+
+    if (cleanName.length < 3) {
+      return "Nama lengkap wajib diisi minimal 3 karakter.";
+    }
+
+    if (!cleanEmail) {
+      return "Email wajib diisi.";
+    }
+
+    if (!isValidEmail(cleanEmail)) {
+      return "Format email tidak valid.";
+    }
+
+    if (!isValidIndonesianPhone(phoneNumber)) {
+      return "Nomor WhatsApp wajib 8–13 digit setelah kode +62.";
+    }
+
+    if (!isStrongEnoughPassword(password)) {
+      return "Password minimal 8 karakter.";
+    }
+
+    if (password !== passwordConfirmation) {
+      return "Konfirmasi password tidak sama.";
+    }
+
+    if (!acceptedTerms) {
+      return "Anda harus menyetujui Syarat & Ketentuan dan Kebijakan Privasi.";
+    }
+
+    return "";
+  }
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setMessage("");
     setError("");
 
-    if (password !== passwordConfirmation) {
-      setError("Konfirmasi password tidak sama.");
-      return;
-    }
+    const validationError = validateRegisterForm();
 
-    if (!acceptedTerms) {
-      setError("Anda harus menyetujui Syarat & Ketentuan dan Kebijakan Privasi.");
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -48,24 +87,42 @@ export default function RegisterPage() {
 
     try {
       const result = await register({
-        full_name: fullName,
-        email,
-        phone_number: phoneNumber,
-        nik,
-        password,
-        role,
-      });
+      full_name: fullName.trim(),
+      email: email.trim().toLowerCase(),
+      phone_number: `62${normalizeIndonesianPhone(phoneNumber)}`,
+      password,
+      role,
+    });
 
-      setMessage(result.message);
-      setFullName("");
-      setEmail("");
-      setPhoneNumber("");
-      setNik("");
-      setPassword("");
-      setPasswordConfirmation("");
-      setAcceptedTerms(false);
-      setRole("UMKM");
-      setStep("role");
+      if (result.access_token) {
+      localStorage.setItem("access_token", result.access_token);
+      localStorage.setItem("current_user", JSON.stringify(result.user));
+
+      let devCode = "";
+
+      try {
+        const verification = await requestEmailVerification(email.trim().toLowerCase());
+        devCode = verification.dev_code ?? "";
+      } catch {
+        // Account creation succeeded. User can resend code from verification page.
+      }
+
+      navigate(
+        `/register/verify-email?email=${encodeURIComponent(email.trim().toLowerCase())}&role=${role.toLowerCase()}`,
+        {
+          replace: true,
+          state: {
+            email: email.trim().toLowerCase(),
+            role,
+            devCode,
+          },
+        }
+      );
+
+      return;
+    }
+
+    setMessage(result.message || "Akun berhasil dibuat. Silakan login untuk melanjutkan.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registrasi gagal");
     } finally {
@@ -180,22 +237,11 @@ export default function RegisterPage() {
                   <span>+62</span>
                   <input
                     value={phoneNumber}
-                    onChange={(event) => setPhoneNumber(event.target.value)}
+                    onChange={(event) => setPhoneNumber(normalizeIndonesianPhone(event.target.value))}
                     placeholder="812xxxx"
                   />
                 </div>
               </label>
-
-              {role === "UMKM" ? (
-                <label>
-                  NIK
-                  <input
-                    value={nik}
-                    onChange={(event) => setNik(event.target.value)}
-                    placeholder="Nomor Induk Kependudukan"
-                  />
-                </label>
-              ) : null}
 
               <div className="register-two-column">
                 <label>
@@ -237,7 +283,7 @@ export default function RegisterPage() {
               {error ? <div className="error-message">{error}</div> : null}
 
               <button type="submit" disabled={loading}>
-                {loading ? "Memproses..." : "Lanjutkan"}
+                {loading ? "Memproses..." : "Lanjut ke Data Profil"}
               </button>
 
               <button

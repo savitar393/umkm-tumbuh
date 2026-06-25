@@ -19,6 +19,7 @@ type Repository interface {
 	UpdateContract(ctx context.Context, id string, dokumenKontrak string, signedAt time.Time) error
 	GenerateRequestCode(ctx context.Context) (string, error)
 	GetSummary(ctx context.Context, userID string) (map[string]int, error)
+	GetIncomingSummary(ctx context.Context, userID string) (map[string]int, error)
 
 	FindUMKMList(ctx context.Context, search string, filterType string, limit, offset int) ([]UMKMListItem, int, error)
 	FindMitraList(ctx context.Context, search string, filterType string, limit, offset int) ([]MitraListItem, int, error)
@@ -26,6 +27,9 @@ type Repository interface {
 	FindBusinessIDByAkunID(ctx context.Context, akunID string, role UserRole) (string, error)
 	FindUMKMDetail(ctx context.Context, umkmID string) (*UMKMDetail, error)
 	FindMitraDetail(ctx context.Context, mitraID string) (*MitraDetail, error)
+
+	CreateAttachments(ctx context.Context, partnershipID string, documentIDs []string) error
+	FindAttachmentsByPartnershipID(ctx context.Context, partnershipID string) ([]PartnershipAttachment, error)
 }
 
 type repository struct {
@@ -69,7 +73,7 @@ func (r *repository) Create(ctx context.Context, req *PartnershipRequest) error 
 
 	_, err := r.db.Exec(ctx, query,
 		req.ID, req.RequestCode, umkmID, mitraID, req.RequesterID, req.ReceiverID,
-		req.Status, req.ProposalTitle, req.RejectionReason, req.ContractDocumentID,
+		req.Status, req.ProposalDescription, req.RejectionReason, req.ContractDocumentID,
 		req.SubmittedAt, req.DecidedAt, req.ContractSignedAt,
 		req.PartnershipStart, req.PartnershipEnd,
 	)
@@ -104,7 +108,9 @@ func (r *repository) FindByID(ctx context.Context, id string) (*PartnershipRespo
 			pr.catatan_keputusan as rejection_reason,
 			pr.dokumen_perjanjian_id as contract_document_id,
 			u1.nama_lengkap as requester_name,
-			u2.nama_lengkap as receiver_name
+			u2.nama_lengkap as receiver_name,
+			pr.created_at,
+			pr.updated_at
 		FROM partnership.transaksi_pengajuankerjasama pr
 		LEFT JOIN auth.master_akunpengguna u1 ON pr.pengaju_akun_id = u1.akun_id
 		LEFT JOIN auth.master_akunpengguna u2 ON pr.penerima_akun_id = u2.akun_id
@@ -116,7 +122,7 @@ func (r *repository) FindByID(ctx context.Context, id string) (*PartnershipRespo
 		&resp.ID, &resp.RequestCode, &resp.RequesterID, &resp.ReceiverID,
 		&resp.Status, &resp.SubmittedAt, &resp.DecidedAt,
 		&resp.ProposalDescription, &resp.RejectionReason, &resp.ContractDocumentID,
-		&resp.RequesterName, &resp.ReceiverName,
+		&resp.RequesterName, &resp.ReceiverName, &resp.CreatedAt, &resp.UpdatedAt,
 	)
 
 	if err != nil {
@@ -125,6 +131,16 @@ func (r *repository) FindByID(ctx context.Context, id string) (*PartnershipRespo
 		}
 		return nil, fmt.Errorf("failed to find partnership request: %w", err)
 	}
+
+	attachments, err := r.FindAttachmentsByPartnershipID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if attachments == nil {
+		attachments = []PartnershipAttachment{}
+	}
+
+	resp.Attachments = attachments
 
 	return &resp, nil
 }
@@ -257,9 +273,11 @@ func (r *repository) FindByReceiverID(ctx context.Context, receiverID string, st
 
 func (r *repository) UpdateStatus(ctx context.Context, id string, status PartnershipStatus, rejectionReason *string, decidedAt time.Time) error {
 	query := `
-		UPDATE partnership.transaksi_pengajuankerjasama 
-		SET status_pengajuan_id = $1, catatan_keputusan = $2, 
-			tanggal_keputusan = $3, updated_at = NOW()
+		UPDATE partnership.transaksi_pengajuankerjasama
+		SET status_pengajuan_id = $1,
+			catatan_keputusan = $2,
+			tanggal_keputusan = $3,
+			updated_at = NOW()
 		WHERE pengajuan_id = $4
 	`
 
@@ -321,6 +339,33 @@ func (r *repository) GetSummary(ctx context.Context, userID string) (map[string]
 	return summary, nil
 }
 
+func (r *repository) GetIncomingSummary(ctx context.Context, userID string) (map[string]int, error) {
+	query := `
+		SELECT status_pengajuan_id, COUNT(*) as cnt
+		FROM partnership.transaksi_pengajuankerjasama
+		WHERE penerima_akun_id = $1
+		GROUP BY status_pengajuan_id
+	`
+
+	rows, err := r.db.Query(ctx, query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get incoming summary: %w", err)
+	}
+	defer rows.Close()
+
+	summary := make(map[string]int)
+	for rows.Next() {
+		var status string
+		var count int
+		if err := rows.Scan(&status, &count); err != nil {
+			return nil, fmt.Errorf("failed to scan incoming summary row: %w", err)
+		}
+		summary[status] = count
+	}
+
+	return summary, nil
+}
+
 func (r *repository) GenerateRequestCode(ctx context.Context) (string, error) {
 	// Generate request code with format: PKS-YYYY-XXXXXX
 	var count int
@@ -339,7 +384,7 @@ func (r *repository) GenerateRequestCode(ctx context.Context) (string, error) {
 // NEW IMPLEMENTATIONS FOR UMKM AND MITRA LISTS
 // ============================================================
 
-/// FindUMKMList retrieves a paginated list of verified UMKM
+// / FindUMKMList retrieves a paginated list of verified UMKM
 // Used by MITRA to find potential partners
 func (r *repository) FindUMKMList(ctx context.Context, search string, filterType string, limit, offset int) ([]UMKMListItem, int, error) {
 	var whereClause string
@@ -545,7 +590,8 @@ func (r *repository) FindUMKMDetail(ctx context.Context, umkmID string) (*UMKMDe
 			COALESCE(p.email::text, '') as email,
 			COALESCE(p.alamat, '') as address,
 			COALESCE(u.produk_utama, '') as products,
-			COALESCE(u.tahun_berdiri, 0) as year_established
+			COALESCE(u.tahun_berdiri, 0) as year_established,
+			COALESCE(u.media_sosial_marketplace, '') as social_media_marketplace
 		FROM user_mgmt.master_umkm u
 		LEFT JOIN ref.ref_jenisumkm juk ON u.jenis_umkm_id = juk.jenis_umkm_id
 		LEFT JOIN user_mgmt.master_lokasi l ON u.lokasi_id = l.lokasi_id
@@ -558,7 +604,7 @@ func (r *repository) FindUMKMDetail(ctx context.Context, umkmID string) (*UMKMDe
 		&d.ID, &d.Name, &d.Type, &d.City, &d.Province,
 		&d.Description, &d.OperationalArea,
 		&d.OwnerName, &d.PhoneNumber, &d.Email, &d.Address,
-		&d.Products, &d.YearEstablished,
+		&d.Products, &d.YearEstablished, &d.SocialMediaMarketplace,
 	)
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -612,4 +658,105 @@ func (r *repository) FindMitraDetail(ctx context.Context, mitraID string) (*Mitr
 	}
 
 	return &d, nil
+}
+
+func (r *repository) CreateAttachments(ctx context.Context, partnershipID string, documentIDs []string) error {
+	if len(documentIDs) == 0 {
+		return nil
+	}
+
+	for index, documentID := range documentIDs {
+		if documentID == "" {
+			continue
+		}
+
+		attachmentType := "LAINNYA"
+		switch index {
+		case 0:
+			attachmentType = "NIB_KTP"
+		case 1:
+			attachmentType = "PROPOSAL_KEMITRAAN"
+		case 2:
+			attachmentType = "SERTIFIKAT"
+		}
+
+		const query = `
+			INSERT INTO partnership.transaksi_pengajuankerjasama_lampiran (
+				pengajuan_id,
+				dokumen_id,
+				jenis_lampiran,
+				nama_file,
+				urutan,
+				created_at
+			)
+			SELECT
+				$1,
+				d.dokumen_id,
+				$2,
+				d.original_filename,
+				$3,
+				NOW()
+			FROM documents.master_dokumen d
+			WHERE d.dokumen_id = $4
+			  AND d.status = 'AKTIF'
+			ON CONFLICT (pengajuan_id, dokumen_id) DO NOTHING
+		`
+
+		result, err := r.db.Exec(ctx, query, partnershipID, attachmentType, index+1, documentID)
+		if err != nil {
+			return fmt.Errorf("failed to create partnership attachment: %w", err)
+		}
+
+		if result.RowsAffected() == 0 {
+			return fmt.Errorf("document attachment not found or inactive: %s", documentID)
+		}
+	}
+
+	return nil
+}
+
+func (r *repository) FindAttachmentsByPartnershipID(ctx context.Context, partnershipID string) ([]PartnershipAttachment, error) {
+	const query = `
+		SELECT
+			l.dokumen_id,
+			l.jenis_lampiran,
+			COALESCE(l.nama_file, ''),
+			COALESCE(d.original_filename, ''),
+			COALESCE(d.content_type, ''),
+			COALESCE(d.size_bytes, 0),
+			l.created_at
+		FROM partnership.transaksi_pengajuankerjasama_lampiran l
+		JOIN documents.master_dokumen d
+		  ON d.dokumen_id = l.dokumen_id
+		WHERE l.pengajuan_id = $1
+		  AND d.status = 'AKTIF'
+		ORDER BY l.urutan ASC, l.created_at ASC
+	`
+
+	rows, err := r.db.Query(ctx, query, partnershipID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find partnership attachments: %w", err)
+	}
+	defer rows.Close()
+
+	attachments := make([]PartnershipAttachment, 0)
+
+	for rows.Next() {
+		var item PartnershipAttachment
+		if err := rows.Scan(
+			&item.DocumentID,
+			&item.Type,
+			&item.FileName,
+			&item.OriginalFilename,
+			&item.ContentType,
+			&item.SizeBytes,
+			&item.CreatedAt,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan partnership attachment: %w", err)
+		}
+
+		attachments = append(attachments, item)
+	}
+
+	return attachments, nil
 }

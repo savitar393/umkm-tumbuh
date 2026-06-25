@@ -53,6 +53,10 @@ func New(db *pgxpool.Pool, frontendURL string, jwtSecret string, uploadDir strin
 				r.Get("/umkm", profileHandler.ListUMKM)
 			})
 
+			r.Route("/register", func(r chi.Router) {
+				r.Post("/submit", profileHandler.SubmitRegistration)
+			})
+
 			r.Route("/products", func(r chi.Router) {
 				r.Get("/", productHandler.List)
 				r.Post("/", productHandler.Create)

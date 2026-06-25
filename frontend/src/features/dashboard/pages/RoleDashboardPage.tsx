@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import {
   Building2,
   CalendarDays,
@@ -43,9 +43,21 @@ const MONTHS = [
 const YEARS = [2026, 2025, 2024, 2023];
 const PAGE_SIZE = 5;
 
+function shortDateLabel(value: string) {
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    month: "short",
+  }).format(new Date(`${value}T00:00:00`));
+}
+
 type TrendRange = 7 | 14 | 30 | 90;
 
-function buildAreaChart(data: { hari: string; total_laba: number }[]) {
+type ChartTrendItem = {
+  hari: string;
+  total_laba: number;
+};
+
+function buildAreaChart(data: ChartTrendItem[]) {
   const width = 700;
   const baseY = 188;
   const padX = 28;
@@ -115,27 +127,38 @@ export default function RoleDashboardPage(_props: RoleDashboardPageProps) {
   const now = new Date();
   const [bulan, setBulan] = useState(now.getMonth());
   const [tahun, setTahun] = useState(now.getFullYear());
+  const [appliedBulan, setAppliedBulan] = useState(now.getMonth());
+  const [appliedTahun, setAppliedTahun] = useState(now.getFullYear());
   const [trendRange, setTrendRange] = useState<TrendRange>(7);
   const [data, setData] = useState<UMKMDashboardData | null>(null);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  function buildDateRange() {
-    const from = `${tahun}-${String(bulan + 1).padStart(2, "0")}-01`;
-    const lastDay = new Date(tahun, bulan + 1, 0).getDate();
-    const to = `${tahun}-${String(bulan + 1).padStart(2, "0")}-${lastDay}`;
+  function buildDateRange(targetBulan = appliedBulan, targetTahun = appliedTahun) {
+    const from = `${targetTahun}-${String(targetBulan + 1).padStart(2, "0")}-01`;
+    const lastDay = new Date(targetTahun, targetBulan + 1, 0).getDate();
+    const to = `${targetTahun}-${String(targetBulan + 1).padStart(2, "0")}-${lastDay}`;
     return { from, to };
   }
 
   function fetchDashboard() {
     if (!user || user.role !== "UMKM") return;
+
+    const nextBulan = bulan;
+    const nextTahun = tahun;
+    const { from, to } = buildDateRange(nextBulan, nextTahun);
+
     setLoading(true);
     setError("");
     setPage(0);
-    const { from, to } = buildDateRange();
+
     getUMKMDashboard(from, to)
-      .then((d) => setData(d))
+      .then((d) => {
+        setData(d);
+        setAppliedBulan(nextBulan);
+        setAppliedTahun(nextTahun);
+      })
       .catch((e) => setError(e instanceof Error ? e.message : "Gagal memuat data"))
       .finally(() => setLoading(false));
   }
@@ -144,7 +167,7 @@ export default function RoleDashboardPage(_props: RoleDashboardPageProps) {
     if (!user || user.role !== "UMKM") return;
     setLoading(true);
     setError("");
-    const { from, to } = buildDateRange();
+    const { from, to } = buildDateRange(appliedBulan, appliedTahun);
     getUMKMDashboard(from, to)
       .then((d) => setData(d))
       .catch((e) => setError(e instanceof Error ? e.message : "Gagal memuat data"))
@@ -158,7 +181,24 @@ export default function RoleDashboardPage(_props: RoleDashboardPageProps) {
 
   const totalPages = data ? Math.ceil((data.laba_harian?.length ?? 0) / PAGE_SIZE) : 0;
 
-  const trendData = data?.tren_mingguan?.slice(-trendRange) ?? [];
+  const trendData = useMemo<ChartTrendItem[]>(() => {
+    const weeklyTrend = data?.tren_mingguan ?? [];
+
+    if (weeklyTrend.length > 0) {
+      return weeklyTrend.slice(-trendRange);
+    }
+
+    const dailyRows = data?.laba_harian ?? [];
+
+    return dailyRows
+      .slice()
+      .reverse()
+      .slice(-trendRange)
+      .map((item) => ({
+        hari: shortDateLabel(item.tanggal),
+        total_laba: item.laba_bersih,
+      }));
+  }, [data, trendRange]);
 
   const chart = useMemo(() => buildAreaChart(trendData), [trendData]);
 
@@ -175,6 +215,15 @@ export default function RoleDashboardPage(_props: RoleDashboardPageProps) {
               <h1>Ringkasan Bisnis</h1>
               <p>Selamat datang kembali, berikut performa toko Anda hari ini.</p>
             </div>
+
+            <Link
+              className="button"
+              to="/umkm/sales/new"
+              style={{ marginLeft: "auto", alignSelf: "flex-start" }}
+            >
+              <ReceiptText size={18} />
+              Input Laporan Harian
+            </Link>
           </header>
 
           {/* ── Filter ─────────────────────────────────── */}
@@ -187,8 +236,12 @@ export default function RoleDashboardPage(_props: RoleDashboardPageProps) {
             <select value={tahun} onChange={(e) => setTahun(Number(e.target.value))}>
               {YEARS.map((y) => (<option key={y} value={y}>{y}</option>))}
             </select>
-            <button className="umkm-dashboard-polish__secondary-action" onClick={fetchDashboard}>
-              <CalendarDays size={16} /> Terapkan
+            <button
+              className="umkm-dashboard-polish__secondary-action"
+              onClick={fetchDashboard}
+              disabled={loading}
+            >
+              <CalendarDays size={16} /> {loading ? "Memuat..." : "Terapkan"}
             </button>
           </div>
 
@@ -199,9 +252,18 @@ export default function RoleDashboardPage(_props: RoleDashboardPageProps) {
             <>
               <section className="umkm-dashboard-polish__summary">
                 <article className="umkm-dashboard-polish__omzet-card">
-                  <span>Total Omzet Hari Ini</span>
-                  <strong>{formatRupiah(data.total_omzet_hari_ini)}</strong>
-                  <small>{data.persen_vs_kemarin != null ? `${data.persen_vs_kemarin >= 0 ? "+" : ""}${data.persen_vs_kemarin.toFixed(1)}% vs kemarin` : ""}</small>
+                  <span>Omzet Bulan Ini</span>
+                  <strong>{formatRupiah(data.omzet_bulan_ini)}</strong>
+                  <small
+                    style={{
+                      background: data.persen_vs_bulan_lalu < 0 ? "rgba(239, 68, 68, 0.18)" : undefined,
+                      color: data.persen_vs_bulan_lalu < 0 ? "#dc2626" : undefined,
+                    }}
+                  >
+                    {data.persen_vs_bulan_lalu != null
+                      ? `${data.persen_vs_bulan_lalu >= 0 ? "+" : ""}${data.persen_vs_bulan_lalu.toFixed(1)}% vs bulan lalu`
+                      : ""}
+                  </small>
                 </article>
                 <article className="umkm-dashboard-polish__metric-card">
                   <div className="umkm-dashboard-polish__icon-badge"><ShoppingCart size={22} /></div>
@@ -218,7 +280,7 @@ export default function RoleDashboardPage(_props: RoleDashboardPageProps) {
               <section className="umkm-dashboard-polish__card">
                 <div className="umkm-dashboard-polish__card-header">
                   <div>
-                    <h2>Rincian Laba Harian ({MONTHS[bulan]} {tahun})</h2>
+                    <h2>Rincian Laba Harian ({MONTHS[appliedBulan]} {appliedTahun})</h2>
                     <p>Rekap laba bersih dan item terjual pada periode terpilih.</p>
                   </div>
                 </div>
@@ -227,13 +289,21 @@ export default function RoleDashboardPage(_props: RoleDashboardPageProps) {
                 ) : (
                   <div className="umkm-dashboard-polish__table">
                     <table>
-                      <thead><tr><th>Tanggal</th><th>Laba Bersih</th><th>Item Terjual</th></tr></thead>
+                      <thead><tr><th>Tanggal</th><th>Laba Bersih</th><th>Item Terjual</th><th>Detail</th></tr></thead>
                       <tbody>
                         {labaRows.map((item) => (
                           <tr key={item.tanggal}>
                             <td>{formatDate(item.tanggal)}</td>
                             <td><span className="umkm-dashboard-polish__profit">{formatRupiah(item.laba_bersih)}</span></td>
                             <td>{item.jumlah_produk} Item</td>
+                            <td>
+                              <Link
+                                className="button secondary table-link-button"
+                                to={item.penjualan_id ? `/umkm/sales/${item.penjualan_id}` : `/umkm/sales?from=${item.tanggal}&to=${item.tanggal}`}
+                              >
+                                Lihat
+                              </Link>
+                            </td>
                           </tr>
                         ))}
                       </tbody>

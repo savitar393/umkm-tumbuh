@@ -17,7 +17,8 @@ type Sender struct {
 }
 
 func NewSender(host, port, user, password, from string) *Sender {
-	enabled := host != "" && user != "" && password != "" && from != ""
+	enabled := host != "" && port != "" && from != ""
+
 	return &Sender{
 		Host:     host,
 		Port:     port,
@@ -28,12 +29,28 @@ func NewSender(host, port, user, password, from string) *Sender {
 	}
 }
 
+func (s *Sender) smtpAuth() smtp.Auth {
+	if s.User == "" || s.Password == "" {
+		return nil
+	}
+
+	return smtp.PlainAuth("", s.User, s.Password, s.Host)
+}
+
 type NotificationData struct {
-	To             string
-	FullName       string
-	Subject        string
-	Status         string // APPROVED or REJECTED
+	To              string
+	FullName        string
+	Subject         string
+	Status          string // APPROVED or REJECTED
 	RejectionReason string
+}
+
+type CodeEmailData struct {
+	To       string
+	FullName string
+	Subject  string
+	Code     string
+	Purpose  string
 }
 
 func (s *Sender) SendRegistrationNotification(data NotificationData) error {
@@ -56,9 +73,24 @@ func (s *Sender) SendRegistrationNotification(data NotificationData) error {
 		s.From, data.To, data.Subject, body)
 
 	addr := fmt.Sprintf("%s:%s", s.Host, s.Port)
-	auth := smtp.PlainAuth("", s.User, s.Password, s.Host)
 
-	return smtp.SendMail(addr, auth, s.From, []string{data.To}, []byte(msg))
+	return smtp.SendMail(addr, s.smtpAuth(), s.From, []string{data.To}, []byte(msg))
+}
+
+func (s *Sender) SendCodeEmail(data CodeEmailData) error {
+	if !s.Enabled {
+		log.Printf("[EMAIL][SKIPPED] SMTP not configured. Would send %s code to %s: %s", data.Purpose, data.To, data.Code)
+		return nil
+	}
+
+	body := s.buildCodeBody(data.FullName, data.Code, data.Purpose)
+
+	msg := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=\"UTF-8\"\r\n\r\n%s",
+		s.From, data.To, data.Subject, body)
+
+	addr := fmt.Sprintf("%s:%s", s.Host, s.Port)
+
+	return smtp.SendMail(addr, s.smtpAuth(), s.From, []string{data.To}, []byte(msg))
 }
 
 func (s *Sender) buildApprovedBody(name string) string {
@@ -92,4 +124,35 @@ func (s *Sender) buildRejectedBody(name, reason string) string {
 </body>
 </html>
 `, name, strings.ReplaceAll(reason, "\n", "<br>"))
+}
+
+func (s *Sender) buildCodeBody(name, code, purpose string) string {
+	title := "Kode Verifikasi UMKM Tumbuh"
+	description := "Gunakan kode berikut untuk memverifikasi email Anda."
+
+	if purpose == "PASSWORD_RESET" {
+		title = "Kode Reset Password UMKM Tumbuh"
+		description = "Gunakan kode berikut untuk mereset password akun Anda."
+	}
+
+	if strings.TrimSpace(name) == "" {
+		name = "Pengguna"
+	}
+
+	return fmt.Sprintf(`
+<!DOCTYPE html>
+<html>
+<body style="font-family: Arial, sans-serif; padding: 20px; color: #0f172a;">
+	<h2>%s</h2>
+	<p>Halo <strong>%s</strong>,</p>
+	<p>%s</p>
+	<div style="font-size: 28px; font-weight: 700; letter-spacing: 8px; margin: 24px 0; padding: 16px; background: #f1f5f9; border-radius: 12px; text-align: center;">
+		%s
+	</div>
+	<p>Kode ini berlaku selama 15 menit. Abaikan email ini jika Anda tidak meminta kode tersebut.</p>
+	<br>
+	<p>Salam,<br>Tim UMKM Tumbuh</p>
+</body>
+</html>
+`, title, name, description, code)
 }

@@ -1,6 +1,6 @@
 import { type FormEvent, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { ClipboardList, Plus, Search } from "lucide-react";
+import { Link, useSearchParams } from "react-router-dom";
+import { BarChart3, Banknote, Boxes, ClipboardList, Clock3, Plus, Search } from "lucide-react";
 import UmkmLayout from "../../umkm/components/UmkmLayout";
 import { getSales, type SaleSummary } from "../api";
 
@@ -75,12 +75,24 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
 export default function SalesListPage() {
+  const [searchParams] = useSearchParams();
   const [sales, setSales] = useState<SaleSummary[]>([]);
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const [from, setFrom] = useState(searchParams.get("from") ?? "");
+  const [to, setTo] = useState(searchParams.get("to") ?? "");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [sortBy, setSortBy] = useState("date_desc");
   const [useMock, setUseMock] = useState(false);
 
   const totalOmzet = useMemo(
@@ -98,6 +110,26 @@ export default function SalesListPage() {
     [sales],
   );
 
+  const sortedSales = useMemo(() => {
+    return [...sales].sort((a, b) => {
+      switch (sortBy) {
+        case "date_asc":
+          return new Date(a.transaction_date).getTime() - new Date(b.transaction_date).getTime();
+        case "omzet_desc":
+          return b.total_omzet - a.total_omzet;
+        case "omzet_asc":
+          return a.total_omzet - b.total_omzet;
+        case "profit_desc":
+          return b.total_profit - a.total_profit;
+        case "updated_desc":
+          return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+        case "date_desc":
+        default:
+          return new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime();
+      }
+    });
+  }, [sales, sortBy]);
+
   async function loadSales(params?: { from?: string; to?: string }) {
     setLoading(true);
     setError("");
@@ -108,6 +140,7 @@ export default function SalesListPage() {
       setUseMock(false);
     } catch (err) {
       setUseMock(true);
+      setError(err instanceof Error ? err.message : "Gagal memuat laporan penjualan.");
       setSales(MOCK_SALES);
     } finally {
       setLoading(false);
@@ -115,7 +148,10 @@ export default function SalesListPage() {
   }
 
   useEffect(() => {
-    loadSales();
+    loadSales({
+      from: searchParams.get("from") || undefined,
+      to: searchParams.get("to") || undefined,
+    });
   }, []);
 
   function handleFilter(event: FormEvent<HTMLFormElement>) {
@@ -129,8 +165,8 @@ export default function SalesListPage() {
 
   return (
     <UmkmLayout
-      title="Catatan Transaksi"
-      subtitle="Lihat laporan transaksi, omzet, laba, dan jumlah produk terjual."
+      title="Laporan Penjualan Harian"
+      subtitle="Pantau laporan harian omzet, laba, dan item terjual untuk perkembangan usaha."
     >
       <div className="feature-page">
         {error ? <div className="error-message">{error}</div> : null}
@@ -142,7 +178,7 @@ export default function SalesListPage() {
               <ClipboardList size={24} />
             </div>
             <div>
-              <div className="stat-card__label">Total Transaksi</div>
+              <div className="stat-card__label">Total Laporan</div>
               <div className="stat-card__value">{sales.length}</div>
               <div className="stat-card__sub">Dalam filter aktif</div>
             </div>
@@ -150,18 +186,18 @@ export default function SalesListPage() {
 
           <article className="stat-card stat-card--green">
             <div className="stat-card__icon-wrap">
-              <ClipboardList size={24} />
+              <BarChart3 size={24} />
             </div>
             <div>
               <div className="stat-card__label">Total Omzet</div>
               <div className="stat-card__value">{formatRupiah(totalOmzet)}</div>
-              <div className="stat-card__sub">Dari catatan transaksi</div>
+              <div className="stat-card__sub">Dari laporan harian</div>
             </div>
           </article>
 
           <article className="stat-card stat-card--yellow">
             <div className="stat-card__icon-wrap">
-              <ClipboardList size={24} />
+              <Banknote size={24} />
             </div>
             <div>
               <div className="stat-card__label">Total Laba</div>
@@ -172,7 +208,7 @@ export default function SalesListPage() {
 
           <article className="stat-card stat-card--orange">
             <div className="stat-card__icon-wrap">
-              <ClipboardList size={24} />
+              <Boxes size={24} />
             </div>
             <div>
               <div className="stat-card__label">Item Terjual</div>
@@ -182,16 +218,16 @@ export default function SalesListPage() {
           </article>
         </section>
 
-        <section className="dashboard-card wide">
+        <section className="dashboard-card wide sales-history-card">
           <div className="page-header">
             <div>
-              <h2>Daftar Transaksi</h2>
-              <p>Filter berdasarkan tanggal transaksi untuk laporan harian atau bulanan.</p>
+              <h2>Riwayat Laporan Penjualan</h2>
+              <p>Filter laporan harian berdasarkan tanggal untuk melihat perkembangan usaha.</p>
             </div>
 
             <Link className="button" to="/umkm/sales/new">
               <Plus size={18} />
-              Catat Transaksi
+              Input Laporan Harian
             </Link>
           </div>
 
@@ -222,19 +258,40 @@ export default function SalesListPage() {
             </div>
           </form>
 
+          <div className="sales-table-toolbar">
+            <div>
+              <strong>Daftar laporan</strong>
+              <span>{sales.length} laporan dalam filter aktif</span>
+            </div>
+
+            <label>
+              Urutkan
+              <select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
+                <option value="date_desc">Tanggal laporan terbaru</option>
+                <option value="date_asc">Tanggal laporan terlama</option>
+                <option value="updated_desc">Terakhir diupdate</option>
+                <option value="omzet_desc">Omzet tertinggi</option>
+                <option value="omzet_asc">Omzet terendah</option>
+                <option value="profit_desc">Laba tertinggi</option>
+              </select>
+            </label>
+          </div>
+
           {loading ? (
-            <p>Memuat transaksi...</p>
+            <p>Memuat laporan...</p>
           ) : (
             <div className="table-wrapper">
               <table>
                 <thead>
                   <tr>
-                    <th>No. Transaksi</th>
-                    <th>Tanggal</th>
+                    <th>Kode Laporan</th>
+                    <th>Tanggal Laporan</th>
                     <th>Total Omzet</th>
                     <th>Laba</th>
                     <th>Item</th>
                     <th>Status</th>
+                    <th>Tanggal Dibuat</th>
+                    <th>Terakhir Diupdate</th>
                     <th>Detail</th>
                   </tr>
                 </thead>
@@ -242,10 +299,10 @@ export default function SalesListPage() {
                 <tbody>
                   {sales.length === 0 ? (
                     <tr>
-                      <td colSpan={7}>Belum ada catatan transaksi.</td>
+                      <td colSpan={9}>Belum ada laporan penjualan harian.</td>
                     </tr>
                   ) : (
-                    sales.map((sale) => (
+                    sortedSales.map((sale) => (
                       <tr key={sale.id}>
                         <td>
                           <strong>{sale.transaction_number}</strong>
@@ -257,6 +314,18 @@ export default function SalesListPage() {
                         <td>{formatRupiah(sale.total_profit)}</td>
                         <td>{sale.total_item}</td>
                         <td>{sale.status}</td>
+                        <td>
+                          <span className="sales-date-muted">
+                            <Clock3 size={14} />
+                            {formatDateTime(sale.created_at)}
+                          </span>
+                        </td>
+                        <td>
+                          <span className="sales-date-muted">
+                            <Clock3 size={14} />
+                            {formatDateTime(sale.updated_at)}
+                          </span>
+                        </td>
                         <td>
                           <Link className="button secondary table-link-button" to={`/umkm/sales/${sale.id}`}>
                             Lihat

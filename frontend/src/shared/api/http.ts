@@ -7,6 +7,14 @@ const API_BASE_URL =
 
 console.log("[HTTP Client] API_BASE_URL:", API_BASE_URL);
 
+const AUTH_API_BASE_URL =
+  import.meta.env.VITE_AUTH_API_BASE_URL ??
+  "http://localhost:8080/api/v1";
+
+const ADMIN_API_BASE_URL =
+  import.meta.env.VITE_ADMIN_API_BASE_URL ??
+  "http://localhost:8080/api/v1";
+
 const USER_API_BASE_URL =
   import.meta.env.VITE_USER_API_BASE_URL ??
   import.meta.env.VITE_USER_SERVICE_URL ??
@@ -32,6 +40,8 @@ const CERTIFICATE_API_BASE_URL =
 
 // ⭐ EXPORT base URL sebagai string — dipakai langsung di template literal
 // oleh file-file seperti documents.ts: `${USER_API}/profile/...`
+export const AUTH_API = AUTH_API_BASE_URL;
+export const ADMIN_API = ADMIN_API_BASE_URL;
 export const USER_API = USER_API_BASE_URL;
 export const PARTNERSHIP_API = PARTNERSHIP_API_BASE_URL;
 export const DOCUMENT_API = DOCUMENT_API_BASE_URL;
@@ -41,6 +51,7 @@ export const CERTIFICATE_API = CERTIFICATE_API_BASE_URL;
 export type ServiceName =
   | "default"
   | "auth"
+  | "admin"
   | "user"
   | "partnership"
   | "document"
@@ -53,9 +64,80 @@ export type RequestOptions = RequestInit & {
   skipJsonContentType?: boolean;
 };
 
+export type ErrorPayload = {
+  error?: string;
+  message?: string;
+  details?: unknown;
+  [key: string]: unknown;
+};
+
+export class ApiError extends Error {
+  status: number;
+  payload: unknown;
+
+  constructor(status: number, message: string, payload?: unknown) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.payload = payload;
+  }
+}
+
+function getPayloadMessage(payload: unknown) {
+  if (!payload || typeof payload !== "object") return "";
+
+  const candidate = payload as ErrorPayload;
+
+  if (typeof candidate.error === "string" && candidate.error.trim()) {
+    return candidate.error.trim();
+  }
+
+  if (typeof candidate.message === "string" && candidate.message.trim()) {
+    return candidate.message.trim();
+  }
+
+  return "";
+}
+
+function getFallbackErrorMessage(status: number) {
+  switch (status) {
+    case 0:
+      return "Gagal terhubung ke server. Cek koneksi, CORS, atau service backend.";
+    case 400:
+      return "Data yang dikirim belum valid. Periksa kembali isian formulir.";
+    case 401:
+      return "Sesi tidak valid atau sudah berakhir. Silakan login kembali.";
+    case 403:
+      return "Anda tidak memiliki akses untuk melakukan aksi ini.";
+    case 404:
+      return "Data atau endpoint tidak ditemukan.";
+    case 409:
+      return "Data sudah digunakan atau bertabrakan dengan data yang ada.";
+    case 413:
+      return "Ukuran file terlalu besar.";
+    case 422:
+      return "Validasi data gagal. Periksa kembali isian formulir.";
+    case 500:
+      return "Server sedang bermasalah. Coba lagi beberapa saat.";
+    case 502:
+    case 503:
+    case 504:
+      return "Service backend sedang tidak tersedia. Coba lagi beberapa saat.";
+    default:
+      return "Terjadi kesalahan pada server.";
+  }
+}
+
+function getHttpErrorMessage(status: number, payload: unknown) {
+  return getPayloadMessage(payload) || getFallbackErrorMessage(status);
+}
+
 function getBaseURL(service: ServiceName = "default"): string {
   switch (service) {
     case "auth":
+      return AUTH_API_BASE_URL;
+    case "admin":
+      return ADMIN_API_BASE_URL;
     case "default":
       return API_BASE_URL;
     case "user":
@@ -194,24 +276,39 @@ async function requestWithBaseURL<T>(
     }
   }
 
-  const response = await fetch(`${baseUrl}${path}`, {
-    ...rest,
-    headers: requestHeaders,
-  });
+  let response: Response;
 
-  const isJson = response.headers
-    .get("content-type")
-    ?.includes("application/json");
+  try {
+    response = await fetch(`${baseUrl}${path}`, {
+      ...rest,
+      headers: requestHeaders,
+    });
+  } catch (err) {
+    throw new ApiError(
+      0,
+      getFallbackErrorMessage(0),
+      err,
+    );
+  }
 
-  const payload = isJson ? await response.json() : null;
+  const contentType = response.headers.get("content-type") ?? "";
+  const isJson = contentType.includes("application/json");
+
+  let payload: unknown = null;
+
+  if (isJson) {
+    payload = await response.json().catch(() => null);
+  } else if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    payload = text ? { message: text } : null;
+  }
 
   if (!response.ok) {
-    const message =
-      payload?.error ||
-      payload?.message ||
-      "Terjadi kesalahan pada server.";
-
-    throw new Error(message);
+    throw new ApiError(
+      response.status,
+      getHttpErrorMessage(response.status, payload),
+      payload,
+    );
   }
 
   return payload as T;

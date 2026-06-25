@@ -41,11 +41,13 @@ func NewRouter(
 		r.Get("/partnerships/status", partnershipHandler.GetPartnershipStatus)
 		r.Get("/partnerships/summary", partnershipHandler.GetPartnershipSummary)
 		r.Get("/partnerships/incoming", partnershipHandler.GetIncomingPartnerships)
+		r.Get("/partnerships/incoming/summary", partnershipHandler.GetIncomingPartnershipSummary)
 		r.Get("/partnerships/{id}", partnershipHandler.GetPartnershipDetail)
 		r.Post("/partnerships/{id}/sign", partnershipHandler.SignPartnership)
 		r.Patch("/partnerships/{id}/read", partnershipHandler.MarkAsRead)
 		r.Patch("/partnerships/{id}/approve", partnershipHandler.ApprovePartnership)
 		r.Patch("/partnerships/{id}/reject", partnershipHandler.RejectPartnership)
+		r.Patch("/partnerships/{id}/cancel", partnershipHandler.CancelPartnership)
 
 		// ============================================================
 		// NEW ENDPOINTS (untuk menampilkan list UMKM dan Mitra)

@@ -2,10 +2,32 @@ import { type FormEvent, useState } from "react";
 import { ArrowRight, Eye, Lock, Mail } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { login } from "../api";
+import { isValidEmail } from "../../../shared/validation/forms";
+import {
+  clearRefreshToken,
+  getPostLoginRoute,
+  setAccessToken,
+  setCurrentUser,
+  setRefreshToken,
+} from "../../../shared/auth/currentUser";
+
 
 const QUICK_LOGIN = {
-  admin: { email: "admin@example.com", password: "admin12345", label: "Admin" },
-  mitra: { email: "mitra@example.com", password: "mitra12345", label: "Mitra" },
+  admin: {
+    email: "admin@example.com",
+    password: "admin12345",
+    label: "Admin",
+  },
+  umkm: {
+    email: "rizqi.saputra57@mail.com",
+    password: "password123",
+    label: "UMKM",
+  },
+  mitra: {
+    email: "bahlilmeidiyana255@gmail.com",
+    password: "password123",
+    label: "Mitra",
+  },
 } as const;
 
 export default function LoginPage() {
@@ -18,32 +40,56 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  function validateLoginForm() {
+    const cleanEmail = email.trim();
+
+    if (!cleanEmail) {
+      return "Email wajib diisi.";
+    }
+
+    if (!isValidEmail(cleanEmail)) {
+      return "Format email tidak valid.";
+    }
+
+    if (!password) {
+      return "Kata sandi wajib diisi.";
+    }
+
+    return "";
+  }
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setError("");
+
+    const validationError = validateLoginForm();
+
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const result = await login({ email, password });
+      const result = await login({
+        email: email.trim().toLowerCase(),
+        password,
+        remember_me: rememberMe,
+      });
 
-      localStorage.setItem("access_token", result.access_token);
-      localStorage.setItem("current_user", JSON.stringify(result.user));
+      setAccessToken(result.access_token);
+      setCurrentUser(result.user);
 
-      if (rememberMe) {
+      if (rememberMe && result.refresh_token) {
+        setRefreshToken(result.refresh_token);
         localStorage.setItem("remember_me", "true");
       } else {
+        clearRefreshToken();
         localStorage.removeItem("remember_me");
       }
 
-      if (result.user.role === "ADMIN") {
-        navigate("/admin");
-      } else if (result.user.role === "UMKM") {
-        navigate("/umkm");
-      } else if (result.user.role === "MITRA") {
-        navigate("/mitra");
-      } else {
-        navigate("/");
-      }
+      navigate(getPostLoginRoute(result.user), { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login gagal");
     } finally {
@@ -51,19 +97,31 @@ export default function LoginPage() {
     }
   }
 
-  async function quickLogin(account: "admin" | "mitra") {
-    const creds = QUICK_LOGIN[account];
-    setEmail(creds.email);
-    setPassword(creds.password);
-    await new Promise((r) => setTimeout(r, 50));
-    const result = await login(creds);
+  async function quickLogin(account: "admin" | "umkm" | "mitra") {
+    setError("");
+    setLoading(true);
 
-    localStorage.setItem("access_token", result.access_token);
-    localStorage.setItem("current_user", JSON.stringify(result.user));
+    try {
+      const creds = QUICK_LOGIN[account];
+      setEmail(creds.email);
+      setPassword(creds.password);
 
-    if (result.user.role === "ADMIN") navigate("/admin");
-    else if (result.user.role === "MITRA") navigate("/mitra");
-    else navigate("/");
+      const result = await login({
+        email: creds.email,
+        password: creds.password,
+      });
+
+      setAccessToken(result.access_token);
+      setCurrentUser(result.user);
+      clearRefreshToken();
+      localStorage.removeItem("remember_me");
+
+      navigate(getPostLoginRoute(result.user), { replace: true });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login cepat gagal");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -126,7 +184,18 @@ export default function LoginPage() {
               <span>Ingat saya</span>
             </label>
 
-            {error ? <div className="error-message">{error}</div> : null}
+            {error ? (
+              <div className="error-message">
+                {error}
+                {error.toLowerCase().includes("tidak aktif") && (
+                  <div style={{ marginTop: 8 }}>
+                    <Link to="/reactivate" style={{ fontSize: 13 }}>
+                      Aktifkan kembali akun Anda
+                    </Link>
+                  </div>
+                )}
+              </div>
+            ) : null}
 
             <button type="submit" disabled={loading}>
               {loading ? "Memproses..." : "Masuk ke Dashboard"}
@@ -141,6 +210,14 @@ export default function LoginPage() {
           <div className="quick-login">
             <p className="quick-login-label">Login Cepat (Development)</p>
             <div className="quick-login-buttons">
+              <button
+                type="button"
+                className="button secondary"
+                onClick={() => quickLogin("umkm")}
+                disabled={loading}
+              >
+                Login sebagai UMKM
+              </button>
               <button
                 type="button"
                 className="button secondary"

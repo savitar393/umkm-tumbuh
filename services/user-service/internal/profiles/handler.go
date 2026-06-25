@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/mail"
 	"regexp"
 	"strconv"
 	"strings"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/savitar393/umkm-tumbuh/services/user-service/internal/middleware"
@@ -74,65 +76,28 @@ func (h *Handler) UpsertMe(w http.ResponseWriter, r *http.Request) {
 
 	switch user.Role {
 	case "UMKM":
-		if strings.TrimSpace(req.BusinessName) == "" {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Nama usaha wajib diisi."})
-			return
-		}
-
-		if !isValidNIK(req.NIK) {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "NIK wajib diisi 16 digit angka."})
-			return
-		}
-
-		if strings.TrimSpace(req.OwnerName) == "" {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Nama pemilik wajib diisi."})
-			return
-		}
-
-		if strings.TrimSpace(req.PhoneNumber) == "" {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Nomor HP wajib diisi."})
-			return
-		}
-
-		if strings.TrimSpace(req.Address) == "" || strings.TrimSpace(req.City) == "" || strings.TrimSpace(req.Province) == "" {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Alamat, kota/kabupaten, dan provinsi wajib diisi."})
+		if message := validateUMKMProfileRequest(req); message != "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": message})
 			return
 		}
 
 		profile, err := h.upsertUMKMProfile(r.Context(), user.ID, req)
 		if err != nil {
-			log.Printf("failed to upsert UMKM profile: %v", err)
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "Gagal menyimpan profil UMKM."})
+			handleUpsertProfileError(w, "UMKM", err)
 			return
 		}
 
 		writeJSON(w, http.StatusOK, map[string]any{"profile": profile})
 
 	case "MITRA":
-		if strings.TrimSpace(req.OrganizationName) == "" {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Nama organisasi wajib diisi."})
-			return
-		}
-
-		if strings.TrimSpace(req.ContactPerson) == "" {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Nama PIC wajib diisi."})
-			return
-		}
-
-		if strings.TrimSpace(req.PhoneNumber) == "" {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Nomor kontak wajib diisi."})
-			return
-		}
-
-		if strings.TrimSpace(req.Address) == "" || strings.TrimSpace(req.City) == "" || strings.TrimSpace(req.Province) == "" {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Alamat, kota/kabupaten, dan provinsi wajib diisi."})
+		if message := validateMitraProfileRequest(req); message != "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": message})
 			return
 		}
 
 		profile, err := h.upsertMitraProfile(r.Context(), user.ID, req)
 		if err != nil {
-			log.Printf("failed to upsert Mitra profile: %v", err)
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "Gagal menyimpan profil Mitra."})
+			handleUpsertProfileError(w, "Mitra", err)
 			return
 		}
 
@@ -143,6 +108,124 @@ func (h *Handler) UpsertMe(w http.ResponseWriter, r *http.Request) {
 			"error": "Role ini tidak dapat mengelola profil.",
 		})
 	}
+}
+
+func (h *Handler) SubmitRegistration(w http.ResponseWriter, r *http.Request) {
+	user, ok := middleware.CurrentUserFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+		return
+	}
+
+	if user.Role != "UMKM" && user.Role != "MITRA" {
+		writeJSON(w, http.StatusForbidden, map[string]string{
+			"error": "Role ini tidak dapat mengirim pendaftaran.",
+		})
+		return
+	}
+
+	tx, err := h.DB.Begin(r.Context())
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": "Gagal memulai submit pendaftaran.",
+		})
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	var (
+		checklistComplete bool
+		umkmID            sql.NullString
+		mitraID           sql.NullString
+		status            string
+	)
+
+	err = tx.QueryRow(r.Context(), `
+		SELECT
+			checklist_informasi_lengkap,
+			umkm_id,
+			mitra_id,
+			status_verifikasi_id
+		FROM user_mgmt.transaksi_registrasipengguna
+		WHERE akun_id = $1
+		FOR UPDATE
+	`, user.ID).Scan(&checklistComplete, &umkmID, &mitraID, &status)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			writeJSON(w, http.StatusForbidden, map[string]string{
+				"error": "Data registrasi belum dibuat.",
+			})
+			return
+		}
+
+		log.Printf("failed to read registration before submit: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": "Gagal membaca data registrasi.",
+		})
+		return
+	}
+
+	if !checklistComplete {
+		writeJSON(w, http.StatusForbidden, map[string]string{
+			"error": "Profil belum lengkap. Lengkapi data terlebih dahulu.",
+		})
+		return
+	}
+
+	if user.Role == "UMKM" && !umkmID.Valid {
+		writeJSON(w, http.StatusForbidden, map[string]string{
+			"error": "Profil UMKM belum lengkap.",
+		})
+		return
+	}
+
+	if user.Role == "MITRA" && !mitraID.Valid {
+		writeJSON(w, http.StatusForbidden, map[string]string{
+			"error": "Profil Mitra belum lengkap.",
+		})
+		return
+	}
+
+	if status == "DISETUJUI" {
+		writeJSON(w, http.StatusConflict, map[string]string{
+			"error": "Pendaftaran sudah disetujui.",
+		})
+		return
+	}
+
+	if status == "DITOLAK" {
+		writeJSON(w, http.StatusConflict, map[string]string{
+			"error": "Pendaftaran sudah ditolak. Silakan ajukan ulang jika fitur re-submit sudah tersedia.",
+		})
+		return
+	}
+
+	_, err = tx.Exec(r.Context(), `
+		UPDATE user_mgmt.transaksi_registrasipengguna
+		SET
+			status_verifikasi_id = 'MENUNGGU',
+			tanggal_submit = NOW()
+		WHERE akun_id = $1
+	`, user.ID)
+	if err != nil {
+		log.Printf("failed to submit registration: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": "Gagal mengirim pendaftaran.",
+		})
+		return
+	}
+
+	if err := tx.Commit(r.Context()); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": "Gagal menyelesaikan submit pendaftaran.",
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{
+		"message": "Pendaftaran berhasil dikirim. Menunggu review Admin.",
+	})
 }
 
 func (h *Handler) getUMKMProfile(ctx context.Context, accountID string) (map[string]any, error) {
@@ -302,7 +385,7 @@ func (h *Handler) upsertUMKMProfile(ctx context.Context, accountID string, req U
 		)
 		VALUES (
 			$1, $2, $3, $4,
-			'UMKM', 'MIKRO', $5,
+			$5, 'MIKRO', $5,
 			'AKTIF', $6, $7,
 			$8, $9, $10,
 			$11, $12,
@@ -1113,6 +1196,168 @@ func isValidNIK(value string) bool {
 	value = strings.TrimSpace(value)
 	matched, _ := regexp.MatchString(`^[0-9]{16}$`, value)
 	return matched
+}
+
+func validateUMKMProfileRequest(req UpsertProfileRequest) string {
+	if strings.TrimSpace(req.BusinessName) == "" {
+		return "Nama usaha wajib diisi."
+	}
+
+	if strings.TrimSpace(req.BusinessCategory) == "" {
+		return "Kategori usaha wajib diisi."
+	}
+
+	if strings.TrimSpace(req.BusinessDescription) == "" {
+		return "Deskripsi usaha wajib diisi."
+	}
+
+	if strings.TrimSpace(req.OwnerName) == "" {
+		return "Nama pemilik wajib diisi."
+	}
+
+	if !isValidNIK(req.NIK) {
+		return "NIK wajib diisi 16 digit angka."
+	}
+
+	if !isValidPhoneNumber(req.PhoneNumber) {
+		return "Nomor WhatsApp wajib 8–13 digit setelah kode +62."
+	}
+
+	if strings.TrimSpace(req.Address) == "" {
+		return "Alamat usaha wajib diisi."
+	}
+
+	if strings.TrimSpace(req.City) == "" {
+		return "Kota/kabupaten wajib diisi."
+	}
+
+	if strings.TrimSpace(req.Province) == "" {
+		return "Provinsi wajib diisi."
+	}
+
+	return ""
+}
+
+func validateMitraProfileRequest(req UpsertProfileRequest) string {
+	if strings.TrimSpace(req.OrganizationName) == "" {
+		return "Nama organisasi wajib diisi."
+	}
+
+	if strings.TrimSpace(req.OrganizationType) == "" {
+		return "Jenis mitra wajib dipilih."
+	}
+
+	if strings.TrimSpace(req.ContactPerson) == "" {
+		return "Nama PIC wajib diisi."
+	}
+
+	if !isValidPhoneNumber(req.PhoneNumber) {
+		return "Nomor WhatsApp PIC wajib 8–13 digit setelah kode +62."
+	}
+
+	if strings.TrimSpace(req.NIB) != "" && !isValidNIB(req.NIB) {
+		return "NIB wajib 13 digit jika diisi."
+	}
+
+	if strings.TrimSpace(req.Address) == "" {
+		return "Alamat kantor wajib diisi."
+	}
+
+	if strings.TrimSpace(req.City) == "" {
+		return "Kota/kabupaten wajib diisi."
+	}
+
+	if strings.TrimSpace(req.Province) == "" {
+		return "Provinsi wajib diisi."
+	}
+
+	if strings.TrimSpace(req.OperationalArea) == "" {
+		return "Wilayah operasional wajib diisi."
+	}
+
+	if strings.TrimSpace(req.CooperationScale) == "" {
+		return "Skala kerja sama wajib dipilih."
+	}
+
+	if strings.TrimSpace(req.SupportDescription) == "" {
+		return "Deskripsi tujuan kemitraan wajib diisi."
+	}
+
+	return ""
+}
+
+func isValidEmail(value string) bool {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return false
+	}
+
+	_, err := mail.ParseAddress(value)
+	return err == nil
+}
+
+func isValidPhoneNumber(value string) bool {
+	digits := digitsOnly(value)
+
+	if strings.HasPrefix(digits, "62") {
+		digits = strings.TrimPrefix(digits, "62")
+	}
+
+	if strings.HasPrefix(digits, "0") {
+		digits = strings.TrimPrefix(digits, "0")
+	}
+
+	return len(digits) >= 8 && len(digits) <= 13
+}
+
+func isValidNIB(value string) bool {
+	return len(digitsOnly(value)) == 13
+}
+
+func digitsOnly(value string) string {
+	var builder strings.Builder
+
+	for _, char := range value {
+		if char >= '0' && char <= '9' {
+			builder.WriteRune(char)
+		}
+	}
+
+	return builder.String()
+}
+
+func handleUpsertProfileError(w http.ResponseWriter, profileType string, err error) {
+	var pgErr *pgconn.PgError
+
+	if errors.As(err, &pgErr) {
+		switch pgErr.Code {
+		case "23503":
+			log.Printf("failed to upsert %s profile: foreign key violation: %s", profileType, pgErr.Message)
+			writeJSON(w, http.StatusBadRequest, map[string]string{
+				"error": "Data referensi tidak valid. Periksa kategori, jenis mitra, atau skala kerja sama.",
+			})
+			return
+
+		case "23505":
+			log.Printf("failed to upsert %s profile: unique violation: %s", profileType, pgErr.Message)
+			writeJSON(w, http.StatusConflict, map[string]string{
+				"error": "Data profil sudah digunakan oleh akun lain.",
+			})
+			return
+
+		case "23502":
+			log.Printf("failed to upsert %s profile: not-null violation: %s", profileType, pgErr.Message)
+			writeJSON(w, http.StatusBadRequest, map[string]string{
+				"error": "Data profil belum lengkap.",
+			})
+			return
+		}
+	}
+
+	log.Printf("failed to upsert %s profile: %v", profileType, err)
+	writeJSON(w, http.StatusInternalServerError, map[string]string{
+		"error": "Gagal menyimpan profil. Coba lagi beberapa saat.",
+	})
 }
 
 func newID(prefix string) string {

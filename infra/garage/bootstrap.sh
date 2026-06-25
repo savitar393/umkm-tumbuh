@@ -69,23 +69,15 @@ KEYS_JSON="$(curl -sf "$BASE/v2/ListKeys" -H "$AUTH" || echo '{"keys":[]}')"
 KEY_ID="$(echo "$KEYS_JSON" | jq -r --arg ACCESS_KEY_ID "$ACCESS_KEY_ID" '
   [
     .. | objects
-    | select((.accessKeyId? == $ACCESS_KEY_ID) or (.id? == $ACCESS_KEY_ID) or ((.id? // "") | startswith("GK")))
+    | select((.accessKeyId? == $ACCESS_KEY_ID) or (.id? == $ACCESS_KEY_ID))
     | (.accessKeyId? // .id?)
   ][0] // empty
 ')"
 
 
 if [ -z "$KEY_ID" ]; then
-  echo "Existing key not found, creating new key..."
-  KEY_RESP="$(curl -sf -X POST "$BASE/v2/CreateKey" \
-    -H "$AUTH" -H "$JSON" \
-    -d '{"name":"umkm app key","allow":{"createBucket":true}}')"
-
-  KEY_ID="$(echo "$KEY_RESP" | jq -r '.accessKeyId // .id // empty')"
-fi
-
-if [ -z "$KEY_ID" ]; then
-  echo "ERROR: gagal mendapatkan atau membuat Garage key."
+  echo "ERROR: Garage key matching OBJECT_STORAGE_ACCESS_KEY was not found."
+  echo "Expected access key: $ACCESS_KEY_ID"
   echo "$KEYS_JSON"
   exit 1
 fi

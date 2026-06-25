@@ -1,6 +1,7 @@
 import type { RouteObject } from "react-router-dom";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import AdminRegistrationsPage from "./pages/AdminRegistrationsPage";
+import AdminRegistrationDetailPage from "./pages/AdminRegistrationDetailPage";
 import AdminUsersPage from "./pages/AdminUsersPage";
 import AdminCertificatesPage from "./pages/AdminCertificatesPage";
 import AdminTrainingEvaluationPage from "./pages/AdminTrainingEvaluationPage";
@@ -15,11 +16,17 @@ export const adminRoutes: RouteObject[] = [
   },
   {
     path: "registrations",
-    element: <AdminRegistrationsPage />,
+    children: [
+      { index: true, element: <AdminRegistrationsPage /> },
+      { path: ":userId", element: <AdminRegistrationDetailPage /> },
+    ],
   },
   {
     path: "users",
-    element: <AdminUsersPage />,
+    children: [
+      { index: true, element: <AdminUsersPage /> },
+      { path: ":userId", element: <ComingSoon title="Detail Akun Pengguna" /> },
+    ],
   },
   {
     path: "training",

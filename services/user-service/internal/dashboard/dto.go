@@ -60,10 +60,13 @@ type UMKMSummaryResponse struct {
 // ─── Detail Dashboard Types (for GET /dashboard/umkm) ────────────────────
 
 type LabaHarianItem struct {
-	Tanggal     string  `json:"tanggal"`
-	NamaHari    string  `json:"nama_hari"`
-	LabaBersih  float64 `json:"laba_bersih"`
-	JumlahProduk int64  `json:"jumlah_produk"`
+	PenjualanID  string  `json:"penjualan_id"`
+	Tanggal      string  `json:"tanggal"`
+	NamaHari     string  `json:"nama_hari"`
+	LabaBersih   float64 `json:"laba_bersih"`
+	JumlahProduk int64   `json:"jumlah_produk"`
+	CreatedAt     string  `json:"created_at"`
+	LastUpdatedAt string  `json:"last_updated_at"`
 }
 
 type TrenMingguan struct {
