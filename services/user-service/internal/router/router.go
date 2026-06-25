@@ -43,6 +43,8 @@ func New(db *pgxpool.Pool, frontendURL string, jwtSecret string, uploadDir strin
 		r.Get("/health", healthHandler.ServiceHealth)
 		r.Get("/health/db", healthHandler.DatabaseHealth)
 
+		r.Get("/public/products/{id}/thumbnail", productHandler.GetPublicThumbnail)
+
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.Auth(jwtSecret))
 

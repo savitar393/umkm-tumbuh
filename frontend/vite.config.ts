@@ -35,6 +35,10 @@ export default defineConfig({
         target: "http://127.0.0.1:8081",
         changeOrigin: true,
       },
+      "/api/v1/public/products": {
+        target: "http://127.0.0.1:8081",
+        changeOrigin: true,
+      },
       "/api/v1/sales": {
         target: "http://127.0.0.1:8081",
         changeOrigin: true,

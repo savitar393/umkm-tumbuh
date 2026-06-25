@@ -43,11 +43,18 @@ export function updateProfile(payload: UmkmProfilePayload) {
 export type Product = {
   id: string;
   name: string;
-  description?: string;
+  description?: string | null;
   category?: string;
+  category_name?: string;
   price: number;
   stock: number;
+  status?: string;
   image_url?: string;
+  thumbnail_url?: string | null;
+  thumbnail_object_key?: string | null;
+  thumbnail_content_type?: string | null;
+  thumbnail_size_bytes?: number | null;
+  thumbnail_updated_at?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -58,7 +65,7 @@ export type ProductPayload = {
   category?: string;
   price: number;
   stock: number;
-  image_url?: string;
+  status?: string;
 };
 
 export function getProducts() {
@@ -66,7 +73,7 @@ export function getProducts() {
 }
 
 export function createProduct(payload: ProductPayload) {
-  return http<{ message: string; id: string }>("/products", {
+  return http<{ product: Product }>("/products", {
     method: "POST",
     body: JSON.stringify(payload),
     service: "user",
@@ -74,11 +81,25 @@ export function createProduct(payload: ProductPayload) {
 }
 
 export function updateProduct(id: string, payload: ProductPayload) {
-  return http<{ message: string }>("/products/" + id, {
+  return http<{ product: Product }>("/products/" + id, {
     method: "PUT",
     body: JSON.stringify(payload),
     service: "user",
   });
+}
+
+export function uploadProductThumbnail(productId: string, file: File) {
+  const formData = new FormData();
+  formData.append("thumbnail", file);
+
+  return http<{ message: string; filename?: string; product: Product }>(
+    `/products/${productId}/thumbnail`,
+    {
+      method: "POST",
+      body: formData,
+      service: "user",
+    },
+  );
 }
 
 export function deleteProduct(id: string) {

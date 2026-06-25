@@ -1,6 +1,12 @@
 import { type FormEvent, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getProducts, createProduct, updateProduct, deleteProduct } from "../api";
+import {
+  getProducts,
+  createProduct,
+  updateProduct,
+  deleteProduct,
+  uploadProductThumbnail,
+} from "../api";
 import type { Product, ProductPayload } from "../api";
 import logoImg from "../../../assets/logo-umkm-tumbuh.png";
 import "./umkm-profile.css";
@@ -26,13 +32,15 @@ export default function UmkmProductsPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState("");
+  const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
 
   const [form, setForm] = useState<ProductPayload>({
     name: "",
     category: "",
     price: 0,
     stock: 0,
-    image_url: "",
   });
 
   const [submitting, setSubmitting] = useState(false);
@@ -61,7 +69,9 @@ export default function UmkmProductsPage() {
 
   function openCreateModal() {
     setEditingId(null);
-    setForm({ name: "", category: "", price: 0, stock: 0, image_url: "" });
+    setForm({ name: "", category: "", price: 0, stock: 0 });
+    setThumbnailFile(null);
+    setThumbnailPreview("");
     setShowModal(true);
   }
 
@@ -72,24 +82,59 @@ export default function UmkmProductsPage() {
       category: p.category || "",
       price: p.price,
       stock: p.stock,
-      image_url: p.image_url || "",
+      status: p.status || "AKTIF",
     });
+    setThumbnailFile(null);
+    setThumbnailPreview(p.thumbnail_url || p.image_url || "");
     setShowModal(true);
+  }
+
+  function handleThumbnailSelect(file: File | null) {
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      alert("File harus berupa gambar JPG, PNG, atau WebP.");
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      alert("Ukuran thumbnail maksimal 2MB.");
+      return;
+    }
+
+    setThumbnailFile(file);
+    setThumbnailPreview(URL.createObjectURL(file));
   }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setSubmitting(true);
+
     try {
+      let savedProduct: Product;
+
       if (editingId) {
-        await updateProduct(editingId, form);
+        const response = await updateProduct(editingId, form);
+        savedProduct = response.product;
       } else {
-        await createProduct(form);
+        const response = await createProduct(form);
+        savedProduct = response.product;
       }
+
+      if (thumbnailFile) {
+        setUploadingThumbnail(true);
+        const thumbnailResponse = await uploadProductThumbnail(savedProduct.id, thumbnailFile);
+        savedProduct = thumbnailResponse.product;
+        setUploadingThumbnail(false);
+      }
+
       setShowModal(false);
+      setThumbnailFile(null);
+      setThumbnailPreview("");
       fetchProducts();
     } catch (err) {
-      alert("Gagal menyimpan produk");
+      setUploadingThumbnail(false);
+      alert(err instanceof Error ? err.message : "Gagal menyimpan produk");
     } finally {
       setSubmitting(false);
     }
@@ -203,8 +248,8 @@ export default function UmkmProductsPage() {
             {products.map(p => (
               <div key={p.id} className="up-product-card">
                 <div className="up-product-image">
-                  {p.image_url ? (
-                    <img src={p.image_url} alt={p.name} />
+                  {p.thumbnail_url || p.image_url ? (
+                    <img src={p.thumbnail_url || p.image_url} alt={p.name} />
                   ) : (
                     <div className="up-product-image-placeholder">TU</div>
                   )}
@@ -284,9 +329,13 @@ export default function UmkmProductsPage() {
                   <label className="up-form-label">FOTO PRODUK</label>
                   <label className="up-foto-upload" style={{ height: 120, display: "block", cursor: "pointer" }}>
                     <div className="up-foto-upload-overlay" style={{ opacity: 1, position: 'relative', background: '#f9fafb', border: '1px dashed #cbd5e1', height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center" }}>
-                      {form.image_url ? (
+                      {thumbnailPreview ? (
                         <div style={{ width: "100%", height: "100%", overflow: "hidden", borderRadius: 8 }}>
-                          <img src={form.image_url} alt="Preview" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          <img
+                            src={thumbnailPreview}
+                            alt="Preview"
+                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          />
                         </div>
                       ) : (
                         <>
@@ -304,43 +353,7 @@ export default function UmkmProductsPage() {
                       accept="image/*"
                       style={{ display: "none" }}
                       onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            const img = new Image();
-                            img.onload = () => {
-                              const canvas = document.createElement("canvas");
-                              const MAX_WIDTH = 800;
-                              const MAX_HEIGHT = 800;
-                              let width = img.width;
-                              let height = img.height;
-
-                              if (width > height) {
-                                if (width > MAX_WIDTH) {
-                                  height *= MAX_WIDTH / width;
-                                  width = MAX_WIDTH;
-                                }
-                              } else {
-                                if (height > MAX_HEIGHT) {
-                                  width *= MAX_HEIGHT / height;
-                                  height = MAX_HEIGHT;
-                                }
-                              }
-                              
-                              canvas.width = width;
-                              canvas.height = height;
-                              const ctx = canvas.getContext("2d");
-                              if (ctx) {
-                                ctx.drawImage(img, 0, 0, width, height);
-                                const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
-                                setForm({ ...form, image_url: dataUrl });
-                              }
-                            };
-                            img.src = reader.result as string;
-                          };
-                          reader.readAsDataURL(file);
-                        }
+                        handleThumbnailSelect(e.target.files?.[0] ?? null);
                       }}
                     />
                   </label>
@@ -360,7 +373,11 @@ export default function UmkmProductsPage() {
                   Batal
                 </button>
                 <button type="submit" className="up-footer-save" disabled={submitting}>
-                  {submitting ? "Menyimpan..." : "✨ Simpan Produk"}
+                  {submitting || uploadingThumbnail
+                    ? uploadingThumbnail
+                      ? "Mengunggah foto..."
+                      : "Menyimpan..."
+                    : "✨ Simpan Produk"}
                 </button>
               </div>
             </form>

@@ -90,7 +90,7 @@ func (h *Handler) UploadThumbnail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	objectKey := buildThumbnailObjectKey(umkmID, productID, contentType)
-	thumbnailURL := fmt.Sprintf("/api/v1/products/%s/thumbnail", productID)
+	thumbnailURL := fmt.Sprintf("/api/v1/public/products/%s/thumbnail", productID)
 
 	if err := h.Storage.PutObject(r.Context(), objectKey, bytes.NewReader(buf.Bytes()), contentType); err != nil {
 		handleError(w, err, "Gagal mengunggah gambar produk.")
@@ -198,6 +198,50 @@ func (h *Handler) GetThumbnail(w http.ResponseWriter, r *http.Request) {
 	_, _ = io.Copy(w, object.Body)
 }
 
+func (h *Handler) GetPublicThumbnail(w http.ResponseWriter, r *http.Request) {
+	if h.Storage == nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": "Object storage belum dikonfigurasi.",
+		})
+		return
+	}
+
+	productID := chi.URLParam(r, "id")
+
+	objectKey, contentType, sizeBytes, err := h.getPublicProductThumbnailMetadata(r.Context(), productID)
+	if err != nil {
+		handleError(w, err, "Thumbnail produk tidak ditemukan.")
+		return
+	}
+
+	if !objectKey.Valid || objectKey.String == "" {
+		writeJSON(w, http.StatusNotFound, map[string]string{
+			"error": "Thumbnail produk belum diunggah.",
+		})
+		return
+	}
+
+	object, err := h.Storage.GetObject(r.Context(), objectKey.String)
+	if err != nil {
+		handleError(w, err, "Gagal mengambil file thumbnail.")
+		return
+	}
+	defer object.Body.Close()
+
+	if contentType.Valid {
+		w.Header().Set("Content-Type", contentType.String)
+	}
+
+	if sizeBytes.Valid {
+		w.Header().Set("Content-Length", fmt.Sprintf("%d", sizeBytes.Int64))
+	}
+
+	w.Header().Set("Cache-Control", "public, max-age=300")
+	w.WriteHeader(http.StatusOK)
+
+	_, _ = io.Copy(w, object.Body)
+}
+
 func (h *Handler) DeleteThumbnail(w http.ResponseWriter, r *http.Request) {
 	user, ok := currentUMKMUser(w, r)
 	if !ok {
@@ -299,6 +343,33 @@ func (h *Handler) getProductThumbnailMetadata(
 		  AND is_deleted = FALSE
 		LIMIT 1
 	`, productID, umkmID).Scan(&objectKey, &contentType, &sizeBytes)
+
+	return objectKey, contentType, sizeBytes, err
+}
+
+func (h *Handler) getPublicProductThumbnailMetadata(
+	ctx context.Context,
+	productID string,
+) (sql.NullString, sql.NullString, sql.NullInt64, error) {
+	var objectKey sql.NullString
+	var contentType sql.NullString
+	var sizeBytes sql.NullInt64
+
+	err := h.DB.QueryRow(ctx, `
+		SELECT
+			p.thumbnail_object_key,
+			p.thumbnail_content_type,
+			p.thumbnail_size_bytes
+		FROM user_mgmt.master_produkumkm p
+		JOIN user_mgmt.master_umkm u
+			ON u.umkm_id = p.umkm_id
+		WHERE p.produk_id = $1
+		  AND p.status_produk = 'AKTIF'
+		  AND p.is_deleted = FALSE
+		  AND u.status_verified = TRUE
+		  AND u.is_deleted = FALSE
+		LIMIT 1
+	`, productID).Scan(&objectKey, &contentType, &sizeBytes)
 
 	return objectKey, contentType, sizeBytes, err
 }
