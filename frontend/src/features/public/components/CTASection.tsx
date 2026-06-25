@@ -8,7 +8,7 @@ export default function CTASection() {
   const isInView = useInView(ref, { once: true, margin: "-100px" });
 
   return (
-    <section id="kontak" className="py-20 sm:py-28 bg-background" ref={ref}>
+    <section id="kontak" className="py-20 sm:py-28 bg-transparent" ref={ref}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 40 }}
@@ -36,22 +36,28 @@ export default function CTASection() {
             </motion.div>
 
             <h2 className="font-poppins text-3xl sm:text-4xl lg:text-5xl font-bold text-dark mb-4 max-w-3xl mx-auto leading-tight">
-              Mulai Perjalanan Bisnis Anda{" "}
-              <span className="text-dark">Hari Ini</span>
+              Mulai Perjalanan Anda Hari Ini
             </h2>
 
-            <p className="font-inter text-dark text-center text-base sm:text-lg max-w-xl mx-auto mb-10 leading-relaxed">
-              Bergabung bersama ratusan UMKM yang telah berkembang melalui UMKM Tumbuh. Wujudkan potensi bisnis Anda.
-            </p>
+            <div className="font-inter text-dark text-center text-base sm:text-lg max-w-2xl mx-auto mb-10 leading-relaxed">
+              Jangan biarkan bisnis Anda tertinggal. Bergabunglah dengan ratusan wirausahawan lainnya yang telah bertransformasi bersama UMKM Tumbuh.
+            </div>
 
             <div className="flex flex-col sm:flex-row items-center gap-4 justify-center">
               <Link
                 to="/register"
-                className="group inline-flex items-center gap-2 px-8 py-4 bg-primary text-dark font-semibold rounded-xl shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 hover:bg-primary-dark transition-all duration-300 text-base no-underline"
+                className="group inline-flex items-center justify-center gap-2 px-8 py-4 bg-accent text-dark font-semibold rounded-full shadow-lg shadow-accent/25 hover:shadow-xl hover:shadow-accent/30 hover:bg-accent-hover transition-all duration-300 text-base no-underline min-w-[200px]"
               >
                 Daftar Sekarang
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Link>
+              
+              <a
+                href="#kontak"
+                className="inline-flex items-center justify-center px-8 py-4 bg-dark text-white font-semibold rounded-full shadow-lg hover:shadow-xl hover:bg-black transition-all duration-300 text-base no-underline min-w-[200px]"
+              >
+                Konsultasi Gratis
+              </a>
 
             </div>
           </div>

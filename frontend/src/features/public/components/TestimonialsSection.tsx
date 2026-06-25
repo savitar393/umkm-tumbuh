@@ -56,9 +56,9 @@ export default function TestimonialsSection() {
           <h2 className="font-poppins text-3xl sm:text-4xl lg:text-[42px] font-bold text-dark mb-4">
             Cerita Sukses Mereka
           </h2>
-          <p className="font-inter text-dark text-center max-w-2xl mx-auto text-base sm:text-lg">
+          <div className="font-inter text-dark text-center max-w-2xl mx-auto text-base sm:text-lg">
             Dengarkan langsung dari pelaku UMKM dan mitra yang telah merasakan manfaat platform kami.
-          </p>
+          </div>
         </motion.div>
 
         <motion.div
@@ -81,7 +81,7 @@ export default function TestimonialsSection() {
               </div>
 
               {/* Text */}
-              <motion.p
+              <motion.div
                 key={currentIndex}
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -89,7 +89,7 @@ export default function TestimonialsSection() {
                 className="font-inter text-dark text-lg sm:text-xl leading-relaxed mb-8 italic"
               >
                 "{testimonials[currentIndex].text}"
-              </motion.p>
+              </motion.div>
 
               {/* Author */}
               <motion.div
@@ -103,12 +103,12 @@ export default function TestimonialsSection() {
                   {testimonials[currentIndex].avatar}
                 </div>
                 <div>
-                  <p className="font-poppins font-bold text-dark text-base">
+                  <div className="font-poppins font-bold text-dark text-base">
                     {testimonials[currentIndex].name}
-                  </p>
-                  <p className="font-inter text-gray-700 text-sm">
+                  </div>
+                  <div className="font-inter text-dark text-sm">
                     {testimonials[currentIndex].role}
-                  </p>
+                  </div>
                 </div>
               </motion.div>
             </div>

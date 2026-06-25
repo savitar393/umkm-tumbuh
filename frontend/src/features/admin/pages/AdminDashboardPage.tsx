@@ -41,7 +41,12 @@ const MONTHS = [
   { label: "Desember", value: 11 },
 ];
 
-const YEARS = [2026, 2025, 2024];
+const YEARS = [
+  { label: "Semua Tahun", value: -1 },
+  { label: "2026", value: 2026 },
+  { label: "2025", value: 2025 },
+  { label: "2024", value: 2024 },
+];
 
 const STATUS_OPTIONS = [
   "Semua Status",
@@ -72,17 +77,19 @@ export default function AdminDashboardPage() {
   // Filter state
   const [provinsi, setProvinsi] = useState("Seluruh Indonesia");
   const [bulan, setBulan] = useState(-1);
-  const [tahun, setTahun] = useState(new Date().getFullYear());
+  const [tahun, setTahun] = useState(-1);
   const [statusUmkm, setStatusUmkm] = useState("Semua Status");
 
   function buildQuery(filters: { prov: string; bln: number; thn: number; statusUmkm: string }) {
     const params = new URLSearchParams();
     if (filters.prov !== "Seluruh Indonesia") params.set("provinsi", filters.prov);
-    if (filters.bln >= 0) {
-      const monthStr = `${filters.thn}-${String(filters.bln + 1).padStart(2, "0")}`;
-      params.set("bulan", monthStr);
+    if (filters.thn >= 0) {
+      if (filters.bln >= 0) {
+        const monthStr = `${filters.thn}-${String(filters.bln + 1).padStart(2, "0")}`;
+        params.set("bulan", monthStr);
+      }
+      params.set("tahun", String(filters.thn));
     }
-    params.set("tahun", String(filters.thn));
     if (filters.statusUmkm !== "Semua Status") params.set("status_umkm", filters.statusUmkm);
     return params.toString() ? `?${params.toString()}` : "";
   }
@@ -160,7 +167,7 @@ export default function AdminDashboardPage() {
           <label className="filter-label">TAHUN</label>
           <select className="filter-select" value={tahun} onChange={(e) => setTahun(Number(e.target.value))}>
             {YEARS.map((y) => (
-              <option key={y} value={y}>{y}</option>
+              <option key={y.value} value={y.value}>{y.label}</option>
             ))}
           </select>
         </div>

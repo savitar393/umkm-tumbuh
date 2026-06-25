@@ -45,11 +45,11 @@ expect_status() {
   local label="$3"
 
   if [ "$actual" != "$expected" ]; then
-    echo "❌ $label expected HTTP $expected, got $actual"
+    echo "? $label expected HTTP $expected, got $actual"
     exit 1
   fi
 
-  echo "✅ $label HTTP $actual"
+  echo "? $label HTTP $actual"
 }
 
 request_with_status() {
@@ -108,7 +108,7 @@ expect_status "$RESPONSE_STATUS" "200" "request password reset"
 RESET_CODE="$(printf '%s' "$RESPONSE_BODY" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("dev_code",""))')"
 
 if [ -z "$RESET_CODE" ]; then
-  echo "❌ password reset dev_code missing"
+  echo "? password reset dev_code missing"
   echo "$RESPONSE_BODY"
   exit 1
 fi
@@ -153,7 +153,7 @@ expect_status "$RESPONSE_STATUS" "201" "register logout smoke user"
 LOGOUT_TOKEN="$(printf '%s' "$RESPONSE_BODY" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("access_token",""))')"
 
 if [ -z "$LOGOUT_TOKEN" ]; then
-  echo "❌ logout smoke token missing"
+  echo "? logout smoke token missing"
   echo "$RESPONSE_BODY"
   exit 1
 fi
@@ -194,7 +194,7 @@ expect_status "$RESPONSE_STATUS" "200" "request email verification"
 VERIFY_CODE="$(printf '%s' "$RESPONSE_BODY" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("dev_code",""))')"
 
 if [ -z "$VERIFY_CODE" ]; then
-  echo "❌ email verification dev_code missing"
+  echo "? email verification dev_code missing"
   echo "$RESPONSE_BODY"
   exit 1
 fi
@@ -218,7 +218,7 @@ REMEMBER_ACCESS_TOKEN="$(printf '%s' "$RESPONSE_BODY" | python3 -c 'import sys,j
 REMEMBER_REFRESH_TOKEN="$(printf '%s' "$RESPONSE_BODY" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("refresh_token",""))')"
 
 if [ -z "$REMEMBER_ACCESS_TOKEN" ] || [ -z "$REMEMBER_REFRESH_TOKEN" ]; then
-  echo "❌ remember-me tokens missing"
+  echo "? remember-me tokens missing"
   echo "$RESPONSE_BODY"
   exit 1
 fi
@@ -237,7 +237,7 @@ NEW_ACCESS_TOKEN="$(printf '%s' "$RESPONSE_BODY" | python3 -c 'import sys,json; 
 NEW_REFRESH_TOKEN="$(printf '%s' "$RESPONSE_BODY" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("refresh_token",""))')"
 
 if [ -z "$NEW_ACCESS_TOKEN" ] || [ -z "$NEW_REFRESH_TOKEN" ]; then
-  echo "❌ rotated tokens missing"
+  echo "? rotated tokens missing"
   echo "$RESPONSE_BODY"
   exit 1
 fi
@@ -267,12 +267,12 @@ expect_status "$RESPONSE_STATUS" "201" "register UMKM"
 UMKM_TOKEN="$(printf "%s" "$RESPONSE_BODY" | json_get "data.get('access_token','')")"
 
 if [ -z "$UMKM_TOKEN" ]; then
-  echo "❌ register UMKM did not return access_token"
+  echo "? register UMKM did not return access_token"
   echo "$RESPONSE_BODY"
   exit 1
 fi
 
-echo "✅ UMKM token received"
+echo "? UMKM token received"
 echo
 
 echo "== 3. Save UMKM profile =="
@@ -300,11 +300,11 @@ expect_status "$RESPONSE_STATUS" "200" "get UMKM profile"
 
 UMKM_NAME="$(printf "%s" "$RESPONSE_BODY" | json_get "data.get('profile',{}).get('business_name','')")"
 if [ "$UMKM_NAME" != "Smoke UMKM Store" ]; then
-  echo "❌ UMKM profile name mismatch: $UMKM_NAME"
+  echo "? UMKM profile name mismatch: $UMKM_NAME"
   exit 1
 fi
 
-echo "✅ UMKM profile verified"
+echo "? UMKM profile verified"
 echo
 
 echo "== 5. Submit UMKM registration =="
@@ -329,12 +329,12 @@ expect_status "$RESPONSE_STATUS" "201" "register Mitra"
 MITRA_TOKEN="$(printf "%s" "$RESPONSE_BODY" | json_get "data.get('access_token','')")"
 
 if [ -z "$MITRA_TOKEN" ]; then
-  echo "❌ register Mitra did not return access_token"
+  echo "? register Mitra did not return access_token"
   echo "$RESPONSE_BODY"
   exit 1
 fi
 
-echo "✅ Mitra token received"
+echo "? Mitra token received"
 echo
 
 echo "== 7. Save Mitra profile =="
@@ -368,11 +368,11 @@ expect_status "$RESPONSE_STATUS" "200" "get Mitra profile"
 
 MITRA_NAME="$(printf "%s" "$RESPONSE_BODY" | json_get "data.get('profile',{}).get('organization_name','')")"
 if [ "$MITRA_NAME" != "Smoke Mitra Organization" ]; then
-  echo "❌ Mitra profile name mismatch: $MITRA_NAME"
+  echo "? Mitra profile name mismatch: $MITRA_NAME"
   exit 1
 fi
 
-echo "✅ Mitra profile verified"
+echo "? Mitra profile verified"
 echo
 
 echo "== 9. Submit Mitra registration =="
@@ -383,4 +383,4 @@ split_response "$RAW"
 expect_status "$RESPONSE_STATUS" "200" "submit Mitra registration"
 echo
 
-echo "🎉 Smoke test passed."
+echo "?? Smoke test passed."

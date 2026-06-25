@@ -13,22 +13,8 @@ const fadeUp = {
 
 export default function HeroSection() {
   return (
-    <section className="relative min-h-screen flex items-center overflow-hidden bg-gradient-to-br from-primary via-secondary to-[#1a2f8a]">
-      {/* Abstract background pattern */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-[600px] h-[600px] bg-white/5 rounded-full blur-3xl" />
-        <div className="absolute -bottom-60 -left-40 w-[500px] h-[500px] bg-accent/10 rounded-full blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-white/[0.02] rounded-full blur-3xl" />
-        {/* Grid pattern */}
-        <div
-          className="absolute inset-0 opacity-[0.04]"
-          style={{
-            backgroundImage:
-              "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
-            backgroundSize: "60px 60px",
-          }}
-        />
-      </div>
+    <section className="relative min-h-screen flex items-center overflow-visible bg-transparent pt-16">
+
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-28 sm:py-32 lg:py-36 w-full">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
@@ -57,7 +43,7 @@ export default function HeroSection() {
               <span className="text-white">di Era Digital</span>
             </motion.h1>
 
-            <motion.p
+            <motion.div
               variants={fadeUp}
               initial="hidden"
               animate="visible"
@@ -65,7 +51,7 @@ export default function HeroSection() {
               className="font-inter text-base sm:text-lg text-white leading-relaxed max-w-xl mx-auto lg:mx-0 mb-8"
             >
               Memberdayakan UMKM Indonesia melalui inovasi, kemitraan, dan transformasi digital yang berkelanjutan.
-            </motion.p>
+            </motion.div>
 
             <motion.div
               variants={fadeUp}
@@ -117,8 +103,8 @@ export default function HeroSection() {
                   { label: "Program", value: "100+", color: "bg-purple-400/20" },
                 ].map((stat) => (
                   <div key={stat.label} className={`${stat.color} rounded-xl p-3 text-center`}>
-                    <p className="text-white text-xs font-medium">{stat.label}</p>
-                    <p className="text-white font-bold text-lg">{stat.value}</p>
+                    <div className="text-white text-xs font-medium">{stat.label}</div>
+                    <div className="text-white font-bold text-lg">{stat.value}</div>
                   </div>
                 ))}
               </div>
@@ -137,8 +123,8 @@ export default function HeroSection() {
                   ))}
                 </div>
                 <div className="flex justify-between mt-2">
-                  <span className="text-[10px] text-white/40">Jan</span>
-                  <span className="text-[10px] text-white/40">Des</span>
+                  <span className="text-[10px] text-white">Jan</span>
+                  <span className="text-[10px] text-white">Des</span>
                 </div>
               </div>
             </div>
@@ -148,15 +134,15 @@ export default function HeroSection() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 1 }}
-              className="absolute -bottom-6 -left-8 bg-white rounded-2xl shadow-2xl px-5 py-4 flex items-center gap-3"
+              className="absolute -bottom-6 -left-8 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl shadow-2xl px-5 py-4 flex items-center gap-3"
             >
-              <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center">
-                <TrendingUp className="w-6 h-6 text-green-500" />
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                <TrendingUp className="w-6 h-6 text-accent" />
               </div>
               <div>
-                <p className="text-[11px] text-gray-500 font-medium">Pertumbuhan</p>
-                <p className="text-lg font-bold text-dark">+128%</p>
-                <p className="text-[10px] text-green-500 font-medium">Yearly</p>
+                <div className="text-[11px] text-white font-medium">Pertumbuhan</div>
+                <div className="text-lg font-bold text-white">+128%</div>
+                <div className="text-[10px] text-accent font-medium">Yearly</div>
               </div>
             </motion.div>
           </motion.div>

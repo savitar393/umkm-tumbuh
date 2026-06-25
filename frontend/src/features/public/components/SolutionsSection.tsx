@@ -43,7 +43,7 @@ export default function SolutionsSection() {
   const isInView = useInView(ref, { once: true, margin: "-100px" });
 
   return (
-    <section id="kemitraan" className="py-20 sm:py-28 bg-background" ref={ref}>
+    <section id="kemitraan" className="py-20 sm:py-28 bg-transparent" ref={ref}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -51,15 +51,12 @@ export default function SolutionsSection() {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <span className="inline-block text-xs font-semibold text-dark uppercase tracking-widest mb-3">
+          <span className="hidden">
             Solusi Terpadu
           </span>
-          <h2 className="font-poppins text-3xl sm:text-4xl lg:text-[42px] font-bold text-dark mb-4">
+          <h2 className="hidden">
             Solusi Kami
           </h2>
-          <p className="font-inter text-dark text-center max-w-2xl mx-auto text-base sm:text-lg">
-            Dua jalur solusi yang dirancang untuk mempertemukan pelaku UMKM dengan mitra strategis.
-          </p>
         </motion.div>
 
         <div className="grid md:grid-cols-2 gap-6 lg:gap-8">
@@ -69,7 +66,7 @@ export default function SolutionsSection() {
               initial={{ opacity: 0, y: 40 }}
               animate={isInView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.6, delay: index * 0.2 }}
-              className={`group relative bg-gradient-to-br ${sol.gradient} rounded-2xl p-7 sm:p-9 border border-gray-100 ${sol.borderHover} hover:shadow-xl transition-all duration-500`}
+              className={`group relative bg-white rounded-2xl p-7 sm:p-9 border border-gray-100 ${sol.borderHover} hover:shadow-xl transition-all duration-500`}
             >
               <span className={`inline-block text-[11px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full ${sol.badgeColor} mb-5`}>
                 {sol.badge}
@@ -78,9 +75,9 @@ export default function SolutionsSection() {
               <h3 className="font-poppins text-2xl sm:text-[26px] font-bold text-dark mb-2">
                 {sol.title}
               </h3>
-              <p className="font-inter text-gray-700 text-[15px] mb-7">
+              <div className="font-inter text-gray-700 text-[15px] mb-7">
                 {sol.description}
-              </p>
+              </div>
 
               <ul className="space-y-4 mb-8">
                 {sol.items.map((item) => (

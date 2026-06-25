@@ -30,9 +30,9 @@ export default function LandingFooter() {
               <img src={logoImg} alt="UMKM Tumbuh" className="h-9 w-auto" />
               <span className="font-poppins font-bold text-lg text-white">UMKM Tumbuh</span>
             </div>
-            <p className="font-inter text-white/50 text-sm leading-relaxed max-w-xs">
+            <div className="font-inter text-white/80 text-sm leading-relaxed max-w-xs">
               Platform pemberdayaan ekonomi terpadu untuk mengakselerasi pertumbuhan UMKM di seluruh pelosok Indonesia.
-            </p>
+            </div>
           </div>
 
           {/* Navigation */}
@@ -46,14 +46,14 @@ export default function LandingFooter() {
                   {nav.to ? (
                     <Link
                       to={nav.to}
-                      className="font-inter text-white/50 hover:text-accent text-sm transition-colors duration-200 no-underline"
+                      className="font-inter text-white/80 hover:text-accent text-sm transition-colors duration-200 no-underline"
                     >
                       {nav.label}
                     </Link>
                   ) : (
                     <a
                       href={nav.href}
-                      className="font-inter text-white/50 hover:text-accent text-sm transition-colors duration-200 no-underline"
+                      className="font-inter text-white/80 hover:text-accent text-sm transition-colors duration-200 no-underline"
                     >
                       {nav.label}
                     </a>
@@ -73,7 +73,7 @@ export default function LandingFooter() {
                 <li key={item.label}>
                   <Link
                     to={item.to}
-                    className="font-inter text-white/50 hover:text-accent text-sm transition-colors duration-200 no-underline"
+                    className="font-inter text-white/80 hover:text-accent text-sm transition-colors duration-200 no-underline"
                   >
                     {item.label}
                   </Link>
@@ -93,7 +93,7 @@ export default function LandingFooter() {
                   key={social.label}
                   href={social.href}
                   aria-label={social.label}
-                  className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white/60 hover:bg-accent hover:text-dark transition-all duration-300 no-underline"
+                  className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white/80 hover:bg-accent hover:text-dark transition-all duration-300 no-underline"
                 >
                   <Icon icon={social.icon} className="w-4.5 h-4.5" />
                 </a>
@@ -104,7 +104,7 @@ export default function LandingFooter() {
 
         {/* Bottom bar */}
         <div className="mt-14 pt-8 border-t border-white/10">
-          <p className="font-inter text-white/30 text-sm text-center">
+          <p className="font-inter text-white/60 text-sm text-center">
             © 2026 UMKM Tumbuh. All rights reserved.
           </p>
         </div>

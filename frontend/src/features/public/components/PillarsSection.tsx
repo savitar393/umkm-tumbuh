@@ -35,7 +35,7 @@ export default function PillarsSection() {
   const isInView = useInView(ref, { once: true, margin: "-100px" });
 
   return (
-    <section id="tentang" className="py-20 sm:py-28 bg-white" ref={ref}>
+    <section id="tentang" className="py-20 sm:py-28 bg-transparent" ref={ref}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -43,15 +43,13 @@ export default function PillarsSection() {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <span className="inline-block text-xs font-semibold text-dark uppercase tracking-widest mb-3">
+          <span className="inline-block text-xs font-semibold text-white/80 uppercase tracking-widest mb-3">
             Fondasi Kami
           </span>
-          <h2 className="font-poppins text-3xl sm:text-4xl lg:text-[42px] font-bold text-dark mb-4">
+          <h2 className="font-poppins text-3xl sm:text-4xl lg:text-[42px] font-bold text-white mb-4">
             Pilar Utama Kami
           </h2>
-          <p className="font-inter text-dark text-center max-w-2xl mx-auto text-base sm:text-lg">
-            Tiga pilar yang menjadi fondasi dalam <strong className="text-dark">memberdayakan</strong> dan mengakselerasi pertumbuhan UMKM Indonesia.
-          </p>
+          <div className="w-16 h-1 bg-accent mx-auto mb-6 rounded-full"></div>
         </motion.div>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
@@ -73,9 +71,9 @@ export default function PillarsSection() {
               <h3 className="font-poppins text-xl font-bold text-dark mb-3">
                 {pillar.title}
               </h3>
-              <p className="font-inter text-gray-700 leading-relaxed text-[15px]">
+              <div className="font-inter text-gray-700 leading-relaxed text-[15px]">
                 {pillar.description}
-              </p>
+              </div>
             </motion.div>
           ))}
         </div>

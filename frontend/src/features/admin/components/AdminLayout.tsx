@@ -47,10 +47,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           <div className="navbar-avatar" title={user?.full_name ?? "Admin"}>
             {user?.full_name?.[0]?.toUpperCase() ?? "A"}
           </div>
-          <button className="navbar-logout-btn" onClick={logout} title="Keluar">
-            <LogOut size={18} />
-            <span>Keluar</span>
-          </button>
         </div>
       </header>
 

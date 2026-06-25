@@ -1,9 +1,10 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [tailwindcss(), react()],
   resolve: {
     alias: {
       react: path.resolve(__dirname, "node_modules/react"),
@@ -27,15 +28,15 @@ export default defineConfig({
         changeOrigin: true,
       },
       "/api/v1/partnerships": {
-        target: "http://localhost:8083",
+        target: "http://localhost:8082",
         changeOrigin: true,
       },
       "/api/v1/mitra": {
-        target: "http://localhost:8083",
+        target: "http://localhost:8081",
         changeOrigin: true,
       },
       "/api/v1/umkm": {
-        target: "http://localhost:8083",
+        target: "http://localhost:8081",
         changeOrigin: true,
       },
       "/api/v1/sales": {
@@ -47,19 +48,19 @@ export default defineConfig({
         changeOrigin: true,
       },
       "/api/v1/documents": {
-        target: "http://localhost:8084",
+        target: "http://localhost:8083",
         changeOrigin: true,
       },
       "/api/v1/trainings": {
-        target: "http://localhost:8085",
+        target: "http://localhost:8084",
         changeOrigin: true,
       },
       "/api/v1/enrollments": {
-        target: "http://localhost:8085",
+        target: "http://localhost:8084",
         changeOrigin: true,
       },
       "/api/v1/certificates": {
-        target: "http://localhost:8085",
+        target: "http://localhost:8084",
         changeOrigin: true,
       },
     },

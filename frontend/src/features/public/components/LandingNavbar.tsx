@@ -136,8 +136,8 @@ export default function LandingNavbar() {
                       className="absolute top-full right-0 mt-2 w-60 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden"
                     >
                       <div className="px-5 py-4 border-b border-gray-100">
-                        <p className="text-sm font-bold text-dark">{user.full_name}</p>
-                        <p className="text-xs text-gray-400 mt-0.5">{user.email}</p>
+                        <div className="text-sm font-bold text-dark">{user.full_name}</div>
+                        <div className="text-xs text-gray-400 mt-0.5">{user.email}</div>
                         <span className="inline-block mt-2 text-[11px] font-semibold text-primary bg-primary/10 px-3 py-1 rounded-full">
                           {user.role}
                         </span>

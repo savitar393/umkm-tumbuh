@@ -152,6 +152,14 @@ services:
       dockerfile: Dockerfile
     container_name: umkm_training_service
     restart: unless-stopped
+    entrypoint:
+      - sh
+      - -c
+      - |
+        if [ -f /garage_creds/creds/garage.env ]; then
+          set -a; . /garage_creds/creds/garage.env; set +a
+        fi
+        exec ./training-service
     environment:
       APP_ENV: ${APP_ENV:-development}
       SERVER_HOST: 0.0.0.0
@@ -159,6 +167,8 @@ services:
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       DATABASE_URL: postgres://${POSTGRES_USER:-umkm_user}:${POSTGRES_PASSWORD:-umkm_password}@postgres:5432/${POSTGRES_DB:-umkm_tumbuh}?sslmode=disable
       JWT_SECRET: ${JWT_SECRET}
+    volumes:
+      - garage_data:/garage_creds:ro
     ports:
       - "${TRAINING_SERVICE_PORT:-8085}:${TRAINING_SERVICE_PORT:-8085}"
     depends_on:
@@ -166,6 +176,8 @@ services:
         condition: service_completed_successfully
       garage:
         condition: service_started
+      garage-bootstrap:
+        condition: service_completed_successfully
     networks:
       - umkm_network
 
@@ -228,6 +240,14 @@ services:
       dockerfile: Dockerfile
     container_name: umkm_document_service
     restart: unless-stopped
+    entrypoint:
+      - sh
+      - -c
+      - |
+        if [ -f /garage_creds/creds/garage.env ]; then
+          set -a; . /garage_creds/creds/garage.env; set +a
+        fi
+        exec /app/document-api
     environment:
       APP_ENV: ${APP_ENV:-development}
       DOCUMENT_SERVICE_HOST: 0.0.0.0
@@ -239,12 +259,14 @@ services:
       OBJECT_STORAGE_PUBLIC_ENDPOINT: ${OBJECT_STORAGE_PUBLIC_ENDPOINT:-http://localhost:3900}
       OBJECT_STORAGE_REGION: ${OBJECT_STORAGE_REGION:-garage}
       OBJECT_STORAGE_USE_SSL: ${OBJECT_STORAGE_USE_SSL:-false}
-      OBJECT_STORAGE_ACCESS_KEY: ${OBJECT_STORAGE_ACCESS_KEY:-umkm_garage_access_key}
-      OBJECT_STORAGE_SECRET_KEY: ${OBJECT_STORAGE_SECRET_KEY:-umkm_garage_secret_key}
+      OBJECT_STORAGE_ACCESS_KEY: ${OBJECT_STORAGE_ACCESS_KEY:-}
+      OBJECT_STORAGE_SECRET_KEY: ${OBJECT_STORAGE_SECRET_KEY:-}
       OBJECT_STORAGE_BUCKET_DOCUMENTS: ${OBJECT_STORAGE_BUCKET_DOCUMENTS:-documents}
       OBJECT_STORAGE_BUCKET_CERTIFICATES: ${OBJECT_STORAGE_BUCKET_CERTIFICATES:-certificates}
       OBJECT_STORAGE_BUCKET_PRODUCT_IMAGES: ${OBJECT_STORAGE_BUCKET_PRODUCT_IMAGES:-product-images}
       OBJECT_STORAGE_BUCKET_PARTNERSHIP_FILES: ${OBJECT_STORAGE_BUCKET_PARTNERSHIP_FILES:-partnership-files}
+    volumes:
+      - garage_data:/garage_creds:ro
     ports:
       - "${DOCUMENT_SERVICE_PORT:-8083}:${DOCUMENT_SERVICE_PORT:-8083}"
     depends_on:
