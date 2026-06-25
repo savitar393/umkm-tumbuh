@@ -216,3 +216,20 @@
   margin-top: 32px;
 }
 
+.up-product-image {
+  position: relative;
+  overflow: hidden;
+}
+
+.up-product-image--fallback::after {
+  content: "TU";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #10b981 0%, #065f46 100%);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 80px;
+  font-weight: 800;
+}

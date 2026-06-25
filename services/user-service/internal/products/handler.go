@@ -673,6 +673,11 @@ func scanProduct(row scanner) (ProductResponse, error) {
 	p.Category = p.CategoryName
 	p.Legality = p.Legalitas
 
+	if p.ThumbnailObjectKey != nil && strings.TrimSpace(*p.ThumbnailObjectKey) != "" {
+		thumbnailURL := fmt.Sprintf("/api/v1/public/products/%s/thumbnail", p.ID)
+		p.ThumbnailURL = &thumbnailURL
+	}
+
 	return p, nil
 }
 

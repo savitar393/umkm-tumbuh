@@ -249,7 +249,14 @@ export default function UmkmProductsPage() {
               <div key={p.id} className="up-product-card">
                 <div className="up-product-image">
                   {p.thumbnail_url || p.image_url ? (
-                    <img src={p.thumbnail_url || p.image_url} alt={p.name} />
+                    <img
+                      src={p.thumbnail_url || p.image_url}
+                      alt={p.name}
+                      onError={(event) => {
+                        event.currentTarget.style.display = "none";
+                        event.currentTarget.parentElement?.classList.add("up-product-image--fallback");
+                      }}
+                    />
                   ) : (
                     <div className="up-product-image-placeholder">TU</div>
                   )}

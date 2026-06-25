@@ -366,7 +366,10 @@ func (h *Handler) getPublicProductThumbnailMetadata(
 		WHERE p.produk_id = $1
 		  AND p.status_produk = 'AKTIF'
 		  AND p.is_deleted = FALSE
-		  AND u.status_verified = TRUE
+		  AND (
+			u.status_verified = TRUE
+			OR u.status_umkm_id IN ('AKTIF', 'DISETUJUI', 'APPROVED')
+			)
 		  AND u.is_deleted = FALSE
 		LIMIT 1
 	`, productID).Scan(&objectKey, &contentType, &sizeBytes)
