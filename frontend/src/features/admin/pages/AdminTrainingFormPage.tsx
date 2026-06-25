@@ -56,6 +56,7 @@ export default function AdminTrainingFormPage() {
   const isEditMode = !!id;
 
   const [currentStep, setCurrentStep] = useState<Step>(1);
+  const [maxUnlockedStep, setMaxUnlockedStep] = useState<Step>(1);
   const [formData, setFormData] = useState<FormData>({
     judul_pelatihan: "",
     jenis_pelatihan_id: "JP01",
@@ -135,6 +136,7 @@ export default function AdminTrainingFormPage() {
       toast.error("Durasi harus lebih dari 0");
       return;
     }
+    setMaxUnlockedStep(2);
     setCurrentStep(2);
   };
 
@@ -191,6 +193,34 @@ export default function AdminTrainingFormPage() {
       ...formData,
       assignments: formData.assignments.filter((_, i) => i !== index),
     });
+  };
+
+  const handleGoToAssignment = () => {
+    if (formData.modules.length === 0) {
+      toast.error("Tambahkan minimal 1 modul");
+      return;
+    }
+    const emptyModule = formData.modules.find((m) => !m.judul_modul.trim());
+    if (emptyModule) {
+      toast.error(`Judul modul ${emptyModule.urutan_modul} wajib diisi`);
+      return;
+    }
+    setMaxUnlockedStep(3);
+    setCurrentStep(3);
+  };
+
+  const handleGoToPublish = () => {
+    if (formData.assignments.length === 0) {
+      toast.error("Tambahkan minimal 1 assignment");
+      return;
+    }
+    const emptyAssignment = formData.assignments.find((a) => !a.judul_assignment.trim());
+    if (emptyAssignment) {
+      toast.error("Semua judul assignment wajib diisi");
+      return;
+    }
+    setMaxUnlockedStep(4);
+    setCurrentStep(4);
   };
 
   const handlePublish = () => {
@@ -293,15 +323,21 @@ export default function AdminTrainingFormPage() {
             { num: 2, label: "Module" },
             { num: 3, label: "Assignment" },
             { num: 4, label: "Publish" },
-          ].map((step) => (
+          ].map((step) => {
+            const isUnlocked = step.num <= maxUnlockedStep;
+            return (
             <div
               key={step.num}
-              onClick={() => setCurrentStep(step.num as Step)}
+              onClick={() => {
+                if (isUnlocked) setCurrentStep(step.num as Step);
+              }}
               style={{
                 display: "flex", alignItems: "center", gap: 12,
                 padding: "12px 16px", borderRadius: 12,
                 background: currentStep === step.num ? "#1f45b6" : "#f9fafb",
-                cursor: "pointer", transition: "all 0.2s",
+                cursor: isUnlocked ? "pointer" : "not-allowed",
+                opacity: isUnlocked ? 1 : 0.5,
+                transition: "all 0.2s",
               }}
             >
               <div style={{
@@ -320,7 +356,8 @@ export default function AdminTrainingFormPage() {
                 {step.label}
               </span>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
@@ -587,7 +624,7 @@ export default function AdminTrainingFormPage() {
                 Kembali
               </button>
               <button
-                onClick={() => setCurrentStep(3)}
+                onClick={handleGoToAssignment}
                 style={{
                   padding: "12px 32px", borderRadius: 10,
                   background: "#1f45b6", border: "none",
@@ -739,7 +776,7 @@ export default function AdminTrainingFormPage() {
                 Kembali
               </button>
               <button
-                onClick={() => setCurrentStep(4)}
+                onClick={handleGoToPublish}
                 style={{
                   padding: "12px 32px", borderRadius: 10,
                   background: "#1f45b6", border: "none",

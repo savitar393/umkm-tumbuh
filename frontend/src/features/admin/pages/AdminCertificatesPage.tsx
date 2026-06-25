@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Search, CheckCircle, XCircle, Download, FileText, Clock, Award, Plus } from "lucide-react";
+import { Search, CheckCircle, XCircle, Download, FileText, Clock, Award, Plus, Filter } from "lucide-react";
 import { toast } from "sonner";
 import AdminLayout from "../components/AdminLayout";
 import type { Certificate } from "../../certificates/types";
@@ -47,6 +47,8 @@ function getStatusBadge(status: string) {
 export default function AdminCertificatesPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilterType>("ALL");
   const [searchText, setSearchText] = useState("");
+  const [appliedStatusFilter, setAppliedStatusFilter] = useState<StatusFilterType>("ALL");
+  const [appliedSearchText, setAppliedSearchText] = useState("");
   const [page, setPage] = useState(1);
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
 
@@ -65,15 +67,21 @@ export default function AdminCertificatesPage() {
 
   // Fetch certificates list
   const { data: certData, isLoading } = useQuery({
-    queryKey: ["admin", "certificates", statusFilter, searchText, page],
+    queryKey: ["admin", "certificates", appliedStatusFilter, appliedSearchText, page],
     queryFn: () => listCertificates(
-      statusFilter === "ALL" ? "" : statusFilter,
+      appliedStatusFilter === "ALL" ? "" : appliedStatusFilter,
       page,
       limit,
-      searchText,
+      appliedSearchText,
     ),
     staleTime: 30 * 1000,
   });
+
+  const handleApplyFilter = () => {
+    setAppliedSearchText(searchText);
+    setAppliedStatusFilter(statusFilter);
+    setPage(1);
+  };
 
   const certificates = certData?.certificates || [];
   const total = certData?.total || 0;
@@ -228,7 +236,7 @@ export default function AdminCertificatesPage() {
             {/* Status filter */}
             <select
               value={statusFilter}
-              onChange={(e) => { setStatusFilter(e.target.value as StatusFilterType); setPage(1); }}
+              onChange={(e) => setStatusFilter(e.target.value as StatusFilterType)}
               style={{
                 appearance: "none", WebkitAppearance: "none",
                 background: "#fff", border: "1px solid #e5e7eb",
@@ -253,13 +261,29 @@ export default function AdminCertificatesPage() {
                 type="text"
                 placeholder="Cari nama UMKM atau pelatihan..."
                 value={searchText}
-                onChange={(e) => { setSearchText(e.target.value); setPage(1); }}
+                onChange={(e) => setSearchText(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleApplyFilter(); }}
                 style={{
                   border: "none", background: "transparent", fontSize: 13,
                   color: "#374151", outline: "none", width: "100%", padding: 0,
                 }}
               />
             </div>
+
+            {/* Filter Button */}
+            <button
+              onClick={handleApplyFilter}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 8,
+                padding: "8px 16px", borderRadius: 10,
+                background: "#1f45b6", border: "none",
+                color: "#fff", fontSize: 13, fontWeight: 600,
+                cursor: "pointer", fontFamily: "inherit",
+              }}
+            >
+              <Filter size={16} />
+              Terapkan Filter
+            </button>
           </div>
         </div>
 
@@ -270,7 +294,7 @@ export default function AdminCertificatesPage() {
           fontSize: 11, fontWeight: 700, color: "#9ca3af",
           letterSpacing: "0.05em", textTransform: "uppercase",
         }}>
-          <div>UMKM / Pelatihan</div>
+          <div>UMKM</div>
           <div>Pelatihan</div>
           <div>Status</div>
           <div>No. Sertifikat</div>

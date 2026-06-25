@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Filter, MoreVertical, CheckCircle } from "lucide-react";
+import { Plus, Search, Filter, MoreVertical, CheckCircle, Edit, Trash2, Eye, Archive, Rocket } from "lucide-react";
 import { toast } from "sonner";
 import AdminLayout from "../components/AdminLayout";
 import {
@@ -62,7 +62,23 @@ function getStatusBadge(status: string) {
 export default function AdminTrainingManagePage() {
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilterType>("ALL");
+  const [appliedSearchText, setAppliedSearchText] = useState("");
+  const [appliedStatusFilter, setAppliedStatusFilter] = useState<StatusFilterType>("ALL");
   const [page, setPage] = useState(1);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null);
+      }
+    }
+    if (openMenuId) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [openMenuId]);
 
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -83,15 +99,21 @@ export default function AdminTrainingManagePage() {
 
   // Fetch trainings list
   const { data: trainingsData, isLoading } = useQuery({
-    queryKey: ["admin", "trainings", statusFilter, searchText, page],
+    queryKey: ["admin", "trainings", appliedStatusFilter, appliedSearchText, page],
     queryFn: () => getAdminTrainings({
-      status: statusFilter === "ALL" ? "" : statusFilter,
-      search: searchText,
+      status: appliedStatusFilter === "ALL" ? "" : appliedStatusFilter,
+      search: appliedSearchText,
       page,
       limit: 10,
     }),
     staleTime: 30 * 1000,
   });
+
+  const handleApplyFilter = () => {
+    setAppliedSearchText(searchText);
+    setAppliedStatusFilter(statusFilter);
+    setPage(1);
+  };
 
   const trainings = trainingsData?.trainings || [];
   const pagination = trainingsData?.pagination || { page: 1, limit: 10, total: 0, total_pages: 0 };
@@ -141,6 +163,15 @@ export default function AdminTrainingManagePage() {
       id: training.pelatihan_id,
       status: "ARCHIVED",
     });
+  };
+
+  const menuItemStyle: React.CSSProperties = {
+    display: "flex", alignItems: "center", gap: 10,
+    width: "100%", padding: "10px 16px",
+    border: "none", background: "transparent",
+    fontSize: 13, fontWeight: 500, color: "#374151",
+    cursor: "pointer", fontFamily: "inherit",
+    textAlign: "left" as const,
   };
 
   return (
@@ -292,7 +323,9 @@ export default function AdminTrainingManagePage() {
             </div>
 
             {/* Filter Button */}
-            <button style={{
+            <button
+              onClick={handleApplyFilter}
+              style={{
               display: "inline-flex", alignItems: "center", gap: 8,
               padding: "8px 16px", borderRadius: 10,
               background: "#1f45b6", border: "none",
@@ -315,6 +348,7 @@ export default function AdminTrainingManagePage() {
                 placeholder="Search courses..."
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleApplyFilter(); }}
                 style={{
                   border: "none", background: "transparent", fontSize: 13,
                   color: "#374151", outline: "none", width: "100%",
@@ -395,22 +429,84 @@ export default function AdminTrainingManagePage() {
                 </div>
 
                 {/* Actions */}
-                <div style={{ position: "relative" }}>
+                <div style={{ position: "relative" }} ref={openMenuId === training.pelatihan_id ? menuRef : undefined}>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      // TODO: Open action menu
+                      setOpenMenuId(openMenuId === training.pelatihan_id ? null : training.pelatihan_id);
                     }}
                     style={{
                       display: "inline-flex", alignItems: "center", gap: 4,
                       padding: "6px 8px", borderRadius: 8,
-                      background: "transparent", border: "1px solid #e5e7eb",
+                      background: openMenuId === training.pelatihan_id ? "#f3f4f6" : "transparent",
+                      border: "1px solid #e5e7eb",
                       color: "#6b7280", fontSize: 12, fontWeight: 600,
                       cursor: "pointer", fontFamily: "inherit",
                     }}
                   >
                     <MoreVertical size={14} />
                   </button>
+                  {openMenuId === training.pelatihan_id && (
+                    <div style={{
+                      position: "absolute", right: 0, top: "100%", zIndex: 50,
+                      marginTop: 4, minWidth: 180,
+                      background: "#fff", borderRadius: 12,
+                      boxShadow: "0 10px 40px rgba(0,0,0,0.15)",
+                      border: "1px solid #e5e7eb", overflow: "hidden",
+                    }}>
+                      {training.status_pelatihan_id === "DRAFT" && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handlePublish(training); setOpenMenuId(null); }}
+                          style={menuItemStyle}
+                        >
+                          <Rocket size={14} />
+                          Publish
+                        </button>
+                      )}
+                      {training.status_pelatihan_id === "PUBLISHED" && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); statusMutation.mutate({ id: training.pelatihan_id, status: "ONGOING" }); setOpenMenuId(null); }}
+                          style={menuItemStyle}
+                        >
+                          <Eye size={14} />
+                          Set Ongoing
+                        </button>
+                      )}
+                      {(training.status_pelatihan_id === "DRAFT" || training.status_pelatihan_id === "PUBLISHED" || training.status_pelatihan_id === "ONGOING") && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleArchive(training); setOpenMenuId(null); }}
+                          style={menuItemStyle}
+                        >
+                          <Archive size={14} />
+                          Archive
+                        </button>
+                      )}
+                      {training.status_pelatihan_id === "ARCHIVED" && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); statusMutation.mutate({ id: training.pelatihan_id, status: "DRAFT" }); setOpenMenuId(null); }}
+                          style={menuItemStyle}
+                        >
+                          <Edit size={14} />
+                          Set Draft
+                        </button>
+                      )}
+                      <div style={{ height: 1, background: "#f3f4f6" }} />
+                      <button
+                        onClick={(e) => { e.stopPropagation(); navigate(`/admin/training/${training.pelatihan_id}/edit`); }}
+                        style={menuItemStyle}
+                      >
+                        <Edit size={14} />
+                        Edit
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDelete(training); setOpenMenuId(null); }}
+                        style={{ ...menuItemStyle, color: "#ef4444" }}
+                      >
+                        <Trash2 size={14} />
+                        Delete
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
