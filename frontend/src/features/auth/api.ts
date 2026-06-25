@@ -281,3 +281,17 @@ export function logout() {
     service: "auth",
   });
 }
+
+export type RegistrationFlowStatus = {
+  role: "UMKM" | "MITRA";
+  status: string;
+  profile_complete: boolean;
+  submitted: boolean;
+  next_route: string;
+};
+
+export function getRegistrationFlowStatus() {
+  return http<RegistrationFlowStatus>("/register/status", {
+    service: "user",
+  });
+}

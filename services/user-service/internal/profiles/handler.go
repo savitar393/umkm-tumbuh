@@ -138,6 +138,7 @@ func (h *Handler) SubmitRegistration(w http.ResponseWriter, r *http.Request) {
 		umkmID            sql.NullString
 		mitraID           sql.NullString
 		status            string
+		sudahSubmit       bool
 	)
 
 	err = tx.QueryRow(r.Context(), `
@@ -145,11 +146,12 @@ func (h *Handler) SubmitRegistration(w http.ResponseWriter, r *http.Request) {
 			checklist_informasi_lengkap,
 			umkm_id,
 			mitra_id,
-			status_verifikasi_id
+			status_verifikasi_id,
+			sudah_submit
 		FROM user_mgmt.transaksi_registrasipengguna
 		WHERE akun_id = $1
 		FOR UPDATE
-	`, user.ID).Scan(&checklistComplete, &umkmID, &mitraID, &status)
+	`, user.ID).Scan(&checklistComplete, &umkmID, &mitraID, &status, &sudahSubmit)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -201,11 +203,19 @@ func (h *Handler) SubmitRegistration(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if sudahSubmit {
+		writeJSON(w, http.StatusConflict, map[string]string{
+			"error": "Pendaftaran sudah dikirim dan sedang menunggu review Admin.",
+		})
+		return
+	}
+
 	_, err = tx.Exec(r.Context(), `
 		UPDATE user_mgmt.transaksi_registrasipengguna
 		SET
 			status_verifikasi_id = 'MENUNGGU',
-			tanggal_submit = NOW()
+			tanggal_submit = NOW(),
+			sudah_submit = TRUE
 		WHERE akun_id = $1
 	`, user.ID)
 	if err != nil {
@@ -225,6 +235,101 @@ func (h *Handler) SubmitRegistration(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, map[string]string{
 		"message": "Pendaftaran berhasil dikirim. Menunggu review Admin.",
+	})
+}
+
+func (h *Handler) GetRegistrationStatus(w http.ResponseWriter, r *http.Request) {
+	user, ok := middleware.CurrentUserFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+		return
+	}
+
+	if user.Role != "UMKM" && user.Role != "MITRA" {
+		writeJSON(w, http.StatusForbidden, map[string]string{
+			"error": "Role ini tidak memiliki alur registrasi.",
+		})
+		return
+	}
+
+	var (
+		checklistComplete bool
+		sudahSubmit       bool
+		umkmID            sql.NullString
+		mitraID           sql.NullString
+		status            string
+	)
+
+	err := h.DB.QueryRow(r.Context(), `
+		SELECT
+			checklist_informasi_lengkap,
+			COALESCE(sudah_submit, FALSE),
+			umkm_id,
+			mitra_id,
+			status_verifikasi_id
+		FROM user_mgmt.transaksi_registrasipengguna
+		WHERE akun_id = $1
+	`, user.ID).Scan(&checklistComplete, &sudahSubmit, &umkmID, &mitraID, &status)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			rolePath := strings.ToLower(user.Role)
+			writeJSON(w, http.StatusOK, map[string]any{
+				"role":             user.Role,
+				"status":           "MENUNGGU",
+				"profile_complete": false,
+				"submitted":        false,
+				"next_route":       "/register/" + rolePath + "/details",
+			})
+			return
+		}
+
+		log.Printf("failed to read registration status: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": "Gagal membaca status registrasi.",
+		})
+		return
+	}
+
+	rolePath := strings.ToLower(user.Role)
+	profileComplete := checklistComplete
+
+	if user.Role == "UMKM" {
+		profileComplete = profileComplete && umkmID.Valid
+	}
+
+	if user.Role == "MITRA" {
+		profileComplete = profileComplete && mitraID.Valid
+	}
+
+	nextRoute := "/register/" + rolePath + "/details"
+
+	switch {
+	case status == "DISETUJUI" || status == "APPROVED" || status == "AKTIF":
+		if user.Role == "UMKM" {
+			nextRoute = "/umkm"
+		} else {
+			nextRoute = "/mitra"
+		}
+
+	case status == "DITOLAK" || status == "REJECTED":
+		nextRoute = "/register/rejected"
+
+	case !profileComplete:
+		nextRoute = "/register/" + rolePath + "/details"
+
+	case !sudahSubmit:
+		nextRoute = "/register/" + rolePath + "/review"
+
+	default:
+		nextRoute = "/register/pending"
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"role":             user.Role,
+		"status":           status,
+		"profile_complete": profileComplete,
+		"submitted":        sudahSubmit,
+		"next_route":       nextRoute,
 	})
 }
 

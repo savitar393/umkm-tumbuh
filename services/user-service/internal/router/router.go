@@ -54,6 +54,7 @@ func New(db *pgxpool.Pool, frontendURL string, jwtSecret string, uploadDir strin
 			})
 
 			r.Route("/register", func(r chi.Router) {
+				r.Get("/status", profileHandler.GetRegistrationStatus)
 				r.Post("/submit", profileHandler.SubmitRegistration)
 			})
 

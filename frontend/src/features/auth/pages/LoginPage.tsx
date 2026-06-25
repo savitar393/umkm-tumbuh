@@ -1,11 +1,14 @@
 import { type FormEvent, useState } from "react";
 import { ArrowRight, Eye, Lock, Mail } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
-import { login } from "../api";
+import { getRegistrationFlowStatus, login } from "../api";
 import { isValidEmail } from "../../../shared/validation/forms";
 import {
   clearRefreshToken,
   getPostLoginRoute,
+  isApprovedStatus,
+  isEmailVerified,
+  isRejectedStatus,
   setAccessToken,
   setCurrentUser,
   setRefreshToken,
@@ -89,7 +92,23 @@ export default function LoginPage() {
         localStorage.removeItem("remember_me");
       }
 
-      navigate(getPostLoginRoute(result.user), { replace: true });
+      let nextRoute = getPostLoginRoute(result.user);
+
+      if (
+        result.user.role !== "ADMIN" &&
+        isEmailVerified(result.user) &&
+        !isApprovedStatus(result.user.status) &&
+        !isRejectedStatus(result.user.status)
+      ) {
+        try {
+          const registrationStatus = await getRegistrationFlowStatus();
+          nextRoute = registrationStatus.next_route || nextRoute;
+        } catch {
+          // Keep default route if registration status check fails.
+        }
+      }
+
+      navigate(nextRoute, { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login gagal");
     } finally {
@@ -116,7 +135,23 @@ export default function LoginPage() {
       clearRefreshToken();
       localStorage.removeItem("remember_me");
 
-      navigate(getPostLoginRoute(result.user), { replace: true });
+      let nextRoute = getPostLoginRoute(result.user);
+
+      if (
+        result.user.role !== "ADMIN" &&
+        isEmailVerified(result.user) &&
+        !isApprovedStatus(result.user.status) &&
+        !isRejectedStatus(result.user.status)
+      ) {
+        try {
+          const registrationStatus = await getRegistrationFlowStatus();
+          nextRoute = registrationStatus.next_route || nextRoute;
+        } catch {
+          // Keep default route if registration status check fails.
+        }
+      }
+
+      navigate(nextRoute, { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login cepat gagal");
     } finally {
