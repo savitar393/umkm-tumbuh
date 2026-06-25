@@ -498,7 +498,7 @@ export default function UmkmEditPage() {
             <button
               type="button"
               className="up-footer-cancel"
-              onClick={() => navigate("/profile/umkm")}
+              onClick={() => navigate("/umkm/profile/view")}
             >
               Batal
             </button>

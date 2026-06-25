@@ -37,6 +37,12 @@ TRUNCATE TABLE
 RESTART IDENTITY CASCADE;
 CREATE TEMP TABLE _r (id VARCHAR(30), name VARCHAR(200));
 
+\copy _r FROM 'csv/ref_peranpengguna.csv' WITH (FORMAT csv, HEADER true, NULL '');
+INSERT INTO ref.ref_peranpengguna (peran_id, nama_peran)
+SELECT id, name FROM _r
+ON CONFLICT (peran_id) DO UPDATE SET nama_peran = EXCLUDED.nama_peran;
+TRUNCATE _r;
+
 \copy _r FROM 'csv/ref_skalausaha.csv' WITH (FORMAT csv, HEADER true, NULL '');
 INSERT INTO ref.ref_skalausaha (skala_usaha_id, nama_skala_usaha)
 SELECT id, name FROM _r
@@ -143,12 +149,6 @@ TRUNCATE _r;
 INSERT INTO ref.ref_statusdokumen (status_dokumen_id, nama_status_dokumen)
 SELECT id, name FROM _r
 ON CONFLICT (status_dokumen_id) DO UPDATE SET nama_status_dokumen = EXCLUDED.nama_status_dokumen;
-TRUNCATE _r;
-
-\copy _r FROM 'csv/ref_peranpengguna.csv' WITH (FORMAT csv, HEADER true, NULL '');
-INSERT INTO ref.ref_peranpengguna (peran_id, nama_peran)
-SELECT id, name FROM _r
-ON CONFLICT (peran_id) DO UPDATE SET nama_peran = EXCLUDED.nama_peran;
 DROP TABLE _r;
 
 CREATE TEMP TABLE _r3 (id VARCHAR(30), name VARCHAR(100));
@@ -340,7 +340,6 @@ CREATE TEMP TABLE _pdk AS SELECT
   nama_produk,
   deskripsi_produk,
   harga,
-  stok_saat_ini,
   status_produk,
   legalitas_produk,
   is_deleted,
@@ -352,7 +351,7 @@ FROM user_mgmt.master_produkumkm WHERE false;
 \copy _pdk FROM 'csv/master_produkumkm.csv' WITH (FORMAT csv, HEADER true, NULL '');
 INSERT INTO user_mgmt.master_produkumkm (
   produk_id, umkm_id, kategori_produk_id, nama_produk, deskripsi_produk,
-  harga, stok_saat_ini, status_produk, legalitas_produk, is_deleted,
+  harga, status_produk, legalitas_produk, is_deleted,
   deleted_at, archived_at, created_at, updated_at
 )
 SELECT * FROM _pdk

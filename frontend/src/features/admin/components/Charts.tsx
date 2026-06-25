@@ -13,11 +13,24 @@ import type {
 
 // ─── Registration Trend ───────────────────────────────────────────────────────
 
+const EmptyChart = () => (
+  <div className="chart-empty">
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 3v18h18" /><path d="M7 16l4-8 4 4 4-6" />
+    </svg>
+    <p>Data tidak tersedia</p>
+  </div>
+);
+
 export function RegistrationTrendChart({ data }: { data: RegistrationTrendItem[] }) {
+  if (data.length === 0) return <div className="chart-card"><div className="chart-card__header"><div><div className="chart-card__title">Tren Pendaftaran UMKM Baru</div><div className="chart-card__sub">Jumlah pendaftaran tiap bulan</div></div><span className="chart-badge">+Rincian</span></div><EmptyChart /></div>;
+
   const chartData = data.map((d) => ({
     bulan: d.tanggal.slice(0, 7), // YYYY-MM
     total: d.total_pendaftaran,
   }));
+
+  const maxTotal = chartData.length > 0 ? Math.max(...chartData.map((d) => d.total)) : 0;
 
   return (
     <div className="chart-card">
@@ -33,19 +46,19 @@ export function RegistrationTrendChart({ data }: { data: RegistrationTrendItem[]
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
           <XAxis dataKey="bulan" tick={{ fontSize: 11 }} />
           <YAxis tick={{ fontSize: 12 }} />
-          <Tooltip />
-          <Line type="monotone" dataKey="total" stroke="#1f45b6" strokeWidth={2} dot={{ r: 4 }} />
+          <Tooltip formatter={(value) => [(value as number).toLocaleString("id-ID"), "Pendaftaran"]} />
+          <Line type="monotone" dataKey="total" stroke="#1f45b6" strokeWidth={2} dot={{ r: 3 }} />
         </LineChart>
       </ResponsiveContainer>
       {chartData.length > 0 && (
         <div className="chart-stats-row">
           <div className="chart-stat">
-            <span className="label">Total Data</span>
+            <span className="label">Total Periode</span>
             <span className="value">{chartData.length} bulan</span>
           </div>
           <div className="chart-stat">
-            <span className="label">Pendaftaran Terbanyak</span>
-            <span className="value">{Math.max(...chartData.map((d) => d.total)).toLocaleString("id-ID")}</span>
+            <span className="label">Terbanyak</span>
+            <span className="value">{maxTotal.toLocaleString("id-ID")}</span>
           </div>
         </div>
       )}
@@ -63,6 +76,8 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export function StatusDonutChart({ data }: { data: StatusDistributionItem[] }) {
+  if (data.length === 0) return <div className="chart-card"><div className="chart-card__header"><div className="chart-card__title">Distribusi Status UMKM</div></div><EmptyChart /></div>;
+
   const chartData = data.map((d) => ({
     name: d.nama_status,
     value: d.total,
@@ -114,19 +129,21 @@ export function StatusDonutChart({ data }: { data: StatusDistributionItem[] }) {
 // ─── Laba / Omzet Trend ───────────────────────────────────────────────────────
 
 export function OmzetTrendChart({ data }: { data: LabaTimeseriesItem[] }) {
+  if (data.length === 0) return <div className="chart-card full-width"><div className="chart-card__header"><div><div className="chart-card__title">Tren Omzet UMKM</div><div className="chart-card__sub">Total omzet per bulan (dalam juta Rp)</div></div><span className="chart-badge">+Rincian</span></div><EmptyChart /></div>;
+
   const chartData = data.map((d) => ({
     bulan: d.tanggal.slice(0, 7),
-    laba: Math.round(d.total_laba / 1_000_000), // dalam juta
+    omzet: Math.round(d.total_laba / 1_000_000), // dalam juta
   }));
 
-  const maxLaba = chartData.length > 0 ? Math.max(...chartData.map((d) => d.laba)) : 0;
+  const maxOmzet = chartData.length > 0 ? Math.max(...chartData.map((d) => d.omzet)) : 0;
 
   return (
     <div className="chart-card full-width">
       <div className="chart-card__header">
         <div>
-          <div className="chart-card__title">Tren Laba UMKM</div>
-          <div className="chart-card__sub">Total laba per bulan (dalam juta Rp)</div>
+          <div className="chart-card__title">Tren Omzet UMKM</div>
+          <div className="chart-card__sub">Total omzet per bulan (dalam juta Rp)</div>
         </div>
         <span className="chart-badge">+Rincian</span>
       </div>
@@ -137,17 +154,17 @@ export function OmzetTrendChart({ data }: { data: LabaTimeseriesItem[] }) {
           <YAxis tick={{ fontSize: 12 }} />
           <Tooltip
             formatter={(value) => {
-              const laba = typeof value === "number" ? value : Number(value ?? 0);
-              return [`Rp ${laba} Jt`, "Laba"];
+              const omzet = typeof value === "number" ? value : Number(value ?? 0);
+              return [`Rp ${omzet} Jt`, "Omzet"];
             }}
           />
-          <Line type="monotone" dataKey="laba" stroke="#1f45b6" strokeWidth={2} dot={{ r: 4 }} />
+          <Line type="monotone" dataKey="omzet" stroke="#1f45b6" strokeWidth={2} dot={{ r: 3 }} />
         </LineChart>
       </ResponsiveContainer>
       <div className="chart-stats-row">
         <div className="chart-stat">
-          <span className="label">Laba Terbesar</span>
-          <span className="value">Rp {maxLaba.toLocaleString("id-ID")} Jt</span>
+          <span className="label">Omzet Terbesar</span>
+          <span className="value">Rp {maxOmzet.toLocaleString("id-ID")} Jt</span>
         </div>
       </div>
     </div>
@@ -157,6 +174,8 @@ export function OmzetTrendChart({ data }: { data: LabaTimeseriesItem[] }) {
 // ─── Region Bar ───────────────────────────────────────────────────────────────
 
 export function RegionBarChart({ data }: { data: TopWilayahItem[] }) {
+  if (data.length === 0) return <div className="chart-card"><div className="chart-card__header"><div className="chart-card__title">Top 5 Wilayah Berdasarkan Laba</div></div><EmptyChart /></div>;
+
   const chartData = data.map((d) => ({
     wilayah: d.kabupaten_kota.length > 12 ? d.kabupaten_kota.slice(0, 12) + "…" : d.kabupaten_kota,
     laba: Math.round(d.total_laba / 1_000_000),
@@ -193,6 +212,8 @@ export function RegionBarChart({ data }: { data: TopWilayahItem[] }) {
 // ─── Category Bar ─────────────────────────────────────────────────────────────
 
 export function CategoryBarChart({ data }: { data: KategoriPerformaItem[] }) {
+  if (data.length === 0) return <div className="chart-card"><div className="chart-card__header"><div className="chart-card__title">Analisis Performa Kategori</div></div><EmptyChart /></div>;
+
   const maxLaba = data.length > 0 ? Math.max(...data.map((d) => d.total_laba)) : 1;
 
   return (

@@ -78,13 +78,11 @@ export function getUMKMDashboardSummary(params?: {
 // ─── UMKM Dashboard Types ──────────────────────────────────────────────────
 
 export type LabaHarianItem = {
-  penjualan_id?: string;
   tanggal: string;
-  nama_hari?: string;
+  nama_hari: string;
   laba_bersih: number;
   jumlah_produk: number;
-  created_at?: string;
-  last_updated_at?: string;
+  penjualan_id?: string | null;
 };
 
 export type TrenMingguan = {
@@ -94,6 +92,7 @@ export type TrenMingguan = {
 
 export type UMKMDashboardData = {
   nama_umkm: string;
+  tgl_terkini: string;
   total_omzet_hari_ini: number;
   total_omzet_kemarin: number;
   persen_vs_kemarin: number;
@@ -107,6 +106,8 @@ export type UMKMDashboardData = {
   total_hari: number;
   filter_bulan: string;
   filter_tahun: number;
+  date_from: string;
+  date_to: string;
   trend_days: number;
 };
 
@@ -121,6 +122,7 @@ export type UMKMDashboardForMitra = {
   umkm_id: string;
   nama_umkm: string;
   kategori_usaha: string;
+  tgl_terkini: string;
   total_omzet_hari_ini: number;
   total_omzet_kemarin: number;
   persen_vs_kemarin: number;
@@ -132,6 +134,8 @@ export type UMKMDashboardForMitra = {
   laba_harian: LabaHarianItem[];
   tren_mingguan: TrenMingguan[];
   total_hari: number;
+  date_from: string;
+  date_to: string;
   trend_days: number;
 };
 
@@ -145,14 +149,8 @@ export type MitraDashboardData = {
 
 export function getUMKMDashboard(dateFrom: string, dateTo: string): Promise<UMKMDashboardData> {
   const params = new URLSearchParams();
-
-  // Keep both aliases for now because the legacy dashboard handler may read
-  // from/to while newer code uses date_from/date_to.
   params.set("date_from", dateFrom);
   params.set("date_to", dateTo);
-  params.set("from", dateFrom);
-  params.set("to", dateTo);
-
   return userHttp<UMKMDashboardData>(`/dashboard/umkm?${params.toString()}`);
 }
 
@@ -162,25 +160,11 @@ export function checkProfileExists(): Promise<boolean> {
     .catch(() => false);
 }
 
-export function getMitraDashboard(
-  umkmId?: string,
-  dateFrom?: string,
-  dateTo?: string,
-): Promise<MitraDashboardData> {
+export function getMitraDashboard(umkmId?: string, dateFrom?: string, dateTo?: string): Promise<MitraDashboardData> {
   const params = new URLSearchParams();
-
   if (umkmId) params.set("umkm_id", umkmId);
-
-  if (dateFrom) {
-    params.set("date_from", dateFrom);
-    params.set("from", dateFrom);
-  }
-
-  if (dateTo) {
-    params.set("date_to", dateTo);
-    params.set("to", dateTo);
-  }
-
+  if (dateFrom) params.set("date_from", dateFrom);
+  if (dateTo) params.set("date_to", dateTo);
   const qs = params.toString() ? `?${params.toString()}` : "";
   return userHttp<MitraDashboardData>(`/dashboard/mitra${qs}`);
 }

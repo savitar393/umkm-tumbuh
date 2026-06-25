@@ -1,562 +1,390 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  BarChart2,
-  CalendarDays,
-  Handshake,
-  LineChart as LineChartIcon,
-  Search,
-  ShoppingCart,
-  TrendingDown,
-  TrendingUp,
-  Users,
-  X,
-} from "lucide-react";
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import UmkmLayout from "../../umkm/components/UmkmLayout";
+import { useEffect, useRef, useState } from "react";
+import { BarChart2, CalendarDays, Handshake, Search, SlidersHorizontal, ShoppingCart, TrendingDown, TrendingUp, X } from "lucide-react";
+import UserLayout from "../components/UserLayout";
 import {
   getMitraDashboard,
-  type LabaHarianItem,
   type MitraDashboardData,
   type UMKMMitraItem,
+  type LabaHarianItem,
 } from "../api";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
-const PAGE_SIZE = 5;
-
-function formatRupiah(value = 0): string {
+function formatRupiah(value: number): string {
   if (value >= 1_000_000_000) return `Rp ${(value / 1_000_000_000).toFixed(1)} M`;
   if (value >= 1_000_000) return `Rp ${(value / 1_000_000).toFixed(1)} Jt`;
+  return `Rp ${value.toLocaleString("id-ID")}`;
+}
+
+function formatRupiahFull(value: number): string {
   return `Rp ${Math.round(value).toLocaleString("id-ID")}`;
 }
 
-function formatRupiahFull(value = 0): string {
-  return `Rp ${Math.round(value).toLocaleString("id-ID")}`;
-}
-
-function formatTanggal(value: string): string {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) return "-";
-
-  return date.toLocaleDateString("id-ID", {
+function formatTanggal(tanggal: string): string {
+  const d = new Date(tanggal);
+  return d.toLocaleDateString("id-ID", {
     weekday: "long",
-    day: "2-digit",
+    day: "numeric",
     month: "short",
     year: "numeric",
   });
 }
 
-function formatDateLocal(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function getRollingMonthRange(periodInMonths: string, selectedYear: string) {
-  const months = Number(periodInMonths) || 1;
-  const year = Number(selectedYear) || new Date().getFullYear();
-  const today = new Date();
-
-  const end =
-    year === today.getFullYear()
-      ? new Date(today.getFullYear(), today.getMonth(), today.getDate())
-      : new Date(year, 11, 31);
-
-  const start = new Date(end);
-  start.setMonth(start.getMonth() - months);
-  start.setDate(start.getDate() + 1);
-
-  return {
-    from: formatDateLocal(start),
-    to: formatDateLocal(end),
-  };
-}
-
-function formatDateTime(value?: string) {
-  if (!value) return "-";
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
-
-  return date.toLocaleString("id-ID", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function getInitials(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("") || "UM";
-}
+const PAGE_SIZE = 3;
 
 export default function MitraDashboardPage() {
   const [data, setData] = useState<MitraDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [loadingDetail, setLoadingDetail] = useState(false);
   const [error, setError] = useState("");
 
-  const [selectedUMKM, setSelectedUMKM] = useState("");
+  const [selectedUMKM, setSelectedUMKM] = useState<string>("");
   const [searchText, setSearchText] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
 
   const [periode, setPeriode] = useState("3");
   const [tahun, setTahun] = useState(String(new Date().getFullYear()));
+  const [loadingDetail, setLoadingDetail] = useState(false);
   const [page, setPage] = useState(0);
-
-  const searchRef = useRef<HTMLDivElement>(null);
-  
-  function getCurrentRange() {
-    return getRollingMonthRange(periode, tahun);
-  }
-
-  async function loadSelectedDashboard(umkmId?: string, nextSearchText?: string) {
-    const range = getCurrentRange();
-
-    setError("");
-    setPage(0);
-    setLoadingDetail(true);
-
-    try {
-      const result = await getMitraDashboard(umkmId, range.from, range.to);
-      setData(result);
-
-      if (nextSearchText !== undefined) {
-        setSearchText(nextSearchText);
-      }
-
-      if (umkmId) {
-        setSelectedUMKM(umkmId);
-      } else if (result.umkm_list?.length > 0) {
-        setSelectedUMKM(result.umkm_list[0].umkm_id);
-        setSearchText(result.umkm_list[0].nama_umkm);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Gagal memuat data UMKM.");
-    } finally {
-      setLoadingDetail(false);
-    }
-  }
+  const [trendRange, setTrendRange] = useState<7 | 14 | 30 | 90>(7);
 
   useEffect(() => {
-    let ignore = false;
-
     async function loadDashboard() {
-      const range = getRollingMonthRange("3", String(new Date().getFullYear()));
-
       setLoading(true);
       setError("");
-
       try {
-        const result = await getMitraDashboard(undefined, range.from, range.to);
-
-        if (ignore) return;
-
-        setData(result);
-
-        if (result.umkm_list?.length > 0) {
-          const first = result.umkm_list[0];
+        const d = await getMitraDashboard();
+        setData(d);
+        if (d.umkm_list?.length > 0) {
+          const first = d.umkm_list[0];
           setSelectedUMKM(first.umkm_id);
           setSearchText(first.nama_umkm);
         }
-      } catch (err) {
-        if (!ignore) {
-          setError(err instanceof Error ? err.message : "Gagal memuat dashboard mitra.");
-        }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Gagal memuat data");
       } finally {
-        if (!ignore) setLoading(false);
+        setLoading(false);
       }
     }
-
     void loadDashboard();
-
-    return () => {
-      ignore = true;
-    };
   }, []);
 
+  // Tutup dropdown jika klik di luar
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+    function handleClickOutside(e: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
         setShowDropdown(false);
       }
     }
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const umkmList: UMKMMitraItem[] = data?.umkm_list ?? [];
-  const dashboard = data?.dashboard;
-  const labaHarian: LabaHarianItem[] = dashboard?.laba_harian ?? [];
-  const totalPages = Math.max(1, Math.ceil(labaHarian.length / PAGE_SIZE));
-  const pageData = labaHarian.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
-  const trenData = dashboard?.tren_mingguan ?? [];
-
-  const filteredUmkm = useMemo(() => {
-    const keyword = searchText.trim().toLowerCase();
-
-    if (!keyword) return umkmList;
-
-    return umkmList.filter((umkm) => umkm.nama_umkm.toLowerCase().includes(keyword));
-  }, [searchText, umkmList]);
-
-  const selectedName =
-    dashboard?.nama_umkm ||
-    umkmList.find((umkm) => umkm.umkm_id === selectedUMKM)?.nama_umkm ||
-    searchText ||
-    "-";
-
-  const persen = dashboard?.persen_vs_kemarin ?? 0;
-  const isUp = persen >= 0;
-  const hasNoDetailData = Boolean(
-    dashboard && labaHarian.length === 0 && trenData.length === 0,
-  );
+  function handleApplyFilter() {
+    setError("");
+    if (!selectedUMKM) {
+      setError("Pilih UMKM terlebih dahulu.");
+      return;
+    }
+    setPage(0);
+    setLoadingDetail(true);
+    const now = new Date();
+    const monthsBack = Number(periode);
+    const dateTo = now.toISOString().slice(0, 10);
+    const from = new Date(now);
+    from.setMonth(from.getMonth() - monthsBack);
+    const dateFrom = from.toISOString().slice(0, 10);
+    getMitraDashboard(selectedUMKM, dateFrom, dateTo)
+      .then((d) => setData(d))
+      .catch((e) => setError(e instanceof Error ? e.message : "Gagal memuat data"))
+      .finally(() => setLoadingDetail(false));
+  }
 
   function selectUMKM(id: string, name: string) {
     setSelectedUMKM(id);
     setSearchText(name);
     setShowDropdown(false);
-    void loadSelectedDashboard(id, name);
   }
 
   function clearSearch() {
     setSelectedUMKM("");
     setSearchText("");
     setShowDropdown(false);
-    setPage(0);
   }
 
-  async function handleApplyFilter() {
-    if (!selectedUMKM) {
-      setError("Pilih UMKM terlebih dahulu.");
-      return;
-    }
+  const dash = data?.dashboard;
+  const labaHarian: LabaHarianItem[] = dash?.laba_harian ?? [];
+  const totalPages = Math.ceil(labaHarian.length / PAGE_SIZE);
+  const pageData = labaHarian.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
+  const trenData = (dash?.tren_mingguan ?? []).slice(-(trendRange));
 
-    await loadSelectedDashboard(selectedUMKM, searchText);
-  }
+  const persen = dash?.persen_vs_kemarin ?? 0;
+  const isUp = persen >= 0;
+
+  const umkmList: UMKMMitraItem[] = data?.umkm_list ?? [];
+  const filteredUmkm = umkmList.filter((u) =>
+    u.nama_umkm.toLowerCase().includes(searchText.toLowerCase())
+  );
+  const noData = dash && labaHarian.length === 0 && trenData.length === 0;
 
   return (
-    <UmkmLayout
-      title="Monitoring Perkembangan UMKM"
+    <UserLayout
+      role="MITRA"
+      title="Monitoring Perkembangan Usaha"
       subtitle={
         data
           ? `Selamat datang, ${data.nama_mitra}. Pantau performa UMKM mitra Anda.`
-          : "Pantau performa UMKM yang sudah bermitra dengan Anda."
+          : "Memuat data mitra..."
       }
     >
-      <main className="mitra-dashboard-page">
-        <section className="mitra-dashboard-hero">
-          <div>
-            <span className="mitra-dashboard-eyebrow">
-              <Handshake size={16} />
-              Dashboard Mitra
-            </span>
-            <h1>Monitoring Perkembangan UMKM</h1>
-            <p>
-              Pilih UMKM mitra untuk melihat omset, item terjual, laba harian,
-              dan tren penjualan berdasarkan laporan yang tersedia.
-            </p>
-          </div>
+      {error && <p className="error-message">{error}</p>}
+      {loading && <p className="ud-loading">Memuat data...</p>}
 
-          <aside className="mitra-dashboard-hero-card">
-            <Users size={30} />
-            <strong>{umkmList.length}</strong>
-            <span>UMKM Aktif Dimonitor</span>
-          </aside>
-        </section>
-
-        {error ? <div className="mitra-dashboard-alert">{error}</div> : null}
-
-        {loading ? (
-          <section className="mitra-dashboard-state">
-            <div className="partnership-spinner" />
-            <p>Memuat dashboard mitra...</p>
-          </section>
-        ) : (
-          <>
-            <section className="mitra-dashboard-filter-card">
-              <div className="mitra-dashboard-filter-grid">
-                <div className="mitra-dashboard-field mitra-dashboard-field--wide" ref={searchRef}>
-                  <label>Nama UMKM</label>
-                  {umkmList.length === 0 ? (
-                    <div className="mitra-dashboard-empty-input">
-                      Belum ada UMKM dengan kemitraan aktif.
-                    </div>
-                  ) : (
-                    <div className="mitra-dashboard-combobox">
-                      <Search size={17} />
-                      <input
-                        type="text"
-                        placeholder="Cari nama UMKM mitra..."
-                        value={searchText}
-                        onChange={(event) => {
-                          setSearchText(event.target.value);
-                          setShowDropdown(true);
-                          if (!event.target.value) setSelectedUMKM("");
-                        }}
-                        onFocus={() => setShowDropdown(true)}
-                      />
-
-                      {searchText ? (
-                        <button type="button" onClick={clearSearch} aria-label="Bersihkan pencarian">
-                          <X size={15} />
-                        </button>
-                      ) : null}
-
-                      {showDropdown ? (
-                        <div className="mitra-dashboard-dropdown">
-                          {filteredUmkm.length > 0 ? (
-                            filteredUmkm.map((umkm) => (
-                              <button
-                                key={umkm.umkm_id}
-                                type="button"
-                                className={selectedUMKM === umkm.umkm_id ? "active" : ""}
-                                onClick={() => selectUMKM(umkm.umkm_id, umkm.nama_umkm)}
-                              >
-                                <span>{getInitials(umkm.nama_umkm)}</span>
-                                <strong>{umkm.nama_umkm}</strong>
-                              </button>
-                            ))
-                          ) : (
-                            <p>UMKM tidak ditemukan.</p>
-                          )}
-                        </div>
-                      ) : null}
-                    </div>
-                  )}
-                </div>
-
-                <div className="mitra-dashboard-field">
-                  <label>Periode</label>
-                  <select value={periode} onChange={(event) => setPeriode(event.target.value)}>
-                    <option value="1">1 Bulan Terakhir</option>
-                    <option value="3">3 Bulan Terakhir</option>
-                    <option value="6">6 Bulan Terakhir</option>
-                    <option value="12">12 Bulan Terakhir</option>
-                  </select>
-                </div>
-
-                <div className="mitra-dashboard-field">
-                  <label>Tahun</label>
-                  <select value={tahun} onChange={(event) => setTahun(event.target.value)}>
-                    {Array.from({ length: 5 }, (_, index) => String(new Date().getFullYear() - index)).map(
-                      (year) => (
-                        <option key={year} value={year}>
-                          {year}
-                        </option>
-                      ),
+      {!loading && (
+        <>
+          <div className="mitra-filter-card">
+            <div className="mitra-filter-row">
+              {/* Combobox UMKM */}
+              <div className="mitra-filter-item" ref={searchRef} style={{ position: "relative" }}>
+                <label className="mitra-filter-label">Nama UMKM</label>
+                {umkmList.length === 0 ? (
+                  <div className="ufb-empty-hint">Belum ada UMKM mitra yang disetujui</div>
+                ) : (
+                  <div className="ufb-combobox">
+                    <input
+                      type="text"
+                      className="ufb-combobox-input"
+                      placeholder="Cari nama UMKM..."
+                      value={searchText}
+                      onChange={(e) => {
+                        setSearchText(e.target.value);
+                        setShowDropdown(true);
+                        if (e.target.value === "") setSelectedUMKM("");
+                      }}
+                      onFocus={() => setShowDropdown(true)}
+                    />
+                    {searchText && (
+                      <button className="ufb-combobox-clear" onClick={clearSearch}>
+                        <X size={14} />
+                      </button>
                     )}
-                  </select>
-                </div>
+                    {showDropdown && filteredUmkm.length > 0 && (
+                      <div className="ufb-combobox-dropdown">
+                        {filteredUmkm.map((u) => (
+                          <div
+                            key={u.umkm_id}
+                            className={`ufb-combobox-item ${selectedUMKM === u.umkm_id ? "active" : ""}`}
+                            onClick={() => selectUMKM(u.umkm_id, u.nama_umkm)}
+                          >
+                            {u.nama_umkm}
+                          </div>
+                        ))}
+                        {searchText.length >= 3 && filteredUmkm.length === 0 && (
+                          <div className="ufb-combobox-empty">UMKM tidak ditemukan</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
-                <button
-                  type="button"
-                  className="mitra-dashboard-filter-button"
-                  disabled={loadingDetail || umkmList.length === 0}
-                  onClick={handleApplyFilter}
-                >
-                  <Search size={17} />
-                  {loadingDetail ? "Memuat..." : "Terapkan Filter"}
+              <div className="mitra-filter-item">
+                <label className="mitra-filter-label">Periode</label>
+                <select className="mitra-filter-select" value={periode} onChange={(e) => setPeriode(e.target.value)}>
+                  <option value="1">1 Bulan Terakhir</option>
+                  <option value="3">3 Bulan Terakhir</option>
+                  <option value="6">6 Bulan Terakhir</option>
+                  <option value="12">12 Bulan Terakhir</option>
+                </select>
+              </div>
+
+              <div className="mitra-filter-item">
+                <label className="mitra-filter-label">Tahun</label>
+                <select className="mitra-filter-select" value={tahun} onChange={(e) => setTahun(e.target.value)}>
+                  {Array.from({ length: 5 }, (_, i) => String(new Date().getFullYear() - i)).map((y) => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="mitra-filter-item mitra-filter-item--button">
+                <button className="mitra-filter-btn" onClick={handleApplyFilter}>
+                  <Search size={16} style={{ marginRight: 8 }} /> Terapkan Filter
                 </button>
               </div>
+            </div>
+          </div>
 
-              <div className="mitra-dashboard-filter-note">
-                <CalendarDays size={15} />
-                <span>
-                  Tampilan saat ini: {selectedName} · {periode} bulan terakhir · {tahun}
-                </span>
-              </div>
-            </section>
+          {loadingDetail && <p className="ud-loading">Memuat data UMKM...</p>}
 
-            {umkmList.length === 0 ? (
-              <section className="mitra-dashboard-state">
-                <Handshake size={38} />
-                <h2>Belum Ada Kemitraan Aktif</h2>
-                <p>
-                  Dashboard akan menampilkan performa UMKM setelah ada pengajuan
-                  kemitraan yang disetujui.
-                </p>
-              </section>
-            ) : !selectedUMKM ? (
-              <section className="mitra-dashboard-state">
-                <Search size={38} />
-                <h2>Pilih UMKM Terlebih Dahulu</h2>
-                <p>Ketik nama UMKM mitra, lalu klik Terapkan Filter.</p>
-              </section>
-            ) : !dashboard ? (
-              <section className="mitra-dashboard-state">
-                <BarChart2 size={38} />
-                <h2>Data UMKM Tidak Ditemukan</h2>
-                <p>Silakan coba ulang filter atau pilih UMKM lain.</p>
-              </section>
-            ) : hasNoDetailData ? (
-              <section className="mitra-dashboard-state">
-                <LineChartIcon size={38} />
-                <h2>Data Perkembangan Belum Tersedia</h2>
-                <p>Belum ada data monitoring untuk UMKM ini pada periode yang dipilih.</p>
-              </section>
-            ) : (
-              <>
-                <section className="mitra-dashboard-kpi-grid">
-                  <article className="mitra-dashboard-kpi-card primary">
-                    <div>
-                      <span>Total Omset Periode</span>
-                      <strong>{formatRupiah(dashboard.total_omzet_hari_ini)}</strong>
-                      <p>{dashboard.nama_umkm}</p>
-                    </div>
-
-                    <em className={isUp ? "up" : "down"}>
-                      {isUp ? <TrendingUp size={15} /> : <TrendingDown size={15} />}
-                      {isUp ? "+" : ""}
-                      {persen.toFixed(1)}% vs periode sebelumnya
-                    </em>
-                  </article>
-
-                  <article className="mitra-dashboard-kpi-card">
-                    <ShoppingCart size={24} />
-                    <span>Total Item Terjual</span>
-                    <strong>{dashboard.total_item_terjual.toLocaleString("id-ID")} Item</strong>
-                  </article>
-
-                  <article className="mitra-dashboard-kpi-card">
-                    <BarChart2 size={24} />
-                    <span>Rata-rata / Item</span>
-                    <strong>{formatRupiah(dashboard.rata_rata_per_item)}</strong>
-                  </article>
-                </section>
-
-                <section className="mitra-dashboard-content-grid">
-                  <article className="mitra-dashboard-card">
-                    <div className="mitra-dashboard-card-header">
-                      <div>
-                        <span>Rincian Harian</span>
-                        <h2>Laba Harian — {dashboard.nama_umkm}</h2>
-                      </div>
-                      <p>
-                        {labaHarian.length} hari laporan · halaman {Math.min(page + 1, totalPages)}/{totalPages}
+          {!loadingDetail && (
+            <>
+              {umkmList.length === 0 ? (
+                <div className="mitra-empty-board">
+                  <Handshake size={32} />
+                  <h3>Belum Ada Kemitraan Aktif</h3>
+                  <p>Dashboard akan menampilkan data performa UMKM setelah ada pengajuan kemitraan yang disetujui.</p>
+                </div>
+              ) : !selectedUMKM ? (
+                <div className="mitra-empty-board">
+                  <Handshake size={32} />
+                  <h3>Pilih UMKM dan Terapkan Filter</h3>
+                  <p>Ketik nama UMKM pada kolom di atas lalu klik Terapkan Filter untuk memulai.</p>
+                </div>
+              ) : !dash ? (
+                <div className="mitra-empty-board">
+                  <Handshake size={32} />
+                  <h3>Data UMKM tidak ditemukan</h3>
+                  <p>Silakan coba ulang filter atau hubungi dukungan jika masalah berlanjut.</p>
+                </div>
+              ) : noData ? (
+                <div className="mitra-empty-board">
+                  <BarChart2 size={32} />
+                  <h3>Data Perkembangan Belum Tersedia</h3>
+                  <p>Belum ada data monitoring untuk UMKM ini pada periode yang dipilih.</p>
+                </div>
+              ) : (
+                <>
+                  {/* KPI Cards */}
+                  <div className="ud-kpi-row">
+                    <div className="ud-kpi-hero" style={{ background: "linear-gradient(135deg, #1f45b6, #4f46e5)" }}>
+                      <p className="ud-kpi-hero__label">Total Omset Hari Ini</p>
+                      <p className="ud-kpi-hero__label" style={{ fontSize: 13, opacity: 0.8, marginBottom: 4 }}>
+                        {dash.nama_umkm}
                       </p>
+                      <p className="ud-kpi-hero__value">{formatRupiah(dash.total_omzet_hari_ini)}</p>
+                      <div className={`ud-kpi-hero__badge ${isUp ? "up" : "down"}`}>
+                        {isUp ? <TrendingUp size={13} /> : <TrendingDown size={13} />}
+                        <span>{isUp ? "+" : ""}{persen.toFixed(1)}% vs kemarin</span>
+                      </div>
                     </div>
 
-                    <div className="mitra-dashboard-table-wrap">
-                      <table className="mitra-dashboard-table">
-                        <thead>
-                          <tr>
-                            <th>Tanggal</th>
-                            <th>Laba Bersih</th>
-                            <th>Item Terjual</th>
-                            <th>Update Terakhir</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {pageData.map((row) => (
-                            <tr key={row.tanggal}>
-                              <td>
-                                <strong>{formatTanggal(row.tanggal)}</strong>
-                                <small className="mitra-dashboard-table-meta">
-                                  Dibuat: {formatDateTime(row.created_at)}
-                                </small>
-                              </td>
-                              <td>
-                                <strong>{formatRupiahFull(row.laba_bersih)}</strong>
-                              </td>
-                              <td>{row.jumlah_produk.toLocaleString("id-ID")} Item</td>
-                              <td>
-                                <small className="mitra-dashboard-table-meta">
-                                  {formatDateTime(row.last_updated_at)}
-                                </small>
-                              </td>
+                    <div className="ud-kpi-card">
+                      <div className="ud-kpi-card__icon" style={{ background: "#eff6ff" }}>
+                        <ShoppingCart size={22} color="#1d4ed8" />
+                      </div>
+                      <p className="ud-kpi-card__label">Total Item Terjual</p>
+                      <p className="ud-kpi-card__value">{dash.total_item_terjual.toLocaleString("id-ID")} Item</p>
+                    </div>
+
+                    <div className="ud-kpi-card">
+                      <div className="ud-kpi-card__icon" style={{ background: "#f5f3ff" }}>
+                        <BarChart2 size={22} color="#7c3aed" />
+                      </div>
+                      <p className="ud-kpi-card__label">Rata-rata / Item</p>
+                      <p className="ud-kpi-card__value">{formatRupiah(dash.rata_rata_per_item)}</p>
+                    </div>
+                  </div>
+
+                  {/* Tabel Laba Harian */}
+                  <div className="ud-card">
+                    <div className="ud-card__header">
+                      <h3 className="ud-card__title">Rincian Laba Harian — {dash.nama_umkm}</h3>
+                      <div className="ud-card__actions">
+                        <button className="ud-icon-btn" title="Filter"><SlidersHorizontal size={16} /></button>
+                        <button className="ud-icon-btn" title="Kalender"><CalendarDays size={16} /></button>
+                      </div>
+                    </div>
+
+                    {labaHarian.length === 0 ? (
+                      <div className="ud-card ud-empty-state">
+                        <ShoppingCart size={32} />
+                        <h3>Data laba belum tersedia</h3>
+                        <p>Silakan pilih UMKM lain atau tunggu sementara laporan harian tersedia.</p>
+                      </div>
+                    ) : (
+                      <>
+                        <table className="ud-table">
+                          <thead>
+                            <tr>
+                              <th>TANGGAL</th>
+                              <th>LABA BERSIH</th>
+                              <th>ITEM TERJUAL</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                          </thead>
+                          <tbody>
+                            {pageData.map((row) => (
+                              <tr key={row.tanggal}>
+                                <td className="ud-td-date">{formatTanggal(row.tanggal)}</td>
+                                <td><span className="ud-laba-badge">{formatRupiahFull(row.laba_bersih)}</span></td>
+                                <td className="ud-td-item">{row.jumlah_produk.toLocaleString("id-ID")} Item</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                        <div className="ud-table-footer">
+                          <span className="ud-table-info">
+                            Menampilkan {Math.min(PAGE_SIZE, labaHarian.length - page * PAGE_SIZE)} dari {labaHarian.length} hari
+                          </span>
+                          <div className="ud-pagination">
+                            <button className="ud-page-btn" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>Sebelumnya</button>
+                            <button className="ud-page-btn ud-page-btn--active" disabled={page >= totalPages - 1} onClick={() => setPage((p) => p + 1)}>Berikutnya</button>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
 
-                    <div className="mitra-dashboard-pagination">
-                      <span>
-                        Menampilkan {pageData.length} dari {labaHarian.length} hari
-                      </span>
-
-                      <div>
-                        <button type="button" disabled={page === 0} onClick={() => setPage((current) => current - 1)}>
-                          Sebelumnya
-                        </button>
-                        <button
-                          type="button"
-                          disabled={page >= totalPages - 1}
-                          onClick={() => setPage((current) => current + 1)}
-                        >
-                          Berikutnya
-                        </button>
-                      </div>
-                    </div>
-                  </article>
-
-                  <article className="mitra-dashboard-card">
-                    <div className="mitra-dashboard-card-header">
-                      <div>
-                        <span>Tren Penjualan</span>
-                        <h2>Pergerakan Laba Periode Ini</h2>
-                      </div>
+                  {/* Tren Penjualan — Line Chart */}
+                  <div className="ud-card">
+                    <div className="ud-card__header">
+                      <h3 className="ud-card__title">Tren Penjualan</h3>
+                      <select
+                        className="ud-range-select"
+                        value={trendRange}
+                        onChange={(e) => setTrendRange(Number(e.target.value) as 7 | 14 | 30 | 90)}
+                      >
+                        <option value={7}>7 Hari Terakhir</option>
+                        <option value={14}>14 Hari Terakhir</option>
+                        <option value={30}>30 Hari Terakhir</option>
+                        <option value={90}>Kuartal</option>
+                      </select>
                     </div>
 
                     {trenData.length === 0 ? (
-                      <div className="mitra-dashboard-chart-empty">
-                        <LineChartIcon size={34} />
-                        <strong>Belum ada tren penjualan</strong>
-                        <span>Data tren akan muncul setelah UMKM mencatat penjualan.</span>
+                      <div className="ud-card ud-empty-state">
+                        <BarChart2 size={32} />
+                        <h3>Belum ada tren penjualan</h3>
+                        <p>Data tren akan muncul setelah UMKM mitra mulai mencatat penjualan.</p>
                       </div>
                     ) : (
-                      <div className="mitra-dashboard-chart">
-                        <ResponsiveContainer width="100%" height={260}>
-                          <LineChart data={trenData} margin={{ top: 10, right: 16, bottom: 4, left: 4 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                            <XAxis dataKey="hari" tick={{ fontSize: 11 }} />
-                            <YAxis tick={{ fontSize: 11 }} tickFormatter={(value) => `${Number(value) / 1000}K`} />
-                            <Tooltip
-                              formatter={(value) => {
-                                const numericValue = typeof value === "number" ? value : Number(value ?? 0);
-                                return [formatRupiahFull(numericValue), "Laba"];
-                              }}
-                              contentStyle={{
-                                borderRadius: 14,
-                                border: "1px solid #dbeafe",
-                                fontSize: 12,
-                              }}
-                            />
-                            <Line
-                              type="monotone"
-                              dataKey="total_laba"
-                              stroke="#1f45b6"
-                              strokeWidth={3}
-                              dot={{ r: 3 }}
-                              activeDot={{ r: 5, strokeWidth: 0 }}
-                            />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
+                      <ResponsiveContainer width="100%" height={220}>
+                        <LineChart data={trenData} margin={{ top: 4, right: 8, bottom: 0, left: 8 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                          <XAxis dataKey="hari" tick={{ fontSize: 11 }} />
+                          <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`} />
+                          <Tooltip
+                            formatter={(value) => {
+                              const laba = typeof value === "number" ? value : Number(value ?? 0);
+                              return [formatRupiahFull(laba), "Laba"];
+                            }}
+                            contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="total_laba"
+                            stroke="#1f45b6"
+                            strokeWidth={2}
+                            dot={false}
+                            activeDot={{ r: 4, strokeWidth: 0 }}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
                     )}
-                  </article>
-                </section>
-              </>
-            )}
-          </>
-        )}
-      </main>
-    </UmkmLayout>
+                  </div>
+                </>
+              )}
+            </>
+          )}
+        </>
+      )}
+    </UserLayout>
   );
 }

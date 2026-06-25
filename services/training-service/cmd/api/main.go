@@ -32,6 +32,7 @@ func main() {
 	trainingRepo := trainings.NewRepository(db)
 	trainingService := trainings.NewService(trainingRepo)
 	trainingHandler := trainings.NewHandler(trainingService)
+	adminTrainingHandler := trainings.NewAdminHandler(trainingService)
 
 	certRepo := certificates.NewRepository(db)
 	certService := certificates.NewService(certRepo, cfg.CertificateDir)
@@ -42,6 +43,7 @@ func main() {
 	appRouter := router.NewRouter(
 		healthHandler,
 		trainingHandler,
+		adminTrainingHandler,
 		certHandler,
 		cfg.FrontendURL,
 		cfg.JWTSecret,

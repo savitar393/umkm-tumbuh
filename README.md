@@ -2,6 +2,8 @@
 
 Platform manajemen UMKM dengan fitur monitoring perkembangan, partnership, dan dashboard analytics.
 
+---
+
 ## 🚀 Quick Start (Windows)
 
 ### Prerequisites
@@ -9,29 +11,32 @@ Platform manajemen UMKM dengan fitur monitoring perkembangan, partnership, dan d
 - Node.js 18+ & npm
 - Git
 
-### Cara Tercepat
+### Cara Setup Cepat
 
+**Option 1: Manual (Step-by-Step)** - Lihat detail: [RUN_PROJECT.md](./RUN_PROJECT.md)
+
+**Option 2: Auto Script (Windows)**
 ```powershell
-# Clone repository
+# Clone repository terlebih dahulu
 git clone <repository-url>
 cd umkm-tumbuh
 
-# Start semua service (backend + frontend + data dummy)
-.\quick-start.ps1
+# Jalankan script auto setup
+START_ALL.bat
 ```
 
-Script ini akan:
-1. ✅ Start PostgreSQL, Auth Service, User Service
-2. ✅ Load 5000 UMKM + 1000 Mitra dummy data
-3. ✅ Install frontend dependencies
-4. ✅ Start frontend dev server
-
-Tunggu sampai muncul:
+**Option 3: PowerShell**
+```powershell
+cd infra
+docker compose up -d
+docker compose --profile seed up db-seed
+cd ..\frontend
+npm install
+npm run dev
 ```
-→ Local: http://localhost:5173
-```
 
-Buka browser ke `http://localhost:5173` dan login!
+**Buka browser:** http://localhost:5173
+**Login dengan credentials di bawah**
 
 ---
 
@@ -75,23 +80,6 @@ cd frontend
 npm install
 npm run dev
 ```
-
----
-
-## 🧪 Verifikasi Integrasi
-
-Jalankan script verifikasi untuk memastikan semua terintegrasi:
-
-```powershell
-.\verify-integration.ps1
-```
-
-Script ini akan check:
-- ✅ Docker services status
-- ✅ Database data (UMKM, Mitra, Admin)
-- ✅ Backend API health
-- ✅ Login & Dashboard API
-- ✅ Frontend status
 
 ---
 
@@ -155,12 +143,8 @@ umkm-tumbuh/
 │       │   ├── dashboard/    # UMKM/Mitra dashboard
 │       │   └── auth/         # Login/Register
 │       └── shared/           # Shared utilities
-├── tests/
-│   └── postman/              # API tests
-├── quick-start.ps1           # 🚀 Quick start script
-├── verify-integration.ps1    # 🧪 Verification script
-├── stop-all.ps1              # 🛑 Stop all services
-└── INTEGRASI_DATA_DUMMY.md   # 📖 Integration guide
+└── tests/
+    └── postman/              # API tests
 ```
 
 ---
@@ -191,29 +175,36 @@ umkm-tumbuh/
 ## 🧰 Utility Scripts
 
 ### Quick Start
-```powershell
-.\quick-start.ps1
 ```
-Start semua service + load data + start frontend.
-
-### Verify Integration
-```powershell
-.\verify-integration.ps1
+START_ALL.bat           - Start everything (backend + data + frontend)
 ```
-Check status integrasi backend-frontend.
 
-### Stop All
-```powershell
-.\stop-all.ps1
+### Status & Troubleshooting
 ```
-Stop semua Docker containers.
+CHECK_STATUS.bat        - Check system status
+FIX_COMMON.bat          - Fix common issues (menu-based)
+```
 
-### Reset Database
+### Common Commands
 ```powershell
+# Reset database
 cd infra
 docker compose down -v
 docker compose up -d
 docker compose --profile seed up db-seed
+
+# Stop everything
+docker compose down
+
+# View logs
+docker compose logs -f
+```
+
+### Frontend Only
+```powershell
+cd frontend
+npm run dev              # Start frontend
+npm install              # Install dependencies
 ```
 
 ---
@@ -349,10 +340,10 @@ docker compose restart db-migrate
 
 ## 📞 Support
 
-Jika ada masalah atau pertanyaan:
-1. Check `INTEGRASI_DATA_DUMMY.md` untuk panduan detail
-2. Run `.\verify-integration.ps1` untuk diagnostics
-3. Check logs: `docker compose logs -f`
+Jika ada masalah atau pertanyaan, check logs:
+```powershell
+docker compose logs -f
+```
 
 ---
 

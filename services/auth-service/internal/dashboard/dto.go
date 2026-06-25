@@ -5,10 +5,10 @@ import "time"
 // DashboardFilter — parameter filter dari query string
 type DashboardFilter struct {
 	Provinsi   string // kosong = semua provinsi
-	Bulan      string // format YYYY-MM, kosong = semua
-	Tahun      string // format YYYY, kosong = semua
 	StatusUMKM string // kosong = semua status
 	Days       string // jumlah hari untuk tren, default "180"
+	Bulan      string // format YYYY-MM, kosong = semua bulan
+	Tahun      string // format YYYY, kosong = semua tahun
 }
 
 // SummaryResponse — KPI cards utama dashboard nasional

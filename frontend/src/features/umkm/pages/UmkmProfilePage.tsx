@@ -159,10 +159,10 @@ export default function UmkmProfilePage() {
               </p>
             </div>
             <div className="up-view-actions">
-              <Link to="/profile/umkm" className="up-btn-publik">
+              <Link to="/umkm/profile/view" className="up-btn-publik">
                 👁 Lihat Profil Publik
               </Link>
-              <Link to="/profile/umkm/edit" className="up-btn-edit-profil">
+              <Link to="/umkm/profile" className="up-btn-edit-profil">
                 ✏️ Edit Profil
               </Link>
             </div>
@@ -371,7 +371,7 @@ export default function UmkmProfilePage() {
             <button 
               type="button" 
               className="up-kelola-btn"
-              onClick={() => navigate("/profile/umkm/products")}
+              onClick={() => navigate("/umkm/products")}
             >
               🛍️ Kelola Produk
             </button>

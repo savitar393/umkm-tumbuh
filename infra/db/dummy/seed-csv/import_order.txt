@@ -38,7 +38,4 @@ csv/transaksi_pendaftaranpelatihan.csv
 csv/transaksi_submissionassignment.csv
 csv/transaksi_sertifikatpelatihan.csv
 csv/transaksi_pengajuankerjasama.csv
-csv/transaksi_penjualan.csv
-csv/transaksi_penjualan_item.csv
-csv/transaksi_stokproduk.csv
 csv/transaksi_monitoringperkembangan.csv

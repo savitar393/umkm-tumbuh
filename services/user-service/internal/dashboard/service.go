@@ -45,7 +45,7 @@ func (s *Service) GetUMKMDashboard(ctx context.Context, accountID, dateFrom, dat
 	}
 
 	// 3. Omzet summary (2 hari terkini)
-	omzetHariIni, omzetKemarin, totalItem, tglTerkini, err := s.Repo.GetOmzetSummary(ctx, umkmID, dateFrom, dateTo)
+	omzetHariIni, omzetKemarin, totalItem, tglTerkini, err := s.Repo.GetOmzetSummary(ctx, umkmID)
 	if err != nil {
 		omzetHariIni, omzetKemarin, totalItem, tglTerkini = 0, 0, 0, ""
 	}
@@ -63,7 +63,7 @@ func (s *Service) GetUMKMDashboard(ctx context.Context, accountID, dateFrom, dat
 	}
 
 	// 6. Omzet bulanan
-	omzetBulanIni, omzetBulanLalu, _ := s.Repo.GetOmzetBulanan(ctx, umkmID, dateFrom, dateTo)
+	omzetBulanIni, omzetBulanLalu, _ := s.Repo.GetOmzetBulanan(ctx, umkmID)
 	var persenBulan float64
 	if omzetBulanLalu > 0 {
 		persenBulan = ((omzetBulanIni - omzetBulanLalu) / omzetBulanLalu) * 100
@@ -78,7 +78,7 @@ func (s *Service) GetUMKMDashboard(ctx context.Context, accountID, dateFrom, dat
 	}
 
 	// 8. Tren — pakai 7 hari default (frontend minta data, kita selalu kirim 90 hari biar bisa filter 7/14/30/90 di FE)
-	tren, err := s.Repo.GetTrenMingguan(ctx, umkmID, dateFrom, dateTo, 90)
+	tren, err := s.Repo.GetTrenMingguan(ctx, umkmID, 90)
 	if err != nil || tren == nil {
 		tren = []TrenMingguan{}
 	}
@@ -130,11 +130,6 @@ func (s *Service) GetMitraDashboard(ctx context.Context, accountID, selectedUMKM
 		umkmList = []UMKMMitraItem{}
 	}
 
-	allowedUMKM := make(map[string]UMKMMitraItem, len(umkmList))
-	for _, u := range umkmList {
-		allowedUMKM[u.UMKMID] = u
-	}
-
 	if selectedUMKMID == "" && len(umkmList) > 0 {
 		selectedUMKMID = umkmList[0].UMKMID
 	}
@@ -142,35 +137,28 @@ func (s *Service) GetMitraDashboard(ctx context.Context, accountID, selectedUMKM
 	var dashboard *UMKMDashboardForMitra
 
 	if selectedUMKMID != "" {
-		selectedUMKM, ok := allowedUMKM[selectedUMKMID]
-		if !ok {
-			return &MitraDashboardData{
-				NamaMitra: namaMitra,
-				UMKMList:  umkmList,
-				Dashboard: nil,
-			}, nil
-		}
-
-		namaUMKM := selectedUMKM.NamaUMKM
-
-		if dateTo == "" {
-			now := time.Now()
-			dateTo = now.Format("2006-01-02")
-		}
-
-		if dateFrom == "" {
-			t, err := time.Parse("2006-01-02", dateTo)
-			if err != nil {
-				now := time.Now()
-				t = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+		namaUMKM := selectedUMKMID
+		for _, u := range umkmList {
+			if u.UMKMID == selectedUMKMID {
+				namaUMKM = u.NamaUMKM
+				break
 			}
+		}
 
-			dateFrom = t.AddDate(0, -1, 1).Format("2006-01-02")
+		if dateFrom == "" || dateTo == "" {
+			dFrom, dTo, rangeErr := s.Repo.GetDefaultDateRange(ctx, selectedUMKMID)
+			if rangeErr != nil || dFrom == "" {
+				now := time.Now()
+				dateFrom = now.Format("2006-01") + "-01"
+				dateTo = now.Format("2006-01-02")
+			} else {
+				dateFrom, dateTo = dFrom, dTo
+			}
 		}
 
 		kategoriUsaha, _ := s.Repo.GetKategoriUsaha(ctx, selectedUMKMID)
 
-		omzetHariIni, omzetKemarin, totalItem, tglTerkini, _ := s.Repo.GetOmzetSummary(ctx, selectedUMKMID, dateFrom, dateTo)
+		omzetHariIni, omzetKemarin, totalItem, tglTerkini, _ := s.Repo.GetOmzetSummary(ctx, selectedUMKMID)
 
 		var persen float64
 		if omzetKemarin > 0 {
@@ -182,7 +170,7 @@ func (s *Service) GetMitraDashboard(ctx context.Context, accountID, selectedUMKM
 			rataRata = omzetHariIni / float64(totalItem)
 		}
 
-		omzetBulanIni, omzetBulanLalu, _ := s.Repo.GetOmzetBulanan(ctx, selectedUMKMID, dateFrom, dateTo)
+		omzetBulanIni, omzetBulanLalu, _ := s.Repo.GetOmzetBulanan(ctx, selectedUMKMID)
 		var persenBulan float64
 		if omzetBulanLalu > 0 {
 			persenBulan = ((omzetBulanIni - omzetBulanLalu) / omzetBulanLalu) * 100
@@ -193,7 +181,7 @@ func (s *Service) GetMitraDashboard(ctx context.Context, accountID, selectedUMKM
 			labaHarian = []LabaHarianItem{}
 		}
 
-		tren, _ := s.Repo.GetTrenMingguan(ctx, selectedUMKMID, dateFrom, dateTo, 90)
+		tren, _ := s.Repo.GetTrenMingguan(ctx, selectedUMKMID, 90)
 		if tren == nil {
 			tren = []TrenMingguan{}
 		}

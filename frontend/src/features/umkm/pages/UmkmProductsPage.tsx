@@ -224,7 +224,7 @@ export default function UmkmProductsPage() {
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
               <button 
                 type="button" 
-                onClick={() => navigate("/profile/umkm")}
+                onClick={() => navigate("/umkm/profile/view")}
                 style={{ background: "none", border: "1px solid #e5e7eb", borderRadius: 8, padding: "8px 12px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, color: "#374151" }}
               >
                 <span>←</span> Kembali

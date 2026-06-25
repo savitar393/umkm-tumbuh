@@ -66,6 +66,7 @@ infra/minio_data/
 *.sql.gz
 *.dump
 *.backup
+*.bat
 
 # =========================
 # Logs
@@ -97,6 +98,8 @@ Thumbs.db
 *.swp
 *.swo
 *.md
+*.githooks/
+format-go.ps1
 
 # =========================
 # Dummy data/credentials

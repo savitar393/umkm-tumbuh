@@ -410,24 +410,15 @@ func handleError(w http.ResponseWriter, err error, fallback string) {
 	writeJSON(w, http.StatusInternalServerError, map[string]string{"error": fallback})
 }
 
-// GetUMKMDashboard — GET /api/v1/dashboard/umkm?date_from=YYYY-MM-DD&date_to=YYYY-MM-DD
+// GetUMKMDashboard — GET /api/v1/dashboard/umkm?from=YYYY-MM-DD&to=YYYY-MM-DD
 func (h *Handler) GetUMKMDashboard(w http.ResponseWriter, r *http.Request) {
 	user, ok := currentUMKMUser(w, r)
 	if !ok {
 		return
 	}
 
-	query := r.URL.Query()
-
-	dateFrom := strings.TrimSpace(query.Get("date_from"))
-	if dateFrom == "" {
-		dateFrom = strings.TrimSpace(query.Get("from"))
-	}
-
-	dateTo := strings.TrimSpace(query.Get("date_to"))
-	if dateTo == "" {
-		dateTo = strings.TrimSpace(query.Get("to"))
-	}
+	dateFrom := r.URL.Query().Get("from")
+	dateTo := r.URL.Query().Get("to")
 
 	repo := NewRepository(h.DB)
 	svc := NewService(repo)
@@ -448,20 +439,12 @@ func (h *Handler) GetMitraDashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	selectedUMKMID := strings.TrimSpace(r.URL.Query().Get("umkm_id"))
+	selectedUMKMID := r.URL.Query().Get("umkm_id")
+	dateFrom := r.URL.Query().Get("from")
+	dateTo := r.URL.Query().Get("to")
 
 	repo := NewRepository(h.DB)
 	svc := NewService(repo)
-
-	dateFrom := strings.TrimSpace(r.URL.Query().Get("date_from"))
-	if dateFrom == "" {
-		dateFrom = strings.TrimSpace(r.URL.Query().Get("from"))
-	}
-
-	dateTo := strings.TrimSpace(r.URL.Query().Get("date_to"))
-	if dateTo == "" {
-		dateTo = strings.TrimSpace(r.URL.Query().Get("to"))
-	}
 
 	data, err := svc.GetMitraDashboard(r.Context(), user.ID, selectedUMKMID, dateFrom, dateTo)
 	if err != nil {

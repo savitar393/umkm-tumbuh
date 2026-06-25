@@ -221,6 +221,31 @@ a {
   border: 1px solid #bbf7d0;
 }
 
+.dashboard-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.empty-icon { margin-bottom: 8px; }
+
+.empty-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #374151;
+  margin: 0 0 6px;
+}
+
+.empty-sub {
+  font-size: 14px;
+  color: #9ca3af;
+  margin: 0;
+  max-width: 360px;
+}
+
 /* Optional small logo style */
 .auth-logo,
 .hero-logo {
@@ -419,6 +444,22 @@ button.danger {
 
 .chart-card__title { font-size: 14px; font-weight: 700; color: #111827; }
 .chart-card__sub   { font-size: 12px; color: #9ca3af; }
+
+.chart-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  gap: 8px;
+}
+
+.chart-empty p {
+  font-size: 13px;
+  color: #9ca3af;
+  margin: 0;
+}
+
 .chart-badge {
   font-size: 11px;
   color: #1f45b6;
@@ -572,6 +613,141 @@ button.danger {
   width: 12px; height: 12px;
   border-radius: 3px;
   display: inline-block;
+}
+
+/* ===================== MAP V2 (DASHBOARD) ===================== */
+.map-card-v2 {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  overflow: hidden;
+}
+
+.map-card-v2__header {
+  background: #4b9ae5;
+  padding: 20px 24px;
+  color: #ffffff;
+}
+
+.map-card-v2__title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.map-card-v2__sub {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.95);
+  margin-top: 6px;
+}
+
+.map-card-v2__body {
+  position: relative;
+  padding: 16px;
+}
+
+.map-legend-v2 {
+  position: absolute;
+  bottom: 24px;
+  left: 24px;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.10);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  z-index: 10;
+  border: 1px solid #f0f3f8;
+  width: 220px;
+}
+
+.map-legend-v2__label-top {
+  font-size: 10px;
+  font-weight: 700;
+  color: #4b5563;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.map-legend-v2__bar {
+  width: 100%;
+  height: 12px;
+  border-radius: 6px;
+  background: linear-gradient(to right, rgb(200, 228, 244), rgb(130, 186, 225), rgb(65, 138, 196), rgb(22, 84, 158), rgb(8, 40, 105));
+}
+
+.map-legend-v2__labels {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  font-size: 11px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.map-legend-v2__no-data {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: #6b7280;
+  margin-top: 4px;
+  border-top: 1px solid #f3f4f6;
+  padding-top: 6px;
+  width: 100%;
+}
+
+.legend-gray-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  background: #d1d5db;
+}
+
+.map-hint {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 8px;
+  text-align: center;
+}
+
+.map-tooltip {
+  background: rgba(17, 24, 39, 0.95);
+  color: #fff;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 12px;
+  line-height: 1.6;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.map-tooltip__title {
+  font-weight: 700;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.map-tooltip__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  opacity: 0.9;
+}
+
+.map-tooltip__row strong {
+  color: #fff;
+}
+
+.map-tooltip__empty {
+  font-size: 10px;
+  color: #fbbf24;
+  margin-top: 2px;
+  font-style: italic;
 }
 
 /* ===================== INFO CARDS ===================== */
@@ -1812,14 +1988,18 @@ button.danger {
 
 .auth-logo-stack {
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
 }
 
 .auth-logo-stack img {
-  width: 68px;
-  height: 68px;
+  width: 80px;
+  height: 80px;
   object-fit: contain;
-  border-radius: 18px;
-  margin-bottom: 22px;
+  border-radius: 20px;
+  display: block;
   box-shadow: 0 18px 35px rgba(31, 69, 182, 0.18);
 }
 
@@ -1827,7 +2007,7 @@ button.danger {
   font-size: 32px;
   color: #1f45b6;
   letter-spacing: -0.04em;
-  margin-bottom: 10px;
+  margin: 0;
 }
 
 .auth-logo-stack p {
@@ -1835,6 +2015,7 @@ button.danger {
   color: #5f676b;
   font-size: 18px;
   line-height: 1.45;
+  margin: 0;
 }
 
 .auth-glass-card {

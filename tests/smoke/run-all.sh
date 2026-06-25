@@ -19,7 +19,7 @@ run_test() {
   local script="$2"
 
   echo "------------------------------------------------------------"
-  echo "▶ $label"
+  echo "? $label"
   echo "------------------------------------------------------------"
 
   AUTH_URL="$AUTH_URL" \
@@ -28,11 +28,11 @@ run_test() {
   "$script"
 
   echo
-  echo "✅ $label passed"
+  echo "? $label passed"
   echo
 }
 
 run_test "Auth + profile smoke test" "$ROOT_DIR/tests/smoke/auth-profile-smoke.sh"
 run_test "Document registration smoke test" "$ROOT_DIR/tests/smoke/document-registration-smoke.sh"
 
-echo "🎉 All smoke tests passed."
+echo "?? All smoke tests passed."

@@ -65,12 +65,12 @@ expect_status() {
   local label="$3"
 
   if [ "$actual" != "$expected" ]; then
-    echo "❌ $label expected HTTP $expected, got $actual" >&2
+    echo "? $label expected HTTP $expected, got $actual" >&2
     echo "$RESPONSE_BODY" >&2
     exit 1
   fi
 
-  echo "✅ $label HTTP $actual" >&2
+  echo "? $label HTTP $actual" >&2
 }
 
 split_response() {
@@ -130,12 +130,12 @@ print(next((str(x) for x in candidates if x), ""))
 ')"
 
   if [ -z "$document_id" ]; then
-    echo "❌ $label did not return document id" >&2
+    echo "? $label did not return document id" >&2
     echo "$RESPONSE_BODY" >&2
     exit 1
   fi
 
-  echo "✅ $label document_id=$document_id" >&2
+  echo "? $label document_id=$document_id" >&2
   printf "%s" "$document_id"
 }
 
@@ -235,4 +235,4 @@ split_response "$RAW"
 expect_status "$RESPONSE_STATUS" "200" "save Mitra profile with docs"
 echo
 
-echo "🎉 Document registration smoke test passed."
+echo "?? Document registration smoke test passed."

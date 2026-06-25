@@ -7,6 +7,14 @@ const API_BASE_URL =
 
 console.log("[HTTP Client] API_BASE_URL:", API_BASE_URL);
 
+const AUTH_API_BASE_URL =
+  import.meta.env.VITE_AUTH_API_BASE_URL ??
+  "http://localhost:8080/api/v1";
+
+const ADMIN_API_BASE_URL =
+  import.meta.env.VITE_ADMIN_API_BASE_URL ??
+  "http://localhost:8080/api/v1";
+
 const USER_API_BASE_URL =
   import.meta.env.VITE_USER_API_BASE_URL ??
   import.meta.env.VITE_USER_SERVICE_URL ??
@@ -32,6 +40,8 @@ const CERTIFICATE_API_BASE_URL =
 
 // ⭐ EXPORT base URL sebagai string — dipakai langsung di template literal
 // oleh file-file seperti documents.ts: `${USER_API}/profile/...`
+export const AUTH_API = AUTH_API_BASE_URL;
+export const ADMIN_API = ADMIN_API_BASE_URL;
 export const USER_API = USER_API_BASE_URL;
 export const PARTNERSHIP_API = PARTNERSHIP_API_BASE_URL;
 export const DOCUMENT_API = DOCUMENT_API_BASE_URL;
@@ -41,6 +51,7 @@ export const CERTIFICATE_API = CERTIFICATE_API_BASE_URL;
 export type ServiceName =
   | "default"
   | "auth"
+  | "admin"
   | "user"
   | "partnership"
   | "document"
@@ -124,6 +135,9 @@ function getHttpErrorMessage(status: number, payload: unknown) {
 function getBaseURL(service: ServiceName = "default"): string {
   switch (service) {
     case "auth":
+      return AUTH_API_BASE_URL;
+    case "admin":
+      return ADMIN_API_BASE_URL;
     case "default":
       return API_BASE_URL;
     case "user":

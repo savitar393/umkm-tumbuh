@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -40,6 +41,7 @@ func (r *Repository) GetAllTrainings(ctx context.Context) ([]TrainingProgramResp
 			mpp.thumbnail_url,
 			mpp.syarat_ketentuan,
 			mpp.tanggal_publish,
+			mpp.status_pelatihan_id,
 			rjp.nama_jenis_pelatihan,
 			rsp.nama_status_pelatihan,
 			mpp.created_at,
@@ -67,7 +69,7 @@ func (r *Repository) GetAllTrainings(ctx context.Context) ([]TrainingProgramResp
 			&t.PelatihanID, &t.KodePelatihan, &t.JudulPelatihan, &t.DeskripsiPelatihan,
 			&t.MentorNama, &t.DurasiJam, &t.TotalModul, &t.Harga, &t.AksesSeumurHidup,
 			&t.MasaAksesHari, &t.RatingRataRata, &t.JumlahAlumni, &t.ThumbnailURL,
-			&t.SyaratKetentuan, &t.TanggalPublish, &t.JenisPelatihan, &t.StatusPelatihan,
+			&t.SyaratKetentuan, &t.TanggalPublish, &t.StatusPelatihanID, &t.JenisPelatihan, &t.StatusPelatihan,
 			&t.CreatedAt, &t.UpdatedAt,
 		)
 		if err != nil {
@@ -88,6 +90,7 @@ func (r *Repository) GetTrainingByID(ctx context.Context, pelatihanID string) (*
 			mpp.total_modul, mpp.harga, mpp.akses_seumur_hidup, 
 			mpp.masa_akses_hari, mpp.rating_rata_rata, mpp.jumlah_alumni, 
 			mpp.thumbnail_url, mpp.syarat_ketentuan, mpp.tanggal_publish,
+			mpp.status_pelatihan_id,
 			rjp.nama_jenis_pelatihan, rsp.nama_status_pelatihan,
 			mpp.created_at, mpp.updated_at
 		FROM training.master_programpelatihan mpp
@@ -101,7 +104,7 @@ func (r *Repository) GetTrainingByID(ctx context.Context, pelatihanID string) (*
 		&t.PelatihanID, &t.KodePelatihan, &t.JudulPelatihan, &t.DeskripsiPelatihan,
 		&t.MentorNama, &t.DurasiJam, &t.TotalModul, &t.Harga, &t.AksesSeumurHidup,
 		&t.MasaAksesHari, &t.RatingRataRata, &t.JumlahAlumni, &t.ThumbnailURL,
-		&t.SyaratKetentuan, &t.TanggalPublish, &t.JenisPelatihan, &t.StatusPelatihan,
+		&t.SyaratKetentuan, &t.TanggalPublish, &t.StatusPelatihanID, &t.JenisPelatihan, &t.StatusPelatihan,
 		&t.CreatedAt, &t.UpdatedAt,
 	)
 
@@ -369,4 +372,249 @@ func (r *Repository) MarkTrainingComplete(ctx context.Context, pendaftaranID str
 func generateID(prefix string) string {
 	raw := strings.ReplaceAll(uuid.New().String(), "-", "")
 	return prefix + raw[:16]
+}
+
+
+// ============= ADMIN METHODS =============
+
+// GetAllTrainingsAdmin returns all trainings with pagination and filters for admin
+func (r *Repository) GetAllTrainingsAdmin(ctx context.Context, filters TrainingFilters) ([]TrainingProgramResponse, int, error) {
+	// Build WHERE clause
+	whereClause := "WHERE mpp.is_deleted = FALSE"
+	args := []interface{}{}
+	argCount := 1
+
+	if filters.Status != "" && filters.Status != "ALL" {
+		whereClause += " AND mpp.status_pelatihan_id = $" + strconv.Itoa(argCount)
+		args = append(args, filters.Status)
+		argCount++
+	}
+
+	if filters.Search != "" {
+		whereClause += " AND (mpp.judul_pelatihan ILIKE $" + strconv.Itoa(argCount) + 
+			" OR mpp.kode_pelatihan ILIKE $" + strconv.Itoa(argCount) + ")"
+		args = append(args, "%"+filters.Search+"%")
+		argCount++
+	}
+
+	// Count total
+	countQuery := `
+		SELECT COUNT(*)
+		FROM training.master_programpelatihan mpp
+		` + whereClause
+
+	var total int
+	err := r.DB.QueryRow(ctx, countQuery, args...).Scan(&total)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Build ORDER BY
+	orderBy := "mpp.created_at DESC"
+	if filters.SortBy != "" {
+		direction := "DESC"
+		if strings.ToUpper(filters.SortOrder) == "ASC" {
+			direction = "ASC"
+		}
+		orderBy = "mpp." + filters.SortBy + " " + direction
+	}
+
+	// Build main query with pagination
+	offset := (filters.Page - 1) * filters.Limit
+	
+	query := `
+		SELECT 
+			mpp.pelatihan_id, mpp.kode_pelatihan, mpp.judul_pelatihan, 
+			mpp.deskripsi_pelatihan, mpp.mentor_nama, mpp.durasi_jam, 
+			mpp.total_modul, mpp.harga, mpp.akses_seumur_hidup, 
+			mpp.masa_akses_hari, mpp.rating_rata_rata, mpp.jumlah_alumni, 
+			mpp.thumbnail_url, mpp.syarat_ketentuan, mpp.tanggal_publish,
+			mpp.status_pelatihan_id,
+			rjp.nama_jenis_pelatihan, rsp.nama_status_pelatihan,
+			mpp.created_at, mpp.updated_at
+		FROM training.master_programpelatihan mpp
+		INNER JOIN ref.ref_jenispelatihan rjp ON mpp.jenis_pelatihan_id = rjp.jenis_pelatihan_id
+		INNER JOIN ref.ref_statuspelatihan rsp ON mpp.status_pelatihan_id = rsp.status_pelatihan_id
+		` + whereClause + `
+		ORDER BY ` + orderBy + `
+		LIMIT $` + strconv.Itoa(argCount) + ` OFFSET $` + strconv.Itoa(argCount+1)
+
+	args = append(args, filters.Limit, offset)
+
+	rows, err := r.DB.Query(ctx, query, args...)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	trainings := make([]TrainingProgramResponse, 0)
+	for rows.Next() {
+		var t TrainingProgramResponse
+		err := rows.Scan(
+			&t.PelatihanID, &t.KodePelatihan, &t.JudulPelatihan, &t.DeskripsiPelatihan,
+			&t.MentorNama, &t.DurasiJam, &t.TotalModul, &t.Harga, &t.AksesSeumurHidup,
+			&t.MasaAksesHari, &t.RatingRataRata, &t.JumlahAlumni, &t.ThumbnailURL,
+			&t.SyaratKetentuan, &t.TanggalPublish, &t.StatusPelatihanID, &t.JenisPelatihan, &t.StatusPelatihan,
+			&t.CreatedAt, &t.UpdatedAt,
+		)
+		if err != nil {
+			return nil, 0, err
+		}
+		trainings = append(trainings, t)
+	}
+
+	return trainings, total, rows.Err()
+}
+
+// CreateTraining creates a new training program
+func (r *Repository) CreateTraining(ctx context.Context, req CreateTrainingRequest) (*TrainingProgramResponse, error) {
+	pelatihanID := generateID("PLT")
+	kodePelatihan := "PLT-" + time.Now().Format("2006") + "-" + pelatihanID[3:]
+	now := time.Now()
+
+	query := `
+		INSERT INTO training.master_programpelatihan (
+			pelatihan_id, kode_pelatihan, dibuat_oleh_admin_id, jenis_pelatihan_id,
+			status_pelatihan_id, judul_pelatihan, deskripsi_pelatihan, mentor_nama,
+			durasi_jam, total_modul, harga, akses_seumur_hidup, masa_akses_hari,
+			thumbnail_url, syarat_ketentuan, created_at, updated_at
+		) VALUES (
+			$1, $2, $3, $4, 'DRAFT', $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
+		)
+	`
+
+	_, err := r.DB.Exec(ctx, query,
+		pelatihanID, kodePelatihan, req.DibuatOlehAdminID, req.JenisPelatihanID,
+		req.JudulPelatihan, req.DeskripsiPelatihan, req.MentorNama, req.DurasiJam,
+		req.TotalModul, req.Harga, req.AksesSeumurHidup, req.MasaAksesHari,
+		req.ThumbnailURL, req.SyaratKetentuan, now, now,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Return the created training
+	return r.GetTrainingByID(ctx, pelatihanID)
+}
+
+// UpdateTraining updates an existing training
+func (r *Repository) UpdateTraining(ctx context.Context, pelatihanID string, req UpdateTrainingRequest) (*TrainingProgramResponse, error) {
+	query := `
+		UPDATE training.master_programpelatihan
+		SET jenis_pelatihan_id = $2,
+		    judul_pelatihan = $3,
+		    deskripsi_pelatihan = $4,
+		    mentor_nama = $5,
+		    durasi_jam = $6,
+		    total_modul = $7,
+		    harga = $8,
+		    akses_seumur_hidup = $9,
+		    masa_akses_hari = $10,
+		    thumbnail_url = $11,
+		    syarat_ketentuan = $12,
+		    updated_at = NOW()
+		WHERE pelatihan_id = $1 AND is_deleted = FALSE
+	`
+
+	tag, err := r.DB.Exec(ctx, query,
+		pelatihanID, req.JenisPelatihanID, req.JudulPelatihan, req.DeskripsiPelatihan,
+		req.MentorNama, req.DurasiJam, req.TotalModul, req.Harga,
+		req.AksesSeumurHidup, req.MasaAksesHari, req.ThumbnailURL, req.SyaratKetentuan,
+	)
+	if err != nil {
+		return nil, err
+	}
+	if tag.RowsAffected() == 0 {
+		return nil, apperror.New(http.StatusNotFound, "Pelatihan tidak ditemukan")
+	}
+
+	return r.GetTrainingByID(ctx, pelatihanID)
+}
+
+// DeleteTraining soft deletes a training
+func (r *Repository) DeleteTraining(ctx context.Context, pelatihanID string) error {
+	query := `
+		UPDATE training.master_programpelatihan
+		SET is_deleted = TRUE, deleted_at = NOW(), updated_at = NOW()
+		WHERE pelatihan_id = $1 AND is_deleted = FALSE
+	`
+
+	tag, err := r.DB.Exec(ctx, query, pelatihanID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return apperror.New(http.StatusNotFound, "Pelatihan tidak ditemukan")
+	}
+
+	return nil
+}
+
+// UpdateTrainingStatus updates the status of a training
+func (r *Repository) UpdateTrainingStatus(ctx context.Context, pelatihanID, status string) error {
+	var tanggalPublish *time.Time
+	if status == "PUBLISHED" {
+		now := time.Now()
+		tanggalPublish = &now
+	}
+
+	query := `
+		UPDATE training.master_programpelatihan
+		SET status_pelatihan_id = $2,
+		    tanggal_publish = COALESCE($3, tanggal_publish),
+		    updated_at = NOW()
+		WHERE pelatihan_id = $1 AND is_deleted = FALSE
+	`
+
+	tag, err := r.DB.Exec(ctx, query, pelatihanID, status, tanggalPublish)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return apperror.New(http.StatusNotFound, "Pelatihan tidak ditemukan")
+	}
+
+	return nil
+}
+
+// GetTrainingStats returns statistics for admin dashboard
+func (r *Repository) GetTrainingStats(ctx context.Context) (*TrainingStatsResponse, error) {
+	query := `
+		SELECT 
+			COUNT(*) as total_trainings,
+			COUNT(*) FILTER (WHERE status_pelatihan_id = 'PUBLISHED') as published_count,
+			COUNT(*) FILTER (WHERE status_pelatihan_id = 'DRAFT') as draft_count,
+			COUNT(*) FILTER (WHERE status_pelatihan_id = 'ARCHIVED') as archived_count
+		FROM training.master_programpelatihan
+		WHERE is_deleted = FALSE
+	`
+
+	var stats TrainingStatsResponse
+	err := r.DB.QueryRow(ctx, query).Scan(
+		&stats.TotalTrainings,
+		&stats.PublishedCount,
+		&stats.DraftCount,
+		&stats.ArchivedCount,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get enrollment stats
+	enrollQuery := `
+		SELECT 
+			COUNT(*) as total_enrollments,
+			COUNT(*) FILTER (WHERE tanggal_selesai IS NOT NULL) as total_completions
+		FROM training.transaksi_pendaftaranpelatihan
+	`
+
+	err = r.DB.QueryRow(ctx, enrollQuery).Scan(
+		&stats.TotalEnrollments,
+		&stats.TotalCompletions,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &stats, nil
 }
