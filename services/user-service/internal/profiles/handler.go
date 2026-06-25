@@ -61,6 +61,41 @@ func (h *Handler) GetMe(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h *Handler) canEditRegistrationProfile(ctx context.Context, accountID string) error {
+	var (
+		sudahSubmit bool
+		status      string
+	)
+
+	err := h.DB.QueryRow(ctx, `
+		SELECT
+			COALESCE(sudah_submit, FALSE),
+			status_verifikasi_id
+		FROM user_mgmt.transaksi_registrasipengguna
+		WHERE akun_id = $1
+	`, accountID).Scan(&sudahSubmit, &status)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+
+		return err
+	}
+
+	switch status {
+	case "DISETUJUI", "APPROVED", "AKTIF":
+		return fmt.Errorf("Pendaftaran sudah disetujui. Profil tidak dapat diubah dari alur registrasi.")
+	case "DITOLAK", "REJECTED":
+		return fmt.Errorf("Pendaftaran sudah ditolak. Perubahan data belum tersedia untuk status ini.")
+	}
+
+	if sudahSubmit {
+		return fmt.Errorf("Pendaftaran sudah dikirim dan sedang menunggu review Admin.")
+	}
+
+	return nil
+}
+
 func (h *Handler) UpsertMe(w http.ResponseWriter, r *http.Request) {
 	user, ok := middleware.CurrentUserFromContext(r.Context())
 	if !ok {
@@ -72,6 +107,13 @@ func (h *Handler) UpsertMe(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Request body tidak valid."})
 		return
+	}
+
+	if user.Role == "UMKM" || user.Role == "MITRA" {
+		if err := h.canEditRegistrationProfile(r.Context(), user.ID); err != nil {
+			writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+			return
+		}
 	}
 
 	switch user.Role {

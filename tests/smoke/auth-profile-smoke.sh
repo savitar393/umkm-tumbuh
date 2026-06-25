@@ -365,6 +365,22 @@ split_response "$RAW"
 expect_status "$RESPONSE_STATUS" "409" "duplicate UMKM submit should fail"
 echo
 
+RAW="$(request_with_status PUT "$USER_URL/profiles/me" "{
+  \"business_name\": \"Should Not Update\",
+  \"business_category\": \"FASHION\",
+  \"jenis_umkm_id\": \"FASHION\",
+  \"business_description\": \"Should fail after submit\",
+  \"owner_name\": \"Smoke UMKM Owner\",
+  \"phone_number\": \"62812$UMKM_PHONE_SUFFIX\",
+  \"nik\": \"$RUN_NIK\",
+  \"address\": \"Jl Smoke Test UMKM\",
+  \"city\": \"Sleman\",
+  \"province\": \"DI Yogyakarta\",
+  \"products\": \"Produk Smoke\"
+}" "$UMKM_TOKEN")"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "409" "edit UMKM profile after submit should fail"
+
 echo "== 6. Register Mitra =="
 RAW="$(request_with_status POST "$AUTH_URL/auth/register" "{
   \"full_name\": \"Smoke Mitra\",
@@ -464,5 +480,27 @@ RAW="$(request_with_status POST "$USER_URL/register/submit" \
 split_response "$RAW"
 expect_status "$RESPONSE_STATUS" "409" "duplicate Mitra submit should fail"
 echo
+
+RAW="$(request_with_status PUT "$USER_URL/profiles/me" "{
+  \"organization_name\": \"Should Not Update\",
+  \"organization_type\": \"Inkubator Bisnis\",
+  \"legal_name\": \"Smoke Mitra Organization\",
+  \"nib\": \"$RUN_NIB\",
+  \"npwp\": \"$RUN_NPWP\",
+  \"description\": \"Should fail after submit\",
+  \"support_description\": \"Should fail after submit\",
+  \"address\": \"Jl Smoke Test Mitra\",
+  \"city\": \"Surakarta\",
+  \"province\": \"Jawa Tengah\",
+  \"contact_person\": \"Smoke PIC\",
+  \"contact_person_title\": \"Manager\",
+  \"phone_number\": \"62813$MITRA_PHONE_SUFFIX\",
+  \"operational_area\": \"Jawa Tengah\",
+  \"cooperation_scale\": \"Provinsi\",
+  \"partnership_field\": \"Pelatihan\",
+  \"support_type\": \"Pendampingan\"
+}" "$MITRA_TOKEN")"
+split_response "$RAW"
+expect_status "$RESPONSE_STATUS" "409" "edit Mitra profile after submit should fail"
 
 echo "🎉 Smoke test passed."
