@@ -246,29 +246,130 @@ func (h *Handler) AdminGetUserDocuments(w http.ResponseWriter, r *http.Request) 
 	userID := chi.URLParam(r, "userID")
 	role := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("role")))
 
-	docs, err := h.Store.FindByUserID(r.Context(), userID)
+	rows, err := h.DB.Query(r.Context(), `
+		SELECT
+			dokumen_id,
+			uploader_akun_id,
+			kategori_dokumen,
+			original_filename,
+			content_type,
+			size_bytes,
+			status,
+			created_at,
+			updated_at
+		FROM documents.master_dokumen
+		WHERE uploader_akun_id = $1
+		ORDER BY created_at DESC
+	`, userID)
 	if err != nil {
+		log.Printf("failed to get admin uploaded documents: %v", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "Gagal mengambil dokumen."})
 		return
 	}
+	defer rows.Close()
 
-	resp := make([]DocumentResponse, 0, len(docs))
-	for i := range docs {
-		resp = append(resp, ToResponse(&docs[i]))
+	docs := make([]map[string]any, 0)
+	uploadedCategories := map[string]int{}
+
+	for rows.Next() {
+		var (
+			id               string
+			uploaderID       string
+			category         string
+			originalFilename string
+			contentType      string
+			sizeBytes        int64
+			status           string
+			createdAt        any
+			updatedAt        any
+		)
+
+		if err := rows.Scan(
+			&id,
+			&uploaderID,
+			&category,
+			&originalFilename,
+			&contentType,
+			&sizeBytes,
+			&status,
+			&createdAt,
+			&updatedAt,
+		); err != nil {
+			log.Printf("failed to scan admin uploaded document: %v", err)
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "Gagal membaca dokumen."})
+			return
+		}
+
+		uploadedCategories[category]++
+
+		docs = append(docs, map[string]any{
+			"id":                id,
+			"dokumen_id":        id,
+			"user_id":           uploaderID,
+			"kategori_dokumen":  category,
+			"category":          category,
+			"original_filename": originalFilename,
+			"file_name":         originalFilename,
+			"content_type":      contentType,
+			"size_bytes":        sizeBytes,
+			"status":            status,
+			"created_at":        createdAt,
+			"updated_at":        updatedAt,
+		})
 	}
 
-	var checklist []ChecklistItem
-	if role != "" {
-		checklist, _ = h.Store.GetChecklist(r.Context(), userID, role)
+	if err := rows.Err(); err != nil {
+		log.Printf("failed to iterate admin uploaded documents: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "Gagal membaca daftar dokumen."})
+		return
 	}
-	if checklist == nil {
-		checklist = []ChecklistItem{}
-	}
+
+	checklist := buildAdminDocumentChecklist(role, uploadedCategories)
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"documents": resp,
+		"documents": docs,
 		"checklist": checklist,
 	})
+}
+
+func buildAdminDocumentChecklist(role string, uploadedCategories map[string]int) []map[string]any {
+	hasProductImage := uploadedCategories["PRODUCT_IMAGE"] > 0
+	hasGeneralDocument := uploadedCategories["GENERAL_DOCUMENT"] > 0
+
+	switch role {
+	case "UMKM":
+		return []map[string]any{
+			{
+				"label":    "Foto usaha",
+				"uploaded": hasProductImage,
+			},
+			{
+				"label":    "Dokumen pendukung",
+				"uploaded": hasGeneralDocument,
+			},
+		}
+
+	case "MITRA":
+		generalCount := uploadedCategories["GENERAL_DOCUMENT"]
+
+		return []map[string]any{
+			{
+				"label":    "Legalitas perusahaan",
+				"uploaded": generalCount >= 1,
+			},
+			{
+				"label":    "Surat komitmen",
+				"uploaded": generalCount >= 2,
+			},
+			{
+				"label":    "Profil perusahaan",
+				"uploaded": generalCount >= 3,
+			},
+		}
+
+	default:
+		return []map[string]any{}
+	}
 }
 
 func writeJSON(w http.ResponseWriter, statusCode int, payload any) {

@@ -66,8 +66,8 @@ func (c *Client) GetProfile(ctx context.Context, userID string, role string, aut
 	return result.Profile, nil
 }
 
-func (c *Client) GetDocuments(ctx context.Context, userID string, authorizationHeader string) (any, error) {
-	url := fmt.Sprintf("%s/api/v1/admin/users/%s/documents", c.BaseURL, userID)
+func (c *Client) GetDocuments(ctx context.Context, userID string, role string, authorizationHeader string) (any, error) {
+	url := fmt.Sprintf("%s/api/v1/admin/users/%s/documents?role=%s", c.BaseURL, userID, role)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {

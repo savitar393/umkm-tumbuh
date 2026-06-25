@@ -243,7 +243,7 @@ func (s *Service) GetRegistrationDetail(ctx context.Context, userID string, auth
 			detail.Profile = profile
 		}
 
-		docs, docsErr := s.Client.GetDocuments(ctx, userID, authorizationHeader)
+		docs, docsErr := s.Client.GetDocuments(ctx, userID, user.Role, authorizationHeader)
 		if docsErr == nil {
 			detail.Documents = docs
 			detail.Checklist = s.Client.GetDocumentChecklist(ctx, userID, user.Role, authorizationHeader)
