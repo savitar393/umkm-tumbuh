@@ -6,12 +6,13 @@ export type { Certificate } from "../certificates/types";
 export type RegistrationStatusFilter = UserStatus | "ALL";
 
 export function listRegistrations(status: RegistrationStatusFilter = "PENDING") {
-  return http<User[]>(`/admin/registrations?status=${encodeURIComponent(status)}`);
+  return http<User[]>(`/admin/registrations?status=${encodeURIComponent(status)}`, { service: "admin" });
 }
 
 export function approveRegistration(userID: string) {
   return http<User>(`/admin/registrations/${userID}/approve`, {
     method: "PATCH",
+    service: "admin",
   });
 }
 
@@ -21,6 +22,7 @@ export function rejectRegistration(userID: string, rejectionReason: string) {
     body: JSON.stringify({
       rejection_reason: rejectionReason,
     }),
+    service: "admin",
   });
 }
 
@@ -110,17 +112,18 @@ export function listUsers(params: {
   if (params.limit) query.set("limit", String(params.limit));
 
   const qs = query.toString();
-  return http<UserListResponse>(`/admin/registrations${qs ? `?${qs}` : ""}`);
+  return http<UserListResponse>(`/admin/registrations${qs ? `?${qs}` : ""}`, { service: "admin" });
 }
 
 export function getUserDetail(userID: string) {
-  return http<UserDetailResponse>(`/admin/registrations/${userID}`);
+  return http<UserDetailResponse>(`/admin/registrations/${userID}`, { service: "admin" });
 }
 
 export function approveUser(userID: string, catatanValidasi?: string) {
   return http<MessageResponse>(`/admin/registrations/${userID}/approve`, {
     method: "PATCH",
     body: JSON.stringify({ catatan_validasi: catatanValidasi || "" }),
+    service: "admin",
   });
 }
 
@@ -131,6 +134,7 @@ export function rejectUser(userID: string, rejectionReason: string, catatanValid
       rejection_reason: rejectionReason,
       catatan_validasi: catatanValidasi || rejectionReason,
     }),
+    service: "admin",
   });
 }
 
@@ -140,11 +144,12 @@ export function deactivateUser(userID: string, reason?: string) {
   return http<MessageResponse>(`/admin/registrations/${userID}/deactivate`, {
     method: "PATCH",
     body: JSON.stringify(body),
+    service: "admin",
   });
 }
 
 export function getStats() {
-  return http<StatsResponse>("/admin/stats");
+  return http<StatsResponse>("/admin/stats", { service: "admin" });
 }
 
 // ─── Dashboard Types ──────────────────────────────────────────────────────────
@@ -226,7 +231,7 @@ export type DashboardData = {
 
 export function getDashboard(queryString?: string) {
   const path = queryString ? `/admin/dashboard${queryString}` : "/admin/dashboard";
-  return http<DashboardData>(path);
+  return http<DashboardData>(path, { service: "admin" });
 }
 
 // ─── Certificate API ─────────────────────────────────────────────────────

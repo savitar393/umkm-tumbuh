@@ -162,11 +162,9 @@ export default function IndonesiaMap({ mapData }: Props) {
   );
   const maxLaba = Math.max(...Object.values(byProvinsi).map((v) => v.total_laba), 1);
 
-  // Buat proyeksi Mercator — fit Indonesia ke dalam SVG
+  // Buat proyeksi Mercator — fit Indonesia ke dalam SVG secara dinamis
   const projection = geoMercator()
-    .center([118, -2.5])
-    .scale(1050)
-    .translate([W / 2, H / 2]);
+    .fitExtent([[20, 20], [W - 20, H - 20]], { type: "FeatureCollection", features: geoData } as any);
 
   const pathGen = geoPath().projection(projection);
 
