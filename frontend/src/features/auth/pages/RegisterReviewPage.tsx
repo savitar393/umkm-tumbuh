@@ -3,7 +3,7 @@ import { Link, Navigate, useLocation, useNavigate, useParams } from "react-route
 import { CheckCircle, Loader2 } from "lucide-react";
 import { getCurrentUser } from "../../../shared/auth/currentUser";
 import { http } from "../../../shared/api/http";
-import { submitRegistration } from "../api";
+import { getRegistrationFlowStatus, submitRegistration } from "../api";
 import { getMe } from "../api";
 import { setCurrentUser } from "../../../shared/auth/currentUser";
 
@@ -98,6 +98,14 @@ export default function RegisterReviewPage() {
       setError("");
 
       try {
+        const flowStatus = await getRegistrationFlowStatus();
+
+        const currentReviewPath = `/register/${role}/review`;
+
+        if (flowStatus.next_route && flowStatus.next_route !== currentReviewPath) {
+          navigate(flowStatus.next_route, { replace: true });
+          return;
+        }
         const response = await http<ReviewProfileResponse>("/profiles/me", {
           service: "user",
         });
@@ -121,7 +129,7 @@ export default function RegisterReviewPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [navigate, role]);
 
   const reviewSections = useMemo<ReviewSectionData[]>(() => {
     if (!profile) return [];
