@@ -2398,3 +2398,98 @@
     width: 100%;
   }
 }
+
+/* ============================================================
+   Admin Registration Detail — overflow and responsive polish
+   ============================================================ */
+
+.admin-reg-detail,
+.admin-reg-layout,
+.admin-reg-main,
+.admin-reg-side,
+.admin-reg-section,
+.admin-reg-field,
+.admin-reg-doc-card,
+.admin-reg-summary {
+  min-width: 0;
+}
+
+.admin-reg-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
+  gap: 24px;
+  align-items: start;
+}
+
+.admin-reg-side {
+  width: 100%;
+  min-width: 0;
+}
+
+.admin-reg-summary > div {
+  display: grid;
+  grid-template-columns: minmax(72px, 0.4fr) minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.admin-reg-summary span,
+.admin-reg-summary strong,
+.admin-reg-field span,
+.admin-reg-field strong,
+.admin-reg-doc-card strong,
+.admin-reg-doc-card span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.admin-reg-summary strong {
+  text-align: right;
+}
+
+.admin-reg-doc-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.admin-reg-empty {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+@media (max-width: 1100px) {
+  .admin-reg-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-reg-side {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+  }
+}
+
+@media (max-width: 720px) {
+  .admin-reg-side {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-reg-summary > div {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-reg-summary strong {
+    text-align: left;
+  }
+
+  .admin-reg-actionbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-reg-actionbar button {
+    width: 100%;
+  }
+}
