@@ -137,6 +137,7 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/api/v1/health", app.handleHealth)
+	mux.HandleFunc("/api/v1/public/documents/", app.handlePublicDocumentByID)
 	mux.HandleFunc("/api/v1/documents/upload", app.withAuth(app.handleUploadDocument))
 	mux.HandleFunc("/api/v1/documents/", app.withAuth(app.handleDocumentByID))
 	mux.HandleFunc("/", app.handleNotFound)
@@ -315,6 +316,35 @@ func (a *app) handleDocumentByID(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (a *app) handlePublicDocumentByID(w http.ResponseWriter, r *http.Request) {
+	pathValue := strings.TrimPrefix(r.URL.Path, "/api/v1/public/documents/")
+	pathValue = strings.Trim(strings.TrimSpace(pathValue), "/")
+
+	if pathValue == "" {
+		writeJSON(w, http.StatusNotFound, errorResponse{Error: "Dokumen tidak ditemukan."})
+		return
+	}
+
+	parts := strings.Split(pathValue, "/")
+	if len(parts) != 2 || strings.ToLower(strings.TrimSpace(parts[1])) != "view" {
+		writeJSON(w, http.StatusNotFound, errorResponse{Error: "Endpoint dokumen tidak ditemukan."})
+		return
+	}
+
+	documentID := strings.TrimSpace(parts[0])
+	if documentID == "" {
+		writeJSON(w, http.StatusNotFound, errorResponse{Error: "Dokumen tidak ditemukan."})
+		return
+	}
+
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, errorResponse{Error: "Method not allowed."})
+		return
+	}
+
+	a.handlePublicImageDocument(w, r, documentID)
+}
+
 func (a *app) handleGetDocument(w http.ResponseWriter, r *http.Request, documentID string) {
 	user, ok := userFromContext(r.Context())
 	if !ok {
@@ -403,6 +433,53 @@ func (a *app) handleGetDocumentURL(w http.ResponseWriter, r *http.Request, docum
 			"expires_in":   900,
 		},
 	})
+}
+
+func (a *app) handlePublicImageDocument(w http.ResponseWriter, r *http.Request, documentID string) {
+	document, err := a.findDocumentByID(r.Context(), documentID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			writeJSON(w, http.StatusNotFound, errorResponse{Error: "Dokumen tidak ditemukan."})
+			return
+		}
+
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Gagal memuat dokumen."})
+		return
+	}
+
+	if document.Status == "DIHAPUS" {
+		writeJSON(w, http.StatusNotFound, errorResponse{Error: "Dokumen tidak ditemukan."})
+		return
+	}
+
+	if document.Category != "PRODUCT_IMAGE" || !strings.HasPrefix(strings.ToLower(document.ContentType), "image/") {
+		writeJSON(w, http.StatusForbidden, errorResponse{Error: "Dokumen ini tidak tersedia untuk publik."})
+		return
+	}
+
+	storageClient, err := newS3Client(r.Context(), document.Bucket)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Gagal membuka koneksi object storage."})
+		return
+	}
+
+	object, err := storageClient.getObject(r.Context(), document.ObjectKey)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Gagal membaca dokumen dari object storage."})
+		return
+	}
+	defer object.Body.Close()
+
+	w.Header().Set("Content-Type", document.ContentType)
+	w.Header().Set("Cache-Control", "public, max-age=300")
+
+	if document.SizeBytes > 0 {
+		w.Header().Set("Content-Length", fmt.Sprintf("%d", document.SizeBytes))
+	}
+
+	if _, err := io.Copy(w, object.Body); err != nil {
+		log.Printf("failed to stream public document %s: %v", document.ID, err)
+	}
 }
 
 func (a *app) handleStreamDocument(w http.ResponseWriter, r *http.Request, documentID string, inline bool) {

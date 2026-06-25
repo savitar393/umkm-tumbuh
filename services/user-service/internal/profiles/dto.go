@@ -10,6 +10,8 @@ type UpsertProfileRequest struct {
 	BusinessEmail          string `json:"business_email"`
 	OperatingHours         string `json:"operating_hours"`
 	SocialMediaMarketplace string `json:"social_media_marketplace"`
+	LogoURL                string `json:"logo_url"`
+	FotoCoverURL           string `json:"foto_cover_url"`
 
 	OrganizationName   string `json:"organization_name"`
 	OrganizationType   string `json:"organization_type"`
@@ -22,8 +24,8 @@ type UpsertProfileRequest struct {
 	OperationalArea    string `json:"operational_area"`
 	SupportDescription string `json:"support_description"`
 	CooperationScale   string `json:"cooperation_scale"`
-	PartnershipField string `json:"partnership_field"`
-	SupportType      string `json:"support_type"`
+	PartnershipField   string `json:"partnership_field"`
+	SupportType        string `json:"support_type"`
 
 	PhoneNumber string `json:"phone_number"`
 	Address     string `json:"address"`

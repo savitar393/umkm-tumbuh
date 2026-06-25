@@ -389,6 +389,8 @@ func (h *Handler) getUMKMProfile(ctx context.Context, accountID string) (map[str
 			u.email_bisnis::text,
 			u.jam_operasional,
 			u.media_sosial_marketplace,
+			u.logo_url,
+			u.foto_cover_url,
 			p.nama_pelaku,
 			p.nik,
 			p.no_hp,
@@ -523,6 +525,9 @@ func (h *Handler) upsertUMKMProfile(ctx context.Context, accountID string, req U
 	operatingHours := nullableTrim(req.OperatingHours)
 	socialMediaMarketplace := nullableTrim(req.SocialMediaMarketplace)
 
+	logoURL := nullableTrim(req.LogoURL)
+	coverURL := nullableTrim(req.FotoCoverURL)
+
 	_, err = tx.Exec(ctx, `
 		INSERT INTO user_mgmt.master_umkm (
 			umkm_id, kode_umkm, pelaku_umkm_id, lokasi_id,
@@ -530,6 +535,7 @@ func (h *Handler) upsertUMKMProfile(ctx context.Context, accountID string, req U
 			status_umkm_id, nama_umkm, deskripsi_usaha,
 			nomor_whatsapp, email_bisnis, tahun_berdiri,
 			jam_operasional, media_sosial_marketplace,
+			logo_url, foto_cover_url,
 			tanggal_terdaftar
 		)
 		VALUES (
@@ -538,6 +544,7 @@ func (h *Handler) upsertUMKMProfile(ctx context.Context, accountID string, req U
 			'AKTIF', $6, $7,
 			$8, $9, $10,
 			$11, $12,
+			$13, $14,
 			CURRENT_DATE
 		)
 		ON CONFLICT (umkm_id)
@@ -551,10 +558,12 @@ func (h *Handler) upsertUMKMProfile(ctx context.Context, accountID string, req U
 			tahun_berdiri = EXCLUDED.tahun_berdiri,
 			jam_operasional = EXCLUDED.jam_operasional,
 			media_sosial_marketplace = EXCLUDED.media_sosial_marketplace,
+			logo_url = EXCLUDED.logo_url,
+			foto_cover_url = EXCLUDED.foto_cover_url,
 			is_deleted = FALSE,
 			deleted_at = NULL,
 			updated_at = NOW()
-	`, ids.UMKMID, "KODE-"+ids.UMKMID, ids.PelakuUMKMID, ids.LokasiID, categoryID, businessName, businessDescription, phoneNumber, businessEmail, establishedYear, operatingHours, socialMediaMarketplace)
+	`, ids.UMKMID, "KODE-"+ids.UMKMID, ids.PelakuUMKMID, ids.LokasiID, categoryID, businessName, businessDescription, phoneNumber, businessEmail, establishedYear, operatingHours, socialMediaMarketplace, logoURL, coverURL)
 	if err != nil {
 		return nil, err
 	}
@@ -678,6 +687,8 @@ func scanUMKMProfile(row scanner) (map[string]any, error) {
 		businessEmail          sql.NullString
 		operatingHours         sql.NullString
 		socialMediaMarketplace sql.NullString
+		logoURL                sql.NullString
+		coverURL               sql.NullString
 		ownerName              string
 		nik                    string
 		phone                  string
@@ -702,6 +713,8 @@ func scanUMKMProfile(row scanner) (map[string]any, error) {
 		&businessEmail,
 		&operatingHours,
 		&socialMediaMarketplace,
+		&logoURL,
+		&coverURL,
 		&ownerName,
 		&nik,
 		&phone,
@@ -728,6 +741,8 @@ func scanUMKMProfile(row scanner) (map[string]any, error) {
 		"business_email":           nil,
 		"operating_hours":          nil,
 		"social_media_marketplace": nil,
+		"logo_url":                 nil,
+		"foto_cover_url":           nil,
 		"owner_name":               ownerName,
 		"nik":                      nik,
 		"phone_number":             phone,
@@ -756,6 +771,12 @@ func scanUMKMProfile(row scanner) (map[string]any, error) {
 	}
 	if socialMediaMarketplace.Valid {
 		profile["social_media_marketplace"] = socialMediaMarketplace.String
+	}
+	if logoURL.Valid {
+		profile["logo_url"] = logoURL.String
+	}
+	if coverURL.Valid {
+		profile["foto_cover_url"] = coverURL.String
 	}
 	if postalCode.Valid {
 		profile["postal_code"] = postalCode.String
