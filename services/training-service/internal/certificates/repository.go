@@ -312,20 +312,36 @@ func (r *Repository) RejectCertificate(ctx context.Context, sertifikatID int64, 
 
 func (r *Repository) RequestCertificate(ctx context.Context, pendaftaranPelatihanID string) (*CertificateResponse, error) {
 	var statusPendaftaran string
+	var progressPersen float64
+
 	statusQuery := `
-		SELECT status_pendaftaran_pelatihan_id
+		SELECT status_pendaftaran_pelatihan_id, COALESCE(progress_persen, 0)
 		FROM training.transaksi_pendaftaranpelatihan
 		WHERE pendaftaran_pelatihan_id = $1
 	`
-	err := r.DB.QueryRow(ctx, statusQuery, pendaftaranPelatihanID).Scan(&statusPendaftaran)
+	err := r.DB.QueryRow(ctx, statusQuery, pendaftaranPelatihanID).Scan(&statusPendaftaran, &progressPersen)
 	if err == pgx.ErrNoRows {
 		return nil, apperror.New(http.StatusNotFound, "Data pendaftaran pelatihan tidak ditemukan")
 	}
 	if err != nil {
 		return nil, err
 	}
-	if statusPendaftaran != "SELESAI" {
-		return nil, apperror.New(http.StatusBadRequest, "Sertifikat hanya dapat diajukan untuk pelatihan yang sudah selesai")
+
+	if statusPendaftaran != "SELESAI" && progressPersen < 100 {
+		return nil, apperror.New(http.StatusBadRequest, "Sertifikat hanya dapat diajukan untuk pelatihan dengan progress 100%")
+	}
+
+	if statusPendaftaran != "SELESAI" && progressPersen >= 100 {
+		_, err = r.DB.Exec(ctx, `
+			UPDATE training.transaksi_pendaftaranpelatihan
+			SET status_pendaftaran_pelatihan_id = 'SELESAI',
+			    progress_persen = 100,
+			    tanggal_selesai = COALESCE(tanggal_selesai, NOW())
+			WHERE pendaftaran_pelatihan_id = $1
+		`, pendaftaranPelatihanID)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	var existingID *int64

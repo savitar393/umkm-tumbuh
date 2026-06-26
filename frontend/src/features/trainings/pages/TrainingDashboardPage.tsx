@@ -77,29 +77,56 @@ const card = {
   border: "1px solid rgba(255,255,255,0.7)",
 };
 
+
+function getEnrollmentStatus(enrollment: any): string {
+  return String(
+    enrollment.status_pendaftaran ??
+    enrollment.status_pendaftaran_pelatihan_id ??
+    enrollment.status ??
+    ""
+  ).toUpperCase();
+}
+
+function isEnrollmentCompleted(enrollment: any): boolean {
+  const status = getEnrollmentStatus(enrollment);
+  const progress = Number(enrollment.progress_persen ?? 0);
+
+  return (
+    status.includes("SELESAI") ||
+    status === "COMPLETED" ||
+    progress >= 100 ||
+    Boolean(enrollment.tanggal_selesai)
+  );
+}
+
+function isEnrollmentRunning(enrollment: any): boolean {
+  return !isEnrollmentCompleted(enrollment);
+}
+
 export default function TrainingDashboardPage() {
   const navigate = useNavigate();
   const umkmId = useTrainingStore((s) => s.umkmId);
   const setUmkmId = useTrainingStore((s) => s.setUmkmId);
 
   useEffect(() => {
-    if (!umkmId) {
-      getMyProfile().then((profile) => {
-        if (profile?.id) setUmkmId(profile.id);
-      });
-    }
+    getMyProfile().then((profile) => {
+      const resolvedUmkmId =
+        (profile as any)?.umkm_id ??
+        (profile as any)?.id ??
+        "";
+
+      if (resolvedUmkmId && resolvedUmkmId !== umkmId) {
+        setUmkmId(resolvedUmkmId);
+      }
+    });
   }, [umkmId, setUmkmId]);
 
   const { data: dashboard, isLoading: dashLoading } = useCertificateDashboard(umkmId);
   const { data: enrollments, isLoading: enrollLoading } = useUserEnrollments(umkmId);
   const { data: certificates, isLoading: certLoading } = useUserCertificates(umkmId);
 
-  const ongoing = (enrollments || []).filter(
-    (e) => e.status_pendaftaran !== "SELESAI" && !e.tanggal_selesai
-  );
-  const completed = (enrollments || []).filter(
-    (e) => e.status_pendaftaran === "SELESAI" || e.tanggal_selesai
-  );
+  const ongoing = (enrollments || []).filter((e) => isEnrollmentRunning(e));
+  const completed = (enrollments || []).filter((e) => isEnrollmentCompleted(e));
   const certList = certificates || [];
   const requestCertMutation = useRequestCertificate();
   const requestedRef = useRef<Set<string>>(new Set());
@@ -168,7 +195,17 @@ export default function TrainingDashboardPage() {
 
   useEffect(() => {
     if (!completed.length) return;
-    completed.forEach((enrollment) => {
+    completed
+      .filter((enrollment: any) => {
+        const requestedCertificateEnrollmentIds = new Set(
+          (certificates ?? [])
+            .map((cert: any) => cert.pendaftaran_pelatihan_id)
+            .filter(Boolean),
+        );
+
+        return !requestedCertificateEnrollmentIds.has(enrollment.pendaftaran_pelatihan_id);
+      })
+      .forEach((enrollment) => {
       if (!requestedRef.current.has(enrollment.pendaftaran_pelatihan_id)) {
         requestedRef.current.add(enrollment.pendaftaran_pelatihan_id);
         requestCertMutation.mutate(enrollment.pendaftaran_pelatihan_id);
@@ -308,7 +345,7 @@ export default function TrainingDashboardPage() {
             </p>
             <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
               <span style={{ fontSize: 44, fontWeight: 900, lineHeight: 1, color: "#0d1b6e" }}>
-                {dashLoading ? "-" : dashboard?.total_pelatihan ?? 0}
+                {enrollLoading ? "-" : (enrollments?.length ?? dashboard?.total_pelatihan ?? 0)}
               </span>
               <span style={{ fontSize: 15, fontWeight: 500, opacity: 0.7, color: "#0d1b6e" }}>Kelas</span>
             </div>
@@ -333,7 +370,7 @@ export default function TrainingDashboardPage() {
             </div>
             <div style={{ marginTop: 14, background: "rgba(255,255,255,0.25)", borderRadius: 99, height: 5 }}>
               <div style={{
-                width: `${dashboard?.total_pelatihan ? Math.min(100, (completed.length / dashboard.total_pelatihan) * 100) : 0}%`,
+                width: `${(enrollments?.length ?? dashboard?.total_pelatihan ?? 0) ? Math.min(100, (completed.length / (enrollments?.length ?? dashboard?.total_pelatihan ?? 1)) * 100) : 0}%`,
                 background: "#fff", borderRadius: 99, height: 5, transition: "width 0.7s ease"
               }} />
             </div>

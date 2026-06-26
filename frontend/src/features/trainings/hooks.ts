@@ -71,8 +71,10 @@ export function useUserEnrollments(umkmId: string) {
     queryKey: trainingKeys.userEnrollments(umkmId),
     queryFn: () => getUserEnrollments(umkmId),
     enabled: !!umkmId,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 0,
     refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 }
 

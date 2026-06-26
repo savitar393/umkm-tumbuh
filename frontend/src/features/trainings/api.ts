@@ -22,6 +22,35 @@ import {
 const TRAINING_BASE = "/trainings";
 const ENROLLMENT_BASE = "/enrollments";
 
+async function resolveCurrentUmkmId(candidate?: string): Promise<string> {
+  try {
+    const response = await http.get("/profiles/me", { service: "user" });
+    const payload = response as {
+      profile?: {
+        id?: string;
+        umkm_id?: string;
+      };
+      id?: string;
+      umkm_id?: string;
+    };
+
+    const profile = payload.profile ?? payload;
+    const resolved = profile.umkm_id ?? profile.id ?? "";
+
+    if (resolved && resolved.startsWith("UMK")) {
+      return resolved;
+    }
+  } catch {
+    // Fall back to supplied candidate below.
+  }
+
+  if (candidate && candidate.startsWith("UMK")) {
+    return candidate;
+  }
+
+  throw new Error("UMKM ID tidak ditemukan. Silakan lengkapi/aktifkan profil UMKM terlebih dahulu.");
+}
+
 // ─── Training API Functions ───────────────────────────────────────────────────
 
 /**
@@ -59,34 +88,27 @@ export async function getTrainingDetail(trainingId: string): Promise<TrainingDet
  * @param data - Enrollment request data
  * @returns Promise<{ message: string; enrollment: Enrollment }>
  */
-export async function enrollTraining(data: EnrollRequest): Promise<{ message: string; enrollment: Enrollment }> {
-  const isDemo =
-    import.meta.env.VITE_DEMO_VERIFY_BYPASS === "true" ||
-    window.location.hostname === "app.umkmtumbuh.xyz";
+export async function enrollTraining(
+  data: EnrollRequest,
+): Promise<{ message: string; enrollment: Enrollment; already_enrolled?: boolean }> {
+  const umkmId = await resolveCurrentUmkmId(data.umkm_id);
 
-  if (isDemo) {
-    return EnrollResponseSchema.parse({
-      message: "Mode demo: pendaftaran pelatihan berhasil.",
-      enrollment: {
-        pendaftaran_pelatihan_id: `DEMO-${Date.now()}`,
-        umkm_id: data.umkm_id,
-        pelatihan_id: data.pelatihan_id,
-        judul_pelatihan: "Pelatihan Demo",
-        status_pendaftaran: "TERDAFTAR",
-        tanggal_daftar: new Date().toISOString(),
-        akses_mulai_at: new Date().toISOString(),
-        akses_berakhir_at: null,
-        terakhir_diakses_at: null,
-        progress_persen: 0,
-        modul_selesai: 0,
-        total_modul_snapshot: 1,
-        tanggal_selesai: null,
-      },
-    });
-  }
+  const beforeResponse = await http.get(`${ENROLLMENT_BASE}/user/${umkmId}`, { service: "training" });
+  const before = GetUserEnrollmentsResponseSchema.parse(beforeResponse).enrollments;
+  const alreadyBefore = before.some((e) => e.pelatihan_id === data.pelatihan_id);
 
-  const response = await http.post(`${TRAINING_BASE}/enroll`, data, { service: "training" });
-  return EnrollResponseSchema.parse(response);
+  const response = await http.post(
+    `${TRAINING_BASE}/enroll`,
+    { ...data, umkm_id: umkmId },
+    { service: "training" },
+  );
+
+  const parsed = EnrollResponseSchema.parse(response);
+
+  return {
+    ...parsed,
+    already_enrolled: alreadyBefore,
+  };
 }
 
 // ─── Enrollment API Functions ─────────────────────────────────────────────────
@@ -97,9 +119,15 @@ export async function enrollTraining(data: EnrollRequest): Promise<{ message: st
  * @returns Promise<Enrollment[]>
  */
 export async function getUserEnrollments(umkmId: string): Promise<Enrollment[]> {
-  const response = await http.get(`${ENROLLMENT_BASE}/user/${umkmId}`, { service: "training" });
+  const resolvedUmkmId = await resolveCurrentUmkmId(umkmId);
+  const response = await http.get(`${ENROLLMENT_BASE}/user/${resolvedUmkmId}`, { service: "training" });
   const validated = GetUserEnrollmentsResponseSchema.parse(response);
-  return validated.enrollments;
+
+  return [...validated.enrollments].sort((a, b) => {
+    const dateA = new Date(a.tanggal_daftar ?? 0).getTime();
+    const dateB = new Date(b.tanggal_daftar ?? 0).getTime();
+    return dateB - dateA;
+  });
 }
 
 /**

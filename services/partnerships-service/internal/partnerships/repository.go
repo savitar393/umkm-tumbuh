@@ -391,39 +391,58 @@ func (r *repository) FindUMKMList(ctx context.Context, search string, filterType
 	var args []interface{}
 	argIndex := 1
 
-	// Build search condition if search term is provided
 	if search != "" {
-		whereClause = fmt.Sprintf(" AND u.nama_umkm ILIKE $%d", argIndex)
+		whereClause += fmt.Sprintf(`
+			AND (
+				u.nama_umkm ILIKE $%d
+				OR COALESCE(u.produk_utama, '') ILIKE $%d
+				OR COALESCE(u.deskripsi_usaha, '') ILIKE $%d
+				OR COALESCE(juk.nama_jenis_umkm, '') ILIKE $%d
+				OR COALESCE(ku.nama_kategori_usaha, '') ILIKE $%d
+				OR COALESCE(l.kabupaten_kota, '') ILIKE $%d
+				OR COALESCE(l.provinsi, '') ILIKE $%d
+			)
+		`, argIndex, argIndex, argIndex, argIndex, argIndex, argIndex, argIndex)
 		args = append(args, "%"+search+"%")
 		argIndex++
 	}
 
-	// Build filter by type if filterType is provided
-	if filterType != "" && filterType != "all" {
-		whereClause += fmt.Sprintf(" AND juk.nama_jenis_umkm ILIKE $%d", argIndex)
+	if filterType != "" && filterType != "all" && filterType != "Semua" {
+		whereClause += fmt.Sprintf(`
+			AND (
+				COALESCE(juk.nama_jenis_umkm, '') ILIKE $%d
+				OR COALESCE(ku.nama_kategori_usaha, '') ILIKE $%d
+				OR COALESCE(u.jenis_umkm_id, '') ILIKE $%d
+				OR COALESCE(u.kategori_usaha_id, '') ILIKE $%d
+			)
+		`, argIndex, argIndex, argIndex, argIndex)
 		args = append(args, "%"+filterType+"%")
 		argIndex++
 	}
 
 	query := fmt.Sprintf(`
-		SELECT 
+		SELECT
 			u.umkm_id as id,
 			u.nama_umkm as name,
-			COALESCE(juk.nama_jenis_umkm, '') as type,
+			COALESCE(juk.nama_jenis_umkm, ku.nama_kategori_usaha, u.jenis_umkm_id, u.kategori_usaha_id, '') as type,
 			COALESCE(l.kabupaten_kota, '') as city,
 			COALESCE(l.provinsi, '') as province,
-			COALESCE(u.deskripsi_usaha, '') as description,
+			COALESCE(u.deskripsi_usaha, u.produk_utama, '') as description,
 			'' as operational_area,
 			COALESCE(u.logo_url, '') as logo_url,
 			COALESCE(u.foto_cover_url, '') as foto_cover_url,
 			COUNT(*) OVER() as total_count
 		FROM user_mgmt.master_umkm u
 		LEFT JOIN ref.ref_jenisumkm juk ON u.jenis_umkm_id = juk.jenis_umkm_id
+		LEFT JOIN ref.ref_kategoriusaha ku ON u.kategori_usaha_id = ku.kategori_usaha_id
 		LEFT JOIN user_mgmt.master_lokasi l ON u.lokasi_id = l.lokasi_id
-		WHERE u.status_verified = true 
-		AND u.is_deleted = false
-		%s
-		ORDER BY u.created_at DESC
+		WHERE u.is_deleted = false
+		  AND u.deleted_at IS NULL
+		  AND u.archived_at IS NULL
+		  AND u.status_verified = true
+		  AND u.status_umkm_id = 'AKTIF'
+		  %s
+		ORDER BY u.created_at DESC, u.nama_umkm ASC
 		LIMIT $%d OFFSET $%d
 	`, whereClause, argIndex, argIndex+1)
 
@@ -435,15 +454,21 @@ func (r *repository) FindUMKMList(ctx context.Context, search string, filterType
 	}
 	defer rows.Close()
 
-	var umkmList []UMKMListItem
-	var totalCount int
+	umkmList := make([]UMKMListItem, 0)
+	totalCount := 0
 
 	for rows.Next() {
 		var item UMKMListItem
 		err := rows.Scan(
-			&item.ID, &item.Name, &item.Type, &item.City,
-			&item.Province, &item.Description, &item.OperationalArea,
-			&item.LogoURL, &item.FotoCoverURL,
+			&item.ID,
+			&item.Name,
+			&item.Type,
+			&item.City,
+			&item.Province,
+			&item.Description,
+			&item.OperationalArea,
+			&item.LogoURL,
+			&item.FotoCoverURL,
 			&totalCount,
 		)
 		if err != nil {

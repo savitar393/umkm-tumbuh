@@ -70,6 +70,12 @@ export default function TrainingDetailPage() {
       { umkm_id: currentUmkmId, pelatihan_id: id },
       {
         onSuccess: (data) => {
+          if (data.already_enrolled) {
+            toast("Anda sudah terdaftar di pelatihan ini.");
+            navigate("/umkm/trainings");
+            return;
+          }
+
           toast.success("Berhasil mendaftar pelatihan!");
           navigate(`/umkm/trainings/${id}/success`, { state: { enrollment: data.enrollment } });
         },

@@ -192,9 +192,9 @@ func (r *Repository) EnrollUser(ctx context.Context, umkmID, pelatihanID string,
 			(
 				SELECT status_pendaftaran_pelatihan_id
 				FROM ref.ref_statuspendaftaranpelatihan
-				WHERE status_pendaftaran_pelatihan_id = 'TERDAFTAR'
-				   OR UPPER(nama_status_pendaftaran) = 'TERDAFTAR'
-				ORDER BY CASE WHEN status_pendaftaran_pelatihan_id = 'TERDAFTAR' THEN 0 ELSE 1 END
+				WHERE status_pendaftaran_pelatihan_id = 'AKTIF'
+				   OR UPPER(nama_status_pendaftaran) = 'AKTIF'
+				ORDER BY CASE WHEN status_pendaftaran_pelatihan_id = 'AKTIF' THEN 0 ELSE 1 END
 				LIMIT 1
 			),
 			$4,
@@ -224,7 +224,7 @@ func (r *Repository) EnrollUser(ctx context.Context, umkmID, pelatihanID string,
 
 	enrollment.UMKMID = umkmID
 	enrollment.PelatihanID = pelatihanID
-	enrollment.StatusPendaftaran = "TERDAFTAR"
+	enrollment.StatusPendaftaran = "AKTIF"
 	enrollment.ProgressPersen = 0
 	enrollment.ModulSelesai = 0
 	enrollment.TotalModulSnapshot = training.TotalModul

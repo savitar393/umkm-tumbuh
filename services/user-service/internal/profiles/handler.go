@@ -590,8 +590,10 @@ func (h *Handler) upsertUMKMProfile(ctx context.Context, accountID string, req U
 			email = EXCLUDED.email,
 			alamat = EXCLUDED.alamat,
 			status_aktif = TRUE,
+			status_umkm_id = 'AKTIF',
 			is_deleted = FALSE,
 			deleted_at = NULL,
+			archived_at = NULL,
 			updated_at = NOW()
 	`, ids.PelakuUMKMID, accountID, ownerName, nik, phoneNumber, account.Email, address)
 	if err != nil {
@@ -1522,15 +1524,20 @@ func (h *Handler) ListUMKM(w http.ResponseWriter, r *http.Request) {
 		SELECT
 			u.umkm_id,
 			u.nama_umkm,
-			k.nama_kategori_usaha,
-			l.kabupaten_kota,
-			l.provinsi,
-			u.deskripsi_usaha,
+			COALESCE(k.nama_kategori_usaha, j.nama_jenis_umkm, u.kategori_usaha_id, u.jenis_umkm_id, '') AS type,
+			COALESCE(l.kabupaten_kota, '') AS city,
+			COALESCE(l.provinsi, '') AS province,
+			COALESCE(u.deskripsi_usaha, u.produk_utama, '') AS description,
 			COUNT(*) OVER() as total_count
 		FROM user_mgmt.master_umkm u
-		JOIN user_mgmt.master_lokasi l ON l.lokasi_id = u.lokasi_id
-		JOIN ref.ref_kategoriusaha k ON k.kategori_usaha_id = u.kategori_usaha_id
+		LEFT JOIN user_mgmt.master_lokasi l ON l.lokasi_id = u.lokasi_id
+		LEFT JOIN ref.ref_kategoriusaha k ON k.kategori_usaha_id = u.kategori_usaha_id
+		LEFT JOIN ref.ref_jenisumkm j ON j.jenis_umkm_id = u.jenis_umkm_id
 		WHERE u.is_deleted = FALSE
+		  AND u.deleted_at IS NULL
+		  AND u.archived_at IS NULL
+		  AND u.status_verified = TRUE
+		  AND u.status_umkm_id = 'AKTIF'
 	`
 
 	var args []interface{}
@@ -1538,15 +1545,23 @@ func (h *Handler) ListUMKM(w http.ResponseWriter, r *http.Request) {
 
 	if searchQuery != "" {
 		query += fmt.Sprintf(
-			" AND (u.nama_umkm ILIKE $%d OR k.nama_kategori_usaha ILIKE $%d)",
-			argIndex, argIndex,
+			` AND (
+				u.nama_umkm ILIKE $%d
+				OR COALESCE(u.produk_utama, '') ILIKE $%d
+				OR COALESCE(u.deskripsi_usaha, '') ILIKE $%d
+				OR COALESCE(k.nama_kategori_usaha, '') ILIKE $%d
+				OR COALESCE(j.nama_jenis_umkm, '') ILIKE $%d
+				OR COALESCE(l.kabupaten_kota, '') ILIKE $%d
+				OR COALESCE(l.provinsi, '') ILIKE $%d
+			)`,
+			argIndex, argIndex, argIndex, argIndex, argIndex, argIndex, argIndex,
 		)
 		args = append(args, "%"+searchQuery+"%")
 		argIndex++
 	}
 
 	query += fmt.Sprintf(
-		" ORDER BY u.nama_umkm ASC LIMIT $%d OFFSET $%d",
+		" ORDER BY u.created_at DESC, u.nama_umkm ASC LIMIT $%d OFFSET $%d",
 		argIndex, argIndex+1,
 	)
 	args = append(args, limit, offset)
@@ -1560,22 +1575,25 @@ func (h *Handler) ListUMKM(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 
 	type umkmItem struct {
-		ID          string  `json:"id"`
-		Name        string  `json:"name"`
-		Type        string  `json:"type"`
-		City        string  `json:"city"`
-		Province    string  `json:"province"`
-		Description *string `json:"description"`
+		ID          string `json:"id"`
+		Name        string `json:"name"`
+		Type        string `json:"type"`
+		City        string `json:"city"`
+		Province    string `json:"province"`
+		Description string `json:"description"`
 	}
 
-	var umkmList []umkmItem
-	var totalCount int
+	umkmList := make([]umkmItem, 0)
+	totalCount := 0
 
 	for rows.Next() {
 		var item umkmItem
 		if err := rows.Scan(
-			&item.ID, &item.Name, &item.Type,
-			&item.City, &item.Province,
+			&item.ID,
+			&item.Name,
+			&item.Type,
+			&item.City,
+			&item.Province,
 			&item.Description,
 			&totalCount,
 		); err != nil {
