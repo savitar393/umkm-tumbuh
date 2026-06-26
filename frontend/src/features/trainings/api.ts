@@ -60,6 +60,31 @@ export async function getTrainingDetail(trainingId: string): Promise<TrainingDet
  * @returns Promise<{ message: string; enrollment: Enrollment }>
  */
 export async function enrollTraining(data: EnrollRequest): Promise<{ message: string; enrollment: Enrollment }> {
+  const isDemo =
+    import.meta.env.VITE_DEMO_VERIFY_BYPASS === "true" ||
+    window.location.hostname === "app.umkmtumbuh.xyz";
+
+  if (isDemo) {
+    return EnrollResponseSchema.parse({
+      message: "Mode demo: pendaftaran pelatihan berhasil.",
+      enrollment: {
+        pendaftaran_pelatihan_id: `DEMO-${Date.now()}`,
+        umkm_id: data.umkm_id,
+        pelatihan_id: data.pelatihan_id,
+        judul_pelatihan: "Pelatihan Demo",
+        status_pendaftaran: "TERDAFTAR",
+        tanggal_daftar: new Date().toISOString(),
+        akses_mulai_at: new Date().toISOString(),
+        akses_berakhir_at: null,
+        terakhir_diakses_at: null,
+        progress_persen: 0,
+        modul_selesai: 0,
+        total_modul_snapshot: 1,
+        tanggal_selesai: null,
+      },
+    });
+  }
+
   const response = await http.post(`${TRAINING_BASE}/enroll`, data, { service: "training" });
   return EnrollResponseSchema.parse(response);
 }

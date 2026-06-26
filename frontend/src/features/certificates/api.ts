@@ -10,6 +10,24 @@ import {
 } from "./types";
 
 export async function getUserCertificateDashboard(umkmId: string): Promise<CertificateDashboard> {
+  const isDemo =
+    import.meta.env.VITE_DEMO_VERIFY_BYPASS === "true" ||
+    window.location.hostname === "app.umkmtumbuh.xyz";
+
+  if (isDemo) {
+    return CertificateDashboardSchema.parse({
+      umkm_id: umkmId,
+      nama_umkm: "",
+      pelaku_nama: "",
+      total_pelatihan: 0,
+      pelatihan_selesai: 0,
+      total_sertifikat: 0,
+      sertifikat_terbit: 0,
+      pelatihan_terakhir_selesai: null,
+      sertifikat_terakhir_terbit: null,
+    });
+  }
+
   const response = await http.get(`/certificates/user/${umkmId}/dashboard`, { service: "certificate" });
   return CertificateDashboardSchema.parse(response);
 }
@@ -31,7 +49,7 @@ export async function requestCertificate(pendaftaranPelatihanId: string): Promis
 }
 
 function getCertificateBaseUrl(): string {
-  return import.meta.env.VITE_CERTIFICATE_API_BASE_URL ?? import.meta.env.VITE_TRAINING_API_BASE_URL ?? "http://localhost:8084/api/v1";
+  return import.meta.env.VITE_CERTIFICATE_API_BASE_URL ?? import.meta.env.VITE_TRAINING_API_BASE_URL ?? "/api/v1";
 }
 
 export function getCertificateDownloadUrl(certId: number): string {

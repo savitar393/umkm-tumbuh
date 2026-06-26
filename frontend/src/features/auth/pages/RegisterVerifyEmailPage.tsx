@@ -30,7 +30,11 @@ export default function RegisterVerifyEmailPage() {
     return role === "MITRA" ? "/register/mitra/details" : "/register/umkm/details";
   }, [role]);
 
-  const [code, setCode] = useState("");
+  const isDemoBypassEnabled =
+    import.meta.env.VITE_DEMO_VERIFY_BYPASS === "true" ||
+    window.location.hostname === "app.umkmtumbuh.xyz";
+
+  const [code, setCode] = useState(isDemoBypassEnabled ? "000000" : "");
   const [devCode, setDevCode] = useState(state.devCode ?? "");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -46,7 +50,33 @@ export default function RegisterVerifyEmailPage() {
     setMessage("");
     setError("");
 
-    if (!code.trim()) {
+    const cleanCode = code.trim();
+
+    if (isDemoBypassEnabled) {
+      try {
+        const rawUser = localStorage.getItem("current_user");
+        if (rawUser) {
+          const parsedUser = JSON.parse(rawUser);
+          parsedUser.email_verified_at = parsedUser.email_verified_at || new Date().toISOString();
+          localStorage.setItem("current_user", JSON.stringify(parsedUser));
+        }
+      } catch {
+        // Demo bypass should not fail because of localStorage parsing.
+      }
+
+      setMessage("Mode demo: email dianggap berhasil diverifikasi.");
+
+      navigate(nextPath, {
+        replace: true,
+        state: {
+          message: "Mode demo: email dianggap berhasil diverifikasi. Silakan lengkapi data profil.",
+        },
+      });
+
+      return;
+    }
+
+    if (!cleanCode) {
       setError("Kode verifikasi wajib diisi.");
       return;
     }
@@ -54,7 +84,7 @@ export default function RegisterVerifyEmailPage() {
     setLoading(true);
 
     try {
-      const response = await confirmEmailVerification(email, code.trim());
+      const response = await confirmEmailVerification(email, cleanCode);
       setMessage(response.message || "Email berhasil diverifikasi.");
 
       navigate(nextPath, {
@@ -129,7 +159,11 @@ export default function RegisterVerifyEmailPage() {
             </p>
           </div>
 
-          {devCode ? (
+          {isDemoBypassEnabled ? (
+            <div className="form-alert success" style={{ marginBottom: 18 }}>
+              Mode demo: kode otomatis <strong>000000</strong>. Klik Verifikasi Email untuk lanjut.
+            </div>
+          ) : devCode ? (
             <div className="form-alert success" style={{ marginBottom: 18 }}>
               Dev mode code: <strong>{devCode}</strong>
             </div>
@@ -144,7 +178,6 @@ export default function RegisterVerifyEmailPage() {
                 inputMode="numeric"
                 maxLength={6}
                 placeholder="Masukkan 6 digit kode"
-                required
               />
             </label>
 

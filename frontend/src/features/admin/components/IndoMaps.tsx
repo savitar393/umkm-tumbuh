@@ -189,15 +189,15 @@ export default function IndoMaps({ mapData }: Props) {
           projection="geoMercator"
           projectionConfig={{
             center: [118, -2.5],
-            scale: 3000,
+            scale: 950,
           }}
           width={980}
-          height={520}
-          style={{ 
-            width: "100%", 
-            height: "auto", 
+          height={440}
+          style={{
+            width: "100%",
+            height: "auto",
             display: "block",
-            background: "#ffffff"
+            background: "#f8fafc"
           }}
         >
           <ZoomableGroup
@@ -205,7 +205,7 @@ export default function IndoMaps({ mapData }: Props) {
             onMoveEnd={({ zoom }) => setZoom(zoom)}
             center={[118, -2.5]}
             minZoom={1}
-            maxZoom={8}
+            maxZoom={4}
           >
             <Geographies geography={GEO_URL}>
               {({ geographies }) => {
@@ -227,14 +227,16 @@ export default function IndoMaps({ mapData }: Props) {
                       fill={fill}
                       stroke="#ffffff"
                       strokeWidth={0.6}
+                      fillRule="evenodd"
+                      clipRule="evenodd"
                       style={{
                         default: { outline: "none", transition: "all 0.2s" },
                         hover: {
-                          fill: "#f59e0b",
+                          fill: "#f97316",
                           outline: "none",
                           cursor: "pointer",
-                          strokeWidth: 2,
-                          stroke: "#1e293b"
+                          strokeWidth: 1.5,
+                          stroke: "#0f172a"
                         },
                         pressed: { outline: "none" },
                       }}

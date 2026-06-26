@@ -341,8 +341,17 @@ export type TrainingListResponse = {
   };
 };
 
-export function getTrainingList() {
-  return http<TrainingListResponse>("/admin/training/list", { service: "training" });
+export async function getTrainingList() {
+  const res = await http<AdminTrainingListResponse>("/admin/training?page=1&limit=100", {
+    service: "training",
+  });
+
+  return {
+    status: "success",
+    data: {
+      trainings: res.trainings ?? [],
+    },
+  } satisfies TrainingListResponse;
 }
 
 export function getEvaluationData(trainingId: string) {

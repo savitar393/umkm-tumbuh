@@ -5,7 +5,7 @@ import { Search, CheckCircle, XCircle, Download, FileText, Clock, Award, Plus, F
 import { toast } from "sonner";
 import AdminLayout from "../components/AdminLayout";
 import type { Certificate } from "../../certificates/types";
-import { getCertificateDownloadUrl } from "../../certificates/api";
+import { downloadCertificate } from "../../certificates/api";
 import {
   getCertificateStats,
   listCertificates,
@@ -289,7 +289,7 @@ export default function AdminCertificatesPage() {
 
         {/* Table header */}
         <div style={{
-          display: "grid", gridTemplateColumns: "2fr 1.2fr 1fr 120px 120px",
+          display: "grid", gridTemplateColumns: "2fr 1.2fr 1fr 140px 220px",
           padding: "14px 28px", borderBottom: "1px solid #f3f4f6",
           fontSize: 11, fontWeight: 700, color: "#9ca3af",
           letterSpacing: "0.05em", textTransform: "uppercase",
@@ -321,7 +321,7 @@ export default function AdminCertificatesPage() {
           <div
             key={cert.sertifikat_id}
             style={{
-              display: "grid", gridTemplateColumns: "2fr 1.2fr 1fr 120px 120px",
+              display: "grid", gridTemplateColumns: "2fr 1.2fr 1fr 140px 220px",
               padding: "16px 28px", borderBottom: "1px solid #f9fafb",
               alignItems: "center", fontSize: 13,
             }}
@@ -356,23 +356,23 @@ export default function AdminCertificatesPage() {
 
             {/* Aksi */}
             <div style={{ display: "flex", gap: 6 }}>
-              {cert.nama_status_sertifikat === "DIAJUKAN" && (
+              {String(cert.nama_status_sertifikat).trim().toUpperCase() === "DIAJUKAN" && (
                 <>
                   <button
                     onClick={() => handleApprove(cert.sertifikat_id)}
-                    disabled={actionLoadingId === cert.sertifikat_id}
+                    disabled={actionLoadingId === cert.sertifikat_id || Number(cert.progress_persen ?? 0) < 100}
                     style={{
                       display: "inline-flex", alignItems: "center", gap: 4,
                       padding: "6px 12px", borderRadius: 8,
                       background: "#10b981", border: "none",
                       color: "#fff", fontSize: 12, fontWeight: 600,
                       cursor: "pointer", fontFamily: "inherit",
-                      opacity: actionLoadingId === cert.sertifikat_id ? 0.6 : 1,
+                      opacity: actionLoadingId === cert.sertifikat_id || Number(cert.progress_persen ?? 0) < 100 ? 0.55 : 1,
                     }}
-                    title="Setujui"
+                    title={Number(cert.progress_persen ?? 0) < 100 ? `Progress baru ${cert.progress_persen}%` : "Setujui"}
                   >
                     <CheckCircle size={14} />
-                    Setujui
+                    {Number(cert.progress_persen ?? 0) < 100 ? `${cert.progress_persen}%` : "Setujui"}
                   </button>
                   <button
                     onClick={() => handleReject(cert.sertifikat_id)}
@@ -392,23 +392,29 @@ export default function AdminCertificatesPage() {
                   </button>
                 </>
               )}
-              {cert.nama_status_sertifikat === "TERBIT" && cert.dokumen_url && (
-                <a
-                  href={getCertificateDownloadUrl(cert.sertifikat_id)}
+              {String(cert.nama_status_sertifikat).trim().toUpperCase() === "TERBIT" && cert.dokumen_url && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    downloadCertificate(cert.sertifikat_id).catch((error) => {
+                      toast.error(error instanceof Error ? error.message : "Gagal mengunduh sertifikat");
+                    });
+                  }}
                   style={{
                     display: "inline-flex", alignItems: "center", gap: 6,
                     padding: "6px 14px", borderRadius: 8,
                     background: "#eef3ff", border: "none",
                     color: "#1f45b6", fontSize: 12, fontWeight: 600,
                     cursor: "pointer", textDecoration: "none",
+                    fontFamily: "inherit",
                   }}
                   title="Unduh Sertifikat"
                 >
                   <Download size={14} />
                   Unduh
-                </a>
+                </button>
               )}
-              {cert.nama_status_sertifikat === "DITOLAK" && cert.catatan_validasi && (
+              {String(cert.nama_status_sertifikat).trim().toUpperCase() === "DITOLAK" && cert.catatan_validasi && (
                 <span style={{ fontSize: 11, color: "#9ca3af" }} title={cert.catatan_validasi}>
                   {cert.catatan_validasi.length > 30
                     ? cert.catatan_validasi.substring(0, 30) + "…"

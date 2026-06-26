@@ -12,11 +12,16 @@ export default defineConfig({
     },
   },
   server: {
+    allowedHosts: ["app.umkmtumbuh.xyz"],
     port: 5173,
     strictPort: true,
     proxy: {
       "/api/v1/auth": {
         target: "http://localhost:8080",
+        changeOrigin: true,
+      },
+      "/api/v1/admin/training": {
+        target: "http://127.0.0.1:8084",
         changeOrigin: true,
       },
       "/api/v1/admin": {
@@ -50,15 +55,15 @@ export default defineConfig({
       },
 
       "/api/v1/partnerships": {
-        target: "http://localhost:8082",
+        target: "http://127.0.0.1:8082",
         changeOrigin: true,
       },
       "/api/v1/mitra": {
-        target: "http://localhost:8081",
+        target: "http://127.0.0.1:8082",
         changeOrigin: true,
       },
       "/api/v1/umkm": {
-        target: "http://localhost:8081",
+        target: "http://127.0.0.1:8082",
         changeOrigin: true,
       },
       "/api/v1/documents": {

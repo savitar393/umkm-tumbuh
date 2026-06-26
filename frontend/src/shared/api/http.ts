@@ -3,35 +3,35 @@ import { getAccessToken } from "../auth/currentUser";
 // ⭐ PASTIKAN base URL mengarah ke backend (port 8082)
 // JANGAN pakai relative path!
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8082/api/v1";
+  import.meta.env.VITE_API_BASE_URL ?? "/api/v1";
 
 console.log("[HTTP Client] API_BASE_URL:", API_BASE_URL);
 
 const AUTH_API_BASE_URL =
   import.meta.env.VITE_AUTH_API_BASE_URL ??
-  "http://localhost:8080/api/v1";
+  "/api/v1";
 
 const ADMIN_API_BASE_URL =
   import.meta.env.VITE_ADMIN_API_BASE_URL ??
-  "http://localhost:8080/api/v1";
+  "/api/v1";
 
 const USER_API_BASE_URL =
   import.meta.env.VITE_USER_API_BASE_URL ??
   import.meta.env.VITE_USER_SERVICE_URL ??
-  "http://localhost:8081/api/v1";
+  "/api/v1";
 
 const PARTNERSHIP_API_BASE_URL =
   import.meta.env.VITE_PARTNERSHIP_API_BASE_URL ??
-  "http://localhost:8082/api/v1";
+  "/api/v1";
 
 const DOCUMENT_API_BASE_URL =
   import.meta.env.VITE_DOCUMENT_API_BASE_URL ??
-  "http://localhost:8083/api/v1";
+  "/api/v1";
 
 const TRAINING_API_BASE_URL =
   import.meta.env.VITE_TRAINING_API_BASE_URL ??
   import.meta.env.VITE_TRAINING_API_URL ??
-  "http://localhost:8084/api/v1";
+  "/api/v1";
 
 const CERTIFICATE_API_BASE_URL =
   import.meta.env.VITE_CERTIFICATE_API_BASE_URL ??

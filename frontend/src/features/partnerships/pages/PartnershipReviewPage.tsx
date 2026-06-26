@@ -339,13 +339,74 @@ export default function PartnershipReviewPage() {
 
   const attachments = useMemo(() => getAttachments(partnership), [partnership]);
 
-  async function handleOpenAttachment(documentId: string) {
+  async function handleOpenAttachment(documentId: string, fileName = "dokumen-kemitraan.pdf") {
+    const token =
+      localStorage.getItem("access_token") ||
+      localStorage.getItem("token") ||
+      "";
+
+    // Open tab immediately so browser does not block it as a popup.
+    const previewWindow = window.open("about:blank", "_blank");
+    previewWindow?.document.write(`
+      <html>
+        <head><title>Membuka dokumen...</title></head>
+        <body style="font-family: sans-serif; padding: 24px;">
+          Membuka dokumen ${fileName}...
+        </body>
+      </html>
+    `);
+
+    const candidates = [
+      `/api/v1/documents/${documentId}/view`,
+      `/api/v1/public/documents/${documentId}/view`,
+      `/api/v1/documents/${documentId}/download`,
+    ];
+
     try {
-      const response = await partnershipsApi.getDocumentUrl(documentId);
-      if (response.success && response.data.url) {
-        window.open(response.data.url, "_blank", "noopener,noreferrer");
+      let fileResponse: Response | null = null;
+      let lastMessage = "Gagal membuka dokumen.";
+
+      for (const url of candidates) {
+        const response = await fetch(url, {
+          method: "GET",
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+
+        if (response.ok) {
+          fileResponse = response;
+          break;
+        }
+
+        try {
+          const errorJson = await response.clone().json();
+          lastMessage = errorJson.error || errorJson.message || lastMessage;
+        } catch {
+          lastMessage = `${response.status} ${response.statusText}`;
+        }
       }
+
+      if (!fileResponse) {
+        throw new Error(lastMessage);
+      }
+
+      const sourceBlob = await fileResponse.blob();
+      const contentType =
+        fileResponse.headers.get("content-type") ||
+        sourceBlob.type ||
+        "application/pdf";
+
+      const blob = new Blob([sourceBlob], { type: contentType });
+      const blobUrl = URL.createObjectURL(blob);
+
+      if (previewWindow) {
+        previewWindow.location.href = blobUrl;
+      } else {
+        window.open(blobUrl, "_blank");
+      }
+
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
     } catch (err) {
+      if (previewWindow) previewWindow.close();
       window.alert(err instanceof Error ? err.message : "Gagal membuka dokumen.");
     }
   }
@@ -533,7 +594,7 @@ export default function PartnershipReviewPage() {
                           type="button"
                           className="partnership-review-document"
                           key={item.document_id}
-                          onClick={() => item.document_id && handleOpenAttachment(item.document_id)}
+                          onClick={() => item.document_id && handleOpenAttachment(item.document_id, item.original_filename || item.file_name || item.document_id)}
                         >
                           <ScrollText size={18} />
                           <span>

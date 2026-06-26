@@ -233,13 +233,7 @@ services:
         condition: service_started
     volumes:
       - ./garage/bootstrap.sh:/bootstrap.sh:ro
-    command: [ "sh", "/bootstrap.sh" ]
-    environment:
-      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:-CHANGE_ME_LOCAL_GARAGE_ADMIN_TOKEN}
-      OBJECT_STORAGE_ACCESS_KEY: ${OBJECT_STORAGE_ACCESS_KEY:-umkm_garage_access_key}
-      OBJECT_STORAGE_SECRET_KEY: ${OBJECT_STORAGE_SECRET_KEY:-umkm_garage_secret_key}
-    networks:
-      - umkm_network
+      - garage_data:/var/lib/garage
 
   document-service:
     build:
