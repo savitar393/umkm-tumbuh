@@ -42,7 +42,7 @@ export default function UserLayout({ children, role, title, subtitle }: Props) {
       // Local logout should still happen even if backend logout fails.
     } finally {
       clearAuthStorage();
-      navigate("/", { replace: true });
+      navigate("/login", { replace: true });
     }
   }
 

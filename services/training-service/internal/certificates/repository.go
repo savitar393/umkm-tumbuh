@@ -32,12 +32,30 @@ func NewRepository(db *pgxpool.Pool) *Repository {
 func (r *Repository) GetUserCertificateDashboard(ctx context.Context, umkmID string) (*CertificateDashboardResponse, error) {
 	query := `
 		SELECT
-			umkm_id, nama_umkm, pelaku_nama,
-			total_pelatihan, pelatihan_selesai,
-			total_sertifikat, sertifikat_terbit,
-			pelatihan_terakhir_selesai, sertifikat_terakhir_terbit
-		FROM training.v_user_certificate_dashboard
-		WHERE umkm_id = $1
+			mu.umkm_id,
+			mu.nama_umkm,
+			COALESCE(mpu.nama_pelaku, '') AS pelaku_nama,
+			COUNT(DISTINCT tp.pendaftaran_pelatihan_id)::int AS total_pelatihan,
+			COUNT(DISTINCT tp.pendaftaran_pelatihan_id) FILTER (
+				WHERE tp.progress_persen >= 100
+				   OR tp.status_pendaftaran_pelatihan_id = 'SELESAI'
+			)::int AS pelatihan_selesai,
+			COUNT(DISTINCT ts.sertifikat_id)::int AS total_sertifikat,
+			COUNT(DISTINCT ts.sertifikat_id) FILTER (
+				WHERE ts.status_sertifikat_id = 'TERBIT'
+			)::int AS sertifikat_terbit,
+			MAX(tp.tanggal_selesai) AS pelatihan_terakhir_selesai,
+			MAX(ts.tanggal_terbit) AS sertifikat_terakhir_terbit
+		FROM user_mgmt.master_umkm mu
+		LEFT JOIN user_mgmt.master_pelakuumkm mpu
+			ON mpu.pelaku_umkm_id = mu.pelaku_umkm_id
+		LEFT JOIN training.transaksi_pendaftaranpelatihan tp
+			ON tp.umkm_id = mu.umkm_id
+		LEFT JOIN training.transaksi_sertifikatpelatihan ts
+			ON ts.pendaftaran_pelatihan_id = tp.pendaftaran_pelatihan_id
+		WHERE mu.umkm_id = $1
+		  AND mu.is_deleted = FALSE
+		GROUP BY mu.umkm_id, mu.nama_umkm, mpu.nama_pelaku
 	`
 
 	var dashboard CertificateDashboardResponse

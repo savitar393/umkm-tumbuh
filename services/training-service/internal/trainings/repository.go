@@ -182,10 +182,26 @@ func (r *Repository) EnrollUser(ctx context.Context, umkmID, pelatihanID string,
 
 	query := `
 		INSERT INTO training.transaksi_pendaftaranpelatihan (
-			pendaftaran_pelatihan_id, umkm_id, pelatihan_id, 
-			status_pendaftaran_pelatihan_id, tanggal_daftar, 
+			pendaftaran_pelatihan_id, umkm_id, pelatihan_id,
+			status_pendaftaran_pelatihan_id, tanggal_daftar,
 			akses_mulai_at, akses_berakhir_at, total_modul_snapshot
-		) VALUES ($1, $2, $3, 'TERDAFTAR', $4, $5, $6, $7)
+		) VALUES (
+			$1,
+			$2,
+			$3,
+			(
+				SELECT status_pendaftaran_pelatihan_id
+				FROM ref.ref_statuspendaftaranpelatihan
+				WHERE status_pendaftaran_pelatihan_id = 'TERDAFTAR'
+				   OR UPPER(nama_status_pendaftaran) = 'TERDAFTAR'
+				ORDER BY CASE WHEN status_pendaftaran_pelatihan_id = 'TERDAFTAR' THEN 0 ELSE 1 END
+				LIMIT 1
+			),
+			$4,
+			$5,
+			$6,
+			$7
+		)
 		RETURNING pendaftaran_pelatihan_id, tanggal_daftar, akses_mulai_at, akses_berakhir_at
 	`
 

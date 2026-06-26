@@ -418,7 +418,14 @@ func (h *Handler) GetUMKMDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	dateFrom := r.URL.Query().Get("from")
+	if dateFrom == "" {
+		dateFrom = r.URL.Query().Get("date_from")
+	}
+
 	dateTo := r.URL.Query().Get("to")
+	if dateTo == "" {
+		dateTo = r.URL.Query().Get("date_to")
+	}
 
 	repo := NewRepository(h.DB)
 	svc := NewService(repo)
@@ -441,7 +448,14 @@ func (h *Handler) GetMitraDashboard(w http.ResponseWriter, r *http.Request) {
 
 	selectedUMKMID := r.URL.Query().Get("umkm_id")
 	dateFrom := r.URL.Query().Get("from")
+	if dateFrom == "" {
+		dateFrom = r.URL.Query().Get("date_from")
+	}
+
 	dateTo := r.URL.Query().Get("to")
+	if dateTo == "" {
+		dateTo = r.URL.Query().Get("date_to")
+	}
 
 	repo := NewRepository(h.DB)
 	svc := NewService(repo)

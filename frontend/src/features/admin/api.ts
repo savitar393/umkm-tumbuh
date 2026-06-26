@@ -349,7 +349,16 @@ export async function getTrainingList() {
   return {
     status: "success",
     data: {
-      trainings: res.trainings ?? [],
+      trainings: (res.trainings ?? []).map((training) => ({
+        pelatihan_id: training.pelatihan_id,
+        kode_pelatihan: training.kode_pelatihan,
+        judul_pelatihan: training.judul_pelatihan,
+        jenis_pelatihan: training.jenis_pelatihan,
+        status_pelatihan: training.status_pelatihan,
+        total_modul: training.total_modul ?? 0,
+        jumlah_peserta: training.jumlah_peserta ?? training.jumlah_alumni ?? 0,
+        mentor_nama: training.mentor_nama ?? null,
+      })),
     },
   } satisfies TrainingListResponse;
 }
@@ -418,6 +427,7 @@ export type AdminTrainingItem = {
   assignments?: TrainingAssignmentItem[];
 
   jumlah_alumni: number;
+  jumlah_peserta?: number;
   created_at: string;
   updated_at: string;
 };
