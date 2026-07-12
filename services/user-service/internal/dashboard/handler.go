@@ -2,7 +2,6 @@ package dashboard
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
@@ -386,6 +385,21 @@ func currentUMKMUser(w http.ResponseWriter, r *http.Request) (middleware.Current
 	return user, true
 }
 
+func currentMitraUser(w http.ResponseWriter, r *http.Request) (middleware.CurrentUser, bool) {
+	user, ok := middleware.CurrentUserFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+		return middleware.CurrentUser{}, false
+	}
+
+	if user.Role != "MITRA" {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "Fitur ini hanya untuk Mitra."})
+		return middleware.CurrentUser{}, false
+	}
+
+	return user, true
+}
+
 func handleError(w http.ResponseWriter, err error, fallback string) {
 	if errors.Is(err, pgx.ErrNoRows) {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": fallback})
@@ -396,8 +410,47 @@ func handleError(w http.ResponseWriter, err error, fallback string) {
 	writeJSON(w, http.StatusInternalServerError, map[string]string{"error": fallback})
 }
 
-func writeJSON(w http.ResponseWriter, statusCode int, payload any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-	_ = json.NewEncoder(w).Encode(payload)
+// GetUMKMDashboard — GET /api/v1/dashboard/umkm?from=YYYY-MM-DD&to=YYYY-MM-DD
+func (h *Handler) GetUMKMDashboard(w http.ResponseWriter, r *http.Request) {
+	user, ok := currentUMKMUser(w, r)
+	if !ok {
+		return
+	}
+
+	dateFrom := r.URL.Query().Get("from")
+	dateTo := r.URL.Query().Get("to")
+
+	repo := NewRepository(h.DB)
+	svc := NewService(repo)
+
+	data, err := svc.GetUMKMDashboard(r.Context(), user.ID, dateFrom, dateTo)
+	if err != nil {
+		handleError(w, err, "Gagal memuat data dashboard.")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, data)
+}
+
+// GetMitraDashboard — GET /api/v1/dashboard/mitra?umkm_id=...
+func (h *Handler) GetMitraDashboard(w http.ResponseWriter, r *http.Request) {
+	user, ok := currentMitraUser(w, r)
+	if !ok {
+		return
+	}
+
+	selectedUMKMID := r.URL.Query().Get("umkm_id")
+	dateFrom := r.URL.Query().Get("from")
+	dateTo := r.URL.Query().Get("to")
+
+	repo := NewRepository(h.DB)
+	svc := NewService(repo)
+
+	data, err := svc.GetMitraDashboard(r.Context(), user.ID, selectedUMKMID, dateFrom, dateTo)
+	if err != nil {
+		handleError(w, err, "Gagal memuat data dashboard mitra.")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, data)
 }

@@ -5,7 +5,7 @@ import Header from "../../../shared/components/Header";
 import Footer from "../../../shared/components/Footer";
 import { useTrainingStore } from "../store";
 import { useUserCertificates, useRequestCertificate } from "../../certificates/hooks";
-import { getCertificateDownloadUrl } from "../../certificates/api";
+import { downloadCertificate } from "../../certificates/api";
 import { useUserEnrollments } from "../hooks";
 
 const relatedContent = [
@@ -56,7 +56,7 @@ export default function TrainingAfterSuccessPage() {
 
   const cert = (certificates || []).find((c) => c.pelatihan_id === id);
   const enrollment = (enrollments || []).find((e) => e.pelatihan_id === id);
-  const progress = enrollment?.progress_persen || 65;
+  const progress = enrollment?.progress_persen ?? 65;
   const timelineSteps = getTimelineSteps(cert?.status_sertifikat_id, cert?.tanggal_terbit || undefined, cert?.catatan_validasi || undefined);
 
   useEffect(() => {
@@ -155,7 +155,7 @@ export default function TrainingAfterSuccessPage() {
                 <div>
                   <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#0f172a" }}>Sertifikat</p>
                   <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748b" }}>
-                    {cert?.nomor_sertifikat ? `No: ${cert.nomor_sertifikat}` : "Terbit otomatis via Blockchain"}
+                    {cert?.nomor_sertifikat ? `No: ${cert.nomor_sertifikat}` : "Menunggu verifikasi admin"}
                   </p>
                 </div>
               </div>
@@ -166,7 +166,7 @@ export default function TrainingAfterSuccessPage() {
               )}
               {cert?.status_sertifikat_id === "TERBIT" && (
                 <button
-                  onClick={() => window.open(getCertificateDownloadUrl(cert.sertifikat_id), "_blank")}
+                  onClick={() => downloadCertificate(cert.sertifikat_id)}
                   style={{
                     marginTop: 12, width: "100%", padding: "10px 16px",
                     background: "linear-gradient(135deg, #1a3fa4, #1e3a8a)", color: "#fff",

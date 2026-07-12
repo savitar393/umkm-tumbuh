@@ -18,5 +18,20 @@ WHERE status_umkm_id IN ('AKTIF', 'NONAKTIF', 'SUSPEND', 'ARSIP');
 DELETE FROM ref.ref_skalausaha
 WHERE skala_usaha_id IN ('MIKRO', 'KECIL', 'MENENGAH');
 
-DELETE FROM ref.ref_jenisumkm
-WHERE jenis_umkm_id = 'UMKM';
+-- +goose Up
+
+INSERT INTO ref.ref_jenisumkm (jenis_umkm_id, nama_jenis_umkm)
+VALUES
+    ('KULINER', 'Kuliner'),
+    ('FASHION', 'Fashion'),
+    ('KRIYA', 'Kriya'),
+    ('AGRIBISNIS', 'Agribisnis'),
+    ('JASA', 'Jasa'),
+    ('KECANTIKAN', 'Kecantikan'),
+    ('OTOMOTIF', 'Otomotif'),
+    ('DIGITAL', 'Digital'),
+    ('EDUKASI', 'Edukasi'),
+    ('KESEHATAN', 'Kesehatan'),
+    ('PERDAGANGAN', 'Perdagangan'),
+    ('KERAJINAN', 'Kerajinan')
+ON CONFLICT (jenis_umkm_id) DO NOTHING;

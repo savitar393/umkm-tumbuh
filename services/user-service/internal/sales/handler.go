@@ -54,6 +54,11 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if transactionDate.After(todayInJakarta()) {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Tanggal laporan tidak boleh melebihi hari ini."})
+		return
+	}
+
 	umkmID, err := h.getUMKMID(r.Context(), user.ID)
 	if err != nil {
 		handleError(w, err, "Profil UMKM belum dibuat.")
@@ -67,8 +72,8 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback(r.Context())
 
-	saleID := newID("TRX")
-	transactionNumber := newTransactionNumber()
+	saleID := ""
+	transactionNumber := ""
 	totalOmzet := 0.0
 	totalItem := 0
 
@@ -159,25 +164,79 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = tx.Exec(r.Context(), `
-		INSERT INTO dashboard.transaksi_penjualan (
+	var existingTotalOmzet float64
+	var existingTotalProfit float64
+	var existingTotalItem int
+
+	err = tx.QueryRow(r.Context(), `
+		SELECT
 			penjualan_id,
-			umkm_id,
-			tanggal_transaksi,
 			nomor_transaksi,
 			total_omzet,
 			total_laba,
-			total_item,
-			catatan,
-			status_transaksi,
-			created_by_akun_id
-		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'FINAL', $9)
-	`, saleID, umkmID, transactionDate, transactionNumber,
-		totalOmzet, req.TotalProfit, totalItem, nullableTrim(req.Note), user.ID)
+			total_item
+		FROM dashboard.transaksi_penjualan
+		WHERE umkm_id = $1
+		AND tanggal_transaksi = $2
+		AND status_transaksi <> 'CANCELLED'
+		ORDER BY created_at ASC
+		LIMIT 1
+		FOR UPDATE
+	`, umkmID, transactionDate).Scan(
+		&saleID,
+		&transactionNumber,
+		&existingTotalOmzet,
+		&existingTotalProfit,
+		&existingTotalItem,
+	)
+
+	note := nullableTrim(req.Note)
+
 	if err != nil {
-		handleError(w, err, "Gagal menyimpan transaksi penjualan.")
-		return
+		if !errors.Is(err, pgx.ErrNoRows) {
+			handleError(w, err, "Gagal memeriksa laporan harian.")
+			return
+		}
+
+		saleID = newID("TRX")
+		transactionNumber = newTransactionNumber()
+
+		_, err = tx.Exec(r.Context(), `
+			INSERT INTO dashboard.transaksi_penjualan (
+				penjualan_id,
+				umkm_id,
+				tanggal_transaksi,
+				nomor_transaksi,
+				total_omzet,
+				total_laba,
+				total_item,
+				catatan,
+				status_transaksi,
+				created_by_akun_id
+			)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'FINAL', $9)
+		`, saleID, umkmID, transactionDate, transactionNumber,
+			totalOmzet, req.TotalProfit, totalItem, note, user.ID)
+		if err != nil {
+			handleError(w, err, "Gagal menyimpan laporan penjualan harian.")
+			return
+		}
+	} else {
+		_, err = tx.Exec(r.Context(), `
+			UPDATE dashboard.transaksi_penjualan
+			SET
+				total_omzet = total_omzet + $2,
+				total_laba = total_laba + $3,
+				total_item = total_item + $4,
+				catatan = COALESCE($5::text, catatan),
+				status_transaksi = 'FINAL',
+				updated_at = NOW()
+			WHERE penjualan_id = $1
+		`, saleID, totalOmzet, req.TotalProfit, totalItem, note)
+		if err != nil {
+			handleError(w, err, "Gagal memperbarui laporan penjualan harian.")
+			return
+		}
 	}
 
 	for _, item := range preparedItems {
@@ -473,13 +532,34 @@ func currentUMKMUser(w http.ResponseWriter, r *http.Request) (middleware.Current
 	return user, true
 }
 
-func parseTransactionDate(value string) (time.Time, error) {
-	value = strings.TrimSpace(value)
-	if value == "" {
-		return time.Now(), nil
+func todayInJakarta() time.Time {
+	loc, err := time.LoadLocation("Asia/Jakarta")
+	if err != nil {
+		loc = time.FixedZone("WIB", 7*60*60)
 	}
 
-	return time.Parse("2006-01-02", value)
+	now := time.Now().In(loc)
+	return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
+}
+
+func parseTransactionDate(value string) (time.Time, error) {
+	loc, err := time.LoadLocation("Asia/Jakarta")
+	if err != nil {
+		loc = time.FixedZone("WIB", 7*60*60)
+	}
+
+	value = strings.TrimSpace(value)
+	if value == "" {
+		now := time.Now().In(loc)
+		return time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc), nil
+	}
+
+	parsed, err := time.ParseInLocation("2006-01-02", value, loc)
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	return time.Date(parsed.Year(), parsed.Month(), parsed.Day(), 0, 0, 0, 0, loc), nil
 }
 
 func nullableTrim(value string) *string {

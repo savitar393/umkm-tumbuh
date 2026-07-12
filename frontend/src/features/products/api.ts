@@ -21,6 +21,8 @@ export type Product = {
   thumbnail_updated_at?: string | null;
   created_at: string;
   updated_at: string;
+  featured?: boolean;
+  featured_order?: number | null;
 };
 
 export type ProductPayload = {
@@ -132,5 +134,12 @@ export async function uploadProductThumbnail(id: string, file: File) {
       content_type: uploadResponse.document.content_type,
       size_bytes: uploadResponse.document.size_bytes,
     }),
+  });
+}
+
+export function toggleProductFeatured(id: string, featured: boolean) {
+  return http<{ message: string; product: Product }>(`/products/${id}/featured`, {
+    method: "PATCH",
+    body: JSON.stringify({ featured }),
   });
 }

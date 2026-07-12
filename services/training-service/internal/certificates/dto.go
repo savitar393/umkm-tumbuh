@@ -21,6 +21,7 @@ type CertificateResponse struct {
 	UMKMID                 string     `json:"umkm_id"`
 	NamaUMKM               string     `json:"nama_umkm"`
 	PelakuNama             string     `json:"pelaku_nama"`
+	MentorNama             string     `json:"mentor_nama"`
 }
 
 type CertificateDashboardResponse struct {

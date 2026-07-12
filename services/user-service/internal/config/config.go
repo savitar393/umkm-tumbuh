@@ -13,6 +13,7 @@ type Config struct {
 	FrontendURL string
 	DatabaseURL string
 	JWTSecret   string
+	UploadDir   string
 }
 
 func Load() Config {
@@ -25,6 +26,7 @@ func Load() Config {
 		FrontendURL: getEnv("FRONTEND_URL", "http://localhost:5173"),
 		DatabaseURL: getEnv("DATABASE_URL", ""),
 		JWTSecret:   getEnv("JWT_SECRET", ""),
+		UploadDir:   getEnv("UPLOAD_DIR", "uploads"),
 	}
 }
 

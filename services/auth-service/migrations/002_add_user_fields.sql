@@ -1,0 +1,11 @@
+-- +goose Up
+ALTER TABLE users ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS reviewed_by UUID;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS catatan_validasi TEXT;
+
+-- +goose Down
+ALTER TABLE users DROP COLUMN IF EXISTS catatan_validasi;
+ALTER TABLE users DROP COLUMN IF EXISTS reviewed_by;
+ALTER TABLE users DROP COLUMN IF EXISTS reviewed_at;
+ALTER TABLE users DROP COLUMN IF EXISTS submitted_at;

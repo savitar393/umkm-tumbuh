@@ -109,4 +109,5 @@ export interface UpdateProgressRequest {
 
 export interface CompleteTrainingRequest {
   pendaftaran_pelatihan_id: string;
+  dokumen_evaluasi_id?: string;
 }

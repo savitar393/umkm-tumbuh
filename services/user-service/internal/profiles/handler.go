@@ -5,14 +5,18 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
+	"net/mail"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/savitar393/umkm-tumbuh/services/user-service/internal/middleware"
@@ -57,6 +61,43 @@ func (h *Handler) GetMe(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func (h *Handler) canEditRegistrationProfile(ctx context.Context, accountID string) error {
+	var (
+		sudahSubmit bool
+		status      string
+	)
+
+	err := h.DB.QueryRow(ctx, `
+		SELECT
+			COALESCE(sudah_submit, FALSE),
+			status_verifikasi_id
+		FROM user_mgmt.transaksi_registrasipengguna
+		WHERE akun_id = $1
+	`, accountID).Scan(&sudahSubmit, &status)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
+		}
+
+		return err
+	}
+
+	status = strings.ToUpper(strings.TrimSpace(status))
+
+	// Approved users are already past registration review.
+	// They must be allowed to edit profile from dashboard Kelola Informasi.
+	if status == "DISETUJUI" || status == "APPROVED" || status == "AKTIF" {
+		return nil
+	}
+
+	// Block only active submitted registrations that are still waiting for admin review.
+	if sudahSubmit && (status == "MENUNGGU" || status == "PENDING") {
+		return fmt.Errorf("Pendaftaran sudah dikirim dan sedang menunggu review Admin.")
+	}
+
+	return nil
+}
+
 func (h *Handler) UpsertMe(w http.ResponseWriter, r *http.Request) {
 	user, ok := middleware.CurrentUserFromContext(r.Context())
 	if !ok {
@@ -70,67 +111,37 @@ func (h *Handler) UpsertMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if user.Role == "UMKM" || user.Role == "MITRA" {
+		if err := h.canEditRegistrationProfile(r.Context(), user.ID); err != nil {
+			writeJSON(w, http.StatusConflict, map[string]string{"error": err.Error()})
+			return
+		}
+	}
+
 	switch user.Role {
 	case "UMKM":
-		if strings.TrimSpace(req.BusinessName) == "" {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Nama usaha wajib diisi."})
-			return
-		}
-
-		if !isValidNIK(req.NIK) {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "NIK wajib diisi 16 digit angka."})
-			return
-		}
-
-		if strings.TrimSpace(req.OwnerName) == "" {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Nama pemilik wajib diisi."})
-			return
-		}
-
-		if strings.TrimSpace(req.PhoneNumber) == "" {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Nomor HP wajib diisi."})
-			return
-		}
-
-		if strings.TrimSpace(req.Address) == "" || strings.TrimSpace(req.City) == "" || strings.TrimSpace(req.Province) == "" {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Alamat, kota/kabupaten, dan provinsi wajib diisi."})
+		if message := validateUMKMProfileRequest(req); message != "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": message})
 			return
 		}
 
 		profile, err := h.upsertUMKMProfile(r.Context(), user.ID, req)
 		if err != nil {
-			log.Printf("failed to upsert UMKM profile: %v", err)
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "Gagal menyimpan profil UMKM."})
+			handleUpsertProfileError(w, "UMKM", err)
 			return
 		}
 
 		writeJSON(w, http.StatusOK, map[string]any{"profile": profile})
 
 	case "MITRA":
-		if strings.TrimSpace(req.OrganizationName) == "" {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Nama organisasi wajib diisi."})
-			return
-		}
-
-		if strings.TrimSpace(req.ContactPerson) == "" {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Nama PIC wajib diisi."})
-			return
-		}
-
-		if strings.TrimSpace(req.PhoneNumber) == "" {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Nomor kontak wajib diisi."})
-			return
-		}
-
-		if strings.TrimSpace(req.Address) == "" || strings.TrimSpace(req.City) == "" || strings.TrimSpace(req.Province) == "" {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Alamat, kota/kabupaten, dan provinsi wajib diisi."})
+		if message := validateMitraProfileRequest(req); message != "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": message})
 			return
 		}
 
 		profile, err := h.upsertMitraProfile(r.Context(), user.ID, req)
 		if err != nil {
-			log.Printf("failed to upsert Mitra profile: %v", err)
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "Gagal menyimpan profil Mitra."})
+			handleUpsertProfileError(w, "Mitra", err)
 			return
 		}
 
@@ -141,6 +152,229 @@ func (h *Handler) UpsertMe(w http.ResponseWriter, r *http.Request) {
 			"error": "Role ini tidak dapat mengelola profil.",
 		})
 	}
+}
+
+func (h *Handler) SubmitRegistration(w http.ResponseWriter, r *http.Request) {
+	user, ok := middleware.CurrentUserFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+		return
+	}
+
+	if user.Role != "UMKM" && user.Role != "MITRA" {
+		writeJSON(w, http.StatusForbidden, map[string]string{
+			"error": "Role ini tidak dapat mengirim pendaftaran.",
+		})
+		return
+	}
+
+	tx, err := h.DB.Begin(r.Context())
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": "Gagal memulai submit pendaftaran.",
+		})
+		return
+	}
+	defer tx.Rollback(r.Context())
+
+	var (
+		checklistComplete bool
+		umkmID            sql.NullString
+		mitraID           sql.NullString
+		status            string
+		sudahSubmit       bool
+	)
+
+	err = tx.QueryRow(r.Context(), `
+		SELECT
+			checklist_informasi_lengkap,
+			umkm_id,
+			mitra_id,
+			status_verifikasi_id,
+			sudah_submit
+		FROM user_mgmt.transaksi_registrasipengguna
+		WHERE akun_id = $1
+		FOR UPDATE
+	`, user.ID).Scan(&checklistComplete, &umkmID, &mitraID, &status, &sudahSubmit)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			writeJSON(w, http.StatusForbidden, map[string]string{
+				"error": "Data registrasi belum dibuat.",
+			})
+			return
+		}
+
+		log.Printf("failed to read registration before submit: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": "Gagal membaca data registrasi.",
+		})
+		return
+	}
+
+	if !checklistComplete {
+		writeJSON(w, http.StatusForbidden, map[string]string{
+			"error": "Profil belum lengkap. Lengkapi data terlebih dahulu.",
+		})
+		return
+	}
+
+	if user.Role == "UMKM" && !umkmID.Valid {
+		writeJSON(w, http.StatusForbidden, map[string]string{
+			"error": "Profil UMKM belum lengkap.",
+		})
+		return
+	}
+
+	if user.Role == "MITRA" && !mitraID.Valid {
+		writeJSON(w, http.StatusForbidden, map[string]string{
+			"error": "Profil Mitra belum lengkap.",
+		})
+		return
+	}
+
+	if status == "DISETUJUI" {
+		writeJSON(w, http.StatusConflict, map[string]string{
+			"error": "Pendaftaran sudah disetujui.",
+		})
+		return
+	}
+
+	if status == "DITOLAK" {
+		writeJSON(w, http.StatusConflict, map[string]string{
+			"error": "Pendaftaran sudah ditolak. Silakan ajukan ulang jika fitur re-submit sudah tersedia.",
+		})
+		return
+	}
+
+	if sudahSubmit {
+		writeJSON(w, http.StatusConflict, map[string]string{
+			"error": "Pendaftaran sudah dikirim dan sedang menunggu review Admin.",
+		})
+		return
+	}
+
+	_, err = tx.Exec(r.Context(), `
+		UPDATE user_mgmt.transaksi_registrasipengguna
+		SET
+			status_verifikasi_id = 'MENUNGGU',
+			tanggal_submit = NOW(),
+			sudah_submit = TRUE
+		WHERE akun_id = $1
+	`, user.ID)
+	if err != nil {
+		log.Printf("failed to submit registration: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": "Gagal mengirim pendaftaran.",
+		})
+		return
+	}
+
+	if err := tx.Commit(r.Context()); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": "Gagal menyelesaikan submit pendaftaran.",
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{
+		"message": "Pendaftaran berhasil dikirim. Menunggu review Admin.",
+	})
+}
+
+func (h *Handler) GetRegistrationStatus(w http.ResponseWriter, r *http.Request) {
+	user, ok := middleware.CurrentUserFromContext(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "Unauthorized"})
+		return
+	}
+
+	if user.Role != "UMKM" && user.Role != "MITRA" {
+		writeJSON(w, http.StatusForbidden, map[string]string{
+			"error": "Role ini tidak memiliki alur registrasi.",
+		})
+		return
+	}
+
+	var (
+		checklistComplete bool
+		sudahSubmit       bool
+		umkmID            sql.NullString
+		mitraID           sql.NullString
+		status            string
+	)
+
+	err := h.DB.QueryRow(r.Context(), `
+		SELECT
+			checklist_informasi_lengkap,
+			COALESCE(sudah_submit, FALSE),
+			umkm_id,
+			mitra_id,
+			status_verifikasi_id
+		FROM user_mgmt.transaksi_registrasipengguna
+		WHERE akun_id = $1
+	`, user.ID).Scan(&checklistComplete, &sudahSubmit, &umkmID, &mitraID, &status)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			rolePath := strings.ToLower(user.Role)
+			writeJSON(w, http.StatusOK, map[string]any{
+				"role":             user.Role,
+				"status":           "MENUNGGU",
+				"profile_complete": false,
+				"submitted":        false,
+				"next_route":       "/register/" + rolePath + "/details",
+			})
+			return
+		}
+
+		log.Printf("failed to read registration status: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{
+			"error": "Gagal membaca status registrasi.",
+		})
+		return
+	}
+
+	rolePath := strings.ToLower(user.Role)
+	profileComplete := checklistComplete
+
+	if user.Role == "UMKM" {
+		profileComplete = profileComplete && umkmID.Valid
+	}
+
+	if user.Role == "MITRA" {
+		profileComplete = profileComplete && mitraID.Valid
+	}
+
+	nextRoute := "/register/" + rolePath + "/details"
+
+	switch {
+	case status == "DISETUJUI" || status == "APPROVED" || status == "AKTIF":
+		if user.Role == "UMKM" {
+			nextRoute = "/umkm"
+		} else {
+			nextRoute = "/mitra"
+		}
+
+	case status == "DITOLAK" || status == "REJECTED":
+		nextRoute = "/register/rejected"
+
+	case !profileComplete:
+		nextRoute = "/register/" + rolePath + "/details"
+
+	case !sudahSubmit:
+		nextRoute = "/register/" + rolePath + "/review"
+
+	default:
+		nextRoute = "/register/pending"
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"role":             user.Role,
+		"status":           status,
+		"profile_complete": profileComplete,
+		"submitted":        sudahSubmit,
+		"next_route":       nextRoute,
+	})
 }
 
 func (h *Handler) getUMKMProfile(ctx context.Context, accountID string) (map[string]any, error) {
@@ -155,6 +389,8 @@ func (h *Handler) getUMKMProfile(ctx context.Context, accountID string) (map[str
 			u.email_bisnis::text,
 			u.jam_operasional,
 			u.media_sosial_marketplace,
+			u.logo_url,
+			u.foto_cover_url,
 			p.nama_pelaku,
 			p.nik,
 			p.no_hp,
@@ -180,7 +416,99 @@ func (h *Handler) getUMKMProfile(ctx context.Context, accountID string) (map[str
 		LIMIT 1
 	`, accountID)
 
-	return scanUMKMProfile(row)
+	profile, err := scanUMKMProfile(row)
+	if err != nil {
+		return nil, err
+	}
+
+	umkmID, ok := profile["id"].(string)
+	if !ok || strings.TrimSpace(umkmID) == "" {
+		return nil, errors.New("ID UMKM tidak valid")
+	}
+
+	featuredProducts, err := h.getFeaturedProducts(ctx, umkmID)
+	if err != nil {
+		return nil, err
+	}
+
+	profile["featured_products"] = featuredProducts
+
+	return profile, nil
+}
+
+func (h *Handler) getFeaturedProducts(ctx context.Context, umkmID string) ([]map[string]any, error) {
+	rows, err := h.DB.Query(ctx, `
+		SELECT
+			p.produk_id,
+			p.nama_produk,
+			COALESCE(k.nama_kategori_produk, '') AS kategori,
+			COALESCE(p.deskripsi_produk, '') AS deskripsi,
+			p.harga,
+			p.stok_saat_ini,
+			p.thumbnail_url,
+			p.legalitas_produk
+		FROM user_mgmt.master_produkumkm p
+		LEFT JOIN ref.ref_kategoriproduk k
+			ON k.kategori_produk_id = p.kategori_produk_id
+		WHERE p.umkm_id = $1
+		  AND p.tampil_di_profil = TRUE
+		  AND p.status_produk = 'AKTIF'
+		  AND p.is_deleted = FALSE
+		ORDER BY
+		  COALESCE(p.urutan_tampil_profil, 999),
+		  p.featured_at DESC,
+		  p.updated_at DESC
+		LIMIT 5
+	`, umkmID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	products := []map[string]any{}
+
+	for rows.Next() {
+		var (
+			id           string
+			name         string
+			category     string
+			description  string
+			price        float64
+			stock        int
+			thumbnailURL *string
+			legalitas    *string
+		)
+
+		if err := rows.Scan(
+			&id,
+			&name,
+			&category,
+			&description,
+			&price,
+			&stock,
+			&thumbnailURL,
+			&legalitas,
+		); err != nil {
+			return nil, err
+		}
+
+		products = append(products, map[string]any{
+			"id":            id,
+			"name":          name,
+			"category_name": category,
+			"description":   description,
+			"price":         price,
+			"stock":         stock,
+			"thumbnail_url": thumbnailURL,
+			"legalitas":     legalitas,
+		})
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return products, nil
 }
 
 func (h *Handler) upsertUMKMProfile(ctx context.Context, accountID string, req UpsertProfileRequest) (map[string]any, error) {
@@ -289,6 +617,9 @@ func (h *Handler) upsertUMKMProfile(ctx context.Context, accountID string, req U
 	operatingHours := nullableTrim(req.OperatingHours)
 	socialMediaMarketplace := nullableTrim(req.SocialMediaMarketplace)
 
+	logoURL := nullableTrim(req.LogoURL)
+	coverURL := nullableTrim(req.FotoCoverURL)
+
 	_, err = tx.Exec(ctx, `
 		INSERT INTO user_mgmt.master_umkm (
 			umkm_id, kode_umkm, pelaku_umkm_id, lokasi_id,
@@ -296,14 +627,16 @@ func (h *Handler) upsertUMKMProfile(ctx context.Context, accountID string, req U
 			status_umkm_id, nama_umkm, deskripsi_usaha,
 			nomor_whatsapp, email_bisnis, tahun_berdiri,
 			jam_operasional, media_sosial_marketplace,
+			logo_url, foto_cover_url,
 			tanggal_terdaftar
 		)
 		VALUES (
 			$1, $2, $3, $4,
-			'UMKM', 'MIKRO', $5,
+			$5, 'MIKRO', $5,
 			'AKTIF', $6, $7,
 			$8, $9, $10,
 			$11, $12,
+			$13, $14,
 			CURRENT_DATE
 		)
 		ON CONFLICT (umkm_id)
@@ -317,10 +650,12 @@ func (h *Handler) upsertUMKMProfile(ctx context.Context, accountID string, req U
 			tahun_berdiri = EXCLUDED.tahun_berdiri,
 			jam_operasional = EXCLUDED.jam_operasional,
 			media_sosial_marketplace = EXCLUDED.media_sosial_marketplace,
+			logo_url = EXCLUDED.logo_url,
+			foto_cover_url = EXCLUDED.foto_cover_url,
 			is_deleted = FALSE,
 			deleted_at = NULL,
 			updated_at = NOW()
-	`, ids.UMKMID, "KODE-"+ids.UMKMID, ids.PelakuUMKMID, ids.LokasiID, categoryID, businessName, businessDescription, phoneNumber, businessEmail, establishedYear, operatingHours, socialMediaMarketplace)
+	`, ids.UMKMID, "KODE-"+ids.UMKMID, ids.PelakuUMKMID, ids.LokasiID, categoryID, businessName, businessDescription, phoneNumber, businessEmail, establishedYear, operatingHours, socialMediaMarketplace, logoURL, coverURL)
 	if err != nil {
 		return nil, err
 	}
@@ -444,6 +779,8 @@ func scanUMKMProfile(row scanner) (map[string]any, error) {
 		businessEmail          sql.NullString
 		operatingHours         sql.NullString
 		socialMediaMarketplace sql.NullString
+		logoURL                sql.NullString
+		coverURL               sql.NullString
 		ownerName              string
 		nik                    string
 		phone                  string
@@ -468,6 +805,8 @@ func scanUMKMProfile(row scanner) (map[string]any, error) {
 		&businessEmail,
 		&operatingHours,
 		&socialMediaMarketplace,
+		&logoURL,
+		&coverURL,
 		&ownerName,
 		&nik,
 		&phone,
@@ -494,6 +833,8 @@ func scanUMKMProfile(row scanner) (map[string]any, error) {
 		"business_email":           nil,
 		"operating_hours":          nil,
 		"social_media_marketplace": nil,
+		"logo_url":                 nil,
+		"foto_cover_url":           nil,
 		"owner_name":               ownerName,
 		"nik":                      nik,
 		"phone_number":             phone,
@@ -522,6 +863,12 @@ func scanUMKMProfile(row scanner) (map[string]any, error) {
 	}
 	if socialMediaMarketplace.Valid {
 		profile["social_media_marketplace"] = socialMediaMarketplace.String
+	}
+	if logoURL.Valid {
+		profile["logo_url"] = logoURL.String
+	}
+	if coverURL.Valid {
+		profile["foto_cover_url"] = coverURL.String
 	}
 	if postalCode.Valid {
 		profile["postal_code"] = postalCode.String
@@ -554,6 +901,8 @@ func (h *Handler) getMitraProfile(ctx context.Context, accountID string) (map[st
 			m.status_mitra_id,
 			m.wilayah_operasional,
 			s.nama_skala_kerjasama,
+			pf.nama_bidang_kemitraan,
+			st.nama_bentuk_dukungan,
 			m.created_at,
 			m.updated_at
 		FROM user_mgmt.master_mitra m
@@ -563,6 +912,22 @@ func (h *Handler) getMitraProfile(ctx context.Context, accountID string) (map[st
 			ON j.jenis_mitra_id = m.jenis_mitra_id
 		LEFT JOIN ref.ref_skalakerjasama s
 			ON s.skala_kerjasama_id = m.skala_kerjasama_id
+		LEFT JOIN LATERAL (
+			SELECT b.nama_bidang_kemitraan
+			FROM user_mgmt.master_mitrabidangkemitraan mb
+			JOIN ref.ref_bidangkemitraan b
+				ON b.bidang_kemitraan_id = mb.bidang_kemitraan_id
+			WHERE mb.mitra_id = m.mitra_id
+			LIMIT 1
+		) pf ON TRUE
+		LEFT JOIN LATERAL (
+			SELECT d.nama_bentuk_dukungan
+			FROM user_mgmt.master_mitrabentukdukungan md
+			JOIN ref.ref_bentukdukungan d
+				ON d.bentuk_dukungan_id = md.bentuk_dukungan_id
+			WHERE md.mitra_id = m.mitra_id
+			LIMIT 1
+		) st ON TRUE
 		WHERE m.akun_id = $1
 		  AND m.is_deleted = FALSE
 		LIMIT 1
@@ -589,6 +954,16 @@ func (h *Handler) upsertMitraProfile(ctx context.Context, accountID string, req 
 	}
 
 	cooperationScaleID, err := ensureCooperationScale(ctx, tx, req.CooperationScale)
+	if err != nil {
+		return nil, err
+	}
+
+	partnershipFieldID, err := ensurePartnershipField(ctx, tx, req.PartnershipField)
+	if err != nil {
+		return nil, err
+	}
+
+	supportTypeID, err := ensureSupportType(ctx, tx, req.SupportType)
 	if err != nil {
 		return nil, err
 	}
@@ -637,6 +1012,16 @@ func (h *Handler) upsertMitraProfile(ctx context.Context, accountID string, req 
 	contactPerson := trim(req.ContactPerson)
 	phoneNumber := trim(req.PhoneNumber)
 
+	nib, err := optionalFixedDigits(req.NIB, 13, "NIB perusahaan")
+	if err != nil {
+		return nil, err
+	}
+
+	npwp, err := optionalFixedDigits(req.NPWP, 15, "NPWP Badan")
+	if err != nil {
+		return nil, err
+	}
+
 	_, err = tx.Exec(ctx, `
 		INSERT INTO user_mgmt.master_mitra (
 			mitra_id, kode_mitra, akun_id, lokasi_id,
@@ -673,11 +1058,19 @@ func (h *Handler) upsertMitraProfile(ctx context.Context, accountID string, req 
 			updated_at = NOW()
 	`, ids.MitraID, "KODE-"+ids.MitraID, accountID, ids.LokasiID,
 		mitraTypeID, cooperationScaleID,
-		organizationName, nullableTrim(req.LegalName), nullableTrim(req.NIB), nullableTrim(req.NPWP),
+		organizationName, nullableTrim(req.LegalName), nullableTrim(nib), nullableTrim(npwp),
 		contactPerson, nullableTrim(req.ContactPersonTitle), phoneNumber, account.Email,
 		address, nullableTrim(req.OperationalArea), nullableTrim(req.SupportDescription),
 	)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := replaceMitraPartnershipField(ctx, tx, ids.MitraID, partnershipFieldID); err != nil {
+		return nil, err
+	}
+
+	if err := replaceMitraSupportType(ctx, tx, ids.MitraID, supportTypeID); err != nil {
 		return nil, err
 	}
 
@@ -797,6 +1190,134 @@ func ensureCooperationScale(ctx context.Context, tx pgx.Tx, scaleName string) (*
 	return &scaleID, err
 }
 
+func ensurePartnershipField(ctx context.Context, tx pgx.Tx, fieldName string) (*string, error) {
+	fieldName = strings.TrimSpace(fieldName)
+	if fieldName == "" {
+		return nil, nil
+	}
+
+	var existingID string
+	err := tx.QueryRow(ctx, `
+		SELECT bidang_kemitraan_id
+		FROM ref.ref_bidangkemitraan
+		WHERE lower(nama_bidang_kemitraan) = lower($1)
+		   OR lower(bidang_kemitraan_id) = lower($1)
+		LIMIT 1
+	`, fieldName).Scan(&existingID)
+
+	if err == nil {
+		return &existingID, nil
+	}
+
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, err
+	}
+
+	fieldID := makeCategoryID(fieldName)
+
+	_, err = tx.Exec(ctx, `
+		INSERT INTO ref.ref_bidangkemitraan (
+			bidang_kemitraan_id, nama_bidang_kemitraan
+		)
+		VALUES ($1, $2)
+		ON CONFLICT (bidang_kemitraan_id)
+		DO UPDATE SET nama_bidang_kemitraan = EXCLUDED.nama_bidang_kemitraan
+	`, fieldID, fieldName)
+	if err != nil {
+		return nil, err
+	}
+
+	return &fieldID, nil
+}
+
+func ensureSupportType(ctx context.Context, tx pgx.Tx, supportName string) (*string, error) {
+	supportName = strings.TrimSpace(supportName)
+	if supportName == "" {
+		return nil, nil
+	}
+
+	var existingID string
+	err := tx.QueryRow(ctx, `
+		SELECT bentuk_dukungan_id
+		FROM ref.ref_bentukdukungan
+		WHERE lower(nama_bentuk_dukungan) = lower($1)
+		   OR lower(bentuk_dukungan_id) = lower($1)
+		LIMIT 1
+	`, supportName).Scan(&existingID)
+
+	if err == nil {
+		return &existingID, nil
+	}
+
+	if !errors.Is(err, pgx.ErrNoRows) {
+		return nil, err
+	}
+
+	supportID := makeCategoryID(supportName)
+
+	_, err = tx.Exec(ctx, `
+		INSERT INTO ref.ref_bentukdukungan (
+			bentuk_dukungan_id, nama_bentuk_dukungan
+		)
+		VALUES ($1, $2)
+		ON CONFLICT (bentuk_dukungan_id)
+		DO UPDATE SET nama_bentuk_dukungan = EXCLUDED.nama_bentuk_dukungan
+	`, supportID, supportName)
+	if err != nil {
+		return nil, err
+	}
+
+	return &supportID, nil
+}
+
+func replaceMitraPartnershipField(ctx context.Context, tx pgx.Tx, mitraID string, fieldID *string) error {
+	_, err := tx.Exec(ctx, `
+		DELETE FROM user_mgmt.master_mitrabidangkemitraan
+		WHERE mitra_id = $1
+	`, mitraID)
+	if err != nil {
+		return err
+	}
+
+	if fieldID == nil {
+		return nil
+	}
+
+	_, err = tx.Exec(ctx, `
+		INSERT INTO user_mgmt.master_mitrabidangkemitraan (
+			mitra_id, bidang_kemitraan_id
+		)
+		VALUES ($1, $2)
+		ON CONFLICT (mitra_id, bidang_kemitraan_id) DO NOTHING
+	`, mitraID, *fieldID)
+
+	return err
+}
+
+func replaceMitraSupportType(ctx context.Context, tx pgx.Tx, mitraID string, supportID *string) error {
+	_, err := tx.Exec(ctx, `
+		DELETE FROM user_mgmt.master_mitrabentukdukungan
+		WHERE mitra_id = $1
+	`, mitraID)
+	if err != nil {
+		return err
+	}
+
+	if supportID == nil {
+		return nil
+	}
+
+	_, err = tx.Exec(ctx, `
+		INSERT INTO user_mgmt.master_mitrabentukdukungan (
+			mitra_id, bentuk_dukungan_id
+		)
+		VALUES ($1, $2)
+		ON CONFLICT (mitra_id, bentuk_dukungan_id) DO NOTHING
+	`, mitraID, *supportID)
+
+	return err
+}
+
 func scanMitraProfile(row scanner) (map[string]any, error) {
 	var (
 		id                 string
@@ -820,6 +1341,8 @@ func scanMitraProfile(row scanner) (map[string]any, error) {
 		status             string
 		operationalArea    *string
 		cooperationScale   *string
+		partnershipField   sql.NullString
+		supportType        sql.NullString
 		createdAt          time.Time
 		updatedAt          time.Time
 	)
@@ -846,6 +1369,8 @@ func scanMitraProfile(row scanner) (map[string]any, error) {
 		&status,
 		&operationalArea,
 		&cooperationScale,
+		&partnershipField,
+		&supportType,
 		&createdAt,
 		&updatedAt,
 	); err != nil {
@@ -874,9 +1399,203 @@ func scanMitraProfile(row scanner) (map[string]any, error) {
 		"status":               status,
 		"operational_area":     operationalArea,
 		"cooperation_scale":    cooperationScale,
+		"partnership_field":    nil,
+		"support_type":         nil,
 		"created_at":           createdAt,
 		"updated_at":           updatedAt,
 	}, nil
+}
+
+func (h *Handler) ListMitra(w http.ResponseWriter, r *http.Request) {
+	searchQuery := strings.TrimSpace(r.URL.Query().Get("q"))
+
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page < 1 {
+		page = 1
+	}
+
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit < 1 || limit > 50 {
+		limit = 9
+	}
+
+	offset := (page - 1) * limit
+
+	query := `
+		SELECT
+			m.mitra_id,
+			m.nama_mitra,
+			j.nama_jenis_mitra,
+			l.kabupaten_kota,
+			l.provinsi,
+			m.deskripsi_dukungan,
+			m.wilayah_operasional,
+			COUNT(*) OVER() as total_count
+		FROM user_mgmt.master_mitra m
+		JOIN user_mgmt.master_lokasi l ON l.lokasi_id = m.lokasi_id
+		JOIN ref.ref_jenismitra j ON j.jenis_mitra_id = m.jenis_mitra_id
+		WHERE m.is_deleted = FALSE
+	`
+
+	var args []interface{}
+	argIndex := 1
+
+	if searchQuery != "" {
+		query += fmt.Sprintf(
+			" AND (m.nama_mitra ILIKE $%d OR j.nama_jenis_mitra ILIKE $%d)",
+			argIndex, argIndex,
+		)
+		args = append(args, "%"+searchQuery+"%")
+		argIndex++
+	}
+
+	query += fmt.Sprintf(
+		" ORDER BY m.nama_mitra ASC LIMIT $%d OFFSET $%d",
+		argIndex, argIndex+1,
+	)
+	args = append(args, limit, offset)
+
+	rows, err := h.DB.Query(r.Context(), query, args...)
+	if err != nil {
+		log.Printf("failed to query mitra list: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "Gagal mengambil daftar mitra."})
+		return
+	}
+	defer rows.Close()
+
+	type mitraItem struct {
+		ID              string  `json:"id"`
+		Name            string  `json:"name"`
+		Type            string  `json:"type"`
+		City            string  `json:"city"`
+		Province        string  `json:"province"`
+		Description     *string `json:"description"`
+		OperationalArea *string `json:"operational_area"`
+	}
+
+	var mitraList []mitraItem
+	var totalCount int
+
+	for rows.Next() {
+		var item mitraItem
+		if err := rows.Scan(
+			&item.ID, &item.Name, &item.Type,
+			&item.City, &item.Province,
+			&item.Description, &item.OperationalArea,
+			&totalCount,
+		); err != nil {
+			log.Printf("failed to scan mitra row: %v", err)
+			continue
+		}
+		mitraList = append(mitraList, item)
+	}
+
+	totalPages := (totalCount + limit - 1) / limit
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"mitra": mitraList,
+		"pagination": map[string]int{
+			"page":       page,
+			"limit":      limit,
+			"total":      totalCount,
+			"totalPages": totalPages,
+		},
+	})
+}
+
+func (h *Handler) ListUMKM(w http.ResponseWriter, r *http.Request) {
+	searchQuery := strings.TrimSpace(r.URL.Query().Get("q"))
+
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page < 1 {
+		page = 1
+	}
+
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit < 1 || limit > 50 {
+		limit = 9
+	}
+
+	offset := (page - 1) * limit
+
+	query := `
+		SELECT
+			u.umkm_id,
+			u.nama_umkm,
+			k.nama_kategori_usaha,
+			l.kabupaten_kota,
+			l.provinsi,
+			u.deskripsi_usaha,
+			COUNT(*) OVER() as total_count
+		FROM user_mgmt.master_umkm u
+		JOIN user_mgmt.master_lokasi l ON l.lokasi_id = u.lokasi_id
+		JOIN ref.ref_kategoriusaha k ON k.kategori_usaha_id = u.kategori_usaha_id
+		WHERE u.is_deleted = FALSE
+	`
+
+	var args []interface{}
+	argIndex := 1
+
+	if searchQuery != "" {
+		query += fmt.Sprintf(
+			" AND (u.nama_umkm ILIKE $%d OR k.nama_kategori_usaha ILIKE $%d)",
+			argIndex, argIndex,
+		)
+		args = append(args, "%"+searchQuery+"%")
+		argIndex++
+	}
+
+	query += fmt.Sprintf(
+		" ORDER BY u.nama_umkm ASC LIMIT $%d OFFSET $%d",
+		argIndex, argIndex+1,
+	)
+	args = append(args, limit, offset)
+
+	rows, err := h.DB.Query(r.Context(), query, args...)
+	if err != nil {
+		log.Printf("failed to query umkm list: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "Gagal mengambil daftar UMKM."})
+		return
+	}
+	defer rows.Close()
+
+	type umkmItem struct {
+		ID          string  `json:"id"`
+		Name        string  `json:"name"`
+		Type        string  `json:"type"`
+		City        string  `json:"city"`
+		Province    string  `json:"province"`
+		Description *string `json:"description"`
+	}
+
+	var umkmList []umkmItem
+	var totalCount int
+
+	for rows.Next() {
+		var item umkmItem
+		if err := rows.Scan(
+			&item.ID, &item.Name, &item.Type,
+			&item.City, &item.Province,
+			&item.Description,
+			&totalCount,
+		); err != nil {
+			log.Printf("failed to scan umkm row: %v", err)
+			continue
+		}
+		umkmList = append(umkmList, item)
+	}
+
+	totalPages := (totalCount + limit - 1) / limit
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"umkm": umkmList,
+		"pagination": map[string]int{
+			"page":       page,
+			"limit":      limit,
+			"total":      totalCount,
+			"totalPages": totalPages,
+		},
+	})
 }
 
 func handleProfileError(w http.ResponseWriter, err error) {
@@ -906,6 +1625,20 @@ func nullableTrim(value string) *string {
 	return &value
 }
 
+func optionalFixedDigits(value string, length int, fieldName string) (string, error) {
+	digits := digitsOnly(strings.TrimSpace(value))
+
+	if digits == "" {
+		return "", nil
+	}
+
+	if len(digits) != length {
+		return "", fmt.Errorf("%s wajib %d digit jika diisi", fieldName, length)
+	}
+
+	return digits, nil
+}
+
 func valueOrDefault(value string, fallback string) string {
 	value = strings.TrimSpace(value)
 	if value == "" {
@@ -919,6 +1652,168 @@ func isValidNIK(value string) bool {
 	value = strings.TrimSpace(value)
 	matched, _ := regexp.MatchString(`^[0-9]{16}$`, value)
 	return matched
+}
+
+func validateUMKMProfileRequest(req UpsertProfileRequest) string {
+	if strings.TrimSpace(req.BusinessName) == "" {
+		return "Nama usaha wajib diisi."
+	}
+
+	if strings.TrimSpace(req.BusinessCategory) == "" {
+		return "Kategori usaha wajib diisi."
+	}
+
+	if strings.TrimSpace(req.BusinessDescription) == "" {
+		return "Deskripsi usaha wajib diisi."
+	}
+
+	if strings.TrimSpace(req.OwnerName) == "" {
+		return "Nama pemilik wajib diisi."
+	}
+
+	if !isValidNIK(req.NIK) {
+		return "NIK wajib diisi 16 digit angka."
+	}
+
+	if !isValidPhoneNumber(req.PhoneNumber) {
+		return "Nomor WhatsApp wajib 8–13 digit setelah kode +62."
+	}
+
+	if strings.TrimSpace(req.Address) == "" {
+		return "Alamat usaha wajib diisi."
+	}
+
+	if strings.TrimSpace(req.City) == "" {
+		return "Kota/kabupaten wajib diisi."
+	}
+
+	if strings.TrimSpace(req.Province) == "" {
+		return "Provinsi wajib diisi."
+	}
+
+	return ""
+}
+
+func validateMitraProfileRequest(req UpsertProfileRequest) string {
+	if strings.TrimSpace(req.OrganizationName) == "" {
+		return "Nama organisasi wajib diisi."
+	}
+
+	if strings.TrimSpace(req.OrganizationType) == "" {
+		return "Jenis mitra wajib dipilih."
+	}
+
+	if strings.TrimSpace(req.ContactPerson) == "" {
+		return "Nama PIC wajib diisi."
+	}
+
+	if !isValidPhoneNumber(req.PhoneNumber) {
+		return "Nomor WhatsApp PIC wajib 8–13 digit setelah kode +62."
+	}
+
+	if strings.TrimSpace(req.NIB) != "" && !isValidNIB(req.NIB) {
+		return "NIB wajib 13 digit jika diisi."
+	}
+
+	if strings.TrimSpace(req.Address) == "" {
+		return "Alamat kantor wajib diisi."
+	}
+
+	if strings.TrimSpace(req.City) == "" {
+		return "Kota/kabupaten wajib diisi."
+	}
+
+	if strings.TrimSpace(req.Province) == "" {
+		return "Provinsi wajib diisi."
+	}
+
+	if strings.TrimSpace(req.OperationalArea) == "" {
+		return "Wilayah operasional wajib diisi."
+	}
+
+	if strings.TrimSpace(req.CooperationScale) == "" {
+		return "Skala kerja sama wajib dipilih."
+	}
+
+	if strings.TrimSpace(req.SupportDescription) == "" {
+		return "Deskripsi tujuan kemitraan wajib diisi."
+	}
+
+	return ""
+}
+
+func isValidEmail(value string) bool {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return false
+	}
+
+	_, err := mail.ParseAddress(value)
+	return err == nil
+}
+
+func isValidPhoneNumber(value string) bool {
+	digits := digitsOnly(value)
+
+	if strings.HasPrefix(digits, "62") {
+		digits = strings.TrimPrefix(digits, "62")
+	}
+
+	if strings.HasPrefix(digits, "0") {
+		digits = strings.TrimPrefix(digits, "0")
+	}
+
+	return len(digits) >= 8 && len(digits) <= 13
+}
+
+func isValidNIB(value string) bool {
+	return len(digitsOnly(value)) == 13
+}
+
+func digitsOnly(value string) string {
+	var builder strings.Builder
+
+	for _, char := range value {
+		if char >= '0' && char <= '9' {
+			builder.WriteRune(char)
+		}
+	}
+
+	return builder.String()
+}
+
+func handleUpsertProfileError(w http.ResponseWriter, profileType string, err error) {
+	var pgErr *pgconn.PgError
+
+	if errors.As(err, &pgErr) {
+		switch pgErr.Code {
+		case "23503":
+			log.Printf("failed to upsert %s profile: foreign key violation: %s", profileType, pgErr.Message)
+			writeJSON(w, http.StatusBadRequest, map[string]string{
+				"error": "Data referensi tidak valid. Periksa kategori, jenis mitra, atau skala kerja sama.",
+			})
+			return
+
+		case "23505":
+			log.Printf("failed to upsert %s profile: unique violation: %s", profileType, pgErr.Message)
+			writeJSON(w, http.StatusConflict, map[string]string{
+				"error": "Data profil sudah digunakan oleh akun lain.",
+			})
+			return
+
+		case "23502":
+			log.Printf("failed to upsert %s profile: not-null violation: %s", profileType, pgErr.Message)
+			writeJSON(w, http.StatusBadRequest, map[string]string{
+				"error": "Data profil belum lengkap.",
+			})
+			return
+		}
+	}
+
+	log.Printf("failed to upsert %s profile: %v", profileType, err)
+	writeJSON(w, http.StatusInternalServerError, map[string]string{
+		"error": "Gagal menyimpan profil. Coba lagi beberapa saat.",
+	})
 }
 
 func newID(prefix string) string {

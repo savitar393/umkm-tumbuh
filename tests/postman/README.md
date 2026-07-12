@@ -13,7 +13,7 @@ newman run tests/postman/umkm-tumbuh-backend.postman_collection.json \
   -e tests/postman/local.postman_environment.json \
   -r cli,htmlextra \
   --reporter-htmlextra-export tests/postman/reports/backend-report.html
-```
+```e:\SMT 4\newman-rsi\umkm-tumbuh\tests
 
 Open `tests/postman/reports/backend-report.html` and use it as TestScript evidence.
 

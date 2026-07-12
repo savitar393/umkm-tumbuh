@@ -1,578 +1,614 @@
-import React, { useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import {
+  type ChangeEvent,
+  type FormEvent,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import {
+  ArrowLeft,
+  Building2,
+  CheckCircle2,
+  FileText,
+  Handshake,
+  Paperclip,
+  Search,
+  Send,
+  ShieldCheck,
+  UploadCloud,
+  UserRound,
+  X,
+} from "lucide-react";
+import UmkmLayout from "../../umkm/components/UmkmLayout";
+import { getCurrentUser } from "../../../shared/auth/currentUser";
 import { partnershipsApi } from "../api";
 import type { CreatePartnershipRequest } from "../types";
 
-// ─── SVG Logo Components ──────────────────────────────────────────────────────
+type FileKey = "nib_ktp" | "pdf_kemitraan" | "sertifikat";
 
-const LogoUMKMTumbuh: React.FC<{ size?: number }> = ({ size = 40 }) => (
-  <svg width={size} height={size} viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect width="40" height="40" rx="8" fill="#F5A623" />
-    <path d="M8 28 L14 16 L20 22 L26 12 L32 28 Z" fill="#1A3A6B" strokeLinejoin="round" />
-    <circle cx="26" cy="12" r="3" fill="#1A3A6B" />
-  </svg>
-);
+type FileState = Record<FileKey, File | null>;
+type FileErrors = Partial<Record<FileKey, string>>;
 
-const LogoKementrian: React.FC<{ size?: number }> = ({ size = 36 }) => (
-  <svg width={size} height={size} viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="18" cy="18" r="17" stroke="white" strokeWidth="1.5" fill="none" />
-    <path d="M18 6 L20 13 L27 13 L21.5 17.5 L23.5 24.5 L18 20 L12.5 24.5 L14.5 17.5 L9 13 L16 13 Z"
-      fill="white" />
-    <text x="18" y="32" textAnchor="middle" fill="white" fontSize="5" fontFamily="serif" fontWeight="bold">KEMENKOP</text>
-  </svg>
-);
-
-// ─── Upload Card ───────────────────────────────────────────────────────────────
-
-interface UploadCardProps {
+type UploadCardProps = {
   label: string;
   hint: string;
   optional?: boolean;
-  icon: React.ReactNode;
-  value: string | null;
-  onChange: (filename: string | null, error?: string) => void;
+  icon: ReactNode;
+  value: File | null;
   error?: string;
+  onChange: (file: File | null, error?: string) => void;
+};
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const ALLOWED_FILE_TYPES = ["application/pdf", "image/jpeg", "image/png"];
+
+function getBasePath(role?: string) {
+  if (role === "MITRA") return "/mitra/partnerships";
+  if (role === "UMKM") return "/umkm/partnerships";
+  return "/partnerships";
 }
 
-const UploadCard: React.FC<UploadCardProps> = ({ label, hint, optional, icon, value, onChange, error }) => {
-  const inputRef = useRef<HTMLInputElement>(null);
+function getFileValidationError(file: File) {
+  if (file.size > MAX_FILE_SIZE) {
+    return "File terlalu besar. Maksimal 10MB.";
+  }
 
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+    return "Hanya file PDF, JPG, dan PNG yang diperbolehkan.";
+  }
+
+  return "";
+}
+
+function UploadCard({ label, hint, optional, icon, value, error, onChange }: UploadCardProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const fileName = value?.name ?? null;
+
+  function handleFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      onChange(null, "File terlalu besar. Maks 2MB.");
+
+    const validationError = getFileValidationError(file);
+
+    if (validationError) {
+      onChange(null, validationError);
+      event.target.value = "";
       return;
     }
-    const valid = ["image/jpeg", "image/jpg", "image/png", "application/pdf"];
-    if (!valid.includes(file.type)) {
-      onChange(null, "Format tidak didukung.");
-      return;
-    }
-    onChange(file.name);
-  };
+
+    onChange(file);
+  }
 
   return (
     <div
+      className={`partnership-upload-card ${value ? "has-file" : ""} ${error ? "has-error" : ""}`}
+      role="button"
+      tabIndex={0}
       onClick={() => inputRef.current?.click()}
-      style={{
-        border: error
-          ? "1.5px dashed #E24B4A"
-          : value
-          ? "1.5px dashed #1D9E75"
-          : "1.5px dashed #B4B2A9",
-        borderRadius: 12,
-        padding: "20px 12px",
-        textAlign: "center",
-        cursor: "pointer",
-        background: value ? "#F0FAF6" : "white",
-        transition: "border-color 0.2s, background 0.2s",
-        minHeight: 120,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 8,
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") inputRef.current?.click();
       }}
     >
       <input
         ref={inputRef}
         type="file"
-        accept=".jpg,.jpeg,.png,.pdf"
-        style={{ display: "none" }}
+        accept=".pdf,.jpg,.jpeg,.png"
         onChange={handleFile}
       />
-      <div style={{ color: value ? "#0F6E56" : "#888780", fontSize: 28 }}>{icon}</div>
-      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: value ? "#0F6E56" : "#2C2C2A" }}>
-        {value ? value : label}
-        {optional && !value && (
-          <span style={{ fontWeight: 400, color: "#888780", marginLeft: 4 }}>(opsional)</span>
-        )}
-      </p>
-      {!value && (
-        <p style={{ margin: 0, fontSize: 11, color: "#888780" }}>{hint}</p>
-      )}
-      {error && (
-        <p style={{ margin: 0, fontSize: 11, color: "#E24B4A" }}>{error}</p>
-      )}
+
+      <div className="partnership-upload-icon">{value ? <CheckCircle2 size={26} /> : icon}</div>
+
+      <strong>
+        {fileName || label}
+        {optional && !value ? <span>Opsional</span> : null}
+      </strong>
+
+      <p>{value ? "Klik untuk mengganti file." : hint}</p>
+
+      {value ? (
+        <button
+          type="button"
+          className="partnership-upload-remove"
+          onClick={(event) => {
+            event.stopPropagation();
+            onChange(null);
+            if (inputRef.current) inputRef.current.value = "";
+          }}
+          aria-label={`Hapus ${label}`}
+        >
+          <X size={15} />
+        </button>
+      ) : null}
+
+      {error ? <em>{error}</em> : null}
     </div>
   );
-};
+}
 
-// ─── Icon helpers ──────────────────────────────────────────────────────────────
-
-const IconDoc = () => (
-  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-    <polyline points="14 2 14 8 20 8" />
-    <line x1="9" y1="13" x2="15" y2="13" />
-    <line x1="9" y1="17" x2="15" y2="17" />
-  </svg>
-);
-
-// const IconBadge = () => (
-//   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-//     <circle cx="12" cy="8" r="6" />
-//     <path d="M15.477 12.89L17 22l-5-3-5 3 1.523-9.11" />
-//   </svg>
-// );
-
-const IconCert = () => (
-  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-    <circle cx="12" cy="12" r="9" />
-    <path d="M9 12l2 2 4-4" />
-  </svg>
-);
-
-// ─── Main Page ────────────────────────────────────────────────────────────────
-
-const PartnershipCreatePage: React.FC = () => {
+export default function PartnershipCreatePage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const user = getCurrentUser();
+
+  const isMitra = user?.role === "MITRA";
+  const basePath = getBasePath(user?.role);
+
+  const params = new URLSearchParams(location.search);
+  const preselectedReceiverId = params.get("receiver_id") || "";
+  const preselectedReceiverName = params.get("receiver_name") || "";
+  const isFromDetail = Boolean(preselectedReceiverId);
+
+  const [partnerList, setPartnerList] = useState<Array<{ id: string; name: string }>>([]);
+  const [loadingPartners, setLoadingPartners] = useState(true);
+  const [partnerError, setPartnerError] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [selectedPartnerName, setSelectedPartnerName] = useState(preselectedReceiverName);
 
   const [formData, setFormData] = useState({
-    receiver_id: "",
-    business_name: "",
-    contact_person: "",
+    receiver_id: preselectedReceiverId,
+    business_name: user?.full_name || "",
+    contact_person: user?.email || "",
     product_description: "",
     reason_for_partnership: "",
   });
 
-  const [files, setFiles] = useState<{
-    nib_ktp: string | null;
-    pdf_kemitraan: string | null;
-    sertifikat: string | null;
-  }>({ nib_ktp: null, pdf_kemitraan: null, sertifikat: null });
+  const [files, setFiles] = useState<FileState>({
+    nib_ktp: null,
+    pdf_kemitraan: null,
+    sertifikat: null,
+  });
 
-  const [fileErrors, setFileErrors] = useState<{
-    nib_ktp?: string;
-    pdf_kemitraan?: string;
-    sertifikat?: string;
-  }>({});
-
-  const [loading, setLoading] = useState(false);
+  const [fileErrors, setFileErrors] = useState<FileErrors>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((p) => ({ ...p, [name]: value }));
-    if (errors[name]) setErrors((p) => { const n = { ...p }; delete n[name]; return n; });
-  };
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const handleFileChange = (key: keyof typeof files) => (filename: string | null, error?: string) => {
-    if (error) {
-      setFileErrors((p) => ({ ...p, [key]: error }));
-      setFiles((p) => ({ ...p, [key]: null }));
-    } else {
-      setFiles((p) => ({ ...p, [key]: filename }));
-      setFileErrors((p) => { const n = { ...p }; delete n[key]; return n; });
+  const targetLabel = isMitra ? "UMKM" : "Mitra";
+  const requesterLabel = isMitra ? "Mitra" : "UMKM";
+
+  const filteredList = useMemo(
+    () =>
+      partnerList.filter((partner) =>
+        partner.name.toLowerCase().includes(searchQuery.toLowerCase()),
+      ),
+    [partnerList, searchQuery],
+  );
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
     }
-  };
 
-  const validate = (): boolean => {
-    const e: Record<string, string> = {};
-    if (!formData.business_name.trim()) e.business_name = "Nama usaha wajib diisi";
-    if (!formData.contact_person.trim()) e.contact_person = "Kontak person wajib diisi";
-    if (!formData.product_description.trim()) e.product_description = "Deskripsi produk wajib diisi";
-    if (!formData.reason_for_partnership.trim()) e.reason_for_partnership = "Alasan bermitra wajib diisi";
-    if (!formData.receiver_id) e.receiver_id = "Pilih mitra/UMKM yang dituju";
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validate()) return;
+  useEffect(() => {
+    let ignore = false;
+
+    async function fetchPartnerList() {
+      setLoadingPartners(true);
+      setPartnerError("");
+
+      try {
+        if (isMitra) {
+          const response = await partnershipsApi.listUMKM({ page: 1, limit: 100 });
+
+          if (!ignore) {
+            setPartnerList((response.umkm ?? []).map((item) => ({ id: item.id, name: item.name })));
+          }
+
+          return;
+        }
+
+        const response = await partnershipsApi.listMitra({ page: 1, limit: 100 });
+
+        if (!ignore) {
+          setPartnerList((response.mitra ?? []).map((item) => ({ id: item.id, name: item.name })));
+        }
+      } catch (err) {
+        if (!ignore) {
+          setPartnerError(err instanceof Error ? err.message : "Gagal memuat daftar tujuan.");
+        }
+      } finally {
+        if (!ignore) setLoadingPartners(false);
+      }
+    }
+
+    fetchPartnerList();
+
+    return () => {
+      ignore = true;
+    };
+  }, [isMitra]);
+
+  useEffect(() => {
+    if (!preselectedReceiverId) return;
+
+    const found = partnerList.find((partner) => partner.id === preselectedReceiverId);
+
+    if (found) {
+      setSelectedPartnerName(found.name);
+      return;
+    }
+
+    if (preselectedReceiverName) {
+      setSelectedPartnerName(preselectedReceiverName);
+    }
+  }, [partnerList, preselectedReceiverId, preselectedReceiverName]);
+
+  function updateField(name: keyof typeof formData, value: string) {
+    setSubmitError("");
+
+    setFormData((current) => ({
+      ...current,
+      [name]: value,
+    }));
+
+    setErrors((current) => {
+      const next = { ...current };
+      delete next[name];
+      return next;
+    });
+  }
+
+  function handleSelectPartner(id: string, name: string) {
+    updateField("receiver_id", id);
+    setSelectedPartnerName(name);
+    setSearchQuery("");
+    setShowDropdown(false);
+  }
+
+  function handleFileChange(key: FileKey) {
+    return (file: File | null, error?: string) => {
+      setSubmitError("");
+
+      if (error) {
+        setFiles((current) => ({ ...current, [key]: null }));
+        setFileErrors((current) => ({ ...current, [key]: error }));
+        return;
+      }
+
+      setFiles((current) => ({ ...current, [key]: file }));
+      setFileErrors((current) => {
+        const next = { ...current };
+        delete next[key];
+        return next;
+      });
+    };
+  }
+
+  function validate() {
+    const nextErrors: Record<string, string> = {};
+    const nextFileErrors: FileErrors = {};
+
+    // if (!formData.business_name.trim()) {
+    //   nextErrors.business_name = `Nama ${requesterLabel.toLowerCase()} wajib diisi.`;
+    // }
+
+    // const contactError = validateContact(formData.contact_person);
+    // if (contactError) nextErrors.contact_person = contactError;
+
+    if (!formData.receiver_id) {
+      nextErrors.receiver_id = `Pilih ${targetLabel.toLowerCase()} tujuan.`;
+    }
+
+    if (formData.product_description.trim().length < 20) {
+      nextErrors.product_description = "Deskripsi produk/profil minimal 20 karakter.";
+    }
+
+    if (formData.reason_for_partnership.trim().length < 20) {
+      nextErrors.reason_for_partnership = "Alasan bermitra minimal 20 karakter.";
+    }
+
+    if (!files.nib_ktp) {
+      nextFileErrors.nib_ktp = "Dokumen NIB/KTP wajib dilampirkan.";
+    }
+
+    if (!files.pdf_kemitraan) {
+      nextFileErrors.pdf_kemitraan = "Dokumen pengajuan kemitraan wajib dilampirkan.";
+    }
+
+    setErrors(nextErrors);
+    setFileErrors(nextFileErrors);
+
+    return Object.keys(nextErrors).length === 0 && Object.keys(nextFileErrors).length === 0;
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSubmitError("");
+
+    if (!validate()) {
+      requestAnimationFrame(() => {
+        document
+          .querySelector(".partnership-create-field.has-error, .partnership-upload-card.has-error")
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+
+      return;
+    }
+
     setLoading(true);
+
     try {
-      const attachments = [files.nib_ktp, files.pdf_kemitraan, files.sertifikat].filter(Boolean) as string[];
-      const apiData: CreatePartnershipRequest = {
+      const selectedFiles = [files.nib_ktp, files.pdf_kemitraan, files.sertifikat].filter(Boolean) as File[];
+
+      const attachments: string[] = [];
+      for (const file of selectedFiles) {
+        const documentId = await partnershipsApi.uploadDocument(file);
+        attachments.push(documentId);
+      }
+
+      const payload: CreatePartnershipRequest = {
         receiver_id: formData.receiver_id,
-        proposal_title: `Pengajuan Kemitraan - ${formData.business_name}`,
-        proposal_description: `${formData.product_description}\n\nAlasan Bermitra: ${formData.reason_for_partnership}`,
+        proposal_title: `Pengajuan Kemitraan - ${(user?.full_name || formData.business_name || "Pengaju").trim()}`,
+        proposal_description: [
+          formData.product_description.trim(),
+          `Alasan Bermitra: ${formData.reason_for_partnership.trim()}`,
+        ].join("\n\n"),
         attachment_files: attachments,
       };
-      const response = await partnershipsApi.create(apiData);
-      if (response.status === "success") navigate("/partnerships/success");
-      else alert(`Gagal: ${response.message}`);
-    } catch {
-      alert("Terjadi kesalahan saat mengirim pengajuan");
+
+      const response = await partnershipsApi.create(payload);
+
+      if (response.success === true && response.data?.pengajuanID) {
+        navigate(`${basePath}/success?id=${response.data.pengajuanID}`, {
+          state: { pengajuanID: response.data.pengajuanID },
+        });
+        return;
+      }
+
+      setSubmitError(response.message || "Gagal mengirim pengajuan.");
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Gagal mengirim pengajuan.");
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const handleCancel = () => {
-    if (window.confirm("Batalkan pengajuan? Data yang sudah diisi akan hilang.")) {
-      navigate("/partnerships");
+  function handleCancel() {
+    if (!window.confirm("Batalkan pengajuan? Data yang sudah diisi akan hilang.")) return;
+
+    if (isFromDetail && preselectedReceiverId) {
+      navigate(`${basePath}/${preselectedReceiverId}`);
+      return;
     }
-  };
 
-  // ── Styles ────────────────────────────────────────────────────────────────
-
-  const inputStyle = (hasError?: boolean): React.CSSProperties => ({
-    width: "100%",
-    padding: "10px 14px",
-    border: `1px solid ${hasError ? "#E24B4A" : "#D3D1C7"}`,
-    borderRadius: 8,
-    fontSize: 14,
-    outline: "none",
-    boxSizing: "border-box",
-    fontFamily: "inherit",
-    color: "#2C2C2A",
-    background: "white",
-    transition: "border-color 0.15s",
-  });
-
-  const labelStyle: React.CSSProperties = {
-    display: "block",
-    fontSize: 13,
-    fontWeight: 600,
-    color: "#1A3A6B",
-    marginBottom: 6,
-  };
-
-  const errorStyle: React.CSSProperties = {
-    fontSize: 12,
-    color: "#E24B4A",
-    marginTop: 4,
-  };
-
-  // ── Render ────────────────────────────────────────────────────────────────
+    navigate(basePath);
+  }
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", fontFamily: "'Segoe UI', sans-serif", background: "#F5F4F0" }}>
+    <UmkmLayout
+      title="Ajukan Kemitraan"
+      subtitle={`Lengkapi formulir untuk mengajukan kerja sama dengan ${targetLabel.toLowerCase()} pilihan.`}
+    >
+      <main className="partnership-create-page">
+        <button
+          className="partnership-back-button"
+          type="button"
+          onClick={() => (isFromDetail ? navigate(`${basePath}/${preselectedReceiverId}`) : navigate(basePath))}
+        >
+          <ArrowLeft size={17} />
+          {isFromDetail ? "Kembali ke Detail" : "Kembali ke Daftar"}
+        </button>
 
-      {/* ── Sidebar ─────────────────────────────────────────────────────────── */}
-      <aside style={{
-        width: 200,
-        minWidth: 200,
-        background: "#1A3A6B",
-        display: "flex",
-        flexDirection: "column",
-        padding: "24px 0",
-        position: "fixed",
-        top: 0,
-        left: 0,
-        height: "100vh",
-        zIndex: 100,
-      }}>
-        {/* Logo area */}
-        <div style={{ padding: "0 20px 24px", borderBottom: "1px solid rgba(255,255,255,0.12)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-            <LogoUMKMTumbuh size={36} />
-            <span style={{ color: "#F5A623", fontWeight: 700, fontSize: 15, lineHeight: 1.2 }}>
-              UMKM<br />Tumbuh
+        <section className="partnership-create-hero">
+          <div>
+            <span className="partnership-eyebrow">
+              <Handshake size={16} />
+              Formulir Pengajuan
             </span>
-          </div>
-        </div>
-
-        {/* Nav items */}
-        <nav style={{ flex: 1, padding: "16px 0" }}>
-          {[
-            {
-              label: "Monitoring Perkembangan Usaha",
-              icon: (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-                </svg>
-              ),
-              active: false,
-              path: "/dashboard",
-            },
-            {
-              label: "Pengajuan Kemitraan",
-              icon: (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                  <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
-                </svg>
-              ),
-              active: true,
-              path: "/partnerships/create",
-            },
-            {
-              label: "Kelola Informasi UMKM",
-              icon: (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                  <rect x="2" y="7" width="20" height="14" rx="2" />
-                  <path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" />
-                </svg>
-              ),
-              active: false,
-              path: "/umkm",
-            },
-          ].map((item) => (
-            <button
-              key={item.path}
-              onClick={() => navigate(item.path)}
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                gap: 10,
-                width: "100%",
-                padding: "10px 20px",
-                background: item.active ? "#F5A623" : "transparent",
-                border: "none",
-                borderRadius: item.active ? "0 20px 20px 0" : 0,
-                marginRight: item.active ? 12 : 0,
-                color: item.active ? "#1A3A6B" : "rgba(255,255,255,0.75)",
-                fontSize: 13,
-                fontWeight: item.active ? 700 : 400,
-                cursor: "pointer",
-                textAlign: "left",
-                lineHeight: 1.4,
-                transition: "background 0.15s, color 0.15s",
-              }}
-            >
-              <span style={{ marginTop: 1, flexShrink: 0 }}>{item.icon}</span>
-              {item.label}
-            </button>
-          ))}
-        </nav>
-
-        {/* Logout */}
-        <div style={{ padding: "16px 20px", borderTop: "1px solid rgba(255,255,255,0.12)" }}>
-          <button
-            onClick={() => navigate("/logout")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              background: "none",
-              border: "none",
-              color: "#E24B4A",
-              fontSize: 13,
-              cursor: "pointer",
-              padding: 0,
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
-              <polyline points="16 17 21 12 16 7" />
-              <line x1="21" y1="12" x2="9" y2="12" />
-            </svg>
-            Keluar
-          </button>
-        </div>
-      </aside>
-
-      {/* ── Main Content ──────────────────────────────────────────────────────── */}
-      <main style={{ marginLeft: 200, flex: 1, display: "flex", flexDirection: "column" }}>
-
-        {/* Top Bar */}
-        <header style={{
-          background: "white",
-          borderBottom: "1px solid #E8E7E2",
-          padding: "0 32px",
-          height: 60,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "flex-end",
-          gap: 16,
-          position: "sticky",
-          top: 0,
-          zIndex: 50,
-        }}>
-          {/* Notification */}
-          <button style={{ background: "none", border: "none", cursor: "pointer", color: "#888780", padding: 4 }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
-              <path d="M13.73 21a2 2 0 01-3.46 0" />
-            </svg>
-          </button>
-
-          {/* Profile chip */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ textAlign: "right" }}>
-              <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#2C2C2A" }}>Nusantara Ventures</p>
-              <p style={{ margin: 0, fontSize: 11, color: "#888780" }}>MITRA</p>
-            </div>
-            <LogoKementrian size={34} />
-          </div>
-        </header>
-
-        {/* Form Area */}
-        <div style={{ padding: "32px 40px", maxWidth: 860, width: "100%" }}>
-
-          {/* Page heading */}
-          <div style={{ marginBottom: 28, textAlign: "center" }}>
-            <h1 style={{ margin: "0 0 8px", fontSize: 28, fontWeight: 700, color: "#1A3A6B" }}>
-              Formulir Pengajuan Kemitraan
-            </h1>
-            <p style={{ margin: 0, fontSize: 14, color: "#5F5E5A", maxWidth: 520, marginLeft: "auto", marginRight: "auto" }}>
-              Bergabunglah dengan ekosistem kami untuk memperluas jangkauan pasar dan meningkatkan kualitas produk artisan Anda.
+            <h1>Pengajuan Kemitraan</h1>
+            <p>
+              {isFromDetail
+                ? `Anda akan mengajukan kemitraan dengan ${selectedPartnerName || `${targetLabel.toLowerCase()} terpilih`}.`
+                : `Pilih ${targetLabel.toLowerCase()} tujuan, lengkapi profil pengajuan, lalu lampirkan dokumen pendukung.`}
             </p>
           </div>
 
-          {/* Card form */}
-          <form
-            onSubmit={handleSubmit}
-            style={{
-              background: "white",
-              borderRadius: 16,
-              padding: "32px 36px",
-              border: "1px solid #E8E7E2",
-            }}
-          >
-            {/* Row 1: Nama Usaha + Kontak Person */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
-              <div>
-                <label style={labelStyle}>Nama Usaha</label>
-                <input
-                  type="text"
-                  name="business_name"
-                  value={formData.business_name}
-                  onChange={handleChange}
-                  placeholder="Masukkan nama brand atau toko Anda"
-                  style={inputStyle(!!errors.business_name)}
-                />
-                {errors.business_name && <p style={errorStyle}>{errors.business_name}</p>}
+          <aside className="partnership-create-progress">
+            <strong>3 langkah</strong>
+            <span>Pilih tujuan → Isi profil → Lampirkan dokumen</span>
+          </aside>
+        </section>
+
+        <form className="partnership-create-layout" onSubmit={handleSubmit} noValidate>
+          <section className="partnership-create-card">
+            <h2>
+              <UserRound size={20} />
+              Informasi Pengaju
+            </h2>
+
+            <div className="partnership-create-grid">
+              <div className="partnership-readonly-info">
+                <span>Nama {requesterLabel}</span>
+                <strong>{formData.business_name || "-"}</strong>
               </div>
-              <div>
-                <label style={labelStyle}>Kontak Person (WhatsApp/Email)</label>
-                <input
-                  type="text"
-                  name="contact_person"
-                  value={formData.contact_person}
-                  onChange={handleChange}
-                  placeholder="e.g. 0812-3456-7890 atau email@usaha.com"
-                  style={inputStyle(!!errors.contact_person)}
-                />
-                {errors.contact_person && <p style={errorStyle}>{errors.contact_person}</p>}
+
+              <div className="partnership-readonly-info">
+                <span>Kontak Person</span>
+                <strong>{formData.contact_person || "-"}</strong>
               </div>
             </div>
+          </section>
 
-            {/* Pilih Mitra */}
-            <div style={{ marginBottom: 20 }}>
-              <label style={labelStyle}>Pilih Mitra/UMKM Tujuan</label>
-              <select
-                name="receiver_id"
-                value={formData.receiver_id}
-                onChange={handleChange}
-                style={{ ...inputStyle(!!errors.receiver_id), color: formData.receiver_id ? "#2C2C2A" : "#888780" }}
-              >
-                <option value="">-- Pilih Mitra/UMKM --</option>
-                <option value="mitra1">PT. Mitra Sejahtera</option>
-                <option value="mitra2">Koperasi Makmur Jaya</option>
-                <option value="mitra3">PT. Food Station</option>
-              </select>
-              {errors.receiver_id && <p style={errorStyle}>{errors.receiver_id}</p>}
+          <section className="partnership-create-card">
+            <h2>
+              <Building2 size={20} />
+              Tujuan Kemitraan
+            </h2>
+
+            <div className={`partnership-create-field ${errors.receiver_id ? "has-error" : ""}`}>
+              <span>{targetLabel} Tujuan</span>
+
+              {isFromDetail ? (
+                <div className="partnership-readonly-target">
+                  <ShieldCheck size={18} />
+                  <strong>
+                    {selectedPartnerName ||
+                      preselectedReceiverName ||
+                      `${targetLabel} terpilih`}
+                  </strong>
+                </div>
+              ) : (
+                <div className="partnership-select-search" ref={dropdownRef}>
+                  <Search size={18} />
+                  <input
+                    value={searchQuery || selectedPartnerName}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setSearchQuery(value);
+                      setShowDropdown(true);
+
+                      if (!value) {
+                        setSelectedPartnerName("");
+                        updateField("receiver_id", "");
+                      }
+                    }}
+                    onFocus={() => setShowDropdown(true)}
+                    placeholder={
+                      loadingPartners
+                        ? "Memuat data..."
+                        : partnerError
+                          ? "Gagal memuat data"
+                          : `Cari ${targetLabel.toLowerCase()}...`
+                    }
+                  />
+
+                  {showDropdown ? (
+                    <div className="partnership-select-dropdown">
+                      {loadingPartners ? (
+                        <p>Memuat data...</p>
+                      ) : partnerError ? (
+                        <p>{partnerError}</p>
+                      ) : filteredList.length === 0 ? (
+                        <p>Tidak ditemukan</p>
+                      ) : (
+                        filteredList.map((partner) => (
+                          <button
+                            type="button"
+                            key={partner.id}
+                            onClick={() => handleSelectPartner(partner.id, partner.name)}
+                          >
+                            {partner.name}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  ) : null}
+                </div>
+              )}
+
+              {errors.receiver_id ? <em>{errors.receiver_id}</em> : null}
             </div>
+          </section>
 
-            {/* Deskripsi Produk */}
-            <div style={{ marginBottom: 20 }}>
-              <label style={labelStyle}>Deskripsi Produk</label>
+          <section className="partnership-create-card">
+            <h2>
+              <FileText size={20} />
+              Detail Pengajuan
+            </h2>
+
+            <label className={`partnership-create-field ${errors.product_description ? "has-error" : ""}`}>
+              <span>Deskripsi Produk / Profil</span>
               <textarea
                 name="product_description"
                 value={formData.product_description}
-                onChange={handleChange}
-                rows={4}
-                placeholder="Ceritakan keunikan produk artisan Anda, bahan baku yang digunakan, dan proses produksinya..."
-                style={{ ...inputStyle(!!errors.product_description), resize: "vertical", lineHeight: 1.6 }}
+                onChange={(event) => updateField("product_description", event.target.value)}
+                rows={5}
+                placeholder={
+                  isMitra
+                    ? "Jelaskan program, jaringan, atau bentuk dukungan yang ingin ditawarkan kepada UMKM..."
+                    : "Ceritakan produk utama, keunggulan usaha, kapasitas produksi, dan kebutuhan pengembangan..."
+                }
               />
-              {errors.product_description && <p style={errorStyle}>{errors.product_description}</p>}
-            </div>
+              {errors.product_description ? <em>{errors.product_description}</em> : null}
+            </label>
 
-            {/* Alasan Bermitra */}
-            <div style={{ marginBottom: 28 }}>
-              <label style={labelStyle}>Alasan Ingin Bermitra</label>
+            <label className={`partnership-create-field ${errors.reason_for_partnership ? "has-error" : ""}`}>
+              <span>Alasan Ingin Bermitra</span>
               <textarea
                 name="reason_for_partnership"
                 value={formData.reason_for_partnership}
-                onChange={handleChange}
-                rows={3}
-                placeholder="Apa harapan Anda setelah menjadi bagian dari UMKM Artisan?"
-                style={{ ...inputStyle(!!errors.reason_for_partnership), resize: "vertical", lineHeight: 1.6 }}
+                onChange={(event) => updateField("reason_for_partnership", event.target.value)}
+                rows={4}
+                placeholder={`Jelaskan alasan memilih ${targetLabel.toLowerCase()} ini dan bentuk kolaborasi yang diharapkan...`}
               />
-              {errors.reason_for_partnership && <p style={errorStyle}>{errors.reason_for_partnership}</p>}
-            </div>
+              {errors.reason_for_partnership ? <em>{errors.reason_for_partnership}</em> : null}
+            </label>
+          </section>
 
-            {/* Upload Dokumen */}
-            <div style={{ marginBottom: 32 }}>
-              <label style={{ ...labelStyle, marginBottom: 14 }}>
-                Upload Legalitas / Dokumen Pendukung
-              </label>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
-                <UploadCard
-                  label="NIB / KTP"
-                  hint="Format: PDF, JPG (Max 2MB)"
-                  icon={<IconDoc />}
-                  value={files.nib_ktp}
-                  onChange={handleFileChange("nib_ktp")}
-                  error={fileErrors.nib_ktp}
-                />
-                <UploadCard
-                  label="PDF Pengajuan Kemitraan"
-                  hint="Format: PDF, JPG (Max 2MB)"
-                  icon={<IconDoc />}
-                  value={files.pdf_kemitraan}
-                  onChange={handleFileChange("pdf_kemitraan")}
-                  error={fileErrors.pdf_kemitraan}
-                />
-                <UploadCard
-                  label="Sertifikat Halal/PIRT"
-                  hint="Opsional, jika ada"
-                  optional
-                  icon={<IconCert />}
-                  value={files.sertifikat}
-                  onChange={handleFileChange("sertifikat")}
-                  error={fileErrors.sertifikat}
-                />
-              </div>
-            </div>
+          <section className="partnership-create-card">
+            <h2>
+              <Paperclip size={20} />
+              Dokumen Pendukung
+            </h2>
 
-            {/* Action buttons */}
-            <div style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              borderTop: "1px solid #E8E7E2",
-              paddingTop: 24,
-            }}>
-              <button
-                type="button"
-                onClick={handleCancel}
-                style={{
-                  padding: "10px 28px",
-                  background: "none",
-                  border: "none",
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: "#5F5E5A",
-                  cursor: "pointer",
-                  borderRadius: 8,
-                  transition: "color 0.15s",
-                }}
-              >
-                Batalkan
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                style={{
-                  padding: "11px 36px",
-                  background: loading ? "#888780" : "#1A3A6B",
-                  border: "none",
-                  borderRadius: 10,
-                  color: "white",
-                  fontSize: 14,
-                  fontWeight: 700,
-                  cursor: loading ? "not-allowed" : "pointer",
-                  transition: "background 0.15s",
-                  letterSpacing: 0.3,
-                }}
-              >
-                {loading ? "Mengirim..." : "Kirim Pengajuan"}
-              </button>
+            <p className="partnership-create-note">
+              Upload dokumen masih berupa validasi dan pencatatan nama file sesuai implementasi branch saat ini.
+              Integrasi upload document-service/Garage bisa dikerjakan setelah flow pengajuan stabil.
+            </p>
+
+            <div className="partnership-upload-grid">
+              <UploadCard
+                label="NIB / KTP"
+                hint="PDF, JPG, PNG · Maks. 10MB"
+                icon={<UploadCloud size={28} />}
+                value={files.nib_ktp}
+                onChange={handleFileChange("nib_ktp")}
+                error={fileErrors.nib_ktp}
+              />
+
+              <UploadCard
+                label="Dokumen Pengajuan"
+                hint="PDF, JPG, PNG · Maks. 10MB"
+                icon={<FileText size={28} />}
+                value={files.pdf_kemitraan}
+                onChange={handleFileChange("pdf_kemitraan")}
+                error={fileErrors.pdf_kemitraan}
+              />
+
+              <UploadCard
+                label="Sertifikat Halal/PIRT"
+                hint="Opsional jika tersedia"
+                optional
+                icon={<ShieldCheck size={28} />}
+                value={files.sertifikat}
+                onChange={handleFileChange("sertifikat")}
+                error={fileErrors.sertifikat}
+              />
             </div>
-          </form>
-        </div>
+          </section>
+
+          {submitError ? (
+            <div className="partnership-submit-error">
+              <strong>Pengajuan gagal dikirim</strong>
+              <p>{submitError}</p>
+            </div>
+          ) : null}
+
+          <section className="partnership-create-actions">
+            <button type="button" className="umkm-secondary-btn" onClick={handleCancel}>
+              Batalkan
+            </button>
+
+            <button type="submit" disabled={loading}>
+              {loading ? "Mengirim..." : "Kirim Pengajuan"}
+              <Send size={17} />
+            </button>
+          </section>
+        </form>
       </main>
-    </div>
+    </UmkmLayout>
   );
-};
-
-export default PartnershipCreatePage;
+}

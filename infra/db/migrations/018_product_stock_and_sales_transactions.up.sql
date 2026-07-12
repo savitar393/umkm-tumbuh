@@ -20,7 +20,7 @@ ALTER TABLE user_mgmt.master_produkumkm
 ADD CONSTRAINT ck_master_produkumkm_thumbnail_size
 CHECK (thumbnail_size_bytes IS NULL OR thumbnail_size_bytes >= 0);
 
-CREATE TABLE dashboard.transaksi_penjualan (
+CREATE TABLE IF NOT EXISTS dashboard.transaksi_penjualan (
     penjualan_id VARCHAR(30) PRIMARY KEY,
     umkm_id VARCHAR(30) NOT NULL
         REFERENCES user_mgmt.master_umkm(umkm_id)
@@ -64,7 +64,7 @@ CREATE TABLE dashboard.transaksi_penjualan (
         CHECK (status_transaksi IN ('DRAFT', 'FINAL', 'CANCELLED'))
 );
 
-CREATE TABLE dashboard.transaksi_penjualan_item (
+CREATE TABLE IF NOT EXISTS dashboard.transaksi_penjualan_item (
     penjualan_item_id VARCHAR(30) PRIMARY KEY,
     penjualan_id VARCHAR(30) NOT NULL
         REFERENCES dashboard.transaksi_penjualan(penjualan_id)
@@ -91,7 +91,7 @@ CREATE TABLE dashboard.transaksi_penjualan_item (
         CHECK (jumlah > 0)
 );
 
-CREATE TABLE user_mgmt.transaksi_stokproduk (
+CREATE TABLE IF NOT EXISTS user_mgmt.transaksi_stokproduk (
     stok_mutasi_id VARCHAR(30) PRIMARY KEY,
 
     produk_id VARCHAR(30) NOT NULL
@@ -130,26 +130,26 @@ CREATE TABLE user_mgmt.transaksi_stokproduk (
         CHECK (jumlah_perubahan <> 0)
 );
 
-CREATE INDEX idx_master_produkumkm_umkm_status
+CREATE INDEX IF NOT EXISTS idx_master_produkumkm_umkm_status
 ON user_mgmt.master_produkumkm(umkm_id, status_produk)
 WHERE is_deleted = FALSE;
 
-CREATE INDEX idx_transaksi_penjualan_umkm_tanggal
+CREATE INDEX IF NOT EXISTS idx_transaksi_penjualan_umkm_tanggal
 ON dashboard.transaksi_penjualan(umkm_id, tanggal_transaksi);
 
-CREATE INDEX idx_transaksi_penjualan_status
+CREATE INDEX IF NOT EXISTS idx_transaksi_penjualan_status
 ON dashboard.transaksi_penjualan(status_transaksi);
 
-CREATE INDEX idx_transaksi_penjualan_item_penjualan
+CREATE INDEX IF NOT EXISTS idx_transaksi_penjualan_item_penjualan
 ON dashboard.transaksi_penjualan_item(penjualan_id);
 
-CREATE INDEX idx_transaksi_penjualan_item_produk
+CREATE INDEX IF NOT EXISTS idx_transaksi_penjualan_item_produk
 ON dashboard.transaksi_penjualan_item(produk_id);
 
-CREATE INDEX idx_transaksi_stokproduk_produk_created
+CREATE INDEX IF NOT EXISTS idx_transaksi_stokproduk_produk_created
 ON user_mgmt.transaksi_stokproduk(produk_id, created_at DESC);
 
-CREATE INDEX idx_transaksi_stokproduk_umkm_created
+CREATE INDEX IF NOT EXISTS idx_transaksi_stokproduk_umkm_created
 ON user_mgmt.transaksi_stokproduk(umkm_id, created_at DESC);
 
 -- ============================================================

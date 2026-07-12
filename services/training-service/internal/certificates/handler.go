@@ -3,8 +3,10 @@ package certificates
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
+	"path/filepath"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
@@ -102,8 +104,9 @@ func (h *Handler) DownloadCertificate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fileName := filepath.Base(filePath)
 	w.Header().Set("Content-Type", "application/pdf")
-	w.Header().Set("Content-Disposition", "attachment; filename=sertifikat.pdf")
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, fileName))
 	http.ServeFile(w, r, filePath)
 }
 

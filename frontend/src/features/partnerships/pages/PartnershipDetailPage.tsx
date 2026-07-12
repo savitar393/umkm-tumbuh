@@ -1,496 +1,598 @@
-import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { partnershipsApi } from "../api";
-import type { PartnershipRequest } from "../types";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import {
+  ArrowLeft,
+  Building2,
+  CalendarDays,
+  Download,
+  Handshake,
+  Mail,
+  MapPin,
+  Phone,
+  ScrollText,
+  ShieldCheck,
+  UserRound,
+} from "lucide-react";
+import UmkmLayout from "../../umkm/components/UmkmLayout";
+import { getCurrentUser } from "../../../shared/auth/currentUser";
+import { partnershipsApi, type MitraDetail, type UMKMDetail } from "../api";
+import { Icon } from "@iconify/react";
+import {
+  hasAnySocialMedia,
+  parseSocialMediaValue,
+} from "../../../shared/utils/socialMedia";
+import logoPlaceholder from "../../../assets/logo-umkm-tumbuh.png";
 
-// ─── Logo Components ──────────────────────────────────────────────────────────
+type PartnershipProfileDetail = UMKMDetail & MitraDetail;
 
-const LogoNusantara: React.FC<{ size?: number }> = ({ size = 48 }) => (
-  <div style={{
-    width: size,
-    height: size,
-    background: "#1A3A6B",
-    borderRadius: 12,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    color: "#F5A623",
-    fontWeight: "bold",
-    fontSize: size * 0.4,
-  }}>
-    NV
-  </div>
-);
-
-// ─── Star Rating Component ────────────────────────────────────────────────────
-
-const StarRating: React.FC<{ rating: number }> = ({ rating }) => {
-  const fullStars = Math.floor(rating);
-  const hasHalfStar = rating % 1 >= 0.5;
-  
+function getInitials(name: string) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-      {[...Array(5)].map((_, i) => (
-        <span key={i} style={{ 
-          color: i < fullStars ? "#F5A623" : (i === fullStars && hasHalfStar ? "#F5A623" : "#E8E7E2"), 
-          fontSize: 16 
-        }}>
-          {i < fullStars ? "★" : (i === fullStars && hasHalfStar ? "½" : "☆")}
-        </span>
-      ))}
-      <span style={{ fontSize: 13, color: "#888780", marginLeft: 6 }}>{rating.toFixed(1)}</span>
+    name
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "P"
+  );
+}
+
+function hasValue(value?: string | null) {
+  return Boolean(value && value.trim());
+}
+
+function getLogoUrl(detail: PartnershipProfileDetail) {
+  if (!("logo_url" in detail)) return "";
+
+  return typeof detail.logo_url === "string" ? detail.logo_url.trim() : "";
+}
+
+function getCoverUrl(detail: PartnershipProfileDetail) {
+  if (!("foto_cover_url" in detail)) return "";
+
+  return typeof detail.foto_cover_url === "string" ? detail.foto_cover_url.trim() : "";
+}
+
+function formatRupiah(value: number) {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+// function hasGalleryImages(detail: PartnershipProfileDetail) {
+//   return Boolean(getLogoUrl(detail) || getCoverUrl(detail));
+// }
+
+function formatIndonesiaPhone(value?: string | null) {
+  const digits = (value || "").replace(/\D/g, "");
+
+  if (!digits) return "Belum tersedia";
+
+  if (digits.startsWith("62")) {
+    return `+${digits}`;
+  }
+
+  if (digits.startsWith("0")) {
+    return `+62 ${digits.slice(1)}`;
+  }
+
+  return `+62 ${digits}`;
+}
+
+function getFullLocation(detail: PartnershipProfileDetail) {
+  return [detail.city, detail.province].filter(Boolean).join(", ");
+}
+
+function getFullAddress(detail: PartnershipProfileDetail) {
+  return [detail.address, detail.city, detail.province].filter(Boolean).join(", ");
+}
+
+function getBasePath(role?: string) {
+  if (role === "MITRA") return "/mitra/partnerships";
+  if (role === "UMKM") return "/umkm/partnerships";
+  return "/partnerships";
+}
+
+function downloadPartnershipTemplate() {
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Template Pengajuan Kemitraan UMKM Tumbuh</title>
+<style>
+  body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; margin: 2.5cm; line-height: 1.5; }
+  h1 { text-align: center; font-size: 16pt; margin-bottom: 30pt; }
+  h2 { font-size: 14pt; margin-top: 20pt; }
+  table { width: 100%; border-collapse: collapse; margin: 10pt 0; }
+  td { padding: 6pt 10pt; border: 1px solid #000; vertical-align: top; }
+  .label { font-weight: bold; width: 35%; }
+  .field { min-height: 20pt; color: #888; }
+  ol { margin-top: 0; }
+</style>
+</head>
+<body>
+<h1>SURAT PENGAJUAN KEMITRAAN<br>UMKM Tumbuh</h1>
+
+<table>
+  <tr><td class="label">Nama Usaha</td><td class="field">............................</td></tr>
+  <tr><td class="label">Nama Pemilik</td><td class="field">............................</td></tr>
+  <tr><td class="label">Jenis Usaha</td><td class="field">............................</td></tr>
+  <tr><td class="label">Alamat</td><td class="field">............................</td></tr>
+  <tr><td class="label">Kota/Kabupaten</td><td class="field">............................</td></tr>
+  <tr><td class="label">Provinsi</td><td class="field">............................</td></tr>
+  <tr><td class="label">No. Telepon/WhatsApp</td><td class="field">............................</td></tr>
+  <tr><td class="label">Email</td><td class="field">............................</td></tr>
+  <tr><td class="label">Tahun Berdiri</td><td class="field">............................</td></tr>
+  <tr><td class="label">NIB / Legalitas</td><td class="field">............................</td></tr>
+</table>
+
+<h2>Deskripsi Usaha / Profil Mitra</h2>
+<p>............................<br>............................<br>............................</p>
+
+<h2>Alasan Bermitra</h2>
+<p>............................<br>............................<br>............................</p>
+
+<h2>Bentuk Dukungan / Kolaborasi yang Diharapkan</h2>
+<p>............................<br>............................<br>............................</p>
+
+<br><br>
+<table>
+  <tr>
+    <td style="border: none; width: 50%; text-align: center;">
+      <br><br><br>
+      (............................)<br>
+      <em>Tanda Tangan &amp; Nama Lengkap</em>
+    </td>
+    <td style="border: none; width: 50%; text-align: center;">
+      <br><br><br>
+      (............................)<br>
+      <em>Tanggal</em>
+    </td>
+  </tr>
+</table>
+</body>
+</html>`;
+
+  const blob = new Blob([html], { type: "application/msword" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+
+  anchor.href = url;
+  anchor.download = "Template_Pengajuan_Kemitraan.doc";
+
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  URL.revokeObjectURL(url);
+}
+
+function InfoItem({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value?: string | number | null;
+}) {
+  return (
+    <div className="partnership-detail-info-item">
+      {icon}
+      <div>
+        <span>{label}</span>
+        <strong>{value || "Belum tersedia"}</strong>
+      </div>
     </div>
   );
+}
+
+type SocialPlatform = "instagram" | "tiktok" | "shopee" | "tokopedia" | "website";
+
+const socialIconMap: Record<SocialPlatform, string> = {
+  instagram: "simple-icons:instagram",
+  tiktok: "simple-icons:tiktok",
+  shopee: "simple-icons:shopee",
+  tokopedia: "simple-icons:tokopedia",
+  website: "lucide:globe",
 };
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+function withoutAt(value: string) {
+  return value.trim().replace(/^@+/, "");
+}
 
-const PartnershipDetailPage: React.FC = () => {
+function normalizeWebsiteUrl(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}
+
+function getSocialDisplayLabel(platform: SocialPlatform, label: string) {
+  const value = label.trim();
+
+  if (platform === "website") {
+    try {
+      const url = new URL(normalizeWebsiteUrl(value));
+      return url.hostname.replace(/^www\./, "");
+    } catch {
+      return value.replace(/^https?:\/\//i, "").replace(/^www\./, "");
+    }
+  }
+
+  return value;
+}
+
+function getSocialUrl(platform: SocialPlatform, label: string) {
+  const value = label.trim();
+  if (!value) return "";
+
+  switch (platform) {
+    case "instagram":
+      return `https://www.instagram.com/${withoutAt(value)}`;
+    case "tiktok":
+      return `https://www.tiktok.com/@${withoutAt(value)}`;
+    case "shopee":
+      return `https://shopee.co.id/search?keyword=${encodeURIComponent(value)}`;
+    case "tokopedia":
+      return `https://www.tokopedia.com/search?st=shop&q=${encodeURIComponent(value)}`;
+    case "website":
+      return normalizeWebsiteUrl(value);
+    default:
+      return "";
+  }
+}
+
+function SocialBrandIcon({ platform }: { platform: SocialPlatform }) {
+  return (
+    <span className={`partnership-social-brand-icon ${platform}`}>
+      <Icon icon={socialIconMap[platform]} width={16} height={16} />
+    </span>
+  );
+}
+
+function SocialProfileLinks({ value }: { value?: string | null }) {
+  const socialLinks = parseSocialMediaValue(value);
+
+  if (!hasAnySocialMedia(socialLinks)) return null;
+
+  const items = [
+    socialLinks.instagram ? { platform: "instagram" as const, label: socialLinks.instagram } : null,
+    socialLinks.tiktok ? { platform: "tiktok" as const, label: socialLinks.tiktok } : null,
+    socialLinks.shopee ? { platform: "shopee" as const, label: socialLinks.shopee } : null,
+    socialLinks.tokopedia ? { platform: "tokopedia" as const, label: socialLinks.tokopedia } : null,
+    socialLinks.website ? { platform: "website" as const, label: socialLinks.website } : null,
+  ].filter(Boolean) as Array<{ platform: SocialPlatform; label: string }>;
+
+  return (
+    <div className="partnership-social-chip-list">
+      {items.map((item) => (
+        <a
+          key={`${item.platform}-${item.label}`}
+          href={getSocialUrl(item.platform, item.label)}
+          target="_blank"
+          rel="noreferrer"
+          title={item.label}
+        >
+          <SocialBrandIcon platform={item.platform} />
+          <strong>{getSocialDisplayLabel(item.platform, item.label)}</strong>
+        </a>
+      ))}
+    </div>
+  );
+}
+
+export default function PartnershipDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  
-  const [partnership, setPartnership] = useState<PartnershipRequest | null>(null);
+  const [searchParams] = useSearchParams();
+  const user = getCurrentUser();
+
+  const isMitra = user?.role === "MITRA";
+  const basePath = getBasePath(user?.role);
+  const rawReturnTo = searchParams.get("returnTo");
+  const decodedReturnTo = rawReturnTo ? decodeURIComponent(rawReturnTo) : "";
+
+  const returnPath = decodedReturnTo.startsWith(basePath)
+    ? decodedReturnTo
+    : basePath;
+
+  function goBackToList() {
+    navigate(returnPath);
+  }
+  const profileKind = isMitra ? "UMKM" : "Mitra";
+
+  const [detail, setDetail] = useState<UMKMDetail | MitraDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [showDownloadAlert, setShowDownloadAlert] = useState(false);
+  const [error, setError] = useState("");
+
+  const data = detail as PartnershipProfileDetail | null;
+
+  const fullLocation = useMemo(() => (data ? getFullLocation(data) : ""), [data]);
+  const fullAddress = useMemo(() => (data ? getFullAddress(data) : ""), [data]);
 
   useEffect(() => {
-    if (id) {
-      fetchPartnership(id);
-    }
-  }, [id]);
-
-  const fetchPartnership = async (partnershipId: string) => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const response = await partnershipsApi.getDetail(partnershipId);
-      
-      if (response.status === "success" && response.data) {
-        setPartnership(response.data as PartnershipRequest);
-      } else {
-        setError(response.message || "Gagal memuat detail kemitraan");
-      }
-    } catch (err) {
-      console.error("Error fetching partnership:", err);
-      setError("Terjadi kesalahan saat memuat data");
-      
-      // Mock data for demo
-      setPartnership({
-        id: partnershipId,
-        request_code: "PKS-2026-00000001",
-        requester_id: "user1",
-        receiver_id: "mitra1",
-        requester_role: "UMKM",
-        receiver_role: "MITRA",
-        category: "Pendanaan",
-        proposal_title: "Pengajuan Kerjasama Pendanaan",
-        proposal_description: "Mengajukan kerjasama pendanaan untuk pengembangan produk",
-        business_name: "UMKM Sari Roti",
-        contact_person: "+628123456789",
-        product_description: "Produk roti tradisional",
-        reason_for_partnership: "Membutuhkan modal pengembangan",
-        nib_ktp_file: "nib.pdf",
-        proposal_file: "proposal.pdf",
-        status: "SUBMITTED",
-        submitted_at: "2026-06-08T10:00:00Z",
-        created_at: "2026-06-08T10:00:00Z",
-        updated_at: "2026-06-08T10:00:00Z",
-        requester_name: "UMKM Sari Roti",
-        receiver_name: "Nusantara Ventures",
-      });
-    } finally {
+    if (!id) {
+      setError("ID profil kemitraan tidak ditemukan.");
       setLoading(false);
+      return;
     }
-  };
 
+    const detailId = id;
+    let ignore = false;
 
-  const handleDownloadTemplate = () => {
-    setShowDownloadAlert(true);
-    setTimeout(() => setShowDownloadAlert(false), 3000);
-    // In production: window.open('/template/pengajuan-kemitraan.pdf', '_blank');
-  };
+    async function fetchDetail() {
+      setLoading(true);
+      setError("");
 
-  const handleAjukanKemitraan = () => {
-    navigate(`/partnerships/create?receiver_id=${partnership?.receiver_id || id}&receiver_name=Nusantara%20Ventures`);
-  };
+      try {
+        if (isMitra) {
+          const response = await partnershipsApi.getUMKMDetail(detailId);
 
-  const handleBack = () => {
-    navigate("/partnerships");
-  };
+          if (!ignore) {
+            if (response.success === true && response.data?.umkm) {
+              setDetail(response.data.umkm);
+            } else {
+              setError("UMKM tidak ditemukan.");
+            }
+          }
 
-  if (loading) {
-    return (
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: "100vh",
-        background: "#F5F4F0",
-      }}>
-        <div style={{ textAlign: "center" }}>
-          <div style={{
-            display: "inline-block",
-            width: 40,
-            height: 40,
-            borderRadius: "50%",
-            border: "3px solid #E8E7E2",
-            borderTopColor: "#1A3A6B",
-            animation: "spin 0.8s linear infinite",
-          }} />
-          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-          <p style={{ marginTop: 16, color: "#888780" }}>Memuat detail mitra...</p>
-        </div>
-      </div>
-    );
+          return;
+        }
+
+        const response = await partnershipsApi.getMitraDetail(detailId);
+
+        if (!ignore) {
+          if (response.success === true && response.data?.mitra) {
+            setDetail(response.data.mitra);
+          } else {
+            setError("Mitra tidak ditemukan.");
+          }
+        }
+      } catch (err) {
+        if (!ignore) {
+          setError(err instanceof Error ? err.message : "Gagal memuat detail kemitraan.");
+        }
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    }
+
+    fetchDetail();
+
+    return () => {
+      ignore = true;
+    };
+  }, [id, isMitra]);
+
+  function handleApplyPartnership() {
+    const query = new URLSearchParams();
+
+    if (id) query.set("receiver_id", id);
+    if (data?.name) query.set("receiver_name", data.name);
+
+    navigate(`${basePath}/create?${query.toString()}`);
   }
 
-  if (error || !partnership) {
-    return (
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: "100vh",
-        background: "#F5F4F0",
-      }}>
-        <div style={{
-          background: "white",
-          borderRadius: 16,
-          padding: "40px",
-          textAlign: "center",
-          maxWidth: 400,
-        }}>
-          <div style={{
-            width: 64,
-            height: 64,
-            background: "#FEF2F2",
-            borderRadius: "50%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            margin: "0 auto 20px",
-          }}>
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#E24B4A" strokeWidth="2">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="18" y1="6" x2="6" y2="18" />
-              <line x1="6" y1="6" x2="18" y2="18" />
-            </svg>
-          </div>
-          <h3 style={{ margin: "0 0 8px", fontSize: 20, color: "#2C2C2A" }}>Data Tidak Ditemukan</h3>
-          <p style={{ margin: "0 0 24px", color: "#888780" }}>{error || "Detail kemitraan tidak tersedia"}</p>
-          <button
-            onClick={handleBack}
-            style={{
-              padding: "10px 24px",
-              background: "#1A3A6B",
-              border: "none",
-              borderRadius: 8,
-              color: "white",
-              cursor: "pointer",
-            }}
-          >
-            Kembali
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const logoUrl = data ? getLogoUrl(data) : "";
+  const coverUrl = data ? getCoverUrl(data) : "";
 
   return (
-    <div style={{
-      maxWidth: 1200,
-      margin: "0 auto",
-      padding: "40px 24px",
-      fontFamily: "'Segoe UI', Roboto, sans-serif",
-      background: "#F5F4F0",
-      minHeight: "100vh",
-    }}>
-      {/* Download Alert Toast */}
-      {showDownloadAlert && (
-        <div style={{
-          position: "fixed",
-          top: 80,
-          right: 24,
-          background: "#1D9E75",
-          color: "white",
-          padding: "12px 20px",
-          borderRadius: 12,
-          fontSize: 14,
-          zIndex: 1000,
-          animation: "slideIn 0.3s ease",
-        }}>
-          <style>{`
-            @keyframes slideIn {
-              from { transform: translateX(100%); opacity: 0; }
-              to { transform: translateX(0); opacity: 1; }
-            }
-          `}</style>
-          📄 Template pengajuan sedang diunduh...
-        </div>
-      )}
+    <UmkmLayout
+      title="Detail Kemitraan"
+      subtitle={`Lihat detail ${profileKind.toLowerCase()} sebelum mengajukan kerja sama.`}
+    >
+      <main className="partnership-detail-page">
+        <button className="partnership-back-button" type="button" onClick={goBackToList}>
+          <ArrowLeft size={17} />
+          Kembali ke Daftar
+        </button>
 
-      {/* Back Button */}
-      <button
-        onClick={handleBack}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          background: "none",
-          border: "none",
-          color: "#1A3A6B",
-          cursor: "pointer",
-          marginBottom: 24,
-          fontSize: 14,
-        }}
-      >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M19 12H5M12 19l-7-7 7-7" />
-        </svg>
-        Kembali ke Daftar
-      </button>
-
-      {/* Main Content - Two Columns */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 360px",
-        gap: 32,
-      }}>
-        {/* LEFT COLUMN - Company Profile */}
-        <div>
-          {/* Header with Logo and Company Name */}
-          <div style={{
-            background: "white",
-            borderRadius: 20,
-            padding: "32px",
-            marginBottom: 24,
-            boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-          }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 20, marginBottom: 24 }}>
-              <LogoNusantara size={64} />
-              <div>
-                <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700, color: "#1A3A6B" }}>
-                  Nusantara Ventures
-                </h1>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8 }}>
-                  <StarRating rating={4.8} />
-                  <span style={{ fontSize: 13, color: "#888780" }}>• 120+ Kemitraan</span>
-                  <span style={{ fontSize: 13, color: "#1D9E75" }}>• 85% Sukses</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Description */}
-            <p style={{
-              fontSize: 15,
-              lineHeight: 1.6,
-              color: "#5F5E5A",
-              marginBottom: 24,
-            }}>
-              Nusantara Ventures adalah perusahaan modal ventura terkemuka yang berdedikasi untuk 
-              memberdayakan UMKM pengrajin dan kreatif di Indonesia. Kami tidak hanya memberikan 
-              pendanaan, tetapi juga ekosistem pendukung yang kuat untuk membantu bisnis Anda 
-              naik kelas ke pasar internasional.
-            </p>
-
-            <p style={{
-              fontSize: 15,
-              lineHeight: 1.6,
-              color: "#5F5E5A",
-              marginBottom: 24,
-            }}>
-              Memiliki lebih dari 120+ kerja sama dengan pasar internasional maupun nasional. 
-              Memiliki tingkat kesuksesan 85% dalam bermitra. Kami lebih berfokus pada produk 
-              kriya dan fashion, kuliner olahan berkelanjutan dan teknologi rantai pasok.
-            </p>
-
-            {/* Criteria Section */}
-            <div style={{
-              background: "#F0FAF6",
-              borderRadius: 16,
-              padding: "20px",
-              marginBottom: 24,
-            }}>
-              <h3 style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 700, color: "#1D9E75" }}>
-                Kriteria Bermitra
-              </h3>
-              <ul style={{ margin: 0, paddingLeft: 20, color: "#5F5E5A", fontSize: 14, lineHeight: 1.8 }}>
-                <li>Beroperasi minimal 12 bulan</li>
-                <li>Memiliki laporan keuangan dasar</li>
-                <li>Potensi skalabilitas tinggi</li>
-              </ul>
-            </div>
-
-            {/* Benefits Section */}
-            <div>
-              <h3 style={{ margin: "0 0 12px", fontSize: 16, fontWeight: 700, color: "#1A3A6B" }}>
-                Keuntungan Bermitra
-              </h3>
-              <ul style={{ margin: 0, paddingLeft: 20, color: "#5F5E5A", fontSize: 14, lineHeight: 1.8 }}>
-                <li>Akses pendanaan</li>
-                <li>Mentoring dari para ahli</li>
-                <li>Jejaring global</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        {/* RIGHT COLUMN - Action Card */}
-        <div>
-          {/* Ajukan Kemitraan Card */}
-          <div style={{
-            background: "white",
-            borderRadius: 20,
-            padding: "28px",
-            marginBottom: 24,
-            boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-            position: "sticky",
-            top: 24,
-          }}>
-            <h2 style={{
-              margin: "0 0 8px",
-              fontSize: 22,
-              fontWeight: 700,
-              color: "#1A3A6B",
-            }}>
-              Ajukan Kemitraan
-            </h2>
-            <p style={{
-              fontSize: 13,
-              color: "#888780",
-              marginBottom: 24,
-            }}>
-              Bergabung dengan ekosistem kami
-            </p>
-
-            {/* Download Template Button */}
-            <button
-              onClick={handleDownloadTemplate}
-              style={{
-                width: "100%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 10,
-                padding: "14px 0",
-                background: "#F5F4F0",
-                border: "1px solid #E8E7E2",
-                borderRadius: 12,
-                fontSize: 14,
-                fontWeight: 500,
-                color: "#1A3A6B",
-                cursor: "pointer",
-                marginBottom: 20,
-                transition: "background 0.15s",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "#E8E7E2")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "#F5F4F0")}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-              Unduh Template Pengajuan Kemitraan (PDF)
+        {loading ? (
+          <section className="partnership-state-card">
+            <div className="partnership-spinner" />
+            <p>Memuat detail {profileKind.toLowerCase()}...</p>
+          </section>
+        ) : error || !data ? (
+          <section className="partnership-state-card error">
+            <strong>{profileKind} tidak ditemukan</strong>
+            <p>{error || "Data tidak tersedia."}</p>
+            <button type="button" onClick={goBackToList}>
+              Kembali
             </button>
+          </section>
+        ) : (
+          <>
+            <section
+              className={[
+                "partnership-detail-hero",
+                coverUrl ? "partnership-detail-hero--with-cover" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+                          >
+              {coverUrl ? (
+                <img
+                  className="partnership-detail-hero-cover"
+                  src={coverUrl}
+                  alt={`Foto utama ${data.name}`}
+                />
+              ) : null}
 
-            {/* Divider */}
-            <div style={{
-              height: 1,
-              background: "#E8E7E2",
-              margin: "20px 0",
-            }} />
+              <div className="partnership-detail-hero-overlay" />
 
-            {/* Ajukan Sekarang Button */}
-            <button
-              onClick={handleAjukanKemitraan}
-              style={{
-                width: "100%",
-                padding: "14px 0",
-                background: "#1A3A6B",
-                border: "none",
-                borderRadius: 12,
-                fontSize: 14,
-                fontWeight: 600,
-                color: "white",
-                cursor: "pointer",
-                marginBottom: 24,
-                transition: "background 0.15s",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "#2A5DA8")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "#1A3A6B")}
-            >
-              Ajukan Sekarang
-            </button>
+              <div className="partnership-detail-avatar">
+                {logoUrl ? (
+                  <img src={logoUrl} alt={`Logo ${data.name}`} />
+                ) : (
+                  getInitials(data.name)
+                )}
+              </div>
 
-            {/* Contact Info */}
-            <div>
-              <h3 style={{
-                margin: "0 0 12px",
-                fontSize: 14,
-                fontWeight: 600,
-                color: "#2C2C2A",
-              }}>
-                Informasi Kontak
-              </h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <a
-                  href="mailto:partnership@nusantara.vc"
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    fontSize: 13,
-                    color: "#1A3A6B",
-                    textDecoration: "none",
-                  }}
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                    <rect x="2" y="4" width="20" height="16" rx="2" />
-                    <path d="m22 7-10 7L2 7" />
-                  </svg>
-                  partnership@nusantara.vc
-                </a>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, color: "#5F5E5A" }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                    <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.362 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0122 16.92z" />
-                  </svg>
-                  +62 21 555 0123
+              <div className="partnership-detail-hero-content">
+                <span className="partnership-eyebrow">
+                  <Handshake size={16} />
+                  Profil {profileKind}
+                </span>
+                <h1>{data.name}</h1>
+
+                <div className="partnership-detail-chip-row">
+                  {data.type ? <span>{data.type}</span> : null}
+                  {fullLocation ? <span>{fullLocation}</span> : null}
+                  {"year_established" in data && data.year_established ? (
+                    <span>Berdiri {data.year_established}</span>
+                  ) : null}
+                  <span className="verified">
+                    <ShieldCheck size={14} />
+                    Terverifikasi
+                  </span>
                 </div>
+                {"social_media_marketplace" in data && hasValue(data.social_media_marketplace) ? (
+                  <div className="partnership-detail-hero-social">
+                    <SocialProfileLinks value={data.social_media_marketplace} />
+                  </div>
+                ) : null}
               </div>
-            </div>
-          </div>
+            </section>
 
-          {/* Stats Card */}
-          <div style={{
-            background: "linear-gradient(135deg, #1A3A6B 0%, #2A5DA8 100%)",
-            borderRadius: 20,
-            padding: "24px",
-            color: "white",
-          }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
-              <div>
-                <p style={{ margin: 0, fontSize: 11, opacity: 0.7 }}>TOTAL KEMITRAAN</p>
-                <p style={{ margin: "4px 0 0", fontSize: 28, fontWeight: 700 }}>120+</p>
+            <section className="partnership-detail-layout">
+              <div className="partnership-detail-main">
+                <article className="partnership-detail-card">
+                  <h2>Deskripsi {profileKind}</h2>
+                  <p>
+                    {hasValue(data.description)
+                      ? data.description
+                      : `Deskripsi ${profileKind.toLowerCase()} belum tersedia.`}
+                  </p>
+                </article>
+
+                {"featured_products" in data && data.featured_products?.length ? (
+                  <article className="partnership-detail-card">
+                    <h2>Produk Utama</h2>
+                    <p>Produk pilihan yang ditampilkan oleh UMKM ini.</p>
+
+                    <div className="product-card-grid">
+                      {data.featured_products.slice(0, 5).map((product) => (
+                        <article className="product-card" key={product.id}>
+                          <div className="product-card__image">
+                            {product.thumbnail_url ? (
+                              <img className="product-card__photo" src={product.thumbnail_url} alt={product.name} />
+                            ) : (
+                              <div className="product-card__placeholder">
+                                <img src={logoPlaceholder} alt="" aria-hidden="true" />
+                                <span>Belum ada foto</span>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="product-card__body">
+                            <span className="product-card__category">
+                              Kategori: {product.category_name || "-"}
+                            </span>
+                            <h3>{product.name}</h3>
+                            <strong>{formatRupiah(product.price)}</strong>
+                            <p>{product.description || "Belum ada deskripsi produk."}</p>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  </article>
+                ) : null}
+
+                {isMitra && (coverUrl || logoUrl) ? (
+                  <article className="partnership-detail-card">
+                    <h2>Galeri Usaha</h2>
+
+                    <div className="partnership-detail-gallery">
+                      {coverUrl ? (
+                        <figure className="partnership-detail-gallery-item partnership-detail-gallery-item--cover">
+                          <img src={coverUrl} alt={`Foto utama ${data.name}`} />
+                          <figcaption>Foto utama usaha</figcaption>
+                        </figure>
+                      ) : null}
+
+                      {logoUrl ? (
+                        <figure className="partnership-detail-gallery-item partnership-detail-gallery-item--logo">
+                          <img src={logoUrl} alt={`Logo ${data.name}`} />
+                          <figcaption>Logo usaha</figcaption>
+                        </figure>
+                      ) : null}
+                    </div>
+                  </article>
+                ) : null}
+
+                <article className="partnership-detail-card">
+                  <h2>Informasi Profil</h2>
+
+                  <div className="partnership-detail-info-grid">
+                    <InfoItem icon={<UserRound size={18} />} label="Penanggung Jawab" value={data.owner_name} />
+                    <InfoItem icon={<Building2 size={18} />} label="Jenis/Kategori" value={data.type} />
+                    <InfoItem icon={<MapPin size={18} />} label="Alamat" value={fullAddress} />
+                    <InfoItem icon={<MapPin size={18} />} label="Wilayah Operasional" value={data.operational_area} />
+                    <InfoItem
+                      icon={<Phone size={18} />}
+                      label="Telepon/WhatsApp"
+                      value={formatIndonesiaPhone(data.phone_number)}
+                    />
+                    <InfoItem icon={<Mail size={18} />} label="Email" value={data.email} />
+                    {"year_established" in data ? (
+                      <InfoItem
+                        icon={<CalendarDays size={18} />}
+                        label="Tahun Berdiri"
+                        value={data.year_established}
+                      />
+                    ) : null}
+                    <InfoItem icon={<ScrollText size={18} />} label="Produk/Layanan" value={data.products} />
+                  </div>
+                </article>
               </div>
-              <div>
-                <p style={{ margin: 0, fontSize: 11, opacity: 0.7 }}>TINGKAT SUKSES</p>
-                <p style={{ margin: "4px 0 0", fontSize: 28, fontWeight: 700 }}>85%</p>
-              </div>
-            </div>
-            <div style={{ height: 4, background: "rgba(255,255,255,0.2)", borderRadius: 2, overflow: "hidden" }}>
-              <div style={{ width: "85%", height: "100%", background: "#F5A623", borderRadius: 2 }} />
-            </div>
-            <p style={{ margin: "16px 0 0", fontSize: 12, opacity: 0.8, textAlign: "center" }}>
-              Bergabung dengan 120+ mitra UMKM lainnya
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
+
+              <aside className="partnership-action-panel">
+                <div className="partnership-action-panel__header">
+                  <Handshake size={24} />
+                  <div>
+                    <span>Pengajuan Kemitraan</span>
+                    <strong>Siap mengajukan?</strong>
+                  </div>
+                </div>
+
+                <p>
+                  Unduh template bila diperlukan, lalu lanjutkan ke formulir pengajuan untuk mengirim proposal kerja sama.
+                </p>
+
+                <button className="partnership-template-button" type="button" onClick={downloadPartnershipTemplate}>
+                  <Download size={17} />
+                  Download Template
+                </button>
+
+                <div className="partnership-action-summary">
+                  <div>
+                    <span>Target</span>
+                    <strong>{data.name}</strong>
+                  </div>
+                  <div>
+                    <span>Jenis</span>
+                    <strong>{data.type || "-"}</strong>
+                  </div>
+                  <div>
+                    <span>Lokasi</span>
+                    <strong>{fullLocation || "-"}</strong>
+                  </div>
+                  <div>
+                    <span>Status</span>
+                    <strong className="verified">Terverifikasi</strong>
+                  </div>
+                </div>
+
+                <button className="partnership-apply-button" type="button" onClick={handleApplyPartnership}>
+                  Ajukan Kemitraan
+                  <Handshake size={17} />
+                </button>
+              </aside>
+            </section>
+          </>
+        )}
+      </main>
+    </UmkmLayout>
   );
-};
-
-export default PartnershipDetailPage;
+}

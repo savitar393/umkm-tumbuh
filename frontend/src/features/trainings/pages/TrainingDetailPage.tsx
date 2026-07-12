@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Icon } from "@iconify/react";
+import { toast } from "sonner";
 import Header from "../../../shared/components/Header";
 import Footer from "../../../shared/components/Footer";
 import TermsModal from "./TermsModal";
@@ -69,7 +70,11 @@ export default function TrainingDetailPage() {
       { umkm_id: currentUmkmId, pelatihan_id: id },
       {
         onSuccess: (data) => {
+          toast.success("Berhasil mendaftar pelatihan!");
           navigate(`/umkm/trainings/${id}/success`, { state: { enrollment: data.enrollment } });
+        },
+        onError: (err) => {
+          toast.error(err?.message || "Gagal mendaftar pelatihan");
         },
       }
     );

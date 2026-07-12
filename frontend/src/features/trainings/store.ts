@@ -22,6 +22,7 @@ interface TrainingStore {
   lessonState: TrainingLessonState;
   setCurrentModule: (moduleId: string) => void;
   markModuleCompleted: (moduleId: string) => void;
+  setCompletedModules: (moduleIds: string[]) => void;
   resetLessonState: () => void;
 
   selectedTrainingId: string | null;
@@ -61,6 +62,13 @@ export const useTrainingStore = create<TrainingStore>()(
           lessonState: {
             ...state.lessonState,
             completedModules: [...new Set([...state.lessonState.completedModules, moduleId])],
+          },
+        })),
+      setCompletedModules: (moduleIds) =>
+        set((state) => ({
+          lessonState: {
+            ...state.lessonState,
+            completedModules: moduleIds,
           },
         })),
       resetLessonState: () => set({ lessonState: defaultLessonState }),

@@ -1,12 +1,27 @@
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { CalendarDays, Check, Minus, Plus, Save } from "lucide-react";
+import { CalendarDays, Check, Info, Minus, Plus, Save } from "lucide-react";
 import UmkmLayout from "../../umkm/components/UmkmLayout";
 import { getProducts, type Product } from "../../products/api";
-import { createSale } from "../api";
+import { createSale, getSales, type SaleSummary } from "../api";
+
+const FUTURE_DATE_ERROR = "Tanggal laporan tidak boleh melebihi hari ini.";
 
 function today() {
-  return new Date().toISOString().slice(0, 10);
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+function isFutureReportDate(value: string) {
+  return value !== "" && value > today();
+}
+
+function onlyDigits(value: string) {
+  return value.replace(/\D/g, "");
 }
 
 function formatRupiah(value: number) {
@@ -32,8 +47,10 @@ export default function SalesCreatePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [transactionDate, setTransactionDate] = useState(today());
-  const [totalProfit, setTotalProfit] = useState(0);
+  const [totalProfit, setTotalProfit] = useState("0");
   const [note, setNote] = useState("Laporan penjualan harian.");
+  const [existingSale, setExistingSale] = useState<SaleSummary | null>(null);
+  const [loadingExistingSale, setLoadingExistingSale] = useState(false);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [saving, setSaving] = useState(false);
   const [successSaleId, setSuccessSaleId] = useState("");
@@ -56,6 +73,7 @@ export default function SalesCreatePage() {
   }, [quantities]);
 
   const averagePerItem = totalItem > 0 ? totalOmzet / totalItem : 0;
+  const totalProfitValue = Number(totalProfit || 0);
 
   async function loadProducts() {
     setLoadingProducts(true);
@@ -74,6 +92,46 @@ export default function SalesCreatePage() {
   useEffect(() => {
     loadProducts();
   }, []);
+
+  useEffect(() => {
+    setError((currentError) => {
+      if (currentError === FUTURE_DATE_ERROR && !isFutureReportDate(transactionDate)) {
+        return "";
+      }
+
+      return currentError;
+    });
+  }, [transactionDate]);
+
+  useEffect(() => {
+    async function loadExistingSaleForDate() {
+      if (!transactionDate) return;
+
+      setLoadingExistingSale(true);
+
+      try {
+        const response = await getSales({
+          from: transactionDate,
+          to: transactionDate,
+        });
+
+        const sale = response.sales[0] ?? null;
+        setExistingSale(sale);
+
+        if (sale?.note) {
+          setNote(sale.note);
+        } else {
+          setNote("Laporan penjualan harian.");
+        }
+      } catch {
+        setExistingSale(null);
+      } finally {
+        setLoadingExistingSale(false);
+      }
+    }
+
+    loadExistingSaleForDate();
+  }, [transactionDate]);
 
   function setQuantity(product: Product, nextQuantity: number) {
     const safeQuantity = Math.max(0, Math.min(nextQuantity, product.stock));
@@ -97,6 +155,10 @@ export default function SalesCreatePage() {
       return "Tanggal laporan wajib diisi.";
     }
 
+    if (isFutureReportDate(transactionDate)) {
+      return FUTURE_DATE_ERROR;
+    }
+
     if (totalItem <= 0) {
       return "Minimal satu produk harus memiliki jumlah terjual.";
     }
@@ -105,11 +167,15 @@ export default function SalesCreatePage() {
       return "Total omzet harus lebih dari 0.";
     }
 
-    if (totalProfit < 0) {
+    if (Number.isNaN(totalProfitValue)) {
+      return "Laba harus berupa angka.";
+    }
+
+    if (totalProfitValue < 0) {
       return "Laba tidak boleh negatif.";
     }
 
-    if (totalProfit >= totalOmzet) {
+    if (totalProfitValue >= totalOmzet) {
       return "Laba harus lebih kecil dari omzet.";
     }
 
@@ -126,8 +192,8 @@ export default function SalesCreatePage() {
       return;
     }
 
-    setSaving(true);
     setError("");
+    setSaving(true);
 
     try {
       const payloadItems = activeProducts
@@ -139,7 +205,7 @@ export default function SalesCreatePage() {
 
       const response = await createSale({
         transaction_date: transactionDate,
-        total_profit: Number(totalProfit),
+        total_profit: totalProfitValue,
         note,
         items: payloadItems,
       });
@@ -174,14 +240,38 @@ export default function SalesCreatePage() {
               />
             </label>
 
-            <button type="submit" disabled={saving || loadingProducts}>
+            <button type="submit" disabled={saving || loadingProducts || loadingExistingSale}>
               <Save size={18} />
-              {saving ? "Menyimpan..." : "Simpan Laporan"}
+              {saving ? "Menyimpan..." : existingSale ? "Perbarui Laporan" : "Simpan Laporan"}
             </button>
           </div>
         </header>
 
         {error ? <div className="error-message">{error}</div> : null}
+
+        {existingSale ? (
+          <div className="notice-message sales-existing-report-notice" role="status">
+            <span className="notice-message__icon" aria-hidden="true">
+              <Info size={18} />
+            </span>
+            <span className="notice-message__content">
+              <strong>Laporan tanggal ini sudah ada.</strong>
+              <span>
+                Input baru akan digabungkan ke laporan yang sama. Catatan akan
+                mengikuti catatan terbaru yang Anda isi.
+              </span>
+            </span>
+          </div>
+        ) : loadingExistingSale ? (
+          <div className="notice-message" role="status">
+            <span className="notice-message__icon" aria-hidden="true">
+              <Info size={18} />
+            </span>
+            <span className="notice-message__content">
+              Memeriksa laporan pada tanggal ini...
+            </span>
+          </div>
+        ) : null}
 
         <section className="sales-report-summary">
           <article className="sales-summary-card sales-summary-card--dark">
@@ -194,10 +284,11 @@ export default function SalesCreatePage() {
           <article className="sales-summary-card sales-summary-card--blue">
             <span>Total Laba Hari Ini</span>
             <input
-              type="number"
-              min="0"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               value={totalProfit}
-              onChange={(event) => setTotalProfit(Number(event.target.value))}
+              onChange={(event) => setTotalProfit(onlyDigits(event.target.value))}
               placeholder="Input laba hari ini"
             />
             <small>Laba harus lebih kecil dari omzet.</small>
@@ -276,9 +367,9 @@ export default function SalesCreatePage() {
               Batal
             </Link>
 
-            <button type="submit" disabled={saving || loadingProducts}>
+            <button type="submit" disabled={saving || loadingProducts || loadingExistingSale}>
               <Save size={18} />
-              Submit
+              {existingSale ? "Perbarui Laporan" : "Submit"}
             </button>
           </div>
         </section>

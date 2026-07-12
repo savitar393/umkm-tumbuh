@@ -79,3 +79,98 @@ func handleError(w http.ResponseWriter, err error) {
 	log.Printf("internal auth error: %v", err)
 	response.Error(w, http.StatusInternalServerError, "Terjadi kesalahan pada server.")
 }
+
+func (h *Handler) RequestEmailVerification(w http.ResponseWriter, r *http.Request) {
+	var req RequestEmailVerificationRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.Error(w, http.StatusBadRequest, "Request body tidak valid.")
+		return
+	}
+
+	result, err := h.AuthService.RequestEmailVerification(r.Context(), req)
+	if err != nil {
+		handleError(w, err)
+		return
+	}
+
+	response.JSON(w, http.StatusOK, result)
+}
+
+func (h *Handler) ConfirmEmailVerification(w http.ResponseWriter, r *http.Request) {
+	var req ConfirmEmailVerificationRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.Error(w, http.StatusBadRequest, "Request body tidak valid.")
+		return
+	}
+
+	result, err := h.AuthService.ConfirmEmailVerification(r.Context(), req)
+	if err != nil {
+		handleError(w, err)
+		return
+	}
+
+	response.JSON(w, http.StatusOK, result)
+}
+
+func (h *Handler) RequestPasswordReset(w http.ResponseWriter, r *http.Request) {
+	var req RequestPasswordResetRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.Error(w, http.StatusBadRequest, "Request body tidak valid.")
+		return
+	}
+
+	result, err := h.AuthService.RequestPasswordReset(r.Context(), req)
+	if err != nil {
+		handleError(w, err)
+		return
+	}
+
+	response.JSON(w, http.StatusOK, result)
+}
+
+func (h *Handler) ResetPassword(w http.ResponseWriter, r *http.Request) {
+	var req ResetPasswordRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.Error(w, http.StatusBadRequest, "Request body tidak valid.")
+		return
+	}
+
+	result, err := h.AuthService.ResetPassword(r.Context(), req)
+	if err != nil {
+		handleError(w, err)
+		return
+	}
+
+	response.JSON(w, http.StatusOK, result)
+}
+
+func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
+	result, err := h.AuthService.Logout(r.Context(), r.Header.Get("Authorization"))
+	if err != nil {
+		handleError(w, err)
+		return
+	}
+
+	response.JSON(w, http.StatusOK, result)
+}
+
+func (h *Handler) RefreshToken(w http.ResponseWriter, r *http.Request) {
+	var req RefreshTokenRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		response.Error(w, http.StatusBadRequest, "Request body tidak valid.")
+		return
+	}
+
+	result, err := h.AuthService.RefreshToken(r.Context(), req)
+	if err != nil {
+		handleError(w, err)
+		return
+	}
+
+	response.JSON(w, http.StatusOK, result)
+}

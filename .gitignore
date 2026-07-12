@@ -66,6 +66,7 @@ infra/minio_data/
 *.sql.gz
 *.dump
 *.backup
+*.bat
 
 # =========================
 # Logs
@@ -96,6 +97,9 @@ Thumbs.db
 *.temp
 *.swp
 *.swo
+*.md
+*.githooks/
+format-go.ps1
 
 # =========================
 # Dummy data/credentials
@@ -103,26 +107,3 @@ Thumbs.db
 infra/db/dummy/generated/
 infra/db/dummy/metadata/
 infra/db/dummy/*.csv
-# Local dependencies / generated reports
-node_modules/
-frontend/node_modules/
-frontend/playwright-report/
-playwright-report/
-test-results/
-
-# Local dependencies / generated reports
-node_modules/
-frontend/node_modules/
-frontend/playwright-report/
-playwright-report/
-test-results/
-
-# Local dependencies / generated reports
-node_modules/
-frontend/node_modules/
-frontend/playwright-report/
-playwright-report/
-test-results/
-
-# Generated local Newman stabilization reports
-tests/postman/reports/stabilize-*.html

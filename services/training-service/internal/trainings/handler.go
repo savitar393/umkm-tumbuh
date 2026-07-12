@@ -126,7 +126,7 @@ func (h *Handler) CompleteTraining(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.Service.CompleteTraining(r.Context(), req.PendaftaranID); err != nil {
+	if err := h.Service.CompleteTraining(r.Context(), req.PendaftaranID, req.DokumenEvaluasiID); err != nil {
 		handleError(w, err)
 		return
 	}
