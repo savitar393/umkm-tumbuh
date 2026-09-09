@@ -1,7 +1,6 @@
 import { getAccessToken } from "../auth/currentUser";
 
-// ⭐ PASTIKAN base URL mengarah ke backend (port 8082)
-// JANGAN pakai relative path!
+// Vite dapat mengganti URL ini dengan proxy lokal saat pengembangan.
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8082/api/v1";
 

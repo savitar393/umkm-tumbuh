@@ -26,7 +26,7 @@ npm run dev
 
 Open [the application](http://localhost:5173). The default local admin is `admin@example.com` / `admin12345`. These values come from `ADMIN_EMAIL` and `ADMIN_PASSWORD` in the root `.env`; changing them does not reset an existing account.
 
-The backend starts PostgreSQL, applies migrations, seeds the admin, and configures Garage before starting the dependent APIs. S3 credentials are generated and shared automatically. The frontend reads its own `frontend/.env`.
+The backend starts PostgreSQL, applies migrations, seeds the admin, and configures Garage before starting the dependent APIs. S3 credentials are generated and shared automatically. The frontend reads its own `frontend/.env`. The example enables `VITE_USE_DEV_PROXY=true`, routing browser API calls through Vite to the backends in WSL. Add this flag to an existing frontend environment file to enable the same behavior; see the [frontend guide](frontend/README.md#local-api-proxy).
 
 See the [local development guide](docs/README_LOCAL_DEV.md) for environment variables, startup order, volumes, and troubleshooting.
 
@@ -44,7 +44,7 @@ See the [local development guide](docs/README_LOCAL_DEV.md) for environment vari
 | Garage | http://localhost:3900 / http://localhost:3903 | S3 API / admin API |
 | Mailpit | http://localhost:8025 | Development email inbox; SMTP uses port 1025 |
 
-Published backend ports bind to `127.0.0.1` by default. Change host ports in the root `.env` and update the matching frontend URLs. Container ports remain fixed.
+Published backend ports bind to `127.0.0.1` by default. Change host ports in the root `.env` and restart Vite so its proxy reads the new values. With the proxy disabled, also update the matching frontend URLs. Container ports remain fixed.
 
 ## Repository structure
 

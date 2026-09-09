@@ -49,7 +49,7 @@ Open [the application](http://localhost:5173). The default admin is `admin@examp
 | Mailpit inbox | http://localhost:8025 | `MAILPIT_HTTP_PORT` |
 | Mailpit SMTP | localhost:1025 | `MAILPIT_SMTP_PORT` |
 
-All published ports bind to `127.0.0.1` by default. Container ports stay fixed, so changing a host port does not break service-to-service calls. If you change an API host port, update its URL in `frontend/.env` and restart Vite. If you change `GARAGE_S3_PORT`, also update `OBJECT_STORAGE_PUBLIC_ENDPOINT`. Keep `OBJECT_STORAGE_ENDPOINT=http://garage:3900` for this Compose stack.
+All published ports bind to `127.0.0.1` by default. Container ports stay fixed, so changing a host port does not break service-to-service calls. With `VITE_USE_DEV_PROXY=true` in `frontend/.env`, Vite reads the five API host ports from the root `.env` and forwards requests to `127.0.0.1` inside WSL. Restart Vite after changing a port. With the proxy disabled, also update the corresponding frontend API URL. See the [frontend proxy guide](../frontend/README.md#local-api-proxy) if Windows can load the frontend but cannot reach a backend port. If you change `GARAGE_S3_PORT`, also update `OBJECT_STORAGE_PUBLIC_ENDPOINT`. Keep `OBJECT_STORAGE_ENDPOINT=http://garage:3900` for this Compose stack.
 
 ## Garage credentials and persistent data
 

@@ -26,7 +26,7 @@ npm run dev
 
 Buka [aplikasi](http://localhost:5173). Akun admin lokal bawaan adalah `admin@example.com` / `admin12345`. Nilainya berasal dari `ADMIN_EMAIL` dan `ADMIN_PASSWORD` dalam `.env` utama; mengubah nilainya tidak mereset akun yang sudah ada.
 
-Backend menjalankan PostgreSQL, menerapkan migrasi, membuat akun admin, dan menyiapkan Garage sebelum menjalankan API yang bergantung padanya. Kredensial S3 dibuat dan dibagikan secara otomatis. Frontend membaca konfigurasi tersendiri dari `frontend/.env`.
+Backend menjalankan PostgreSQL, menerapkan migrasi, membuat akun admin, dan menyiapkan Garage sebelum menjalankan API yang bergantung padanya. Kredensial S3 dibuat dan dibagikan secara otomatis. Frontend membaca konfigurasi tersendiri dari `frontend/.env`. Berkas contoh mengaktifkan `VITE_USE_DEV_PROXY=true`, sehingga permintaan API browser diteruskan melalui Vite ke backend di WSL. Tambahkan flag ini pada berkas lingkungan frontend yang sudah ada untuk mengaktifkannya; lihat [panduan frontend](frontend/README.id.md#proxy-api-lokal).
 
 Lihat [panduan pengembangan lokal](docs/README_LOCAL_DEV.id.md) untuk variabel konfigurasi, urutan startup, volume, dan penanganan masalah.
 
@@ -44,7 +44,7 @@ Lihat [panduan pengembangan lokal](docs/README_LOCAL_DEV.id.md) untuk variabel k
 | Garage | http://localhost:3900 / http://localhost:3903 | API S3 / API admin |
 | Mailpit | http://localhost:8025 | Kotak masuk email pengembangan; SMTP menggunakan port 1025 |
 
-Port backend yang dipublikasikan hanya menerima koneksi melalui `127.0.0.1` secara bawaan. Ubah port host pada `.env` utama dan sesuaikan URL frontend. Port di dalam container tetap sama.
+Port backend yang dipublikasikan hanya menerima koneksi melalui `127.0.0.1` secara bawaan. Ubah port host pada `.env` utama dan jalankan ulang Vite agar proxy membaca nilai baru. Jika proxy dinonaktifkan, sesuaikan juga URL frontend. Port di dalam container tetap sama.
 
 ## Struktur repositori
 

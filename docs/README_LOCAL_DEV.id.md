@@ -49,7 +49,7 @@ Buka [aplikasi](http://localhost:5173). Akun admin bawaan adalah `admin@example.
 | Kotak masuk Mailpit | http://localhost:8025 | `MAILPIT_HTTP_PORT` |
 | SMTP Mailpit | localhost:1025 | `MAILPIT_SMTP_PORT` |
 
-Seluruh port yang dipublikasikan menggunakan `127.0.0.1` secara bawaan. Port container tetap sama sehingga perubahan port host tidak mengganggu komunikasi antarlayanan. Jika port host suatu API diubah, sesuaikan URL-nya di `frontend/.env` dan jalankan ulang Vite. Jika `GARAGE_S3_PORT` diubah, sesuaikan juga `OBJECT_STORAGE_PUBLIC_ENDPOINT`. Pertahankan `OBJECT_STORAGE_ENDPOINT=http://garage:3900` untuk stack Compose ini.
+Seluruh port yang dipublikasikan menggunakan `127.0.0.1` secara bawaan. Port container tetap sama sehingga perubahan port host tidak mengganggu komunikasi antarlayanan. Dengan `VITE_USE_DEV_PROXY=true` pada `frontend/.env`, Vite membaca kelima port host API dari `.env` utama dan meneruskan permintaan ke `127.0.0.1` di dalam WSL. Jalankan ulang Vite setelah mengubah port. Jika proxy dinonaktifkan, sesuaikan juga URL API frontend. Lihat [panduan proxy frontend](../frontend/README.id.md#proxy-api-lokal) jika Windows dapat membuka frontend tetapi tidak dapat mengakses port backend. Jika `GARAGE_S3_PORT` diubah, sesuaikan juga `OBJECT_STORAGE_PUBLIC_ENDPOINT`. Pertahankan `OBJECT_STORAGE_ENDPOINT=http://garage:3900` untuk stack Compose ini.
 
 ## Kredensial Garage dan penyimpanan data
 

@@ -17,9 +17,27 @@ npm run dev
 
 Buka [aplikasi](http://localhost:5173). Pertahankan `.env` yang sudah ada dan bandingkan dengan [.env.example](.env.example) saat memperbarui proyek. `.env` utama mengatur backend dan tidak menggantikan `frontend/.env`.
 
+## Proxy API lokal
+
+Berkas contoh mengaktifkan `VITE_USE_DEV_PROXY=true`. Saat pengembangan, browser mengirim permintaan API ke Vite pada port 5173. Vite meneruskan setiap layanan ke alamat IPv4 di dalam WSL dan membaca kelima port API yang dipublikasikan dari `.env` utama.
+
+Pada `frontend/.env` yang sudah ada, tambahkan atau perbarui:
+
+```dotenv
+VITE_USE_DEV_PROXY=true
+```
+
+Jalankan ulang `npm run dev` setelah mengubah flag ini atau port backend. Untuk mencoba satu kali tanpa mengubah berkas lingkungan, jalankan `VITE_USE_DEV_PROXY=true npm run dev` di dalam `frontend/`.
+
+Dengan port bawaan, login diteruskan dari `localhost:5173/backend/auth/api/v1/auth/login` ke `127.0.0.1:8080/api/v1/auth/login` di dalam WSL. Prefix layanan memisahkan rute user, document, partnership, dan training, termasuk lokasi seperti `/admin/training` yang harus menuju training, bukan auth. Pemanggilan relatif `/api/v1/documents/...` yang sudah ada tetap didukung.
+
+Periksa [kondisi basis data auth melalui Vite](http://localhost:5173/backend/auth/api/v1/health/db). Halaman seharusnya menampilkan JSON dari auth-service. Rute ini membantu ketika endpoint backend berhasil diakses dari WSL tetapi URL langsungnya terus loading di Windows.
+
+Penggantian URL oleh proxy hanya berlaku pada `npm run dev` saat flag aktif. Nilai `false` menggunakan URL API eksplisit di bawah. Build produksi juga menggunakan URL eksplisit yang harus disesuaikan dengan deployment; flag pengembangan tidak memasang proxy produksi. Lihat [referensi proxy Vite](https://vite.dev/config/server-options.html#server-proxy).
+
 ## Alamat backend
 
-Klien HTTP pada [src/shared/api/http.ts](src/shared/api/http.ts) memilih API untuk setiap permintaan. Atur satu base URL untuk setiap layanan, termasuk bagian `/api/v1`:
+Klien HTTP pada [src/shared/api/http.ts](src/shared/api/http.ts) memilih API untuk setiap permintaan. Nilai di bawah digunakan untuk koneksi langsung dan build produksi. Flag proxy mengganti kedelapan nilai tersebut saat pengembangan. Atur satu base URL untuk setiap layanan, termasuk bagian `/api/v1`:
 
 | Variabel | Nilai bawaan |
 | --- | --- |
@@ -34,7 +52,7 @@ Klien HTTP pada [src/shared/api/http.ts](src/shared/api/http.ts) memilih API unt
 
 `VITE_API_BASE_URL` merupakan alamat cadangan untuk permintaan dengan layanan default, bukan gateway bersama bagi kelima layanan. Fitur sertifikat menggunakan training service.
 
-Jika port backend yang dipublikasikan diubah, sesuaikan URL frontend dan jalankan ulang Vite. Jika Vite menggunakan origin lain, misalnya port 5174, ubah `FRONTEND_URL` pada `.env` utama dan buat ulang container backend menggunakan `docker compose ... up -d` dengan perintah lengkap pada panduan lokal.
+Jika port backend yang dipublikasikan diubah, jalankan ulang Vite untuk membacanya dari `.env` utama. Jika proxy dinonaktifkan, sesuaikan juga URL frontend. Jika Vite menggunakan origin lain, misalnya port 5174, ubah `FRONTEND_URL` pada `.env` utama dan buat ulang container backend menggunakan `docker compose ... up -d` dengan perintah lengkap pada panduan lokal.
 
 Nilai `VITE_*` merupakan konfigurasi yang tersedia di browser. Jangan menyimpan kata sandi basis data, `JWT_SECRET`, atau secret key S3 di dalamnya.
 
@@ -48,6 +66,7 @@ Jalankan di dalam `frontend/`:
 | `npm run dev` | Menjalankan server pengembangan Vite |
 | `npm run lint` | Menjalankan ESLint |
 | `npm run test:login` | Memeriksa permintaan login, pesan kesalahan, pembatalan, dan batas waktu dengan server uji lokal |
+| `npm run test:proxy` | Memeriksa rute melalui Vite ke lima layanan uji lokal |
 | `npm run build` | Memeriksa TypeScript dan membuat hasil build di `dist/` |
 | `npm run preview` | Meninjau hasil build yang sudah ada secara lokal |
 
@@ -72,6 +91,6 @@ docker compose --env-file .env -f infra/docker-compose.yml ps auth-service postg
 curl -i --max-time 10 http://127.0.0.1:8080/api/v1/health/db
 ```
 
-Buka juga [kondisi basis data auth](http://127.0.0.1:8080/api/v1/health/db) pada browser yang digunakan untuk aplikasi. Jika perintah berhasil di WSL tetapi browser tidak dapat membuka alamat tersebut, periksa akses Windows ke port backend yang dipublikasikan. Jika keduanya berhasil, lihat URL, status, dan waktu permintaan login pada tab Network browser. Sesuaikan `VITE_AUTH_API_BASE_URL` dengan port auth yang dipublikasikan; jalankan ulang Vite setelah mengubah `frontend/.env`. Kesalahan origin/CORS memerlukan pemeriksaan `FRONTEND_URL` terhadap alamat frontend.
+Jika perintah ini berhasil di WSL sementara [alamat auth langsung](http://localhost:8080/api/v1/health/db) terus loading di Windows, aktifkan [proxy API lokal](#proxy-api-lokal) dan gunakan tautan pemeriksaan melalui port 5173. Jika berhasil tetapi login masih gagal, lihat URL, status, dan waktu permintaan login pada tab Network browser. Dalam mode proxy, URL permintaan seharusnya diawali `http://localhost:5173/backend/auth/`. Dalam mode langsung, sesuaikan `VITE_AUTH_API_BASE_URL` dengan port auth yang dipublikasikan; kesalahan origin/CORS memerlukan pemeriksaan `FRONTEND_URL` terhadap alamat frontend.
 
 `npm run test:login` memerlukan sekitar 30 detik tanpa basis data Docker atau akun asli. Pengujian memeriksa kode permintaan menggunakan respons HTTP yang dikendalikan; pengujian ini belum memvalidasi koneksi browser pengguna atau seluruh alur dasbor.
