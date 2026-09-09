@@ -17,7 +17,7 @@ cleanup() {
   if [ "$status" -ne 0 ]; then
     "${compose[@]}" logs --no-color --tail 80 || true
   fi
-  "${compose[@]}" down --volumes --remove-orphans || true
+  "${compose[@]}" --profile check down --volumes --remove-orphans || true
   exit "$status"
 }
 trap cleanup EXIT

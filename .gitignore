@@ -98,6 +98,8 @@ Thumbs.db
 *.swp
 *.swo
 *.md
+!README.id.md
+!docs/README_LOCAL_DEV.id.md
 *.githooks/
 format-go.ps1
 

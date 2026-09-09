@@ -1,16 +1,18 @@
 # Local development and Stage 1 checks
 
+**English** | [Bahasa Indonesia](README_LOCAL_DEV.id.md)
+
 Run commands from the repository root in WSL or a Linux/macOS terminal. Docker Desktop must have WSL integration enabled when using WSL. The backend runs in Docker; the frontend runs separately.
 
 ## Start the application
 
 Requirements: Docker Engine/Desktop, Docker Compose 2.24.4 or newer, Node.js 22, and npm. Go is only needed if you run a backend outside Docker.
 
-For a new checkout:
+Run from the repository root; these commands copy only missing files:
 
 ```bash
-cp .env.example .env
-cp frontend/.env.example frontend/.env
+[ -f .env ] || cp .env.example .env
+[ -f frontend/.env ] || cp frontend/.env.example frontend/.env
 ```
 
 Keep existing `.env` files when upgrading. Compare them with the examples and add any missing variables. The sample passwords and tokens are for local development.
@@ -30,7 +32,7 @@ npm ci
 npm run dev
 ```
 
-Open http://localhost:5173. The default admin is `admin@example.com` / `admin12345`, controlled by `ADMIN_EMAIL` and `ADMIN_PASSWORD` in the root `.env`. Seeding preserves an existing admin; changing these values does not reset an existing password.
+Open [the application](http://localhost:5173). The default admin is `admin@example.com` / `admin12345`, controlled by `ADMIN_EMAIL` and `ADMIN_PASSWORD` in the root `.env`. Seeding preserves an existing admin; changing these values does not reset an existing password.
 
 ## Service addresses
 
@@ -78,6 +80,8 @@ If the credentials file is lost while Garage data remains, this recovers the exi
 bash tests/stack/run.sh
 ```
 
+The script reads `.env.example` and `infra/docker-compose.test.yml`. Normal development uses the root `.env`, and Vite uses `frontend/.env`; the isolated test does not exercise those private settings or the browser UI.
+
 The script creates a unique Compose project, publishes no host ports, and uses a separate `umkm_tumbuh_test` database and volumes. It builds the backend, runs migrations, seeds six synthetic accounts, and checks:
 
 - Health of all five APIs and database connectivity where available.
@@ -87,7 +91,25 @@ The script creates a unique Compose project, publishes no host ports, and uses a
 - Migration and bootstrap reruns without rotating the application key or deleting an unrelated key.
 - Container recreation with the same credentials and byte-for-byte intact uploads.
 
-The script prints service logs on failure and removes only its own test project and volumes on exit. It does not load the large CSV dataset. The same command runs in `.github/workflows/local-stack.yml`.
+The script prints service logs on failure and removes only its own test project and volumes on exit, including the state volume used by the `check` profile. It does not load the large CSV dataset. The same command runs in `.github/workflows/local-stack.yml`.
+
+### Read the test output
+
+The wrong-database test deliberately attempts to seed the `postgres` database. Its expected rejection is:
+
+```text
+ERROR:  Fixtures require the isolated umkm_tumbuh_test database
+```
+
+`INSERT 0 0` during reseeding means the existing fixture rows were preserved. Migration messages saying `Skipping already applied migration` are also expected. A successful complete run ends with:
+
+```text
+Stage 1 stack checks passed.
+```
+
+`Exited` is normal for migrations, seeding, and bootstrap after they finish successfully. The final container and volume removals are test cleanup. The development app is not running afterward unless you started it separately. Use the startup commands at the beginning of this guide, then run the frontend in another terminal.
+
+### Test accounts
 
 All fixture passwords are `Stage1Test123!`:
 
@@ -111,7 +133,7 @@ docker compose --env-file .env -f infra/docker-compose.yml logs --tail 80 auth-s
 
 If a port is occupied, change its host port variable and rerun `up`. If an API stays unhealthy, inspect that service's logs before changing data or credentials. An `unknown tag !reset` error means Compose must be updated to at least 2.24.4 for the isolated test overlay.
 
-The optional `seed` profile imports the old large CSV dataset and truncates application tables. It is not required to start the application or run Stage 1 checks. Use it only with a disposable development database.
+The optional `seed` profile imports the old large CSV dataset and truncates application tables. It is not required to start the application or run Stage 1 checks. Use it only with a disposable development database. See the [database guide](../infra/db/README.md) for commands and the [Postman/Newman guide](../tests/postman/README.md) for the older collections.
 
 ## Development rules
 
