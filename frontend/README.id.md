@@ -47,6 +47,7 @@ Jalankan di dalam `frontend/`:
 | `npm ci` | Memasang dependensi sesuai lockfile |
 | `npm run dev` | Menjalankan server pengembangan Vite |
 | `npm run lint` | Menjalankan ESLint |
+| `npm run test:login` | Memeriksa permintaan login, pesan kesalahan, pembatalan, dan batas waktu dengan server uji lokal |
 | `npm run build` | Memeriksa TypeScript dan membuat hasil build di `dist/` |
 | `npm run preview` | Meninjau hasil build yang sudah ada secara lokal |
 
@@ -59,3 +60,18 @@ Stack biasa membuat akun admin sesuai konfigurasi `.env` utama. Daftarkan akun U
 Perintah `bash tests/stack/run.sh`, yang dijalankan dari direktori utama repositori, memeriksa integrasi backend dan menghapus enam akun sementaranya setelah selesai. Akun tersebut tidak tersedia untuk sesi browser berikutnya. Pengujian Stage 1 tidak memeriksa tampilan browser atau seluruh fitur aplikasi.
 
 Jika aplikasi gagal berjalan, periksa console dan permintaan jaringan pada browser, lalu baca log backend yang terkait. Lihat [panduan lokal](../docs/README_LOCAL_DEV.id.md) untuk alamat layanan dan perintahnya.
+
+## Login berhenti pada “Memproses...”
+
+Permintaan login dibatasi 15 detik dan menampilkan pesan kesalahan agar formulir dapat dicoba kembali. Batas ini mencakup pembacaan body respons. Permintaan status registrasi tambahan setelah login non-admin juga memiliki batas 15 detik; jika gagal, halaman menggunakan rute yang ditentukan dari respons login. Permintaan tidak diulang secara otomatis.
+
+Timeout berarti respons belum selesai diterima; penyebab masalah koneksinya masih perlu diperiksa. Dari direktori utama repositori, periksa stack pengembangan biasa:
+
+```bash
+docker compose --env-file .env -f infra/docker-compose.yml ps auth-service postgres
+curl -i --max-time 10 http://127.0.0.1:8080/api/v1/health/db
+```
+
+Buka juga [kondisi basis data auth](http://127.0.0.1:8080/api/v1/health/db) pada browser yang digunakan untuk aplikasi. Jika perintah berhasil di WSL tetapi browser tidak dapat membuka alamat tersebut, periksa akses Windows ke port backend yang dipublikasikan. Jika keduanya berhasil, lihat URL, status, dan waktu permintaan login pada tab Network browser. Sesuaikan `VITE_AUTH_API_BASE_URL` dengan port auth yang dipublikasikan; jalankan ulang Vite setelah mengubah `frontend/.env`. Kesalahan origin/CORS memerlukan pemeriksaan `FRONTEND_URL` terhadap alamat frontend.
+
+`npm run test:login` memerlukan sekitar 30 detik tanpa basis data Docker atau akun asli. Pengujian memeriksa kode permintaan menggunakan respons HTTP yang dikendalikan; pengujian ini belum memvalidasi koneksi browser pengguna atau seluruh alur dasbor.

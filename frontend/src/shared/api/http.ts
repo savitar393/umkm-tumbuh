@@ -62,6 +62,7 @@ export type RequestOptions = RequestInit & {
   auth?: boolean;
   service?: ServiceName;
   skipJsonContentType?: boolean;
+  timeoutMs?: number;
 };
 
 export type ErrorPayload = {
@@ -102,7 +103,7 @@ function getPayloadMessage(payload: unknown) {
 function getFallbackErrorMessage(status: number) {
   switch (status) {
     case 0:
-      return "Gagal terhubung ke server. Cek koneksi, CORS, atau service backend.";
+      return "Tidak dapat terhubung ke server. Periksa koneksi Anda lalu coba lagi.";
     case 400:
       return "Data yang dikirim belum valid. Periksa kembali isian formulir.";
     case 401:
@@ -254,6 +255,7 @@ async function requestWithBaseURL<T>(
     auth = true,
     headers,
     skipJsonContentType = false,
+    timeoutMs,
     service: _service,
     ...rest
   } = options;
@@ -276,42 +278,64 @@ async function requestWithBaseURL<T>(
     }
   }
 
-  let response: Response;
+  const controller = timeoutMs === undefined ? undefined : new AbortController();
+  const signal = controller
+    ? rest.signal
+      ? AbortSignal.any([rest.signal, controller.signal])
+      : controller.signal
+    : rest.signal;
+  const timeout = controller
+    ? setTimeout(() => {
+        controller.abort(new DOMException("Request timed out", "TimeoutError"));
+      }, timeoutMs)
+    : undefined;
 
   try {
-    response = await fetch(`${baseUrl}${path}`, {
+    const response = await fetch(`${baseUrl}${path}`, {
       ...rest,
       headers: requestHeaders,
+      signal,
     });
+
+    const contentType = response.headers.get("content-type") ?? "";
+    const isJson = contentType.includes("application/json");
+
+    let payload: unknown = null;
+
+    if (isJson) {
+      payload = await response.json().catch(() => null);
+    } else if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      payload = text ? { message: text } : null;
+    }
+
+    // Abort saat membaca body tetap harus dilaporkan sebagai kegagalan.
+    signal?.throwIfAborted();
+
+    if (!response.ok) {
+      throw new ApiError(
+        response.status,
+        getHttpErrorMessage(response.status, payload),
+        payload,
+      );
+    }
+
+    return payload as T;
   } catch (err) {
-    throw new ApiError(
-      0,
-      getFallbackErrorMessage(0),
-      err,
-    );
+    if (err instanceof ApiError) throw err;
+
+    if (signal?.aborted && signal.reason?.name === "TimeoutError") {
+      throw new ApiError(
+        0,
+        "Server belum merespons dalam batas waktu. Silakan coba lagi.",
+        err,
+      );
+    }
+
+    throw new ApiError(0, getFallbackErrorMessage(0), err);
+  } finally {
+    clearTimeout(timeout);
   }
-
-  const contentType = response.headers.get("content-type") ?? "";
-  const isJson = contentType.includes("application/json");
-
-  let payload: unknown = null;
-
-  if (isJson) {
-    payload = await response.json().catch(() => null);
-  } else if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    payload = text ? { message: text } : null;
-  }
-
-  if (!response.ok) {
-    throw new ApiError(
-      response.status,
-      getHttpErrorMessage(response.status, payload),
-      payload,
-    );
-  }
-
-  return payload as T;
 }
 
 export const http = Object.assign(

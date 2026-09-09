@@ -66,6 +66,7 @@ export function login(payload: LoginPayload) {
     body: JSON.stringify(payload),
     auth: false,
     service: "auth",
+    timeoutMs: 15_000,
   });
 }
 
@@ -293,5 +294,6 @@ export type RegistrationFlowStatus = {
 export function getRegistrationFlowStatus() {
   return http<RegistrationFlowStatus>("/register/status", {
     service: "user",
+    timeoutMs: 15_000,
   });
 }

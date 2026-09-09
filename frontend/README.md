@@ -47,6 +47,7 @@ Run inside `frontend/`:
 | `npm ci` | Install dependencies from the lockfile |
 | `npm run dev` | Start the Vite development server |
 | `npm run lint` | Run ESLint |
+| `npm run test:login` | Check login requests, errors, cancellation, and timeouts against a local test server |
 | `npm run build` | Check TypeScript and build into `dist/` |
 | `npm run preview` | Preview an existing build locally |
 
@@ -59,3 +60,18 @@ The normal stack seeds the admin configured in the root `.env`. Register UMKM an
 `bash tests/stack/run.sh`, run from the repository root, checks backend integration and removes its six temporary accounts afterward. Those accounts are not available for a later browser session. The Stage 1 check does not test browser rendering or every application feature.
 
 For startup failures, inspect the browser console and network requests, then check the corresponding backend logs. See the [local guide](../docs/README_LOCAL_DEV.md) for service addresses and commands.
+
+## Login stays on “Memproses...”
+
+Login requests time out after 15 seconds and show an error so the form can be retried. The deadline includes reading the response body. The optional registration-status request after a non-admin login also has a 15-second limit; if it fails, the page uses the route derived from the login response. Requests are not retried automatically.
+
+A timeout means the response did not finish; it does not identify the connection problem. From the repository root, check the normal development stack:
+
+```bash
+docker compose --env-file .env -f infra/docker-compose.yml ps auth-service postgres
+curl -i --max-time 10 http://127.0.0.1:8080/api/v1/health/db
+```
+
+Also open [auth database health](http://127.0.0.1:8080/api/v1/health/db) in the same browser as the application. If the command works in WSL but the browser cannot load the address, investigate access from Windows to the published backend port. If both work, inspect the login request's URL, status, and timing in the browser's Network tab. Check `VITE_AUTH_API_BASE_URL` against the published auth port; restart Vite after changing `frontend/.env`. An origin/CORS error requires checking `FRONTEND_URL` against the frontend address.
+
+`npm run test:login` takes about 30 seconds and requires no Docker database or real account. It checks the request code against controlled HTTP responses; it does not validate the user's browser connection or the full dashboard flow.
