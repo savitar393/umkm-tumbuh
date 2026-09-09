@@ -1,0 +1,23 @@
+name: Local stack integration
+
+on:
+  pull_request:
+    paths:
+      - "infra/**"
+      - "services/**"
+      - "tests/stack/**"
+      - ".env.example"
+      - ".github/workflows/local-stack.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  stack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - name: Check startup, fixtures, uploads, bootstrap reruns, and persistent volumes
+        run: bash tests/stack/run.sh

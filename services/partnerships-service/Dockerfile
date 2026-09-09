@@ -24,6 +24,6 @@ COPY --from=builder /out/partnerships-api /app/partnerships-api
 
 USER appuser
 
-EXPOSE 8080
+EXPOSE 8082
 
 CMD ["/app/partnerships-api"]

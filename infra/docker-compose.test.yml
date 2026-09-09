@@ -1,0 +1,95 @@
+# Use with tests/stack/run.sh. Ports and databases are isolated from the local stack.
+x-test-environment: &test-environment
+  DATABASE_URL: postgres://umkm_test:stage1_database_only@postgres:5432/umkm_tumbuh_test?sslmode=disable
+  JWT_SECRET: stage1-isolated-test-jwt-secret
+
+services:
+  postgres:
+    environment:
+      POSTGRES_USER: umkm_test
+      POSTGRES_PASSWORD: stage1_database_only
+      POSTGRES_DB: umkm_tumbuh_test
+    ports: !reset []
+  db-migrate:
+    environment: *test-environment
+  auth-seed-admin:
+    environment:
+      <<: *test-environment
+      ADMIN_ID: TEST_ADMIN
+      ADMIN_FULL_NAME: Test Admin
+      ADMIN_EMAIL: admin@stage1.test
+      ADMIN_PASSWORD: Stage1Test123!
+    depends_on:
+      db-fixtures:
+        condition: service_completed_successfully
+  db-fixtures:
+    image: postgres:16-alpine
+    environment: *test-environment
+    volumes:
+      - ../tests/stack/fixtures.sql:/app/fixtures.sql:ro
+    command: ["sh", "-ec", "psql \"$$DATABASE_URL\" -v ON_ERROR_STOP=1 -f /app/fixtures.sql"]
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+    networks: [umkm_network]
+  mailpit:
+    ports: !reset []
+  garage:
+    environment:
+      GARAGE_ADMIN_TOKEN: stage1-isolated-garage-token
+    ports: !reset []
+  garage-bootstrap:
+    environment:
+      GARAGE_ADMIN_TOKEN: stage1-isolated-garage-token
+      OBJECT_STORAGE_BUCKET_DOCUMENTS: test-documents
+      OBJECT_STORAGE_BUCKET_CERTIFICATES: test-certificates
+      OBJECT_STORAGE_BUCKET_PRODUCT_IMAGES: test-product-images
+      OBJECT_STORAGE_BUCKET_PARTNERSHIP_FILES: test-partnership-files
+  auth-service:
+    environment:
+      <<: *test-environment
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      SMTP_USER: ""
+      SMTP_PASSWORD: ""
+    ports: !reset []
+  user-service:
+    environment:
+      <<: *test-environment
+      OBJECT_STORAGE_ENDPOINT: http://garage:3900
+      OBJECT_STORAGE_PUBLIC_ENDPOINT: http://garage:3900
+      OBJECT_STORAGE_REGION: garage
+      OBJECT_STORAGE_USE_SSL: "false"
+      OBJECT_STORAGE_BUCKET_PRODUCT_IMAGES: test-product-images
+    ports: !reset []
+  partnerships-service:
+    environment: *test-environment
+    ports: !reset []
+  document-service:
+    environment:
+      <<: *test-environment
+      OBJECT_STORAGE_ENDPOINT: http://garage:3900
+      OBJECT_STORAGE_PUBLIC_ENDPOINT: http://garage:3900
+      OBJECT_STORAGE_REGION: garage
+      OBJECT_STORAGE_USE_SSL: "false"
+      OBJECT_STORAGE_BUCKET_DOCUMENTS: test-documents
+      OBJECT_STORAGE_BUCKET_CERTIFICATES: test-certificates
+      OBJECT_STORAGE_BUCKET_PRODUCT_IMAGES: test-product-images
+      OBJECT_STORAGE_BUCKET_PARTNERSHIP_FILES: test-partnership-files
+    ports: !reset []
+  training-service:
+    environment: *test-environment
+    ports: !reset []
+  stack-check:
+    image: python:3.12-alpine
+    profiles: [check]
+    environment:
+      GARAGE_ADMIN_TOKEN: stage1-isolated-garage-token
+    volumes:
+      - ../tests/stack/check.py:/app/check.py:ro
+      - stack_check_data:/state
+    entrypoint: ["python", "/app/check.py"]
+    networks: [umkm_network]
+
+volumes:
+  stack_check_data:

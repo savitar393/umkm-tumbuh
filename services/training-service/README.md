@@ -44,29 +44,29 @@ go mod download
 cp .env.example .env
 
 # Edit .env sesuai kebutuhan
-# TRAINING_SERVICE_PORT=8083
+# TRAINING_SERVICE_PORT=8084
 # DATABASE_URL=postgres://umkm_user:umkm_password@localhost:5432/umkm_tumbuh?sslmode=disable
 
 # Run service
 go run cmd/api/main.go
 ```
 
-Service akan berjalan di `http://localhost:8083`
+Service akan berjalan di `http://localhost:8084`
 
 ### Test Endpoints
 
 ```bash
 # Health check
-curl http://localhost:8083/api/v1/health
+curl http://localhost:8084/api/v1/health
 
 # Get all trainings
-curl http://localhost:8083/api/v1/trainings
+curl http://localhost:8084/api/v1/trainings
 
 # Get training detail
-curl http://localhost:8083/api/v1/trainings/{PELATIHAN_ID}/detail
+curl http://localhost:8084/api/v1/trainings/{PELATIHAN_ID}/detail
 
 # Enroll user
-curl -X POST http://localhost:8083/api/v1/trainings/enroll \
+curl -X POST http://localhost:8084/api/v1/trainings/enroll \
   -H "Content-Type: application/json" \
   -d '{
     "umkm_id": "UMKM...",
@@ -74,7 +74,7 @@ curl -X POST http://localhost:8083/api/v1/trainings/enroll \
   }'
 
 # Get user enrollments
-curl http://localhost:8083/api/v1/enrollments/user/{UMKM_ID}
+curl http://localhost:8084/api/v1/enrollments/user/{UMKM_ID}
 ```
 
 ## Database Schema
@@ -89,4 +89,4 @@ Service ini menggunakan tabel:
 
 ## Port
 
-Default: **8083**
+Default: **8084**

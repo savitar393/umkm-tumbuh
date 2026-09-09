@@ -18,13 +18,13 @@ type Config struct {
 }
 
 func Load() Config {
-	_ = godotenv.Load("../../.env")  // when run from cmd/api/
-	_ = godotenv.Load(".env")         // when run from root
+	_ = godotenv.Load("../../.env") // when run from cmd/api/
+	_ = godotenv.Load(".env")       // when run from root
 
 	cfg := Config{
 		AppEnv:     getEnv("APP_ENV", "development"),
 		ServerHost: getEnv("SERVER_HOST", "0.0.0.0"),
-		ServerPort: getEnv("TRAINING_SERVICE_PORT", "8083"),
+		ServerPort: getEnv("TRAINING_SERVICE_PORT", "8084"),
 		DatabaseURL: getEnv(
 			"DATABASE_URL",
 			"postgres://umkm_user:umkm_password@localhost:5432/umkm_tumbuh?sslmode=disable",

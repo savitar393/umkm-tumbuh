@@ -1,4 +1,4 @@
-FROM golang:1.23-alpine AS builder
+FROM golang:1.26.3-alpine AS builder
 
 WORKDIR /app
 
@@ -9,14 +9,19 @@ COPY . .
 
 RUN CGO_ENABLED=0 GOOS=linux go build -o training-service ./cmd/api
 
-FROM alpine:latest
+FROM alpine:3.21
 
-RUN apk --no-cache add ca-certificates
+RUN apk --no-cache add ca-certificates \
+    && adduser -D -H -u 10001 appuser \
+    && mkdir -p /app/certificates \
+    && chown -R appuser:appuser /app
 
-WORKDIR /root/
+WORKDIR /app
 
 COPY --from=builder /app/training-service .
 
-EXPOSE 8083
+USER appuser
+
+EXPOSE 8084
 
 CMD ["./training-service"]

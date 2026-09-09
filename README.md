@@ -4,112 +4,58 @@ Platform manajemen UMKM dengan fitur monitoring perkembangan, partnership, dan d
 
 ---
 
-## 🚀 Quick Start (Windows)
+## Local development
 
-### Prerequisites
-- Docker Desktop
-- Node.js 18+ & npm
-- Git
+Requirements: Docker Desktop/Engine with Compose 2.24.4+, Node.js 22, and npm. In WSL, enable Docker Desktop integration for your distribution.
 
-### Cara Setup Cepat
+Run from the repository root for a new checkout:
 
-**Option 1: Manual (Step-by-Step)** - Lihat detail: [RUN_PROJECT.md](./RUN_PROJECT.md)
-
-**Option 2: Auto Script (Windows)**
-```powershell
-# Clone repository terlebih dahulu
-git clone <repository-url>
-cd umkm-tumbuh
-
-# Jalankan script auto setup
-START_ALL.bat
+```bash
+cp .env.example .env
+cp frontend/.env.example frontend/.env
+docker compose --env-file .env -f infra/docker-compose.yml up -d --build --wait --wait-timeout 180
 ```
 
-**Option 3: PowerShell**
-```powershell
-cd infra
-docker compose up -d
-docker compose --profile seed up db-seed
-cd ..\frontend
-npm install
-npm run dev
-```
+Keep existing environment files when upgrading. The stack runs all five APIs, PostgreSQL, Garage, Mailpit, migrations, and the admin seed. Garage credentials are generated and shared automatically.
 
-**Buka browser:** http://localhost:5173
-**Login dengan credentials di bawah**
+Start the frontend in another terminal:
 
----
-
-## 📋 Login Credentials
-
-| Role | Email | Password | Dashboard |
-|------|-------|----------|-----------|
-| **Admin** | admin@example.com | admin12345 | Peta Indonesia, analytics nasional |
-| **UMKM** | rezawahyuni525@umkm.id | password123 | Laba harian, tren, KPI |
-| **Mitra** | fauzan.kusuma54@mitra.id | password123 | Pilih UMKM partner |
-
-> **Note:** Ada 5000 akun UMKM dan 1000 akun Mitra lainnya, semua pakai password `password123`
-
----
-
-## 🔧 Manual Setup
-
-Jika ingin setup manual langkah per langkah:
-
-### 1. Start Backend
-
-```powershell
-cd infra
-docker compose up -d
-```
-
-Tunggu sampai semua service healthy (±30 detik).
-
-### 2. Load Dummy Data
-
-```powershell
-docker compose --profile seed up db-seed
-```
-
-Tunggu sampai muncul: `"Dummy CSV dataset loaded successfully."`
-
-### 3. Start Frontend
-
-```powershell
+```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
+
+Open http://localhost:5173. The default local admin is `admin@example.com` / `admin12345`.
+
+Run the isolated Stage 1 integration check:
+
+```bash
+bash tests/stack/run.sh
+```
+
+See [the local development guide](docs/README_LOCAL_DEV.md) for service addresses, port configuration, persistent volumes, six isolated test fixtures, and troubleshooting. The large CSV seed is optional and replaces application data; it is not needed for Stage 1 checks.
 
 ---
 
 ## 🏗️ Arsitektur
 
-```
-┌─────────────────┐
-│   Frontend      │  React + TypeScript (Port 5173)
-│   (Vite)        │
-└────────┬────────┘
-         │
-    ┌────┴─────────────────────┐
-    │                          │
-┌───▼─────────┐      ┌─────────▼────┐
-│Auth Service │      │ User Service │
-│  (Port 8080)│      │  (Port 8081) │
-└──────┬──────┘      └──────┬───────┘
-       │                    │
-       └──────────┬─────────┘
-                  │
-         ┌────────▼────────┐
-         │   PostgreSQL    │
-         │   (Port 5432)   │
-         └─────────────────┘
-```
+| Component | Port | Purpose |
+| --- | --- | --- |
+| Frontend | 5173 | React application |
+| Auth service | 8080 | Authentication and admin API |
+| User service | 8081 | Profiles, products, sales, dashboards |
+| Partnerships service | 8082 | Partnerships API |
+| Document service | 8083 | Document uploads and downloads |
+| Training service | 8084 | Training and certificates |
+| PostgreSQL | 5432 | Shared database |
+| Garage | 3900 / 3903 | S3 storage / admin API |
+| Mailpit | 1025 / 8025 | Local SMTP / inbox |
 
 ### Tech Stack
 
 **Backend:**
-- Go 1.23
+- Go (Docker builds use 1.26.3)
 - PostgreSQL 16
 - JWT Authentication
 - CORS enabled
@@ -172,81 +118,20 @@ umkm-tumbuh/
 
 ---
 
-## 🧰 Utility Scripts
+## Managing the local stack
 
-### Quick Start
-```
-START_ALL.bat           - Start everything (backend + data + frontend)
-```
+Run these commands from the repository root:
 
-### Status & Troubleshooting
-```
-CHECK_STATUS.bat        - Check system status
-FIX_COMMON.bat          - Fix common issues (menu-based)
-```
+```bash
+# Stop containers and preserve data
+docker compose --env-file .env -f infra/docker-compose.yml down
 
-### Common Commands
-```powershell
-# Reset database
-cd infra
-docker compose down -v
-docker compose up -d
-docker compose --profile seed up db-seed
-
-# Stop everything
-docker compose down
-
-# View logs
-docker compose logs -f
+# Inspect services and logs
+docker compose --env-file .env -f infra/docker-compose.yml ps -a
+docker compose --env-file .env -f infra/docker-compose.yml logs --tail 80
 ```
 
-### Frontend Only
-```powershell
-cd frontend
-npm run dev              # Start frontend
-npm install              # Install dependencies
-```
-
----
-
-## 🐛 Troubleshooting
-
-### Port sudah terpakai
-
-```powershell
-# Check apa yang pakai port 5432, 8080, 8081, 5173
-netstat -ano | findstr "5432 8080 8081 5173"
-
-# Stop service yang konflik atau ubah port di .env
-```
-
-### Data tidak muncul di dashboard
-
-```powershell
-# Re-load data dummy
-cd infra
-docker compose --profile seed up db-seed --force-recreate
-```
-
-### Login gagal
-
-```powershell
-# Reset password semua akun
-docker exec -i umkm_postgres psql -U umkm_user -d umkm_tumbuh -c "UPDATE auth.master_akunpengguna SET password_hash = '\$2a\$10\$i4zh4ChkGz83OiOUXt65mOYPYg8GdcLWM9TBW9evmAqXSGcGf6kpm', status_aktif = TRUE WHERE peran_id IN ('UMKM','MITRA');"
-```
-
-### CORS error
-
-Check `FRONTEND_URL` di `infra/.env`:
-```env
-FRONTEND_URL=http://localhost:5173
-```
-
-Restart services:
-```powershell
-cd infra
-docker compose restart auth-service user-service
-```
+For port conflicts, Garage setup failures, and fixture details, see [the local development guide](docs/README_LOCAL_DEV.md). Keep the root `.env` and `frontend/.env` consistent when changing published ports.
 
 ---
 
@@ -316,8 +201,7 @@ Password universal: `password123` (hash bcrypt sudah tersimpan)
 # Create file: infra/db/migrations/XXX_description.down.sql
 
 # Apply migration
-cd infra
-docker compose restart db-migrate
+docker compose --env-file .env -f infra/docker-compose.yml restart db-migrate
 ```
 
 ---
@@ -342,7 +226,7 @@ docker compose restart db-migrate
 
 Jika ada masalah atau pertanyaan, check logs:
 ```powershell
-docker compose logs -f
+docker compose --env-file .env -f infra/docker-compose.yml logs -f
 ```
 
 ---
