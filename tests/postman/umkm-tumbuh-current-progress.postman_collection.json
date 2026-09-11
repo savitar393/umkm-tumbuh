@@ -399,9 +399,19 @@
             "url": {
               "raw": "{{auth_base_url}}/api/v1/admin/registrations?status=PENDING&search={{umkm_test_email}}",
               "host": [
-                "{{auth_base_url}}/api/v1/admin/registrations?status=PENDING"
+                "{{auth_base_url}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "registrations"
               ],
               "query": [
+                {
+                  "key": "status",
+                  "value": "PENDING"
+                },
                 {
                   "key": "search",
                   "value": "{{umkm_test_email}}"
