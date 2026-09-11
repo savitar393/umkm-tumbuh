@@ -1,4 +1,6 @@
-import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from "react";
+import { getCurrentUser } from "../../../shared/auth/currentUser";
+import { useQuery } from "@tanstack/react-query";
+import { type ChangeEvent, type FormEvent, useMemo, useState } from "react";
 import {
   AlertTriangle,
   Archive,
@@ -167,17 +169,15 @@ function normalizeStatus(status: string): ProductStatus {
 }
 
 export default function ProductListPage() {
-  const [products, setProducts] = useState<Product[]>([]);
+  const userId = getCurrentUser()?.id;
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("ALL");
   const [category, setCategory] = useState("ALL");
   const [sortBy, setSortBy] = useState("updated_desc");
 
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
-  const [useMock, setUseMock] = useState(false);
+  const [actionError, setError] = useState("");
 
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -189,6 +189,20 @@ export default function ProductListPage() {
   const [stockQuantity, setStockQuantity] = useState("");
   const [stockNote, setStockNote] = useState("Restock dari halaman Kelola Produk");
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
+
+  const [appliedFilters, setAppliedFilters] = useState({ query: "", status: "ALL" });
+  const { data, isFetching: loading, error: fetchError, refetch } = useQuery({
+    queryKey: ["products", "management", userId, appliedFilters],
+    queryFn: () => getProducts({
+      q: appliedFilters.query || undefined,
+      status: appliedFilters.status === "ALL" ? undefined : appliedFilters.status,
+    }),
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+  const products = useMemo(() => fetchError ? MOCK_PRODUCTS : data?.products ?? [], [data, fetchError]);
+  const useMock = Boolean(fetchError);
+  const error = actionError || fetchError?.message || "";
 
   const totalProducts = products.length;
   const totalStock = useMemo(
@@ -235,31 +249,14 @@ export default function ProductListPage() {
     });
   }, [category, products, sortBy]);
 
-  async function loadProducts() {
-    setLoading(true);
+  function loadProducts() {
     setError("");
-
-    try {
-      const response = await getProducts({
-        q: query.trim() || undefined,
-        status: status === "ALL" ? undefined : status,
-      });
-
-      setProducts(response.products);
-      setUseMock(false);
-    } catch (err) {
-      setUseMock(true);
-      setError(err instanceof Error ? err.message : "Gagal memuat produk.");
-      setProducts(MOCK_PRODUCTS);
-    } finally {
-      setLoading(false);
+    const nextFilters = { query: query.trim(), status };
+    if (nextFilters.query === appliedFilters.query && nextFilters.status === appliedFilters.status) {
+      return refetch();
     }
+    setAppliedFilters(nextFilters);
   }
-
-  useEffect(() => {
-    loadProducts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   function resetProductForm() {
     setForm(emptyForm);

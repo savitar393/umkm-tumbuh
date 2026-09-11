@@ -64,19 +64,23 @@ Run inside `frontend/`:
 | --- | --- |
 | `npm ci` | Install dependencies from the lockfile |
 | `npm run dev` | Start the Vite development server |
-| `npm run lint` | Run ESLint |
+| `npm run lint` | Run ESLint; errors and warnings fail the check |
 | `npm run test:login` | Check login requests, errors, cancellation, and timeouts against a local test server |
 | `npm run test:proxy` | Check routing through Vite to five local test services |
 | `npm run build` | Check TypeScript and build into `dist/` |
+| `npm run test:pages` | Test search, pagination, training drafts, product filters, and registration upload responses |
+| `npm run check` | Run lint, build, and all the tests above |
 | `npm run preview` | Preview an existing build locally |
 
 Run `npm run build` before previewing. Preview commonly uses port 4173; backend requests still require a matching `FRONTEND_URL`. Preview does not start the backend.
+
+`npm run check` runs the same frontend checks as the frontend CI job. Tests use local HTTP servers and synthetic data. The `test:pages` suite uses a React test renderer matching React 18; it checks component state and interactions without a browser or Docker. Older schema test files under `src/**/__tests__` are not included in this command.
 
 ## Accounts and testing
 
 The normal stack seeds the admin configured in the root `.env`. Register UMKM and Mitra accounts through the application; local email is available in [Mailpit](http://localhost:8025).
 
-`bash tests/stack/run.sh`, run from the repository root, checks backend integration and removes its six temporary accounts afterward. Those accounts are not available for a later browser session. The Stage 1 check does not test browser rendering or every application feature.
+`bash tests/stack/run.sh`, run from the repository root, checks backend integration, runs the Newman API collection, and removes all its test accounts afterward. Those accounts are not available for a later browser session. The Stage 1 check does not test browser rendering or every application feature.
 
 For startup failures, inspect the browser console and network requests, then check the corresponding backend logs. See the [local guide](../docs/README_LOCAL_DEV.md) for service addresses and commands.
 

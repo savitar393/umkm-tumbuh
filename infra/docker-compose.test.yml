@@ -48,6 +48,7 @@ services:
   auth-service:
     environment:
       <<: *test-environment
+      APP_ENV: development
       SMTP_HOST: mailpit
       SMTP_PORT: 1025
       SMTP_USER: ""
@@ -80,6 +81,29 @@ services:
   training-service:
     environment: *test-environment
     ports: !reset []
+  newman-check:
+    build:
+      context: ..
+      dockerfile: tests/stack/newman.Dockerfile
+    profiles: [check]
+    volumes:
+      - ../tests/postman:/tests:ro
+      - ../tests/postman/reports:/reports
+    command:
+      - run
+      - /tests/umkm-tumbuh-current-progress.postman_collection.json
+      - --environment
+      - /tests/ci.postman_environment.json
+      - --bail
+      - --timeout-request
+      - "15000"
+      - --timeout-script
+      - "5000"
+      - --reporters
+      - cli,junit
+      - --reporter-junit-export
+      - /reports/newman.xml
+    networks: [umkm_network]
   stack-check:
     image: python:3.12-alpine
     profiles: [check]

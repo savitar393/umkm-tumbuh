@@ -1,23 +1,44 @@
 name: Local stack integration
 
 on:
+  push:
+    branches: [main, "feat/**", "fix/**", "chore/**"]
+    paths:
+      - "infra/**"
+      - "services/**"
+      - "tests/stack/**"
+      - "tests/postman/**"
+      - ".env.example"
+      - ".github/workflows/**"
   pull_request:
     paths:
       - "infra/**"
       - "services/**"
       - "tests/stack/**"
+      - "tests/postman/**"
       - ".env.example"
-      - ".github/workflows/local-stack.yml"
+      - ".github/workflows/**"
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: local-stack-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   stack:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v6
-      - name: Check startup, fixtures, uploads, bootstrap reruns, and persistent volumes
+      - name: Check startup, API contracts, uploads, and persistent volumes
         run: bash tests/stack/run.sh
+      - name: Upload API contract results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-contract-results
+          path: tests/postman/reports/newman.xml
+          if-no-files-found: ignore

@@ -54,6 +54,21 @@ export type UserListResponse = {
   };
 };
 
+export type RegistrationDocument = {
+  id?: string;
+  dokumen_id?: string;
+  document_id?: string;
+  original_filename?: string;
+  nama_dokumen?: string;
+  file_name?: string;
+  name?: string;
+  status?: string;
+  type?: string;
+  url?: string;
+  file_url?: string;
+  path?: string;
+};
+
 export type UserDetailData = {
   user: {
     id: string;
@@ -71,9 +86,9 @@ export type UserDetailData = {
     created_at: string;
     updated_at: string;
   };
-  profile?: any;
-  documents?: any[];
-  checklist?: { label: string; uploaded: boolean; doc_id?: string }[];
+  profile?: Record<string, unknown>;
+  documents?: RegistrationDocument[];
+  checklist?: { label: string; nama?: string; uploaded: boolean; doc_id?: string }[];
 };
 
 export type UserDetailResponse = {

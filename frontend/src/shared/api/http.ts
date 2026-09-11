@@ -255,9 +255,10 @@ async function requestWithBaseURL<T>(
     headers,
     skipJsonContentType = false,
     timeoutMs,
-    service: _service,
     ...rest
   } = options;
+
+  delete rest.service;
 
   const requestHeaders = new Headers(headers);
   const body = rest.body;

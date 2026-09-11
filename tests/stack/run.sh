@@ -32,6 +32,10 @@ if "${compose[@]}" run --rm --no-deps \
 fi
 "${compose[@]}" run --rm --no-deps stack-check prepare
 
+mkdir -p tests/postman/reports
+rm -f tests/postman/reports/newman.xml
+"${compose[@]}" run --build --rm --no-deps newman-check
+
 echo "Re-running migrations and Garage bootstrap, then recreating the containers..."
 "${compose[@]}" run --rm --no-deps db-migrate
 "${compose[@]}" run --rm --no-deps garage-bootstrap

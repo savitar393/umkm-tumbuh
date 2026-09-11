@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useCallback, useMemo, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -13,7 +14,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import UmkmLayout from "../../umkm/components/UmkmLayout";
 import { getCurrentUser } from "../../../shared/auth/currentUser";
-import { partnershipsApi, type IncomingPartnershipsResponse, type IncomingPartnershipSummaryResponse } from "../api";
+import { partnershipsApi, type IncomingPartnershipsResponse } from "../api";
 
 type IncomingItem = IncomingPartnershipsResponse["pengajuan_masuk"][number];
 
@@ -143,17 +144,32 @@ export default function PartnershipMitraInboxPage() {
     }
   });
 
-  const [incomingList, setIncomingList] = useState<IncomingItem[]>([]);
-  const [incomingSummary, setIncomingSummary] = useState<IncomingPartnershipSummaryResponse["summary"] | null>(null);
-  const [pagination, setPagination] = useState<{ total: number; totalPages: number } | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [loading, setLoading] = useState(true);
   const [markingId, setMarkingId] = useState("");
-  const [error, setError] = useState("");
 
+  const { data, isFetching: loading, error: fetchError, refetch } = useQuery({
+    queryKey: ["partnerships", "incoming", user?.id, currentPage, itemsPerPage, statusFilter],
+    queryFn: () => partnershipsApi.getIncoming({
+      page: currentPage,
+      limit: itemsPerPage,
+      status: statusFilter || undefined,
+    }),
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+  const { data: summaryResponse } = useQuery({
+    queryKey: ["partnerships", "incoming-summary", user?.id],
+    queryFn: () => partnershipsApi.getIncomingSummary(),
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+  const incomingList = useMemo(() => data?.data?.pengajuan_masuk ?? [], [data]);
+  const incomingSummary = summaryResponse?.data?.summary;
+  const pagination = data?.data?.pagination;
+  const error = fetchError?.message || "";
   const totalItems = pagination?.total ?? incomingList.length;
   const totalPages = Math.max(1, pagination?.totalPages ?? 1);
 
@@ -213,36 +229,9 @@ export default function PartnershipMitraInboxPage() {
     [readStorageKey],
   );
 
-  const fetchInbox = useCallback(async () => {
-    setLoading(true);
-    setError("");
-
-    try {
-      const response = await partnershipsApi.getIncoming({
-        page: currentPage,
-        limit: itemsPerPage,
-        status: statusFilter || undefined,
-      });
-
-      setIncomingList(response.data?.pengajuan_masuk ?? []);
-
-      if (response.data?.pagination) {
-        setPagination(response.data.pagination);
-      } else {
-        setPagination(null);
-      }
-    } catch (err) {
-      setIncomingList([]);
-      setPagination(null);
-      setError(err instanceof Error ? err.message : "Gagal memuat pengajuan masuk.");
-    } finally {
-      setLoading(false);
-    }
-  }, [currentPage, itemsPerPage, statusFilter]);
-
-  useEffect(() => {
-    fetchInbox();
-  }, [fetchInbox]);
+  function fetchInbox() {
+    return refetch();
+  }
 
   function handlePageChange(page: number) {
     setCurrentPage(Math.min(Math.max(page, 1), totalPages));
@@ -272,22 +261,6 @@ export default function PartnershipMitraInboxPage() {
 
     navigate(`${basePath}/review/${item.pengajuanID}`);
   }
-
-  async function fetchIncomingSummary() {
-    try {
-      const response = await partnershipsApi.getIncomingSummary();
-
-      if (response.success === true && response.data?.summary) {
-        setIncomingSummary(response.data.summary);
-      }
-    } catch {
-      // Summary is optional; table pagination still works without it.
-    }
-  }
-
-  useEffect(() => {
-    fetchIncomingSummary();
-  }, []);
 
   return (
     <UmkmLayout

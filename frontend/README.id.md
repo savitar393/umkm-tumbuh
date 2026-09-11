@@ -64,19 +64,23 @@ Jalankan di dalam `frontend/`:
 | --- | --- |
 | `npm ci` | Memasang dependensi sesuai lockfile |
 | `npm run dev` | Menjalankan server pengembangan Vite |
-| `npm run lint` | Menjalankan ESLint |
+| `npm run lint` | Menjalankan ESLint; error maupun warning menggagalkan pemeriksaan |
 | `npm run test:login` | Memeriksa permintaan login, pesan kesalahan, pembatalan, dan batas waktu dengan server uji lokal |
 | `npm run test:proxy` | Memeriksa rute melalui Vite ke lima layanan uji lokal |
 | `npm run build` | Memeriksa TypeScript dan membuat hasil build di `dist/` |
+| `npm run test:pages` | Menguji pencarian, pagination, draf pelatihan, filter produk, dan respons unggahan registrasi |
+| `npm run check` | Menjalankan lint, build, serta seluruh pengujian di atas |
 | `npm run preview` | Meninjau hasil build yang sudah ada secara lokal |
 
 Jalankan `npm run build` sebelum preview. Preview biasanya menggunakan port 4173; permintaan ke backend tetap memerlukan `FRONTEND_URL` yang sesuai. Preview tidak menjalankan backend.
+
+`npm run check` menjalankan pemeriksaan frontend yang sama dengan job frontend di CI. Pengujian memakai server HTTP lokal dan data sintetis. Suite `test:pages` memakai React test renderer yang versinya sesuai React 18; suite ini memeriksa perubahan state dan interaksi komponen tanpa browser atau Docker. Berkas uji skema lama pada `src/**/__tests__` belum termasuk perintah ini.
 
 ## Akun dan pengujian
 
 Stack biasa membuat akun admin sesuai konfigurasi `.env` utama. Daftarkan akun UMKM dan Mitra melalui aplikasi; email lokal dapat dibaca melalui [Mailpit](http://localhost:8025).
 
-Perintah `bash tests/stack/run.sh`, yang dijalankan dari direktori utama repositori, memeriksa integrasi backend dan menghapus enam akun sementaranya setelah selesai. Akun tersebut tidak tersedia untuk sesi browser berikutnya. Pengujian Stage 1 tidak memeriksa tampilan browser atau seluruh fitur aplikasi.
+Perintah `bash tests/stack/run.sh`, yang dijalankan dari direktori utama repositori, memeriksa integrasi backend, menjalankan koleksi API Newman, lalu menghapus seluruh akun pengujiannya setelah selesai. Akun tersebut tidak tersedia untuk sesi browser berikutnya. Pengujian Stage 1 tidak memeriksa tampilan browser atau seluruh fitur aplikasi.
 
 Jika aplikasi gagal berjalan, periksa console dan permintaan jaringan pada browser, lalu baca log backend yang terkait. Lihat [panduan lokal](../docs/README_LOCAL_DEV.id.md) untuk alamat layanan dan perintahnya.
 

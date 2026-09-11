@@ -69,7 +69,7 @@ Proses build Docker menggunakan Go 1.26.3. PostgreSQL menggunakan versi 16, seda
 bash tests/stack/run.sh
 ```
 
-Skrip ini membangun proyek pengujian terpisah dengan enam akun sintetis, memeriksa kelima API, mengunggah dan mengunduh berkas melalui kedua layanan pengguna penyimpanan, menjalankan ulang migrasi dan bootstrap, lalu membuat ulang container untuk memeriksa ketahanan data. Skrip menggunakan `.env.example` dan konfigurasi pengujian tambahan, tidak memublikasikan port host, serta membersihkan container dan volume pengujiannya.
+Skrip ini membangun proyek pengujian terpisah dengan enam akun fixture dan satu akun yang didaftarkan oleh Newman, menjalankan koleksi berisi 37 permintaan API, memeriksa kelima API, mengunggah dan mengunduh berkas melalui kedua layanan pengguna penyimpanan, menjalankan ulang migrasi dan bootstrap, lalu membuat ulang container untuk memeriksa ketahanan data. Skrip menggunakan `.env.example` dan konfigurasi pengujian tambahan, tidak memublikasikan port host, serta membersihkan container dan volume pengujiannya.
 
 Pada pemeriksaan basis data yang salah, pesan berikut memang diharapkan:
 
@@ -83,9 +83,18 @@ Pengujian yang berhasil diakhiri dengan:
 Stage 1 stack checks passed.
 ```
 
-Pengujian tidak membiarkan aplikasi pengembangan tetap berjalan. Jalankan aplikasi dengan perintah startup di atas. Keenam akun uji bersifat sementara; gunakan akun admin bawaan atau lakukan registrasi pada aplikasi biasa. Penjelasan lengkap tersedia pada [panduan data uji dan pengujian](docs/README_LOCAL_DEV.id.md#menjalankan-pengujian-stage-1-terisolasi).
+Pengujian tidak membiarkan aplikasi pengembangan tetap berjalan. Jalankan aplikasi dengan perintah startup di atas. Seluruh akun uji bersifat sementara; gunakan akun admin bawaan atau lakukan registrasi pada aplikasi biasa. Penjelasan lengkap tersedia pada [panduan data uji dan pengujian](docs/README_LOCAL_DEV.id.md#menjalankan-pengujian-stage-1-terisolasi).
 
-[Panduan Postman/Newman](tests/postman/README.id.md) menjelaskan koleksi API lama beserta keterbatasannya. Keberhasilan Stage 1 memastikan infrastruktur lokal dan alur API yang diuji berfungsi; hasil ini belum memvalidasi seluruh fitur atau aturan otorisasi.
+[Panduan Postman/Newman](tests/postman/README.id.md) menjelaskan suite kontrak API saat ini, laporan JUnit, dan koleksi arsip. Keberhasilan Stage 1 memastikan infrastruktur lokal dan alur API yang diuji berfungsi; hasil ini belum memvalidasi seluruh fitur atau aturan otorisasi.
+
+## Pemeriksaan frontend dan CI
+
+```bash
+npm --prefix frontend ci
+npm --prefix frontend run check
+```
+
+Pemeriksaan frontend menjalankan ESLint tanpa toleransi warning, TypeScript dan build produksi, pengujian regresi login dan proxy, serta pengujian halaman/unggahan. CI menjalankan pemeriksaan yang sama. Job Go tetap memeriksa format, kerapian modul, vet, pengujian, dan build. Lihat [panduan CI](docs/README_LOCAL_DEV.id.md#ci-dan-pemeriksaan-sebelum-push) untuk perintah lokal dan cakupan workflow.
 
 ## Mengelola aplikasi
 

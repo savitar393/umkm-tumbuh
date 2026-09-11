@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import type { CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../../../shared/components/Header";
@@ -198,7 +198,6 @@ export default function TrainingListPage() {
     setTimeout(() => { setVisibleCount((p) => p + 4); setLoading(false); }, 600);
   };
 
-  useEffect(() => { setVisibleCount(8); }, [activeCategory, search]);
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", background: "#f5f7fa" }}>
@@ -223,7 +222,7 @@ export default function TrainingListPage() {
               <span style={{ color: "#aaa", display: "flex", flexShrink: 0 }}><SearchIcon /></span>
               <input
                 type="text" placeholder="Cari topik pelatihan, pemateri, atau modul..."
-                value={search} onChange={(e) => setSearch(e.target.value)}
+                value={search} onChange={(e) => { setSearch(e.target.value); setVisibleCount(8); }}
                 style={{ flex: 1, border: "none", outline: "none", fontSize: 13, color: "#333", background: "transparent", minWidth: 0 }}
               />
               <button style={{ background: "#1a3fa4", color: "#fff", border: "none", borderRadius: 8, padding: "7px 18px", fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
@@ -240,7 +239,7 @@ export default function TrainingListPage() {
             {categories.map((cat) => {
               const active = activeCategory === cat;
               return (
-                <button key={cat} onClick={() => setActiveCategory(cat)}
+                <button key={cat} onClick={() => { setActiveCategory(cat); setVisibleCount(8); }}
                   style={{ whiteSpace: "nowrap", flexShrink: 0, padding: "8px 18px", borderRadius: 24, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 500, background: active ? "#1a3fa4" : "transparent", color: active ? "#fff" : "#555", boxShadow: active ? "0 2px 10px rgba(26,63,164,0.28)" : "none", transition: "all 0.2s" }}>
                   {cat}
                 </button>

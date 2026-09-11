@@ -147,7 +147,6 @@ export default function PartnershipCreatePage() {
   const [partnerError, setPartnerError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
-  const [selectedPartnerName, setSelectedPartnerName] = useState(preselectedReceiverName);
 
   const [formData, setFormData] = useState({
     receiver_id: preselectedReceiverId,
@@ -231,20 +230,8 @@ export default function PartnershipCreatePage() {
     };
   }, [isMitra]);
 
-  useEffect(() => {
-    if (!preselectedReceiverId) return;
-
-    const found = partnerList.find((partner) => partner.id === preselectedReceiverId);
-
-    if (found) {
-      setSelectedPartnerName(found.name);
-      return;
-    }
-
-    if (preselectedReceiverName) {
-      setSelectedPartnerName(preselectedReceiverName);
-    }
-  }, [partnerList, preselectedReceiverId, preselectedReceiverName]);
+  const selectedPartnerName = partnerList.find((partner) => partner.id === formData.receiver_id)?.name
+    ?? (formData.receiver_id === preselectedReceiverId ? preselectedReceiverName : "");
 
   function updateField(name: keyof typeof formData, value: string) {
     setSubmitError("");
@@ -261,9 +248,8 @@ export default function PartnershipCreatePage() {
     });
   }
 
-  function handleSelectPartner(id: string, name: string) {
+  function handleSelectPartner(id: string) {
     updateField("receiver_id", id);
-    setSelectedPartnerName(name);
     setSearchQuery("");
     setShowDropdown(false);
   }
@@ -471,7 +457,6 @@ export default function PartnershipCreatePage() {
                       setShowDropdown(true);
 
                       if (!value) {
-                        setSelectedPartnerName("");
                         updateField("receiver_id", "");
                       }
                     }}
@@ -498,7 +483,7 @@ export default function PartnershipCreatePage() {
                           <button
                             type="button"
                             key={partner.id}
-                            onClick={() => handleSelectPartner(partner.id, partner.name)}
+                            onClick={() => handleSelectPartner(partner.id)}
                           >
                             {partner.name}
                           </button>

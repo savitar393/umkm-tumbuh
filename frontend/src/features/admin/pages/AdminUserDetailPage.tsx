@@ -1,16 +1,15 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
-import { getUserDetail, approveUser, rejectUser, deactivateUser, type UserDetailResponse, type MessageResponse } from "../api";
+import { getUserDetail, approveUser, rejectUser, deactivateUser, type MessageResponse } from "../api";
 import AdminLayout from "../components/AdminLayout";
 import "./admin.css";
 
 export default function AdminUserDetailPage() {
   const { userId } = useParams();
   const navigate = useNavigate();
-  const [data, setData] = useState<UserDetailResponse["data"] | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [actionError, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -22,34 +21,18 @@ export default function AdminUserDetailPage() {
   const [deactivateReasonType, setDeactivateReasonType] = useState("");
   const [deactivateCustomReason, setDeactivateCustomReason] = useState("");
 
-  useEffect(() => {
-    if (!userId) return;
-
-    let ignore = false;
-    setLoading(true);
-    setError("");
-
-    getUserDetail(userId)
-      .then((res) => {
-        if (!ignore && res.status === "success" && res.data) {
-          setData(res.data);
-        } else if (!ignore) {
-          setError("Data tidak ditemukan.");
-        }
-      })
-      .catch((err) => {
-        if (!ignore) {
-          setError(err instanceof Error ? err.message : "Gagal mengambil data");
-        }
-      })
-      .finally(() => {
-        if (!ignore) setLoading(false);
-      });
-
-    return () => {
-      ignore = true;
-    };
-  }, [userId]);
+  const { data, isFetching: loading, error: fetchError, refetch } = useQuery({
+    queryKey: ["admin", "registration", userId],
+    queryFn: async () => {
+      if (!userId) throw new Error("ID pengguna tidak ditemukan.");
+      const response = await getUserDetail(userId);
+      if (response.status !== "success" || !response.data) throw new Error("Data tidak ditemukan.");
+      return response.data;
+    },
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+  const error = actionError || fetchError?.message || "";
 
   async function handleApprove() {
     if (!userId) return;
@@ -60,8 +43,7 @@ export default function AdminUserDetailPage() {
       const res: MessageResponse = await approveUser(userId, catatanValidasi);
       setSuccess(res.message || "Akun berhasil disetujui.");
       setShowApproveModal(false);
-      const updated = await getUserDetail(userId);
-      if (updated.status === "success" && updated.data) setData(updated.data);
+      await refetch();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal menyetujui");
     } finally {
@@ -82,8 +64,7 @@ export default function AdminUserDetailPage() {
       const res: MessageResponse = await rejectUser(userId, alasanTolak.trim(), catatanValidasi);
       setSuccess(res.message || "Akun berhasil ditolak.");
       setShowRejectModal(false);
-      const updated = await getUserDetail(userId);
-      if (updated.status === "success" && updated.data) setData(updated.data);
+      await refetch();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal menolak");
     } finally {
@@ -101,8 +82,7 @@ export default function AdminUserDetailPage() {
       const res: MessageResponse = await deactivateUser(userId, reason || undefined);
       setSuccess(res.message || "Akun berhasil dinonaktifkan.");
       setShowDeactivateDialog(false);
-      const updated = await getUserDetail(userId);
-      if (updated.status === "success" && updated.data) setData(updated.data);
+      await refetch();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal menonaktifkan");
     } finally {
@@ -256,7 +236,7 @@ export default function AdminUserDetailPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {data.documents.map((doc: any, idx: number) => (
+                  {data.documents.map((doc, idx) => (
                     <tr key={doc.id ?? idx}>
                       <td>{doc.nama_dokumen ?? doc.file_name ?? doc.name ?? `Dokumen ${idx + 1}`}</td>
                       <td>
@@ -288,7 +268,7 @@ export default function AdminUserDetailPage() {
           <h3>Checklist Dokumen</h3>
           {data?.checklist && Array.isArray(data.checklist) && data.checklist.length > 0 ? (
             <div className="checklist">
-              {data.checklist.map((item: any, idx: number) => (
+              {data.checklist.map((item, idx) => (
                 <div key={idx} className="checklist-item">
                   <span className={`checklist-status ${item.uploaded ? "checklist-ok" : "checklist-missing"}`}>
                     {item.uploaded ? "✓" : "✗"}

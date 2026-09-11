@@ -112,7 +112,7 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     let ignore = false;
-    const qs = buildQuery({ prov: provinsi, bln: bulan, thn: tahun, statusUmkm });
+    const qs = buildQuery({ prov: "Seluruh Indonesia", bln: -1, thn: -1, statusUmkm: "Semua Status" });
 
     getDashboard(qs)
       .then((result) => { if (!ignore) { setData(result); setError(""); } })

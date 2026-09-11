@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -302,68 +303,28 @@ export default function PartnershipDetailPage() {
   }
   const profileKind = isMitra ? "UMKM" : "Mitra";
 
-  const [detail, setDetail] = useState<UMKMDetail | MitraDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
+  const { data: detail = null, isFetching: loading, error: fetchError } = useQuery({
+    queryKey: ["partnerships", "profile", user?.id, isMitra, id],
+    queryFn: async () => {
+      if (!id) throw new Error("ID profil kemitraan tidak ditemukan.");
+      if (isMitra) {
+        const response = await partnershipsApi.getUMKMDetail(id);
+        if (!response.success || !response.data?.umkm) throw new Error("UMKM tidak ditemukan.");
+        return response.data.umkm;
+      }
+      const response = await partnershipsApi.getMitraDetail(id);
+      if (!response.success || !response.data?.mitra) throw new Error("Mitra tidak ditemukan.");
+      return response.data.mitra;
+    },
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+  const error = fetchError?.message || "";
   const data = detail as PartnershipProfileDetail | null;
 
   const fullLocation = useMemo(() => (data ? getFullLocation(data) : ""), [data]);
   const fullAddress = useMemo(() => (data ? getFullAddress(data) : ""), [data]);
-
-  useEffect(() => {
-    if (!id) {
-      setError("ID profil kemitraan tidak ditemukan.");
-      setLoading(false);
-      return;
-    }
-
-    const detailId = id;
-    let ignore = false;
-
-    async function fetchDetail() {
-      setLoading(true);
-      setError("");
-
-      try {
-        if (isMitra) {
-          const response = await partnershipsApi.getUMKMDetail(detailId);
-
-          if (!ignore) {
-            if (response.success === true && response.data?.umkm) {
-              setDetail(response.data.umkm);
-            } else {
-              setError("UMKM tidak ditemukan.");
-            }
-          }
-
-          return;
-        }
-
-        const response = await partnershipsApi.getMitraDetail(detailId);
-
-        if (!ignore) {
-          if (response.success === true && response.data?.mitra) {
-            setDetail(response.data.mitra);
-          } else {
-            setError("Mitra tidak ditemukan.");
-          }
-        }
-      } catch (err) {
-        if (!ignore) {
-          setError(err instanceof Error ? err.message : "Gagal memuat detail kemitraan.");
-        }
-      } finally {
-        if (!ignore) setLoading(false);
-      }
-    }
-
-    fetchDetail();
-
-    return () => {
-      ignore = true;
-    };
-  }, [id, isMitra]);
 
   function handleApplyPartnership() {
     const query = new URLSearchParams();

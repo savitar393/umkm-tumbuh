@@ -56,7 +56,7 @@ describe("CertificateSchema", () => {
   });
 
   it("rejects missing required fields", () => {
-    const { sertifikat_id, ...incomplete } = validCertificate;
+    const incomplete = Object.fromEntries(Object.entries(validCertificate).filter(([key]) => key !== "sertifikat_id"));
     expect(() => CertificateSchema.parse(incomplete)).toThrow();
   });
 
@@ -82,7 +82,7 @@ describe("CertificateDashboardSchema", () => {
   });
 
   it("rejects missing required fields", () => {
-    const { umkm_id, ...incomplete } = validDashboard;
+    const incomplete = Object.fromEntries(Object.entries(validDashboard).filter(([key]) => key !== "umkm_id"));
     expect(() => CertificateDashboardSchema.parse(incomplete)).toThrow();
   });
 });

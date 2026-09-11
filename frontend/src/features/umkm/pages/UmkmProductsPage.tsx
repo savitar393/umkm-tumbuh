@@ -1,4 +1,5 @@
-import { type FormEvent, useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { type FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   getProducts,
@@ -28,8 +29,6 @@ function getCurrentUser(): CurrentUser | null {
 export default function UmkmProductsPage() {
   const navigate = useNavigate();
   const user = getCurrentUser();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
@@ -45,17 +44,16 @@ export default function UmkmProductsPage() {
 
   const [submitting, setSubmitting] = useState(false);
 
+  const { data, isFetching: loading, refetch } = useQuery({
+    queryKey: ["products", "profile", user?.id],
+    queryFn: () => getProducts(),
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+  const products = data?.products ?? [];
   function fetchProducts() {
-    setLoading(true);
-    getProducts()
-      .then((res) => setProducts(res.products || []))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    return refetch();
   }
-
-  useEffect(() => {
-    fetchProducts();
-  }, []);
 
   function logout() {
     localStorage.removeItem("access_token");
@@ -145,7 +143,7 @@ export default function UmkmProductsPage() {
     try {
       await deleteProduct(id);
       fetchProducts();
-    } catch (err) {
+    } catch {
       alert("Gagal menghapus produk");
     }
   }

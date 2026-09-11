@@ -24,6 +24,7 @@ export function RequireAuth({ allowedRole }: RequireAuthProps) {
   const token = getAccessToken();
   const refreshToken = getRefreshToken();
   const storedUser = getCurrentUser();
+  const storedUserID = storedUser?.id;
 
   const [user, setUser] = useState<CurrentUser | null>(storedUser);
   const [checking, setChecking] = useState(Boolean((token || refreshToken) && storedUser));
@@ -65,7 +66,7 @@ export function RequireAuth({ allowedRole }: RequireAuthProps) {
     }
 
     async function refreshUser() {
-      if (!storedUser) {
+      if (!storedUserID) {
         setChecking(false);
         return;
       }
@@ -110,7 +111,7 @@ export function RequireAuth({ allowedRole }: RequireAuthProps) {
     return () => {
       cancelled = true;
     };
-  }, [token, refreshToken]);
+  }, [token, refreshToken, storedUserID]);
 
   if (!token && !refreshToken) {
     return <Navigate to="/login" replace />;

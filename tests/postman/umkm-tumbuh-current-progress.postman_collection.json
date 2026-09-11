@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "5b7fdb79-umkm-current-progress-try2",
     "name": "UMKM Tumbuh Backend - Current Progress Try 2",
-    "description": "Newman/Postman collection aligned with the integrated dev milestone: auth, admin registration approval, profile, products, sales, and UMKM dashboard summary.",
+    "description": "Current development API contracts. Uses a disposable database and the development-only email verification code; do not run against production.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "event": [
@@ -11,6 +11,7 @@
       "script": {
         "type": "text/javascript",
         "exec": [
+          "if (!pm.environment.get('umkm_test_password')) pm.environment.set('umkm_test_password', 'NewmanTest123!');",
           "if (!pm.environment.get('run_id')) {",
           "  const suffix = String(Date.now()).slice(-10);",
           "  pm.environment.set('run_id', suffix);",
@@ -258,7 +259,7 @@
           ]
         },
         {
-          "name": "AP-AUTH-004 UMKM login before approval should fail",
+          "name": "SP-AUTH-004 Login before email verification is rejected",
           "request": {
             "method": "POST",
             "header": [
@@ -289,8 +290,97 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Pending account cannot login', () => pm.response.to.have.status(403));",
-                  "pm.response.to.be.json;"
+                  "pm.test('Unverified email cannot login', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HP-AUTH-004a Request email verification",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{umkm_test_email}}\"\n}"
+            },
+            "url": "{{auth_base_url}}/api/v1/auth/verify-email/request"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Verification request returns 200', () => pm.response.to.have.status(200));",
+                  "const code = pm.response.json().dev_code;",
+                  "pm.test('Development verification code is returned', () => pm.expect(code).to.match(/^\\d{6}$/));",
+                  "pm.environment.set('verification_code', code);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HP-AUTH-004b Confirm email verification",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{umkm_test_email}}\",\n  \"code\": \"{{verification_code}}\"\n}"
+            },
+            "url": "{{auth_base_url}}/api/v1/auth/verify-email/confirm"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Verification succeeds', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "HP-AUTH-004c Verified pending account can login for onboarding",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{umkm_test_email}}\",\n  \"password\": \"{{umkm_test_password}}\"\n}"
+            },
+            "url": "{{auth_base_url}}/api/v1/auth/login"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Verified pending login returns 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Approval is still pending', () => pm.expect(json.user.status).to.eql('MENUNGGU'));",
+                  "pm.test('Onboarding session exists', () => pm.expect(json.access_token).to.be.a('string').and.not.empty);"
                 ]
               }
             }
@@ -307,9 +397,15 @@
               }
             ],
             "url": {
-              "raw": "{{auth_base_url}}/api/v1/admin/registrations?status=PENDING",
+              "raw": "{{auth_base_url}}/api/v1/admin/registrations?status=PENDING&search={{umkm_test_email}}",
               "host": [
                 "{{auth_base_url}}/api/v1/admin/registrations?status=PENDING"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "{{umkm_test_email}}"
+                }
               ]
             }
           },
@@ -320,12 +416,11 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('List registrations returns 200', () => pm.response.to.have.status(200));",
-                  "pm.response.to.be.json;",
-                  "const list = pm.response.json();",
-                  "pm.test('Response is an array', () => pm.expect(list).to.be.an('array'));",
-                  "const found = list.find(u => u.email === pm.environment.get('umkm_test_email'));",
-                  "pm.expect(found, 'registered UMKM exists in pending list').to.exist;",
-                  "pm.environment.set('umkm_account_id', found.id);"
+                  "const json = pm.response.json();",
+                  "pm.test('Registration envelope is successful', () => pm.expect(json.status).to.eql('success'));",
+                  "const list = json.data.users;",
+                  "pm.test('Users is an array', () => pm.expect(list).to.be.an('array'));",
+                  "pm.test('New account appears in pending registrations', () => pm.expect(list.some(user => user.id === pm.environment.get('umkm_account_id'))).to.eql(true));"
                 ]
               }
             }
@@ -355,9 +450,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Approve returns 200', () => pm.response.to.have.status(200));",
-                  "pm.response.to.be.json;",
-                  "const json = pm.response.json();",
-                  "pm.test('Status becomes DISETUJUI', () => pm.expect(json.status).to.eql('DISETUJUI'));"
+                  "pm.test('Approval succeeds', () => pm.expect(pm.response.json().status).to.eql('success'));"
                 ]
               }
             }
@@ -400,7 +493,8 @@
                   "const json = pm.response.json();",
                   "pm.expect(json.access_token, 'access_token').to.be.a('string').and.not.empty;",
                   "pm.environment.set('umkm_access_token', json.access_token);",
-                  "pm.test('UMKM role returned', () => pm.expect(json.user.role).to.eql('UMKM'));"
+                  "pm.test('UMKM role returned', () => pm.expect(json.user.role).to.eql('UMKM'));",
+                  "pm.test('Account is approved', () => pm.expect(json.user.status).to.eql('DISETUJUI'));"
                 ]
               }
             }
@@ -471,6 +565,35 @@
                 "exec": [
                   "pm.test('Invalid login rejected', () => pm.expect([400,401,403]).to.include(pm.response.code));",
                   "pm.response.to.be.json;"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "SP-ADMIN-003 UMKM cannot approve registrations",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{umkm_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{auth_base_url}}/api/v1/admin/registrations/{{umkm_account_id}}/approve",
+              "host": [
+                "{{auth_base_url}}/api/v1/admin/registrations/{{umkm_account_id}}/approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Non-admin approval is forbidden', () => pm.response.to.have.status(403));"
                 ]
               }
             }

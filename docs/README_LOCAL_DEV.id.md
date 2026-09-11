@@ -86,12 +86,15 @@ Skrip membuat proyek Compose dengan nama unik, tidak memublikasikan port host, d
 
 - Kondisi kelima API dan koneksi basis data pada layanan yang menyediakan pemeriksaan tersebut.
 - Pengisian data uji dua kali serta login dengan peran dan status registrasi yang sesuai.
+- Koleksi Newman berisi 37 permintaan: verifikasi email, login akun menunggu/disetujui, tinjauan admin, profil, produk, penjualan, dasbor, dan beberapa permintaan yang harus ditolak.
 - Unggah dan unduh gambar produk melalui user-service.
 - Unggah dan unduh dokumen melalui document-service, termasuk penggunaan nama bucket khusus.
 - Pengulangan migrasi dan bootstrap tanpa mengganti key aplikasi atau menghapus key lain.
 - Pembuatan ulang container dengan kredensial yang sama serta isi unggahan yang identik hingga setiap byte.
 
-Skrip menampilkan log layanan jika gagal dan hanya menghapus proyek serta volume pengujiannya saat selesai, termasuk volume penyimpan status dari profil `check`. Dataset CSV besar tidak dimuat. Perintah yang sama digunakan pada `.github/workflows/local-stack.yml`.
+Skrip menampilkan log layanan jika gagal dan hanya menghapus proyek serta volume pengujiannya saat selesai, termasuk volume penyimpan status dari profil `check`. Dataset CSV besar tidak dimuat. Perintah yang sama digunakan pada `.github/workflows/local-stack.yml`. Newman membuat satu akun UMKM tambahan dalam basis data sementara ini. Verifikasi menggunakan kode khusus pengembangan dari respons API; pengiriman email belum diuji. Konfigurasi pengujian menetapkan `APP_ENV=development` untuk auth.
+
+Newman menulis `tests/postman/reports/newman.xml`, yang diabaikan Git. GitHub Actions mengunggahnya sebagai `api-contract-results`, termasuk saat pengujian gagal jika laporannya tersedia. Dua workflow Newman lama diganti oleh satu job terisolasi ini. Lihat [panduan pengujian API](../tests/postman/README.id.md) untuk koleksi dan keterbatasannya.
 
 ### Membaca hasil pengujian
 
@@ -133,7 +136,42 @@ docker compose --env-file .env -f infra/docker-compose.yml logs --tail 80 auth-s
 
 Jika port sudah digunakan, ubah variabel port host lalu jalankan ulang `up`. Jika API tetap unhealthy, baca log layanan tersebut sebelum mengubah data atau kredensial. Pesan `unknown tag !reset` berarti Compose perlu diperbarui ke versi minimal 2.24.4 agar dapat membaca konfigurasi tambahan untuk pengujian terisolasi.
 
-Profil `seed` yang opsional mengimpor dataset CSV lama dan mengosongkan tabel aplikasi. Profil ini tidak diperlukan untuk menjalankan aplikasi maupun pengujian Stage 1. Gunakan hanya pada basis data pengembangan yang boleh diganti seluruh isinya. Lihat [panduan basis data](../infra/db/README.id.md) untuk perintahnya dan [panduan Postman/Newman](../tests/postman/README.id.md) untuk koleksi lama.
+Profil `seed` yang opsional mengimpor dataset CSV lama dan mengosongkan tabel aplikasi. Profil ini tidak diperlukan untuk menjalankan aplikasi maupun pengujian Stage 1. Gunakan hanya pada basis data pengembangan yang boleh diganti seluruh isinya. Lihat [panduan basis data](../infra/db/README.id.md) untuk perintahnya dan [panduan Postman/Newman](../tests/postman/README.id.md) untuk suite kontrak API saat ini dan koleksi arsip.
+
+## CI dan pemeriksaan sebelum push
+
+Dari direktori utama repositori:
+
+```bash
+npm --prefix frontend ci
+npm --prefix frontend run check
+bash tests/stack/run.sh
+```
+
+Pemeriksaan frontend memerlukan Node.js 22 dan npm. Pengujian stack memerlukan Docker dan Compose serta membangun kelima layanan Go; Go dan Newman tidak perlu dipasang pada host.
+
+Job Go tersendiri di CI mencakup auth-service dan user-service. Jika Go 1.26.3 sudah terpasang, jalankan pemeriksaannya secara lokal:
+
+```bash
+(
+  set -e
+  for service in auth-service user-service; do
+    (
+      cd "services/$service"
+      test -z "$(gofmt -l .)"
+      go mod tidy
+      git diff --exit-code -- go.mod go.sum
+      go vet ./...
+      go test ./...
+      go build ./...
+    )
+  done
+)
+```
+
+Commit perubahan modul yang memang diperlukan sebelum pemeriksaan tidy, karena berkas dibandingkan dengan Git. Jika pemeriksaan format gagal, `gofmt -l .` dari direktori layanan tersebut menampilkan berkas yang perlu dirapikan. Jangan menonaktifkan pemeriksaan agar CI lolos.
+
+`ci.yml` memeriksa Go, frontend, dan konfigurasi Compose pada pull request ke `main`, push ke pola branch yang didukung, serta eksekusi manual. `local-stack.yml` menjalankan stack sebenarnya saat layanan, infrastruktur, pengujian API, workflow, atau `.env.example` berubah, dan saat dijalankan manual. Keberhasilan pemeriksaan konfigurasi Compose saja belum membuktikan stack dapat berjalan.
 
 ## Aturan pengembangan
 

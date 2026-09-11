@@ -70,8 +70,8 @@ type ProductResponse struct {
 	ThumbnailContentType *string    `json:"thumbnail_content_type"`
 	ThumbnailSizeBytes   *int64     `json:"thumbnail_size_bytes"`
 	ThumbnailUpdatedAt   *time.Time `json:"thumbnail_updated_at"`
-	Featured      		 bool `json:"featured"`
-	FeaturedOrder        *int `json:"featured_order"`
+	Featured             bool       `json:"featured"`
+	FeaturedOrder        *int       `json:"featured_order"`
 	CreatedAt            time.Time  `json:"created_at"`
 	UpdatedAt            time.Time  `json:"updated_at"`
 }

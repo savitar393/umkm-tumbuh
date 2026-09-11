@@ -109,3 +109,6 @@ format-go.ps1
 infra/db/dummy/generated/
 infra/db/dummy/metadata/
 infra/db/dummy/*.csv
+
+# Generated API test results
+tests/postman/reports/

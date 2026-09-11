@@ -86,12 +86,15 @@ The script creates a unique Compose project, publishes no host ports, and uses a
 
 - Health of all five APIs and database connectivity where available.
 - Fixture seeding twice and login with the expected roles and registration states.
+- The 37-request Newman collection: email verification, pending/approved login, admin review, profiles, products, sales, dashboards, and selected rejected requests.
 - Product image upload/download through user-service.
 - Document upload/download through document-service, including custom bucket names.
 - Migration and bootstrap reruns without rotating the application key or deleting an unrelated key.
 - Container recreation with the same credentials and byte-for-byte intact uploads.
 
-The script prints service logs on failure and removes only its own test project and volumes on exit, including the state volume used by the `check` profile. It does not load the large CSV dataset. The same command runs in `.github/workflows/local-stack.yml`.
+The script prints service logs on failure and removes only its own test project and volumes on exit, including the state volume used by the `check` profile. It does not load the large CSV dataset. The same command runs in `.github/workflows/local-stack.yml`. Newman creates one additional UMKM account within this disposable database. It uses the development-only verification code in the API response; this does not test email delivery. The test overlay fixes `APP_ENV=development` for auth.
+
+Newman writes `tests/postman/reports/newman.xml`, which Git ignores. GitHub Actions uploads it as `api-contract-results`, including on test failure when the report exists. The earlier duplicate Newman workflows have been replaced by this one isolated job. See the [API test guide](../tests/postman/README.md) for the collection and its limitations.
 
 ### Read the test output
 
@@ -133,7 +136,42 @@ docker compose --env-file .env -f infra/docker-compose.yml logs --tail 80 auth-s
 
 If a port is occupied, change its host port variable and rerun `up`. If an API stays unhealthy, inspect that service's logs before changing data or credentials. An `unknown tag !reset` error means Compose must be updated to at least 2.24.4 for the isolated test overlay.
 
-The optional `seed` profile imports the old large CSV dataset and truncates application tables. It is not required to start the application or run Stage 1 checks. Use it only with a disposable development database. See the [database guide](../infra/db/README.md) for commands and the [Postman/Newman guide](../tests/postman/README.md) for the older collections.
+The optional `seed` profile imports the old large CSV dataset and truncates application tables. It is not required to start the application or run Stage 1 checks. Use it only with a disposable development database. See the [database guide](../infra/db/README.md) for commands and the [Postman/Newman guide](../tests/postman/README.md) for the current API contract suite and archived collections.
+
+## CI and checks before pushing
+
+From the repository root:
+
+```bash
+npm --prefix frontend ci
+npm --prefix frontend run check
+bash tests/stack/run.sh
+```
+
+The frontend checks need Node.js 22 and npm. The stack check needs Docker and Compose and builds all five Go services; no host Go installation or host Newman installation is required.
+
+The separate Go CI jobs cover auth-service and user-service. With Go 1.26.3 installed, run their checks locally:
+
+```bash
+(
+  set -e
+  for service in auth-service user-service; do
+    (
+      cd "services/$service"
+      test -z "$(gofmt -l .)"
+      go mod tidy
+      git diff --exit-code -- go.mod go.sum
+      go vet ./...
+      go test ./...
+      go build ./...
+    )
+  done
+)
+```
+
+Commit intentional module changes before running the tidy check, because it compares the files with Git. If the formatting check fails, `gofmt -l .` inside that service lists the files to format. Do not disable a gate to make CI pass.
+
+`ci.yml` checks Go, frontend, and Compose configuration on pull requests to `main`, supported branch pushes, and manual runs. `local-stack.yml` runs the actual stack for changes to services, infrastructure, API tests, workflow files, or `.env.example`, and on manual runs. A green Compose configuration check alone does not confirm the stack starts.
 
 ## Development rules
 

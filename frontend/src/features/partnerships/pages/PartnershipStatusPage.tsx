@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -138,17 +139,35 @@ export default function PartnershipStatusPage() {
 
   const basePath = getBasePath(user?.role);
 
-  const [statusData, setStatusData] = useState<PartnershipStatusResponse | null>(null);
-  const [summary, setSummary] = useState<{ bermitra: number; menunggu: number; ditolak: number } | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [loading, setLoading] = useState(true);
   const [cancelingId, setCancelingId] = useState("");
-  const [error, setError] = useState("");
+  const [actionError, setError] = useState("");
 
-  const items = statusData?.pengajuan ?? [];
+  const { data: statusData, isFetching: loading, error: fetchError, refetch } = useQuery({
+    queryKey: ["partnerships", "status", user?.id, currentPage, itemsPerPage, statusFilter],
+    queryFn: async () => {
+      const response = await partnershipsApi.getStatus({
+        page: currentPage,
+        limit: itemsPerPage,
+        status: statusFilter || undefined,
+      });
+      if (!response.success) throw new Error(response.message || "Gagal memuat status pengajuan.");
+      return response.data;
+    },
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+  const { data: summary, refetch: refetchSummary } = useQuery({
+    queryKey: ["partnerships", "summary", user?.id],
+    queryFn: async () => (await partnershipsApi.getSummary()).data?.summary ?? null,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+  const error = actionError || fetchError?.message || "";
+  const items = useMemo(() => statusData?.pengajuan ?? [], [statusData]);
   const totalPages = Math.max(1, statusData?.pagination?.totalPages ?? 1);
   const totalItems = statusData?.pagination?.total ?? items.length;
 
@@ -175,50 +194,10 @@ export default function PartnershipStatusPage() {
     total: totalItems,
   };
 
-  async function fetchSummary() {
-    try {
-      const response = await partnershipsApi.getSummary();
-
-      if (response.success === true && response.data?.summary) {
-        setSummary(response.data.summary);
-      }
-    } catch {
-      // Summary is optional; the table is still useful without it.
-    }
-  }
-
-  async function fetchStatus() {
-    setLoading(true);
+  function fetchStatus() {
     setError("");
-
-    try {
-      const response = await partnershipsApi.getStatus({
-        page: currentPage,
-        limit: itemsPerPage,
-        status: statusFilter || undefined,
-      });
-
-      if (response.success === true) {
-        setStatusData(response.data);
-        return;
-      }
-
-      setError(response.message || "Gagal memuat status pengajuan.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Gagal memuat status pengajuan.");
-      setStatusData(null);
-    } finally {
-      setLoading(false);
-    }
+    return refetch();
   }
-
-  useEffect(() => {
-    fetchSummary();
-  }, []);
-
-  useEffect(() => {
-    fetchStatus();
-  }, [currentPage, itemsPerPage, statusFilter]);
 
   function handlePageChange(page: number) {
     setCurrentPage(Math.min(Math.max(page, 1), totalPages));
@@ -237,7 +216,7 @@ export default function PartnershipStatusPage() {
     try {
       await partnershipsApi.cancel(item.pengajuanID);
       await fetchStatus();
-      await fetchSummary();
+      await refetchSummary();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal membatalkan pengajuan.");
     } finally {

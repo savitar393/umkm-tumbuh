@@ -1,4 +1,5 @@
-import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { type ChangeEvent, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -200,13 +201,34 @@ export default function PartnershipApprovalPage() {
 
   const basePath = getBasePath(user?.role, location.pathname);
 
-  const [partnership, setPartnership] = useState<PartnershipDetail | null>(null);
   const [signedFile, setSignedFile] = useState<File | null>(null);
-  const [documentUrl, setDocumentUrl] = useState("");
-  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [uploadError, setUploadError] = useState("");
-  const [error, setError] = useState("");
+  const [actionError, setError] = useState("");
+
+  const { data: result, isFetching: loading, error: fetchError } = useQuery({
+    queryKey: ["partnerships", "approval", user?.id, id],
+    queryFn: async () => {
+      if (!id) throw new Error("ID pengajuan tidak ditemukan.");
+      const response = await partnershipsApi.getDetail(id);
+      if (!response.success || !response.data) throw new Error(response.message || "Data pengajuan tidak ditemukan.");
+      const documentId = response.data.contract_document_id;
+      let documentUrl = "";
+      if (typeof documentId === "string" && documentId) {
+        try {
+          documentUrl = (await partnershipsApi.getDocumentUrl(documentId)).data?.url || "";
+        } catch {
+          // Existing document preview is optional.
+        }
+      }
+      return { partnership: response.data, documentUrl };
+    },
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+  const partnership = result?.partnership ?? null;
+  const documentUrl = result?.documentUrl ?? "";
+  const error = actionError || fetchError?.message || "";
 
   const requestCode = getText(partnership, ["request_code", "pengajuanID", "id"], id ?? "-");
   const requesterName = getText(partnership, ["requester_name", "business_name", "pengirim"], "Pengaju");
@@ -221,64 +243,6 @@ export default function PartnershipApprovalPage() {
   const submittedAt = partnership?.submitted_at ?? partnership?.tanggalPengajuan ?? partnership?.created_at;
   const parsedProposal = useMemo(() => splitProposalDescription(proposalDescription), [proposalDescription]);
 
-  useEffect(() => {
-    if (!id) {
-      setError("ID pengajuan tidak ditemukan.");
-      setLoading(false);
-      return;
-    }
-
-    const approvalId = id;
-    let ignore = false;
-
-    async function fetchPartnership() {
-      setLoading(true);
-      setError("");
-
-      try {
-        const response = await partnershipsApi.getDetail(approvalId);
-
-        if (ignore) return;
-
-        if (response.success === true && response.data) {
-          const data = response.data;
-          setPartnership(data);
-
-          const contractDocumentId =
-            typeof data.contract_document_id === "string" ? data.contract_document_id : "";
-
-          if (contractDocumentId) {
-            try {
-              const docResp = await partnershipsApi.getDocumentUrl(contractDocumentId);
-
-              if (!ignore && docResp.data?.url) {
-                setDocumentUrl(docResp.data.url);
-              }
-            } catch {
-              // Existing document preview is optional.
-            }
-          }
-
-          return;
-        }
-
-        setError(response.message || "Data pengajuan tidak ditemukan.");
-      } catch (err) {
-        if (!ignore) {
-          setError(err instanceof Error ? err.message : "Gagal memuat data persetujuan.");
-          setPartnership(null);
-        }
-      } finally {
-        if (!ignore) setLoading(false);
-      }
-    }
-
-    fetchPartnership();
-
-    return () => {
-      ignore = true;
-    };
-  }, [id]);
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];

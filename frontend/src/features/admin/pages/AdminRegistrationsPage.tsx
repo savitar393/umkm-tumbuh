@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { Search, RefreshCw, Users, Clock, CheckCircle, XCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -7,7 +8,6 @@ import {
   rejectUser,
   deactivateUser,
   getStats,
-  type StatsData,
   type UserListItem,
   type MessageResponse,
 } from "../api";
@@ -19,10 +19,7 @@ type FilterRole = "ALL" | "UMKM" | "MITRA";
 
 export default function AdminRegistrationsPage() {
   const navigate = useNavigate();
-  const [users, setUsers] = useState<UserListItem[]>([]);
-  const [stats, setStats] = useState<StatsData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [actionError, setError] = useState("");
   const [success, setSuccess] = useState("");
 
   const [statusFilter, setStatusFilter] = useState<FilterStatus>("ALL");
@@ -30,8 +27,6 @@ export default function AdminRegistrationsPage() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
   const limit = 10;
 
   const [actionLoadingID, setActionLoadingID] = useState("");
@@ -46,52 +41,31 @@ export default function AdminRegistrationsPage() {
   const [deactivateReasonType, setDeactivateReasonType] = useState("");
   const [deactivateCustomReason, setDeactivateCustomReason] = useState("");
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
+  const { data, isFetching: loading, error: fetchError, refetch } = useQuery({
+    queryKey: ["admin", "registrations", statusFilter, roleFilter, searchQuery, page],
+    queryFn: () => Promise.all([
+      listUsers({
+        status: statusFilter === "ALL" ? undefined : statusFilter,
+        role: roleFilter === "ALL" ? undefined : roleFilter,
+        search: searchQuery.trim() || undefined,
+        page,
+        limit,
+      }),
+      getStats(),
+    ]),
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+  const users = data?.[0].data?.users ?? [];
+  const stats = data?.[1].data;
+  const totalPages = data?.[0].data?.pagination?.total_pages ?? 1;
+  const totalItems = data?.[0].data?.pagination?.total ?? 0;
+  const error = actionError || fetchError?.message || "";
+
+  function fetchData() {
     setError("");
-    try {
-      const params: Record<string, string | number> = {};
-      if (statusFilter !== "ALL") params.status = statusFilter;
-      if (roleFilter !== "ALL") params.role = roleFilter;
-      if (searchQuery.trim()) params.search = searchQuery.trim();
-      params.page = page;
-      params.limit = limit;
-
-      const [userRes, statsRes] = await Promise.all([
-        listUsers(params as any),
-        getStats(),
-      ]);
-
-      if (userRes.status === "success" && userRes.data) {
-        setUsers(userRes.data.users || []);
-        setTotalPages(userRes.data.pagination?.total_pages ?? 1);
-        setTotalItems(userRes.data.pagination?.total ?? 0);
-      } else {
-        setUsers([]);
-        setTotalPages(1);
-        setTotalItems(0);
-      }
-
-      if (statsRes.status === "success" && statsRes.data) {
-        setStats(statsRes.data);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Gagal mengambil data");
-      setUsers([]);
-      setTotalPages(1);
-      setTotalItems(0);
-    } finally {
-      setLoading(false);
-    }
-  }, [statusFilter, roleFilter, searchQuery, page]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [statusFilter, roleFilter, searchQuery]);
+    return refetch();
+  }
 
   function openApproveModal(user: UserListItem) {
     setSelectedUser(user);
@@ -282,7 +256,7 @@ export default function AdminRegistrationsPage() {
               <button
                 key={s}
                 className={`filter-tab ${statusFilter === s ? "active" : ""}`}
-                onClick={() => setStatusFilter(s)}
+                onClick={() => { setStatusFilter(s); setPage(1); }}
               >
                 {s === "ALL" && "Semua"}
                 {s === "PENDING" && "Menunggu"}
@@ -295,7 +269,7 @@ export default function AdminRegistrationsPage() {
             <select
               className="select-input"
               value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value as FilterRole)}
+              onChange={(e) => { setRoleFilter(e.target.value as FilterRole); setPage(1); }}
             >
               <option value="ALL">Semua Role</option>
               <option value="UMKM">UMKM</option>
@@ -308,7 +282,7 @@ export default function AdminRegistrationsPage() {
                 type="text"
                 placeholder="Cari nama atau email..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
               />
             </div>
           </div>

@@ -69,7 +69,7 @@ Docker builds use Go 1.26.3. PostgreSQL uses version 16, and Garage is pinned to
 bash tests/stack/run.sh
 ```
 
-This builds a separate test project with six synthetic accounts, checks all five APIs, uploads and downloads files through both storage consumers, reruns migrations and bootstrap, and recreates the containers to verify persistent data. It uses `.env.example` and the test overlay, publishes no host ports, and cleans up its test containers and volumes.
+This builds a separate test project with six fixture accounts and one account registered by Newman, runs the 37-request API collection, checks all five APIs, uploads and downloads files through both storage consumers, reruns migrations and bootstrap, and recreates the containers to verify persistent data. It uses `.env.example` and the test overlay, publishes no host ports, and cleans up its test containers and volumes.
 
 During the wrong-database check, this error is expected:
 
@@ -83,9 +83,18 @@ A successful run ends with:
 Stage 1 stack checks passed.
 ```
 
-The test does not leave the development application running. Start it using the commands above. The six test accounts are temporary; use the admin seed or register accounts in the normal application. Read the [fixture and test guide](docs/README_LOCAL_DEV.md#run-the-isolated-stage-1-check) for details.
+The test does not leave the development application running. Start it using the commands above. All test accounts are temporary; use the admin seed or register accounts in the normal application. Read the [fixture and test guide](docs/README_LOCAL_DEV.md#run-the-isolated-stage-1-check) for details.
 
-The [Postman/Newman guide](tests/postman/README.md) covers the older API collections and their current limitations. Passing Stage 1 confirms the local infrastructure and tested API flows; it does not validate every feature or authorization rule.
+The [Postman/Newman guide](tests/postman/README.md) documents the current contract suite, JUnit report, and archived collections. Passing Stage 1 confirms the local infrastructure and tested API flows; it does not validate every feature or authorization rule.
+
+## Frontend and CI checks
+
+```bash
+npm --prefix frontend ci
+npm --prefix frontend run check
+```
+
+The frontend check runs ESLint with zero warnings allowed, TypeScript and the production build, login and proxy regression tests, and page/upload regression tests. CI runs these same checks. The Go jobs retain formatting, module-tidiness, vet, tests, and build checks. See the [CI guide](docs/README_LOCAL_DEV.md#ci-and-checks-before-pushing) for local commands and workflow coverage.
 
 ## Manage the application
 

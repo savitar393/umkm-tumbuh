@@ -5,7 +5,7 @@ import MitraDashboardPage from "./pages/MitraDashboardPage";
 export const umkmDashboardRoutes: RouteObject[] = [
   {
     index: true,
-    element: <RoleDashboardPage title="Dashboard UMKM" />,
+    element: <RoleDashboardPage />,
   },
 ];
 

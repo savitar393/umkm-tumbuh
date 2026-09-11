@@ -1,4 +1,6 @@
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { getCurrentUser } from "../../../shared/auth/currentUser";
+import { useQuery } from "@tanstack/react-query";
+import { type FormEvent, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { BarChart3, Banknote, Boxes, ClipboardList, Clock3, Plus, Search } from "lucide-react";
 import UmkmLayout from "../../umkm/components/UmkmLayout";
@@ -87,13 +89,25 @@ function formatDateTime(value: string) {
 
 export default function SalesListPage() {
   const [searchParams] = useSearchParams();
-  const [sales, setSales] = useState<SaleSummary[]>([]);
-  const [from, setFrom] = useState(searchParams.get("from") ?? "");
-  const [to, setTo] = useState(searchParams.get("to") ?? "");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  return <SalesList key={searchParams.toString()} initialFrom={searchParams.get("from") ?? ""} initialTo={searchParams.get("to") ?? ""} />;
+}
+
+function SalesList({ initialFrom, initialTo }: { initialFrom: string; initialTo: string }) {
+  const userId = getCurrentUser()?.id;
+  const [from, setFrom] = useState(initialFrom);
+  const [to, setTo] = useState(initialTo);
   const [sortBy, setSortBy] = useState("date_desc");
-  const [useMock, setUseMock] = useState(false);
+
+  const [appliedFilters, setAppliedFilters] = useState({ from: initialFrom, to: initialTo });
+  const { data, isFetching: loading, error: fetchError, refetch } = useQuery({
+    queryKey: ["sales", "list", userId, appliedFilters],
+    queryFn: () => getSales({ from: appliedFilters.from || undefined, to: appliedFilters.to || undefined }),
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+  const sales = useMemo(() => fetchError ? MOCK_SALES : data?.sales ?? [], [data, fetchError]);
+  const useMock = Boolean(fetchError);
+  const error = fetchError?.message || "";
 
   const totalOmzet = useMemo(
     () => sales.reduce((sum, sale) => sum + sale.total_omzet, 0),
@@ -130,37 +144,14 @@ export default function SalesListPage() {
     });
   }, [sales, sortBy]);
 
-  async function loadSales(params?: { from?: string; to?: string }) {
-    setLoading(true);
-    setError("");
-
-    try {
-      const response = await getSales(params);
-      setSales(response.sales);
-      setUseMock(false);
-    } catch (err) {
-      setUseMock(true);
-      setError(err instanceof Error ? err.message : "Gagal memuat laporan penjualan.");
-      setSales(MOCK_SALES);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    loadSales({
-      from: searchParams.get("from") || undefined,
-      to: searchParams.get("to") || undefined,
-    });
-  }, []);
-
   function handleFilter(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    loadSales({
-      from: from || undefined,
-      to: to || undefined,
-    });
+    if (from === appliedFilters.from && to === appliedFilters.to) {
+      void refetch();
+    } else {
+      setAppliedFilters({ from, to });
+    }
   }
 
   return (

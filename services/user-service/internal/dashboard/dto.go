@@ -60,11 +60,11 @@ type UMKMSummaryResponse struct {
 // ─── Detail Dashboard Types (for GET /dashboard/umkm) ────────────────────
 
 type LabaHarianItem struct {
-	PenjualanID  string  `json:"penjualan_id"`
-	Tanggal      string  `json:"tanggal"`
-	NamaHari     string  `json:"nama_hari"`
-	LabaBersih   float64 `json:"laba_bersih"`
-	JumlahProduk int64   `json:"jumlah_produk"`
+	PenjualanID   string  `json:"penjualan_id"`
+	Tanggal       string  `json:"tanggal"`
+	NamaHari      string  `json:"nama_hari"`
+	LabaBersih    float64 `json:"laba_bersih"`
+	JumlahProduk  int64   `json:"jumlah_produk"`
 	CreatedAt     string  `json:"created_at"`
 	LastUpdatedAt string  `json:"last_updated_at"`
 }
@@ -96,7 +96,7 @@ type UMKMDashboardData struct {
 }
 
 type UMKMMitraItem struct {
-	UMKMID  string `json:"umkm_id"`
+	UMKMID   string `json:"umkm_id"`
 	NamaUMKM string `json:"nama_umkm"`
 }
 
@@ -122,7 +122,7 @@ type UMKMDashboardForMitra struct {
 }
 
 type MitraDashboardData struct {
-	NamaMitra string                `json:"nama_mitra"`
-	UMKMList  []UMKMMitraItem       `json:"umkm_list"`
+	NamaMitra string                 `json:"nama_mitra"`
+	UMKMList  []UMKMMitraItem        `json:"umkm_list"`
 	Dashboard *UMKMDashboardForMitra `json:"dashboard"`
 }

@@ -1,9 +1,11 @@
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { getCurrentUser } from "../../../shared/auth/currentUser";
+import { useQuery } from "@tanstack/react-query";
+import { type FormEvent, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { CalendarDays, Check, Info, Minus, Plus, Save } from "lucide-react";
 import UmkmLayout from "../../umkm/components/UmkmLayout";
 import { getProducts, type Product } from "../../products/api";
-import { createSale, getSales, type SaleSummary } from "../api";
+import { createSale, getSales } from "../api";
 
 const FUTURE_DATE_ERROR = "Tanggal laporan tidak boleh melebihi hari ini.";
 
@@ -42,19 +44,33 @@ function formatDateLong(value: string) {
 
 
 export default function SalesCreatePage() {
+  const userId = getCurrentUser()?.id;
   const navigate = useNavigate();
 
-  const [products, setProducts] = useState<Product[]>([]);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [transactionDate, setTransactionDate] = useState(today());
   const [totalProfit, setTotalProfit] = useState("0");
-  const [note, setNote] = useState("Laporan penjualan harian.");
-  const [existingSale, setExistingSale] = useState<SaleSummary | null>(null);
-  const [loadingExistingSale, setLoadingExistingSale] = useState(false);
-  const [loadingProducts, setLoadingProducts] = useState(true);
+  const [noteDraft, setNote] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [successSaleId, setSuccessSaleId] = useState("");
-  const [error, setError] = useState("");
+  const [actionError, setError] = useState("");
+
+  const { data: productData, isFetching: loadingProducts, error: productError } = useQuery({
+    queryKey: ["products", "sale-options", userId],
+    queryFn: () => getProducts({ status: "AKTIF" }),
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+  const { data: existingSale = null, isFetching: loadingExistingSale } = useQuery({
+    queryKey: ["sales", "existing", userId, transactionDate],
+    queryFn: async () => (await getSales({ from: transactionDate, to: transactionDate })).sales[0] ?? null,
+    enabled: Boolean(transactionDate),
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+  const products = useMemo(() => productData?.products ?? [], [productData]);
+  const note = noteDraft ?? existingSale?.note ?? "Laporan penjualan harian.";
+  const error = actionError || productError?.message || "";
 
   const activeProducts = useMemo(
     () => products.filter((product) => product.status === "AKTIF"),
@@ -74,64 +90,6 @@ export default function SalesCreatePage() {
 
   const averagePerItem = totalItem > 0 ? totalOmzet / totalItem : 0;
   const totalProfitValue = Number(totalProfit || 0);
-
-  async function loadProducts() {
-    setLoadingProducts(true);
-    setError("");
-
-    try {
-      const response = await getProducts({ status: "AKTIF" });
-      setProducts(response.products);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Gagal memuat produk.");
-    } finally {
-      setLoadingProducts(false);
-    }
-  }
-
-  useEffect(() => {
-    loadProducts();
-  }, []);
-
-  useEffect(() => {
-    setError((currentError) => {
-      if (currentError === FUTURE_DATE_ERROR && !isFutureReportDate(transactionDate)) {
-        return "";
-      }
-
-      return currentError;
-    });
-  }, [transactionDate]);
-
-  useEffect(() => {
-    async function loadExistingSaleForDate() {
-      if (!transactionDate) return;
-
-      setLoadingExistingSale(true);
-
-      try {
-        const response = await getSales({
-          from: transactionDate,
-          to: transactionDate,
-        });
-
-        const sale = response.sales[0] ?? null;
-        setExistingSale(sale);
-
-        if (sale?.note) {
-          setNote(sale.note);
-        } else {
-          setNote("Laporan penjualan harian.");
-        }
-      } catch {
-        setExistingSale(null);
-      } finally {
-        setLoadingExistingSale(false);
-      }
-    }
-
-    loadExistingSaleForDate();
-  }, [transactionDate]);
 
   function setQuantity(product: Product, nextQuantity: number) {
     const safeQuantity = Math.max(0, Math.min(nextQuantity, product.stock));
@@ -236,7 +194,12 @@ export default function SalesCreatePage() {
               <input
                 type="date"
                 value={transactionDate}
-                onChange={(event) => setTransactionDate(event.target.value)}
+                onChange={(event) => {
+                  const nextDate = event.target.value;
+                  setTransactionDate(nextDate);
+                  setNote(null);
+                  if (actionError === FUTURE_DATE_ERROR && !isFutureReportDate(nextDate)) setError("");
+                }}
               />
             </label>
 

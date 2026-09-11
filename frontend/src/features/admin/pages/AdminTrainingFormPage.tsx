@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, Edit, Trash2, Plus } from "lucide-react";
@@ -51,23 +51,17 @@ const JENIS_PELATIHAN_OPTIONS = [
 
 export default function AdminTrainingFormPage() {
   const { id } = useParams<{ id: string }>();
+  return <AdminTrainingForm key={id ?? "new"} id={id} />;
+}
+
+function AdminTrainingForm({ id }: { id?: string }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const isEditMode = !!id;
 
   const [currentStep, setCurrentStep] = useState<Step>(1);
   const [maxUnlockedStep, setMaxUnlockedStep] = useState<Step>(1);
-  const [formData, setFormData] = useState<FormData>({
-    judul_pelatihan: "",
-    jenis_pelatihan_id: "JP01",
-    deskripsi_pelatihan: "",
-    durasi_jam: 12,
-    mentor_nama: "",
-    harga: 0,
-    masa_akses_hari: 365,
-    modules: [],
-    assignments: [],
-  });
+  const [draft, setFormData] = useState<FormData | null>(null);
 
   // Fetch training data if edit mode
   const { data: trainingData, isLoading } = useQuery({
@@ -76,32 +70,28 @@ export default function AdminTrainingFormPage() {
     enabled: isEditMode,
   });
 
-  useEffect(() => {
-    if (trainingData) {
-      setFormData({
-        judul_pelatihan: trainingData.judul_pelatihan || "",
-        jenis_pelatihan_id: trainingData.jenis_pelatihan_id || "JP01",
-        deskripsi_pelatihan: trainingData.deskripsi_pelatihan || "",
-        durasi_jam: trainingData.durasi_jam || 12,
-        mentor_nama: trainingData.mentor_nama || "",
-        harga: trainingData.harga || 0,
-        masa_akses_hari: trainingData.masa_akses_hari || 365,
-        modules: (trainingData.modules || []).map((module) => ({
-          id: module.id ?? module.modul_id,
-          urutan_modul: module.urutan_modul,
-          judul_modul: module.judul_modul,
-          deskripsi_modul: module.deskripsi_modul ?? "",
-          durasi_menit: module.durasi_menit,
-          is_preview: module.is_preview ?? false,
-        })),
-        assignments: (trainingData.assignments || []).map((assignment) => ({
-          id: assignment.id ?? assignment.assignment_id,
-          judul_assignment: assignment.judul_assignment,
-          deskripsi_tugas: assignment.deskripsi_tugas ?? "",
-        })),
-      });
-    }
-  }, [trainingData]);
+  const formData: FormData = draft ?? {
+    judul_pelatihan: trainingData?.judul_pelatihan ?? "",
+    jenis_pelatihan_id: trainingData?.jenis_pelatihan_id ?? "JP01",
+    deskripsi_pelatihan: trainingData?.deskripsi_pelatihan ?? "",
+    durasi_jam: trainingData?.durasi_jam ?? 12,
+    mentor_nama: trainingData?.mentor_nama ?? "",
+    harga: trainingData?.harga ?? 0,
+    masa_akses_hari: trainingData?.masa_akses_hari ?? 365,
+    modules: (trainingData?.modules ?? []).map((module) => ({
+      id: module.id ?? module.modul_id,
+      urutan_modul: module.urutan_modul,
+      judul_modul: module.judul_modul,
+      deskripsi_modul: module.deskripsi_modul ?? "",
+      durasi_menit: module.durasi_menit,
+      is_preview: module.is_preview ?? false,
+    })),
+    assignments: (trainingData?.assignments ?? []).map((assignment) => ({
+      id: assignment.id ?? assignment.assignment_id,
+      judul_assignment: assignment.judul_assignment,
+      deskripsi_tugas: assignment.deskripsi_tugas ?? "",
+    })),
+  };
 
   // Create/Update mutation
   const saveMutation = useMutation({
