@@ -54,3 +54,9 @@ Koleksi membuat email, nomor telepon, dan NIK baru ketika `run_id` belum diisi, 
 ## Koleksi arsip
 
 `umkm-tumbuh-backend.postman_collection.json` merupakan koleksi lama berisi 35 permintaan. Koleksi ini belum menyertakan alur verifikasi terbaru dan memiliki assertion yang sudah tidak sesuai. Koleksi skenario lain tetap tersedia sebagai referensi dan untuk pemeliharaan manual. Koleksi tersebut bukan pemeriksaan CI saat ini; perbarui kontraknya sebelum menjadikannya dasar pengujian regresi.
+
+## Pembuatan profil dan kategori usaha
+
+Profil baru menggunakan jenis UMKM `UMKM` yang tersedia dari seed. Kategori usahanya disimpan terpisah, misalnya `MAKANAN` untuk nilai permintaan `Makanan`. ID kategori tidak boleh dimasukkan ke `jenis_umkm_id`: kedua field merujuk tabel yang berbeda.
+
+Pengujian profil memeriksa HTTP 200 dan kategori usaha yang dikembalikan. Jika statusnya berbeda, assertion menyertakan body respons dalam `newman.xml` agar kesalahan backend terlihat tanpa tertutup kesalahan script tambahan. Build ulang user-service setelah memperbarui kode backend; `bash tests/stack/run.sh` membangun layanan pengujian terisolasi secara otomatis.

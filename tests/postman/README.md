@@ -54,3 +54,9 @@ The collection generates a fresh email, phone, and NIK when `run_id` is unset, a
 ## Archived collections
 
 `umkm-tumbuh-backend.postman_collection.json` is an older 35-request collection. It lacks the current verification flow and has outdated assertions. Other scenario collections remain available for reference and manual maintenance. They are not the current CI gate; update their contracts before treating their results as regressions.
+
+## Profile creation and business categories
+
+A new profile uses the seeded UMKM type `UMKM`. Its business category is stored separately, for example `MAKANAN` for the request value `Makanan`. A category ID must not be inserted into `jenis_umkm_id`: these fields reference different tables.
+
+The profile test checks HTTP 200 and the returned business category. If it receives another status, the assertion includes the response body in `newman.xml` so the backend error is visible without a second script error hiding it. Rebuild user-service after updating backend code; `bash tests/stack/run.sh` builds the isolated test services automatically.

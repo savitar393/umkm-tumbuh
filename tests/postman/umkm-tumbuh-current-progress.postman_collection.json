@@ -705,11 +705,13 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Profile upsert returns 200', () => pm.response.to.have.status(200));",
-                  "pm.response.to.be.json;",
-                  "const json = pm.response.json();",
-                  "pm.expect(json.profile, 'profile').to.exist;",
-                  "pm.environment.set('umkm_profile_created', 'true');"
+                  "pm.test('Profile upsert returns 200 and preserves the category', function () {",
+                  "  pm.expect(pm.response.code, pm.response.text()).to.eql(200);",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.profile, 'profile').to.be.an('object');",
+                  "  pm.expect(json.profile.business_category, 'business_category').to.eql('Makanan');",
+                  "  pm.environment.set('umkm_profile_created', 'true');",
+                  "});"
                 ]
               }
             }
