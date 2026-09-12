@@ -3,6 +3,7 @@ package partnerships
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -153,6 +154,23 @@ func (s *service) CreatePartnership(
 	req CreatePartnershipRequest,
 ) (*PartnershipResponse, error) {
 
+	actorID, actorRole, err := partnershipActor(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if actorID != userID || actorRole != userRole {
+		return nil, apperror.New(http.StatusForbidden, "Identitas pengaju tidak sesuai sesi")
+	}
+	for _, documentID := range req.AttachmentFiles {
+		owned, err := s.repo.OwnsDocument(ctx, actorID, documentID, false)
+		if err != nil {
+			return nil, err
+		}
+		if !owned {
+			return nil, apperror.New(http.StatusForbidden, "Lampiran tidak tersedia atau bukan milik Anda")
+		}
+	}
+
 	requestCode, err := s.repo.GenerateRequestCode(ctx)
 	if err != nil {
 		return nil, apperror.New(500, "failed to generate request code")
@@ -241,7 +259,18 @@ func (s *service) GetPartnershipByID(
 	id string,
 ) (*PartnershipResponse, error) {
 
-	return s.repo.FindByID(ctx, id)
+	actorID, _, err := partnershipActor(ctx)
+	if err != nil {
+		return nil, err
+	}
+	partnership, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if partnership.RequesterID != actorID && partnership.ReceiverID != actorID {
+		return nil, apperror.New(http.StatusForbidden, "Anda bukan pihak dalam pengajuan ini")
+	}
+	return partnership, nil
 }
 
 func (s *service) GetPartnershipsByRequester(
@@ -303,33 +332,21 @@ func (s *service) UpdatePartnershipStatus(
 	id string,
 	req UpdatePartnershipStatus,
 ) error {
-
-	status := PartnershipStatus(req.Status)
-	now := time.Now()
-
-	err := s.repo.UpdateStatus(
-		ctx,
-		id,
-		status,
-		req.RejectionReason,
-		now,
-	)
-
+	partnership, err := s.GetPartnershipByID(ctx, id)
 	if err != nil {
-		code := 500
-		msg := err.Error()
-		if strings.Contains(msg, "not found") {
-			code = 404
-		} else if strings.Contains(msg, "violates check constraint") {
-			code = 409
-		}
-		return apperror.New(
-			code,
-			"failed to update partnership status: "+msg,
-		)
+		return err
 	}
-
-	return nil
+	actorID, _, err := partnershipActor(ctx)
+	if err != nil {
+		return err
+	}
+	if err := authorizeStatusChange(partnership, actorID, req.Status); err != nil {
+		return err
+	}
+	if req.Status == StatusRejected && (req.RejectionReason == nil || strings.TrimSpace(*req.RejectionReason) == "") {
+		return apperror.New(http.StatusUnprocessableEntity, "Alasan penolakan wajib diisi")
+	}
+	return s.repo.UpdateStatus(ctx, id, actorID, partnership.Status, req.Status, req.RejectionReason, time.Now())
 }
 
 func (s *service) SignPartnership(
@@ -337,31 +354,31 @@ func (s *service) SignPartnership(
 	id string,
 	req SignPartnershipRequest,
 ) error {
-
-	if req.DokumenKontrak == "" {
-		return apperror.New(
-			400,
-			"dokumen_kontrak wajib diisi",
-		)
-	}
-
-	now := time.Now()
-
-	err := s.repo.UpdateContract(
-		ctx,
-		id,
-		req.DokumenKontrak,
-		now,
-	)
-
+	partnership, err := s.GetPartnershipByID(ctx, id)
 	if err != nil {
-		return apperror.New(
-			500,
-			"failed to sign partnership: "+err.Error(),
-		)
+		return err
 	}
-
-	return nil
+	actorID, _, err := partnershipActor(ctx)
+	if err != nil {
+		return err
+	}
+	if partnership.RequesterID != actorID {
+		return apperror.New(http.StatusForbidden, "Hanya pengaju yang dapat mengunggah dokumen kontrak")
+	}
+	if partnership.Status != StatusSubmitted && partnership.Status != StatusReviewed && partnership.Status != StatusWaitingDoc {
+		return apperror.New(http.StatusConflict, "Dokumen kontrak tidak dapat diubah pada status ini")
+	}
+	if strings.TrimSpace(req.DokumenKontrak) == "" {
+		return apperror.New(http.StatusBadRequest, "dokumen_kontrak wajib diisi")
+	}
+	owned, err := s.repo.OwnsDocument(ctx, actorID, req.DokumenKontrak, true)
+	if err != nil {
+		return err
+	}
+	if !owned {
+		return apperror.New(http.StatusForbidden, "Dokumen kontrak tidak tersedia atau bukan milik Anda")
+	}
+	return s.repo.UpdateContract(ctx, id, actorID, partnership.Status, req.DokumenKontrak, time.Now())
 }
 
 func (s *service) GetPartnershipSummary(ctx context.Context, userID string) (map[string]int, error) {

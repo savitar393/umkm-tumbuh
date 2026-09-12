@@ -87,6 +87,8 @@ Pengujian tidak membiarkan aplikasi pengembangan tetap berjalan. Jalankan aplika
 
 [Panduan Postman/Newman](tests/postman/README.id.md) menjelaskan suite kontrak API saat ini, laporan JUnit, dan koleksi arsip. Keberhasilan Stage 1 memastikan infrastruktur lokal dan alur API yang diuji berfungsi; hasil ini belum memvalidasi seluruh fitur atau aturan otorisasi.
 
+Perintah stack juga menjalankan regresi otorisasi Stage 2. Lihat [panduan otorisasi](docs/README_AUTHORIZATION.id.md) untuk aturan peran/kepemilikan, cakupan pengujian, dan batasan saat ini.
+
 ## Pemeriksaan frontend dan CI
 
 ```bash
@@ -119,6 +121,7 @@ Seed CSV berukuran besar bersifat opsional dan mengganti data aplikasi. Seed ini
 | --- | --- | --- |
 | Gambaran proyek | [Read](README.md) | [Baca](README.id.md) |
 | Pengembangan lokal dan Stage 1 | [Read](docs/README_LOCAL_DEV.md) | [Baca](docs/README_LOCAL_DEV.id.md) |
+| Otorisasi Stage 2 | [Read](docs/README_AUTHORIZATION.md) | [Baca](docs/README_AUTHORIZATION.id.md) |
 | Frontend | [Read](frontend/README.md) | [Baca](frontend/README.id.md) |
 | Basis data | [Read](infra/db/README.md) | [Baca](infra/db/README.id.md) |
 | Training service | [Read](services/training-service/README.md) | [Baca](services/training-service/README.id.md) |

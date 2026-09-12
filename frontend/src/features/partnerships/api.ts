@@ -1,7 +1,7 @@
 // frontend/src/features/partnerships/api.ts
 
 import { httpPartnerships } from "../../shared/api/partnershipHttp";
-import { getAccessToken, getCurrentUser } from "../../shared/auth/currentUser";
+import { getAccessToken } from "../../shared/auth/currentUser";
 import type { CreatePartnershipRequest, PartnershipStatus } from "./types";
 
 interface BackendResponse<T> {
@@ -290,12 +290,9 @@ export const partnershipsApi = {
     formData.append("file", file);
     formData.append("category", "PARTNERSHIP_FILE");
 
-    const userRole = getCurrentUser()?.role || "UMKM";
     const token = getAccessToken();
 
-    const headers: Record<string, string> = {
-      "X-User-Role": userRole,
-    };
+    const headers: Record<string, string> = {};
 
     if (token) headers.Authorization = `Bearer ${token}`;
 
@@ -326,12 +323,9 @@ export const partnershipsApi = {
 
   // GET /api/v1/documents/{id}/url - ambil URL dokumen untuk preview
   getDocumentUrl: async (documentId: string): Promise<SuccessResponse<DocumentUrlResponse>> => {
-    const userRole = getCurrentUser()?.role || "UMKM";
     const token = getAccessToken();
 
-    const headers: Record<string, string> = {
-      "X-User-Role": userRole,
-    };
+    const headers: Record<string, string> = {};
 
     if (token) headers.Authorization = `Bearer ${token}`;
 

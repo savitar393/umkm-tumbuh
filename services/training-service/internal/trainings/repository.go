@@ -374,7 +374,6 @@ func generateID(prefix string) string {
 	return prefix + raw[:16]
 }
 
-
 // ============= ADMIN METHODS =============
 
 // GetAllTrainingsAdmin returns all trainings with pagination and filters for admin
@@ -391,7 +390,7 @@ func (r *Repository) GetAllTrainingsAdmin(ctx context.Context, filters TrainingF
 	}
 
 	if filters.Search != "" {
-		whereClause += " AND (mpp.judul_pelatihan ILIKE $" + strconv.Itoa(argCount) + 
+		whereClause += " AND (mpp.judul_pelatihan ILIKE $" + strconv.Itoa(argCount) +
 			" OR mpp.kode_pelatihan ILIKE $" + strconv.Itoa(argCount) + ")"
 		args = append(args, "%"+filters.Search+"%")
 		argCount++
@@ -421,7 +420,7 @@ func (r *Repository) GetAllTrainingsAdmin(ctx context.Context, filters TrainingF
 
 	// Build main query with pagination
 	offset := (filters.Page - 1) * filters.Limit
-	
+
 	query := `
 		SELECT 
 			mpp.pelatihan_id, mpp.kode_pelatihan, mpp.judul_pelatihan, 

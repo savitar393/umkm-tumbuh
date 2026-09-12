@@ -1,16 +1,18 @@
 package router
 
 import (
-	"net/http"  // ⭐ Tambahkan import ini!
+	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
+	"github.com/savitar393/umkm-tumbuh/services/partnerships-service/internal/middleware"
 	"github.com/savitar393/umkm-tumbuh/services/partnerships-service/internal/partnerships"
 )
 
 func NewRouter(
 	partnershipHandler *partnerships.Handler,
 	frontendURL string,
+	jwtSecret string,
 ) *chi.Mux {
 	r := chi.NewRouter()
 
@@ -18,7 +20,7 @@ func NewRouter(
 	corsMiddleware := cors.New(cors.Options{
 		AllowedOrigins:   []string{frontendURL, "http://localhost:5173", "http://localhost:3000"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "X-User-Role"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: true,
 		MaxAge:           300,
@@ -34,6 +36,8 @@ func NewRouter(
 
 	// API v1 routes
 	r.Route("/api/v1", func(r chi.Router) {
+		r.Use(middleware.AuthMiddleware(jwtSecret))
+		r.Use(middleware.RequireRoles("UMKM", "MITRA"))
 		// ============================================================
 		// EXISTING ENDPOINTS (untuk pengajuan kemitraan)
 		// ============================================================
@@ -53,14 +57,14 @@ func NewRouter(
 		// NEW ENDPOINTS (untuk menampilkan list UMKM dan Mitra)
 		// ============================================================
 		// GET /api/v1/umkm - daftar UMKM (diakses oleh MITRA)
-		r.Get("/umkm", partnershipHandler.GetUMKMList)
+		r.With(middleware.RequireRoles("MITRA")).Get("/umkm", partnershipHandler.GetUMKMList)
 		// GET /api/v1/umkm/{id} - detail UMKM (diakses oleh MITRA)
-		r.Get("/umkm/{id}", partnershipHandler.GetUMKMDetail)
-		
+		r.With(middleware.RequireRoles("MITRA")).Get("/umkm/{id}", partnershipHandler.GetUMKMDetail)
+
 		// GET /api/v1/mitra - daftar Mitra (diakses oleh UMKM)
-		r.Get("/mitra", partnershipHandler.GetMitraList)
+		r.With(middleware.RequireRoles("UMKM")).Get("/mitra", partnershipHandler.GetMitraList)
 		// GET /api/v1/mitra/{id} - detail Mitra (diakses oleh UMKM)
-		r.Get("/mitra/{id}", partnershipHandler.GetMitraDetail)
+		r.With(middleware.RequireRoles("UMKM")).Get("/mitra/{id}", partnershipHandler.GetMitraDetail)
 	})
 
 	return r

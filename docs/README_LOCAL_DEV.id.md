@@ -173,6 +173,8 @@ Commit perubahan modul yang memang diperlukan sebelum pemeriksaan tidy, karena b
 
 `ci.yml` memeriksa Go, frontend, dan konfigurasi Compose pada pull request ke `main`, push ke pola branch yang didukung, serta eksekusi manual. `local-stack.yml` menjalankan stack sebenarnya saat layanan, infrastruktur, pengujian API, workflow, atau `.env.example` berubah, dan saat dijalankan manual. Keberhasilan pemeriksaan konfigurasi Compose saja belum membuktikan stack dapat berjalan.
 
+Perintah yang sama kini mencakup [pengujian otorisasi Stage 2](README_AUTHORIZATION.id.md). Log otorisasi terperinci disimpan di `tests/stack/reports/authorization.txt`; CI mengunggahnya bersama laporan Newman. Job Go tambahan mencakup format, vet, pengujian race, dan build layanan kemitraan serta pelatihan.
+
 ## Aturan pengembangan
 
 Jangan commit:

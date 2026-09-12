@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/savitar393/umkm-tumbuh/services/partnerships-service/internal/apperror"
+	"github.com/savitar393/umkm-tumbuh/services/partnerships-service/internal/middleware"
 	"github.com/savitar393/umkm-tumbuh/services/partnerships-service/internal/response"
 )
 
@@ -20,57 +20,15 @@ func NewHandler(service Service) *Handler {
 	return &Handler{service: service}
 }
 
-// Extract user ID from JWT
+// Identitas hanya berasal dari konteks yang diisi middleware JWT.
 func extractUserIDFromRequest(r *http.Request) string {
-	tokenString := extractBearerToken(r.Header.Get("Authorization"))
-	if tokenString == "" {
-		return ""
-	}
-
-	token, _, err := new(jwt.Parser).ParseUnverified(tokenString, jwt.MapClaims{})
-	if err != nil {
-		return ""
-	}
-
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		return ""
-	}
-
-	userID, _ := claims["sub"].(string)
-	return userID
+	id, _ := middleware.GetUserID(r.Context())
+	return id
 }
 
-// Extract user role from JWT
 func extractUserRoleFromRequest(r *http.Request) UserRole {
-	tokenString := extractBearerToken(r.Header.Get("Authorization"))
-	if tokenString == "" {
-		return UserRole(r.Header.Get("X-User-Role"))
-	}
-
-	token, _, err := new(jwt.Parser).ParseUnverified(tokenString, jwt.MapClaims{})
-	if err != nil {
-		return UserRole(r.Header.Get("X-User-Role"))
-	}
-
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		return UserRole(r.Header.Get("X-User-Role"))
-	}
-
-	role, _ := claims["role"].(string)
+	role, _ := middleware.GetUserRole(r.Context())
 	return UserRole(role)
-}
-
-func extractBearerToken(authHeader string) string {
-	if authHeader == "" {
-		return ""
-	}
-	parts := strings.SplitN(authHeader, " ", 2)
-	if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
-		return ""
-	}
-	return parts[1]
 }
 
 func formatPartnershipListTitle(p PartnershipListResponse) string {
@@ -339,9 +297,6 @@ func (h *Handler) SignPartnership(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get user info from JWT - TODO: use for authorization
-	_ = extractUserIDFromRequest(r)
-
 	var req SignPartnershipRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		response.Error(w, http.StatusBadRequest, "Invalid request body", nil)
@@ -369,50 +324,24 @@ func (h *Handler) SignPartnership(w http.ResponseWriter, r *http.Request) {
 	response.Success(w, http.StatusOK, nil, "Dokumen berhasil diunggah. Pengajuan siap disetujui.")
 }
 
-func canDecidePartnership(status PartnershipStatus) bool {
-	switch status {
-	case StatusSubmitted, StatusReviewed:
-		return true
-	default:
-		return false
-	}
-}
-
-func (h *Handler) authorizeReceiverDecision(w http.ResponseWriter, r *http.Request, id string) (*PartnershipResponse, bool) {
-	userID := extractUserIDFromRequest(r)
-	if userID == "" {
-		response.Error(w, http.StatusUnauthorized, "User not authenticated", nil)
-		return nil, false
-	}
-
-	partnership, err := h.service.GetPartnershipByID(r.Context(), id)
-	if err != nil {
-		if appErr, ok := err.(*apperror.AppError); ok {
-			response.Error(w, appErr.Code, appErr.Message, nil)
-			return nil, false
-		}
-		response.Error(w, http.StatusNotFound, "Pengajuan kemitraan tidak ditemukan", nil)
-		return nil, false
-	}
-
-	if partnership.ReceiverID != userID {
-		response.Error(w, http.StatusForbidden, "Hanya penerima pengajuan yang dapat mengambil keputusan", nil)
-		return nil, false
-	}
-
-	if !canDecidePartnership(partnership.Status) {
-		response.Error(w, http.StatusConflict, "Pengajuan tidak berada pada status yang dapat diputuskan", nil)
-		return nil, false
-	}
-
-	return partnership, true
-}
-
 // MarkAsRead - PATCH /api/v1/partnerships/{id}/read
 func (h *Handler) MarkAsRead(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
 		response.Error(w, http.StatusBadRequest, "Invalid partnership ID", nil)
+		return
+	}
+	partnership, err := h.service.GetPartnershipByID(r.Context(), id)
+	if err != nil {
+		if appErr, ok := err.(*apperror.AppError); ok {
+			response.Error(w, appErr.Code, appErr.Message)
+		} else {
+			response.Error(w, http.StatusInternalServerError, "Gagal mengambil pengajuan kemitraan")
+		}
+		return
+	}
+	if partnership.ReceiverID != extractUserIDFromRequest(r) {
+		response.Error(w, http.StatusForbidden, "Hanya penerima yang dapat menandai pengajuan dibaca")
 		return
 	}
 	response.Success(w, http.StatusOK, nil, "Status dibaca berhasil diperbarui.")
@@ -423,10 +352,6 @@ func (h *Handler) ApprovePartnership(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
 		response.Error(w, http.StatusBadRequest, "Invalid partnership ID", nil)
-		return
-	}
-
-	if _, ok := h.authorizeReceiverDecision(w, r, id); !ok {
 		return
 	}
 
@@ -464,10 +389,6 @@ func (h *Handler) RejectPartnership(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 	if id == "" {
 		response.Error(w, http.StatusBadRequest, "Invalid partnership ID", nil)
-		return
-	}
-
-	if _, ok := h.authorizeReceiverDecision(w, r, id); !ok {
 		return
 	}
 
@@ -512,8 +433,6 @@ func (h *Handler) CancelPartnership(w http.ResponseWriter, r *http.Request) {
 		response.Error(w, http.StatusBadRequest, "Invalid partnership ID", nil)
 		return
 	}
-
-	_ = extractUserIDFromRequest(r)
 
 	var req UpdatePartnershipStatus
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

@@ -5,6 +5,9 @@ cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 docker compose version >/dev/null
 docker info >/dev/null
 
+mkdir -p tests/postman/reports tests/stack/reports
+rm -f tests/postman/reports/newman.xml tests/stack/reports/authorization.txt
+
 # A unique project and no published ports keep this test away from developer data.
 project="umkm-stage1-${RANDOM}-$$"
 compose=(docker compose --project-name "$project" --env-file .env.example
@@ -32,9 +35,9 @@ if "${compose[@]}" run --rm --no-deps \
 fi
 "${compose[@]}" run --rm --no-deps stack-check prepare
 
-mkdir -p tests/postman/reports
-rm -f tests/postman/reports/newman.xml
 "${compose[@]}" run --build --rm --no-deps newman-check
+
+"${compose[@]}" run --rm --no-deps authorization-check 2>&1 | tee tests/stack/reports/authorization.txt
 
 echo "Re-running migrations and Garage bootstrap, then recreating the containers..."
 "${compose[@]}" run --rm --no-deps db-migrate
@@ -46,3 +49,4 @@ echo "Re-running migrations and Garage bootstrap, then recreating the containers
 "${compose[@]}" up -d --wait --wait-timeout 180 "${services[@]}"
 "${compose[@]}" run --rm --no-deps stack-check verify
 echo "Stage 1 stack checks passed."
+echo "Stage 2 authorization checks passed."

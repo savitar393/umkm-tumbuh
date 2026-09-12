@@ -73,4 +73,26 @@ INSERT INTO user_mgmt.transaksi_registrasipengguna
 VALUES ('TEST_ONBOARDING', 'MENUNGGU', 'TEST_REG_ONBOARDING', now(), FALSE)
 ON CONFLICT (kode_registrasi) DO NOTHING;
 
+-- Metadata fixtures for the legacy contract-document foreign key.
+INSERT INTO ref.ref_jenisdokumen (jenis_dokumen_id, nama_jenis_dokumen, allowed_extensions, max_size_mb)
+VALUES ('TEST_CONTRACT', 'Kontrak sintetis pengujian', 'pdf', 1)
+ON CONFLICT (jenis_dokumen_id) DO NOTHING;
+
+INSERT INTO ref.ref_statusdokumen (status_dokumen_id, nama_status_dokumen)
+VALUES ('TEST_UPLOADED', 'Dokumen sintetis pengujian')
+ON CONFLICT (status_dokumen_id) DO NOTHING;
+
+INSERT INTO document.transaksi_dokumenterunggah
+    (dokumen_id, jenis_dokumen_id, status_dokumen_id, uploader_akun_id,
+     owner_type, owner_id, context_type, original_file_name, stored_file_name,
+     file_extension, mime_type, file_size_bytes, bucket_name, object_key, storage_path, checksum_sha256)
+SELECT id, 'TEST_CONTRACT', 'TEST_UPLOADED', account, 'UMKM', business, 'TEST_CONTRACT',
+       'contract.pdf', id || '.pdf', 'pdf', 'application/pdf', 1,
+       'test-contract-metadata', id, id, repeat('0', 64)
+FROM (VALUES
+    ('TEST_CONTRACT_A', 'TEST_UMKM_A', 'TEST_BUSINESS_A'),
+    ('TEST_CONTRACT_B', 'TEST_UMKM_B', 'TEST_BUSINESS_B')
+) AS fixtures(id, account, business)
+ON CONFLICT (dokumen_id) DO NOTHING;
+
 COMMIT;

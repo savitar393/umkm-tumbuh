@@ -135,23 +135,23 @@ type MitraListItem struct {
 
 // UMKMDetail represents full detail of an UMKM
 type UMKMDetail struct {
-	ID                     string `json:"id"`
-	Name                   string `json:"name"`
-	Type                   string `json:"type"`
-	City                   string `json:"city"`
-	Province               string `json:"province"`
-	Description            string `json:"description"`
-	OperationalArea        string `json:"operational_area"`
-	OwnerName              string `json:"owner_name"`
-	PhoneNumber            string `json:"phone_number"`
-	Email                  string `json:"email"`
-	Address                string `json:"address"`
-	Products               string `json:"products"`
-	YearEstablished        int    `json:"year_established"`
-	SocialMediaMarketplace string `json:"social_media_marketplace"`
-	LogoURL                string `json:"logo_url"`
-	FotoCoverURL           string `json:"foto_cover_url"`
-	FeaturedProducts 	   []FeaturedProduct `json:"featured_products"`
+	ID                     string            `json:"id"`
+	Name                   string            `json:"name"`
+	Type                   string            `json:"type"`
+	City                   string            `json:"city"`
+	Province               string            `json:"province"`
+	Description            string            `json:"description"`
+	OperationalArea        string            `json:"operational_area"`
+	OwnerName              string            `json:"owner_name"`
+	PhoneNumber            string            `json:"phone_number"`
+	Email                  string            `json:"email"`
+	Address                string            `json:"address"`
+	Products               string            `json:"products"`
+	YearEstablished        int               `json:"year_established"`
+	SocialMediaMarketplace string            `json:"social_media_marketplace"`
+	LogoURL                string            `json:"logo_url"`
+	FotoCoverURL           string            `json:"foto_cover_url"`
+	FeaturedProducts       []FeaturedProduct `json:"featured_products"`
 }
 
 // MitraDetail represents full detail of a Mitra
@@ -177,8 +177,8 @@ type MitraDetail struct {
 type FeaturedProduct struct {
 	ID           string  `json:"id"`
 	Name         string  `json:"name"`
-	CategoryName string `json:"category_name"`
-	Description  string `json:"description"`
+	CategoryName string  `json:"category_name"`
+	Description  string  `json:"description"`
 	Price        float64 `json:"price"`
 	Stock        int     `json:"stock"`
 	ThumbnailURL string  `json:"thumbnail_url"`
