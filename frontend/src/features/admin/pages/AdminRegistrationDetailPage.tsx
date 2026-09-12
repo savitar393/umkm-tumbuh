@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   AlertTriangle,
@@ -19,7 +20,7 @@ import {
   getUserDetail,
   rejectUser,
   type MessageResponse,
-  type UserDetailResponse,
+  type RegistrationDocument,
 } from "../api";
 import AdminLayout from "../components/AdminLayout";
 import { getAccessToken } from "../../../shared/auth/currentUser";
@@ -162,7 +163,7 @@ function buildProfileEntries(profile: unknown, role?: string) {
   return [...orderedEntries, ...extraEntries];
 }
 
-function getDocumentID(doc: any) {
+function getDocumentID(doc: RegistrationDocument) {
   return doc.id ?? doc.dokumen_id ?? doc.document_id ?? "";
 }
 
@@ -170,9 +171,7 @@ export default function AdminRegistrationDetailPage() {
   const { userId } = useParams();
   const navigate = useNavigate();
 
-  const [data, setData] = useState<UserDetailResponse["data"] | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [actionError, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -181,30 +180,25 @@ export default function AdminRegistrationDetailPage() {
   const [catatanValidasi, setCatatanValidasi] = useState("");
   const [alasanTolak, setAlasanTolak] = useState("");
 
+  const { data, isFetching: loading, error: fetchError, refetch } = useQuery({
+    queryKey: ["admin", "registration", userId],
+    queryFn: async () => {
+      if (!userId) throw new Error("ID pengguna tidak ditemukan.");
+      const response = await getUserDetail(userId);
+      if (response.status !== "success" || !response.data) {
+        throw new Error("Data pendaftaran tidak ditemukan.");
+      }
+      return response.data;
+    },
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+  const error = actionError || fetchError?.message || "";
+
   function reload() {
-    if (!userId) return;
-
-    setLoading(true);
     setError("");
-
-    getUserDetail(userId)
-      .then((res) => {
-        if (res.status === "success" && res.data) {
-          setData(res.data);
-        } else {
-          setError("Data pendaftaran tidak ditemukan.");
-        }
-      })
-      .catch((err) => {
-        setError(err instanceof Error ? err.message : "Gagal mengambil data pendaftaran.");
-      })
-      .finally(() => setLoading(false));
+    return refetch();
   }
-
-  useEffect(() => {
-    reload();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
 
   function openApproveModal() {
     setError("");
@@ -286,7 +280,7 @@ export default function AdminRegistrationDetailPage() {
     }
   }
 
-  async function openDocument(doc: any) {
+  async function openDocument(doc: RegistrationDocument) {
     const documentID = getDocumentID(doc);
 
     if (!documentID) {
@@ -328,7 +322,7 @@ export default function AdminRegistrationDetailPage() {
     }
   }
 
-  async function downloadDocument(doc: any) {
+  async function downloadDocument(doc: RegistrationDocument) {
     const documentID = getDocumentID(doc);
 
     if (!documentID) {
@@ -574,7 +568,7 @@ export default function AdminRegistrationDetailPage() {
 
               {data?.documents && data.documents.length > 0 ? (
                 <div className="admin-reg-doc-list">
-                  {data.documents.map((doc: any, index: number) => {
+                  {data.documents.map((doc: RegistrationDocument, index: number) => {
                     const docName =
                       doc.original_filename ??
                       doc.nama_dokumen ??

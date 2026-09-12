@@ -80,7 +80,7 @@ describe("TrainingProgramSchema", () => {
   });
 
   it("rejects missing required fields", () => {
-    const { pelatihan_id, ...incomplete } = validTraining;
+    const incomplete = Object.fromEntries(Object.entries(validTraining).filter(([key]) => key !== "pelatihan_id"));
     expect(() => TrainingProgramSchema.parse(incomplete)).toThrow();
   });
 

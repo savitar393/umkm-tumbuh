@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { getProfile, updateProfile } from "../api";
 import type { UmkmProfilePayload } from "../api";
 import { getMyDocuments, uploadDocument, viewDocument } from "../../../shared/api/documents";
-import type { DocumentItem } from "../../../shared/api/documents";
+import type { DocumentItem, DocumentType } from "../../../shared/api/documents";
 import logoImg from "../../../assets/logo-umkm-tumbuh.png";
 import "./umkm-profile.css";
 
@@ -60,11 +60,11 @@ export default function UmkmEditPage() {
     setUploadMsg("");
 
     try {
-      await uploadDocument(file, docType as any);
+      await uploadDocument(file, docType as DocumentType);
       setUploadMsg(`${docType} berhasil diunggah!`);
       fetchDocs();
-    } catch (err: any) {
-      setUploadMsg(`Gagal: ${err.message}`);
+    } catch (err) {
+      setUploadMsg(`Gagal: ${err instanceof Error ? err.message : "Dokumen tidak dapat diunggah"}`);
     }
   }
 

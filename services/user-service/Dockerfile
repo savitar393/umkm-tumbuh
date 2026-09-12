@@ -16,7 +16,9 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o /out/user-api ./cmd/api
 FROM alpine:3.21
 
 RUN apk add --no-cache ca-certificates tzdata \
-    && adduser -D -H -u 10001 appuser
+    && adduser -D -H -u 10001 appuser \
+    && mkdir -p /app/uploads \
+    && chown appuser:appuser /app/uploads
 
 WORKDIR /app
 

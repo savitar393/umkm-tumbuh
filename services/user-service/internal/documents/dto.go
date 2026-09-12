@@ -3,15 +3,15 @@ package documents
 type DocumentType string
 
 const (
-	DocNIB                DocumentType = "NIB"
-	DocNPWP               DocumentType = "NPWP"
-	DocSIUP               DocumentType = "SIUP"
-	DocSertifikasiHalal   DocumentType = "SERTIFIKASI_HALAL"
-	DocLegalitas          DocumentType = "LEGALITAS"
-	DocSuratKomitmen      DocumentType = "SURAT_KOMITMEN"
-	DocProfilPerusahaan   DocumentType = "PROFIL_PERUSAHAAN"
-	DocLogo               DocumentType = "LOGO"
-	DocFotoUsaha          DocumentType = "FOTO_USAHA"
+	DocNIB              DocumentType = "NIB"
+	DocNPWP             DocumentType = "NPWP"
+	DocSIUP             DocumentType = "SIUP"
+	DocSertifikasiHalal DocumentType = "SERTIFIKASI_HALAL"
+	DocLegalitas        DocumentType = "LEGALITAS"
+	DocSuratKomitmen    DocumentType = "SURAT_KOMITMEN"
+	DocProfilPerusahaan DocumentType = "PROFIL_PERUSAHAAN"
+	DocLogo             DocumentType = "LOGO"
+	DocFotoUsaha        DocumentType = "FOTO_USAHA"
 )
 
 type DocumentStatus string

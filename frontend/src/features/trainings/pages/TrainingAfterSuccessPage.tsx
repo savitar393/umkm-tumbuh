@@ -52,7 +52,8 @@ export default function TrainingAfterSuccessPage() {
   const { data: enrollments } = useUserEnrollments(umkmId);
 
   const requestCertMutation = useRequestCertificate();
-  const requestedRef = useRef(false);
+  const requestedRef = useRef(new Set<string>());
+  const { mutate: requestCertificate } = requestCertMutation;
 
   const cert = (certificates || []).find((c) => c.pelatihan_id === id);
   const enrollment = (enrollments || []).find((e) => e.pelatihan_id === id);
@@ -60,11 +61,11 @@ export default function TrainingAfterSuccessPage() {
   const timelineSteps = getTimelineSteps(cert?.status_sertifikat_id, cert?.tanggal_terbit || undefined, cert?.catatan_validasi || undefined);
 
   useEffect(() => {
-    if (!requestedRef.current && enrollment && enrollment.status_pendaftaran === "SELESAI") {
-      requestedRef.current = true;
-      requestCertMutation.mutate(enrollment.pendaftaran_pelatihan_id);
+    if (enrollment && !requestedRef.current.has(enrollment.pendaftaran_pelatihan_id) && enrollment.status_pendaftaran === "SELESAI") {
+      requestedRef.current.add(enrollment.pendaftaran_pelatihan_id);
+      requestCertificate(enrollment.pendaftaran_pelatihan_id);
     }
-  }, [enrollment]);
+  }, [enrollment, requestCertificate]);
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "#f5f7fa" }}>

@@ -118,8 +118,8 @@ export default function TrainingEvaluationPage() {
           },
         }
       );
-    } catch (err: any) {
-      toast.error("Gagal mengunggah file evaluasi", { description: err?.message || err });
+    } catch (err) {
+      toast.error("Gagal mengunggah file evaluasi", { description: err instanceof Error ? err.message : "Silakan coba lagi." });
     } finally {
       setUploading(false);
     }

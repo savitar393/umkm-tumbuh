@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import type { UserDetailData } from "../api";
 import { getUserDetail, approveUser, rejectUser } from "../api";
 import { STATUS_LABEL } from "../status";
 import { viewDocument, downloadDocument } from "../../../shared/api/documents";
@@ -27,42 +27,40 @@ const UMKM_CHECKLIST_LABELS = [
 
 export default function RegistrationDetailPage() {
   const { id } = useParams<{ id: string }>();
+  return <RegistrationDetail key={id} id={id} />;
+}
+
+function RegistrationDetail({ id }: { id?: string }) {
   const navigate = useNavigate();
 
-  const [data, setData] = useState<UserDetailData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [actionError, setError] = useState("");
   const [message, setMessage] = useState("");
 
-  const [checklistItems, setChecklistItems] = useState<boolean[]>([]);
-  const [catatan, setCatatan] = useState("");
+  const [checklistDraft, setChecklistItems] = useState<boolean[] | null>(null);
+  const [catatanDraft, setCatatan] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
 
-  const fetchDetail = () => {
-    if (!id) return;
-    setLoading(true);
+  const { data, isFetching: loading, error: fetchError, refetch } = useQuery({
+    queryKey: ["admin", "registration", id],
+    queryFn: async () => {
+      if (!id) throw new Error("ID pengguna tidak ditemukan.");
+      return (await getUserDetail(id)).data;
+    },
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+  const error = actionError || fetchError?.message || "";
+  const catatan = catatanDraft ?? data?.user.catatan_validasi ?? "";
+  const checklistItems = checklistDraft ?? (data?.checklist?.length
+    ? data.checklist.map((item) => item.uploaded)
+    : new Array((data?.user.role === "MITRA" ? MITRA_CHECKLIST_LABELS : UMKM_CHECKLIST_LABELS).length).fill(false));
+
+  function fetchDetail() {
     setError("");
-
-    getUserDetail(id)
-      .then((res) => {
-        setData(res.data);
-        if (res.data.user.catatan_validasi) setCatatan(res.data.user.catatan_validasi);
-        const cl = res.data.checklist as ChecklistItem[] | undefined;
-        if (cl && cl.length > 0) {
-          setChecklistItems(cl.map(c => c.uploaded));
-        } else {
-          setChecklistItems(
-            new Array((res.data.user.role === "MITRA" ? MITRA_CHECKLIST_LABELS : UMKM_CHECKLIST_LABELS).length).fill(false)
-          );
-        }
-      })
-      .catch((err) => setError(err.message || "Gagal mengambil data"))
-      .finally(() => setLoading(false));
-  };
-
-  useEffect(() => { fetchDetail(); }, [id]);
+    return refetch();
+  }
 
   function handleApprove() {
     if (!id) return;
@@ -142,7 +140,7 @@ export default function RegistrationDetailPage() {
           <div className="info-bar">
             <div className="info-bar-cell">
               <span className="info-bar-label">NAMA ORGANISASI / ENTITAS</span>
-              <span className="info-bar-value">{profile?.name ?? user.full_name}</span>
+              <span className="info-bar-value">{String(profile?.name ?? user.full_name)}</span>
             </div>
             <div className="info-bar-cell">
               <span className="info-bar-label">ID PENDAFTARAN</span>
@@ -235,25 +233,25 @@ export default function RegistrationDetailPage() {
                 <div className="field-grid wide">
                   {user.role === "UMKM" ? (
                     <>
-                      <div className="field-item"><span className="field-label">Nama Usaha</span><span className="field-val">{profile.name || "-"}</span></div>
-                      <div className="field-item"><span className="field-label">Kategori</span><span className="field-val">{profile.category || "-"}</span></div>
-                      <div className="field-item"><span className="field-label">Nama Pemilik</span><span className="field-val">{profile.person || user.full_name}</span></div>
-                      <div className="field-item"><span className="field-label">Telepon</span><span className="field-val">{profile.phone_number || "-"}</span></div>
-                      <div className="field-item full-width"><span className="field-label">Alamat</span><span className="field-val">{profile.address || "-"}</span></div>
-                      <div className="field-item"><span className="field-label">Kota</span><span className="field-val">{profile.city || "-"}</span></div>
-                      <div className="field-item"><span className="field-label">Provinsi</span><span className="field-val">{profile.province || "-"}</span></div>
-                      <div className="field-item full-width"><span className="field-label">Deskripsi</span><span className="field-val">{profile.description || "-"}</span></div>
+                      <div className="field-item"><span className="field-label">Nama Usaha</span><span className="field-val">{String(profile.name || "-")}</span></div>
+                      <div className="field-item"><span className="field-label">Kategori</span><span className="field-val">{String(profile.category || "-")}</span></div>
+                      <div className="field-item"><span className="field-label">Nama Pemilik</span><span className="field-val">{String(profile.person || user.full_name)}</span></div>
+                      <div className="field-item"><span className="field-label">Telepon</span><span className="field-val">{String(profile.phone_number || "-")}</span></div>
+                      <div className="field-item full-width"><span className="field-label">Alamat</span><span className="field-val">{String(profile.address || "-")}</span></div>
+                      <div className="field-item"><span className="field-label">Kota</span><span className="field-val">{String(profile.city || "-")}</span></div>
+                      <div className="field-item"><span className="field-label">Provinsi</span><span className="field-val">{String(profile.province || "-")}</span></div>
+                      <div className="field-item full-width"><span className="field-label">Deskripsi</span><span className="field-val">{String(profile.description || "-")}</span></div>
                     </>
                   ) : (
                     <>
-                      <div className="field-item full-width"><span className="field-label">Nama Perusahaan / Organisasi</span><span className="field-val">{profile.name || "-"}</span></div>
-                      <div className="field-item"><span className="field-label">Jenis Organisasi</span><span className="field-val">{profile.category || "-"}</span></div>
-                      <div className="field-item"><span className="field-label">Kontak Person</span><span className="field-val">{profile.person || "-"}</span></div>
-                      <div className="field-item"><span className="field-label">Telepon</span><span className="field-val">{profile.phone_number || "-"}</span></div>
-                      <div className="field-item full-width"><span className="field-label">Alamat</span><span className="field-val">{profile.address || "-"}</span></div>
-                      <div className="field-item"><span className="field-label">Kota</span><span className="field-val">{profile.city || "-"}</span></div>
-                      <div className="field-item"><span className="field-label">Provinsi</span><span className="field-val">{profile.province || "-"}</span></div>
-                      <div className="field-item full-width"><span className="field-label">Deskripsi</span><span className="field-val">{profile.description || "-"}</span></div>
+                      <div className="field-item full-width"><span className="field-label">Nama Perusahaan / Organisasi</span><span className="field-val">{String(profile.name || "-")}</span></div>
+                      <div className="field-item"><span className="field-label">Jenis Organisasi</span><span className="field-val">{String(profile.category || "-")}</span></div>
+                      <div className="field-item"><span className="field-label">Kontak Person</span><span className="field-val">{String(profile.person || "-")}</span></div>
+                      <div className="field-item"><span className="field-label">Telepon</span><span className="field-val">{String(profile.phone_number || "-")}</span></div>
+                      <div className="field-item full-width"><span className="field-label">Alamat</span><span className="field-val">{String(profile.address || "-")}</span></div>
+                      <div className="field-item"><span className="field-label">Kota</span><span className="field-val">{String(profile.city || "-")}</span></div>
+                      <div className="field-item"><span className="field-label">Provinsi</span><span className="field-val">{String(profile.province || "-")}</span></div>
+                      <div className="field-item full-width"><span className="field-label">Deskripsi</span><span className="field-val">{String(profile.description || "-")}</span></div>
                     </>
                   )}
                 </div>

@@ -1,746 +1,179 @@
-# UMKM Tumbuh — Local Development & Testing Guide
+# Local development and Stage 1 checks
 
-This guide explains how to run and test the UMKM Tumbuh web application locally using Docker Compose.
+**English** | [Bahasa Indonesia](README_LOCAL_DEV.id.md)
 
-Current local stack:
+Run commands from the repository root in WSL or a Linux/macOS terminal. Docker Desktop must have WSL integration enabled when using WSL. The backend runs in Docker; the frontend runs separately.
 
-```text
-PostgreSQL
-db-migrate
-auth-seed-admin
-auth-service
-user-service
-optional db-seed
-```
+## Start the application
 
-The current backend services are:
+Requirements: Docker Engine/Desktop, Docker Compose 2.24.4 or newer, Node.js 22, and npm. Go is only needed if you run a backend outside Docker.
 
-```text
-auth-service  → http://localhost:8080
-user-service  → http://localhost:8081
-PostgreSQL    → localhost:5432
-```
-
-Frontend is still run separately from `frontend/` during development.
-
----
-
-## 1. Prerequisites
-
-Install these first:
-
-```text
-Docker Desktop / Docker Engine
-Docker Compose plugin
-Git
-Go
-Node.js + npm
-```
-
-For WSL users, run the project inside WSL, for example:
+Run from the repository root; these commands copy only missing files:
 
 ```bash
-cd ~/dev/umkm-tumbuh
+[ -f .env ] || cp .env.example .env
+[ -f frontend/.env ] || cp frontend/.env.example frontend/.env
 ```
 
-Make sure Docker is available from WSL:
+Keep existing `.env` files when upgrading. Compare them with the examples and add any missing variables. The sample passwords and tokens are for local development.
 
 ```bash
-docker version
-docker compose version
+docker compose --env-file .env -f infra/docker-compose.yml up -d --build --wait --wait-timeout 180
+docker compose --env-file .env -f infra/docker-compose.yml ps -a
 ```
 
----
+PostgreSQL starts first, migrations run, and the admin account is seeded. Garage bootstrap configures its single node, creates the configured buckets, and publishes the generated credentials before the user and document services start. Migration, seed, and bootstrap containers should exit with code 0. The five API containers should be healthy.
 
-## 2. Clone the Repository
+In another terminal:
 
 ```bash
-git clone https://github.com/savitar393/umkm-tumbuh.git
-cd umkm-tumbuh
-```
-
-If you are still testing the migration branch before merging:
-
-```bash
-git checkout fix/migrations
-```
-
-After it is merged:
-
-```bash
-git checkout main
-git pull origin main
-```
-
----
-
-## 3. Environment File Setup
-
-Copy the example environment file:
-
-```bash
-cp .env.example .env
-```
-
-Open `.env` and make sure these values exist:
-
-```env
-APP_ENV=development
-
-POSTGRES_USER=umkm_user
-POSTGRES_PASSWORD=umkm_password
-POSTGRES_DB=umkm_tumbuh
-
-JWT_SECRET=change-me
-JWT_EXPIRE_MINUTES=60
-
-FRONTEND_URL=http://localhost:5173
-
-ADMIN_ID=AKUNADMIN001
-ADMIN_FULL_NAME=Admin Pemerintah
-ADMIN_EMAIL=admin@example.com
-ADMIN_PASSWORD=admin12345
-
-USER_SERVICE_HOST=0.0.0.0
-USER_SERVICE_PORT=8081
-```
-
-For local development, `JWT_SECRET=change-me` is acceptable. For production, it must be changed.
-
-Do not commit `.env`.
-
----
-
-## 4. Start the Local Backend Stack
-
-From the project root:
-
-```bash
-docker compose --env-file .env -f infra/docker-compose.yml up -d --build
-```
-
-This starts:
-
-```text
-postgres
-db-migrate
-auth-seed-admin
-auth-service
-user-service
-```
-
-Check container status:
-
-```bash
-docker compose --env-file .env -f infra/docker-compose.yml ps
-```
-
-Expected result:
-
-```text
-umkm_postgres          healthy/running
-umkm_db_migrate        exited 0
-umkm_auth_seed_admin   exited 0
-umkm_auth_service      running
-umkm_user_service      running
-```
-
----
-
-## 5. Check Migration Logs
-
-```bash
-docker compose --env-file .env -f infra/docker-compose.yml logs db-migrate
-```
-
-Expected result:
-
-```text
-All migrations applied successfully.
-```
-
-The centralized production migrations are stored in:
-
-```text
-infra/db/migrations/
-```
-
-The service-local migrations are no longer the source of truth.
-
----
-
-## 6. Check Service Logs
-
-```bash
-docker compose --env-file .env -f infra/docker-compose.yml logs auth-service
-docker compose --env-file .env -f infra/docker-compose.yml logs user-service
-docker compose --env-file .env -f infra/docker-compose.yml logs auth-seed-admin
-```
-
-Expected examples:
-
-```text
-auth-service running on 0.0.0.0:8080
-user-service running on 0.0.0.0:8081
-Admin created: admin@example.com
-```
-
-If the admin already exists, that is fine.
-
----
-
-## 7. Health Check
-
-Test auth-service:
-
-```bash
-curl -i http://localhost:8080/api/v1/health
-```
-
-Test user-service:
-
-```bash
-curl -i http://localhost:8081/api/v1/health
-```
-
-Both should return successful responses.
-
----
-
-## 8. Login as Default Admin
-
-```bash
-ADMIN_TOKEN=$(curl -s -X POST http://localhost:8080/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "admin@example.com",
-    "password": "admin12345"
-  }' | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
-
-echo "$ADMIN_TOKEN"
-```
-
-Check current admin:
-
-```bash
-curl -s http://localhost:8080/api/v1/auth/me \
-  -H "Authorization: Bearer $ADMIN_TOKEN"
-```
-
-Expected role:
-
-```json
-"role": "ADMIN"
-```
-
-Do not paste real JWT tokens into public issues, commits, or documentation.
-
----
-
-## 9. Test UMKM Registration, Approval, Login, and Profile
-
-### 9.1 Register UMKM
-
-```bash
-curl -i -X POST http://localhost:8080/api/v1/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "full_name": "Sari Wijaya",
-    "email": "sari.profile@example.com",
-    "phone_number": "081234567894",
-    "nik": "3372010101018888",
-    "password": "password123",
-    "role": "UMKM"
-  }'
-```
-
-Expected:
-
-```text
-201 Created
-status: MENUNGGU
-```
-
-Copy the returned user `id`.
-
----
-
-### 9.2 List Pending Registrations
-
-```bash
-curl -s "http://localhost:8080/api/v1/admin/registrations?status=PENDING" \
-  -H "Authorization: Bearer $ADMIN_TOKEN"
-```
-
-Find the registered UMKM account ID.
-
----
-
-### 9.3 Approve UMKM
-
-Replace `USER_ID_HERE` with the real account ID.
-
-```bash
-curl -i -X PATCH http://localhost:8080/api/v1/admin/registrations/USER_ID_HERE/approve \
-  -H "Authorization: Bearer $ADMIN_TOKEN"
-```
-
-Expected:
-
-```text
-200 OK
-status: DISETUJUI
-```
-
----
-
-### 9.4 Login as UMKM
-
-```bash
-UMKM_TOKEN=$(curl -s -X POST http://localhost:8080/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "sari.profile@example.com",
-    "password": "password123"
-  }' | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
-
-echo "$UMKM_TOKEN"
-```
-
-Expected: JWT token is returned.
-
----
-
-### 9.5 Create UMKM Profile
-
-```bash
-curl -i -X PUT http://localhost:8081/api/v1/profiles/me \
-  -H "Authorization: Bearer $UMKM_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "business_name": "Sari Snack House",
-    "business_category": "Makanan",
-    "business_description": "UMKM makanan ringan lokal.",
-    "owner_name": "Sari Wijaya",
-    "nik": "3372010101018888",
-    "phone_number": "081234567894",
-    "address": "Jl. Melati No. 1",
-    "city": "Surakarta",
-    "province": "Jawa Tengah",
-    "district": "Laweyan",
-    "village": "Pajang",
-    "postal_code": "57146"
-  }'
-```
-
-Expected:
-
-```text
-200 OK
-profile.business_name = Sari Snack House
-profile.status = AKTIF
-```
-
----
-
-### 9.6 Get UMKM Profile
-
-```bash
-curl -i http://localhost:8081/api/v1/profiles/me \
-  -H "Authorization: Bearer $UMKM_TOKEN"
-```
-
-Expected:
-
-```text
-200 OK
-profile returned
-```
-
----
-
-## 10. Test Mitra Registration, Approval, Login, and Profile
-
-### 10.1 Register Mitra
-
-```bash
-curl -i -X POST http://localhost:8080/api/v1/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "full_name": "Andi Partnership",
-    "email": "andi.mitra@example.com",
-    "phone_number": "081234567895",
-    "password": "password123",
-    "role": "MITRA"
-  }'
-```
-
-Expected:
-
-```text
-201 Created
-status: MENUNGGU
-```
-
-Copy the returned user `id`.
-
----
-
-### 10.2 Approve Mitra
-
-```bash
-curl -i -X PATCH http://localhost:8080/api/v1/admin/registrations/USER_ID_HERE/approve \
-  -H "Authorization: Bearer $ADMIN_TOKEN"
-```
-
-Expected:
-
-```text
-200 OK
-status: DISETUJUI
-```
-
----
-
-### 10.3 Login as Mitra
-
-```bash
-MITRA_TOKEN=$(curl -s -X POST http://localhost:8080/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "andi.mitra@example.com",
-    "password": "password123"
-  }' | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
-
-echo "$MITRA_TOKEN"
-```
-
----
-
-### 10.4 Create Mitra Profile
-
-```bash
-curl -i -X PUT http://localhost:8081/api/v1/profiles/me \
-  -H "Authorization: Bearer $MITRA_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "organization_name": "PT Mitra Sejahtera",
-    "organization_type": "Perusahaan",
-    "legal_name": "PT Mitra Sejahtera Indonesia",
-    "nib": "1234567890123",
-    "npwp": "12.345.678.9-012.345",
-    "description": "Mitra pendampingan UMKM bidang pemasaran dan distribusi.",
-    "contact_person": "Andi Partnership",
-    "contact_person_title": "Partnership Manager",
-    "phone_number": "081234567895",
-    "address": "Jl. Slamet Riyadi No. 10",
-    "city": "Surakarta",
-    "province": "Jawa Tengah",
-    "district": "Laweyan",
-    "village": "Pajang",
-    "postal_code": "57146",
-    "operational_area": "Surakarta dan sekitarnya",
-    "cooperation_scale": "Lokal",
-    "support_description": "Pendampingan pemasaran, akses distribusi, dan pelatihan branding."
-  }'
-```
-
-Expected:
-
-```text
-200 OK
-profile.organization_name = PT Mitra Sejahtera
-profile.status = AKTIF
-```
-
----
-
-### 10.5 Get Mitra Profile
-
-```bash
-curl -i http://localhost:8081/api/v1/profiles/me \
-  -H "Authorization: Bearer $MITRA_TOKEN"
-```
-
-Expected:
-
-```text
-200 OK
-profile returned
-```
-
----
-
-## 11. Verify Database Records
-
-Open PostgreSQL:
-
-```bash
-docker compose --env-file .env -f infra/docker-compose.yml exec postgres \
-  psql -U "${POSTGRES_USER:-umkm_user}" -d "${POSTGRES_DB:-umkm_tumbuh}"
-```
-
-Useful checks:
-
-```sql
-SELECT COUNT(*) FROM auth.master_akunpengguna;
-SELECT COUNT(*) FROM user_mgmt.master_pelakuumkm;
-SELECT COUNT(*) FROM user_mgmt.master_umkm;
-SELECT COUNT(*) FROM user_mgmt.master_mitra;
-
-SELECT akun_id, umkm_id, mitra_id, checklist_informasi_lengkap
-FROM user_mgmt.transaksi_registrasipengguna
-ORDER BY created_at DESC
-LIMIT 10;
-```
-
-Expected for completed UMKM profile:
-
-```text
-umkm_id filled
-mitra_id null
-checklist_informasi_lengkap = true
-```
-
-Expected for completed Mitra profile:
-
-```text
-mitra_id filled
-umkm_id null
-checklist_informasi_lengkap = true
-```
-
-Exit psql:
-
-```sql
-\q
-```
-
----
-
-## 12. Optional: Load Dummy CSV Data
-
-The dummy dataset is stored under:
-
-```text
-infra/db/dummy/seed-csv/
-```
-
-The loader expects CSV files under:
-
-```text
-infra/db/dummy/seed-csv/csv/
-```
-
-Run the optional seed service:
-
-```bash
-docker compose --env-file .env -f infra/docker-compose.yml --profile seed up --force-recreate db-seed
-```
-
-Expected:
-
-```text
-Dummy CSV dataset loaded successfully.
-```
-
-The seed process is not idempotent. If you want to seed again, reset the database first:
-
-```bash
-docker compose --env-file .env -f infra/docker-compose.yml --profile seed down -v --remove-orphans
-docker compose --env-file .env -f infra/docker-compose.yml up -d --build
-docker compose --env-file .env -f infra/docker-compose.yml --profile seed up --force-recreate db-seed
-```
-
----
-
-## 13. Copying Dummy CSV From Windows Into WSL
-
-If the generated dataset is in Windows Downloads, copy only the clean CSV dataset.
-
-Example:
-
-```bash
-cd ~/dev/umkm-tumbuh
-
-rm -rf infra/db/dummy/seed-csv
-mkdir -p infra/db/dummy/seed-csv
-
-cp -r "/mnt/d/Downloads/UMKM_TUMBUH_csv/csv" infra/db/dummy/seed-csv/
-cp "/mnt/d/Downloads/UMKM_TUMBUH_csv/import_order.txt" infra/db/dummy/seed-csv/ 2>/dev/null || true
-cp "/mnt/d/Downloads/UMKM_TUMBUH_csv/manifest.json" infra/db/dummy/seed-csv/ 2>/dev/null || true
-cp "/mnt/d/Downloads/UMKM_TUMBUH_csv/README.txt" infra/db/dummy/seed-csv/ 2>/dev/null || true
-```
-
-Do not copy or commit:
-
-```text
-metadata/
-generated_credentials.csv
-infra/db/dummy/generated/
-```
-
----
-
-## 14. Frontend Local Development
-
-Open another terminal:
-
-```bash
-cd ~/dev/umkm-tumbuh/frontend
-npm install
+cd frontend
+npm ci
 npm run dev
 ```
 
-Frontend runs at:
+Open [the application](http://localhost:5173). The default admin is `admin@example.com` / `admin12345`, controlled by `ADMIN_EMAIL` and `ADMIN_PASSWORD` in the root `.env`. Seeding preserves an existing admin; changing these values does not reset an existing password.
 
-```text
-http://localhost:5173
-```
+## Service addresses
 
-Make sure frontend environment uses:
+| Service | Default host address | Host port variable |
+| --- | --- | --- |
+| Auth/admin API | http://localhost:8080/api/v1 | `AUTH_SERVICE_PORT` |
+| User API | http://localhost:8081/api/v1 | `USER_SERVICE_PORT` |
+| Partnerships API | http://localhost:8082/api/v1 | `PARTNERSHIP_SERVICE_PORT` |
+| Document API | http://localhost:8083/api/v1 | `DOCUMENT_SERVICE_PORT` |
+| Training/certificates API | http://localhost:8084/api/v1 | `TRAINING_SERVICE_PORT` |
+| PostgreSQL | localhost:5432 | `POSTGRES_PORT` |
+| Garage S3 | http://localhost:3900 | `GARAGE_S3_PORT` |
+| Garage admin | http://localhost:3903 | `GARAGE_ADMIN_PORT` |
+| Mailpit inbox | http://localhost:8025 | `MAILPIT_HTTP_PORT` |
+| Mailpit SMTP | localhost:1025 | `MAILPIT_SMTP_PORT` |
 
-```env
-VITE_API_BASE_URL=http://localhost:8080/api/v1
-```
+All published ports bind to `127.0.0.1` by default. Container ports stay fixed, so changing a host port does not break service-to-service calls. With `VITE_USE_DEV_PROXY=true` in `frontend/.env`, Vite reads the five API host ports from the root `.env` and forwards requests to `127.0.0.1` inside WSL. Restart Vite after changing a port. With the proxy disabled, also update the corresponding frontend API URL. See the [frontend proxy guide](../frontend/README.md#local-api-proxy) if Windows can load the frontend but cannot reach a backend port. If you change `GARAGE_S3_PORT`, also update `OBJECT_STORAGE_PUBLIC_ENDPOINT`. Keep `OBJECT_STORAGE_ENDPOINT=http://garage:3900` for this Compose stack.
 
-If frontend needs to call user-service directly, add a separate frontend variable later, for example:
+## Garage credentials and persistent data
 
-```env
-VITE_USER_API_BASE_URL=http://localhost:8081/api/v1
-```
+`garage-bootstrap` reuses the key named `UMKM App Key`. It never deletes other keys. Bucket names come from the same environment variables used by the services. Setup failures stop bootstrap and prevent dependent services from starting.
 
----
+The `garage_credentials` volume contains `/run/garage/garage.env`, owned by UID 10001 with mode 0600. The user and document containers mount it read-only and load it before starting. Do not copy placeholder S3 keys into `.env`; the Compose services use the generated credentials. Garage and bootstrap both receive `GARAGE_ADMIN_TOKEN` from Compose.
 
-## 15. Common Docker Commands
-
-Stop containers but keep database volume:
+The database, Garage objects, shared credentials, legacy uploads, and generated training certificates have separate named volumes. A normal stop/recreate keeps them:
 
 ```bash
 docker compose --env-file .env -f infra/docker-compose.yml down
+docker compose --env-file .env -f infra/docker-compose.yml up -d --build --wait --wait-timeout 180
 ```
 
-Stop containers and delete database volume:
+Do not add `--volumes` or `-v` to the application's `down` command unless you intend to erase its local data. Keep the same Compose project name when upgrading so Docker continues using the existing volumes. Container names are now managed by Compose; use service names in commands such as `docker compose ... exec postgres`.
+
+To rerun Garage setup explicitly:
 
 ```bash
-docker compose --env-file .env -f infra/docker-compose.yml down -v --remove-orphans
+docker compose --env-file .env -f infra/docker-compose.yml run --rm --no-deps garage-bootstrap
 ```
 
-Rebuild everything:
+If the credentials file is lost while Garage data remains, this recovers the existing named key. Duplicate application key names cause a clear failure; inspect them in Garage and resolve the naming ambiguity before retrying. Do not delete the Garage data volume to fix credentials.
+
+## Run the isolated Stage 1 check
 
 ```bash
-docker compose --env-file .env -f infra/docker-compose.yml up -d --build
+bash tests/stack/run.sh
 ```
 
-View logs:
+The script reads `.env.example` and `infra/docker-compose.test.yml`. Normal development uses the root `.env`, and Vite uses `frontend/.env`; the isolated test does not exercise those private settings or the browser UI.
 
-```bash
-docker compose --env-file .env -f infra/docker-compose.yml logs -f
-```
+The script creates a unique Compose project, publishes no host ports, and uses a separate `umkm_tumbuh_test` database and volumes. It builds the backend, runs migrations, seeds six synthetic accounts, and checks:
 
-View one service log:
+- Health of all five APIs and database connectivity where available.
+- Fixture seeding twice and login with the expected roles and registration states.
+- The 37-request Newman collection: email verification, pending/approved login, admin review, profiles, products, sales, dashboards, and selected rejected requests.
+- Product image upload/download through user-service.
+- Document upload/download through document-service, including custom bucket names.
+- Migration and bootstrap reruns without rotating the application key or deleting an unrelated key.
+- Container recreation with the same credentials and byte-for-byte intact uploads.
 
-```bash
-docker compose --env-file .env -f infra/docker-compose.yml logs -f auth-service
-docker compose --env-file .env -f infra/docker-compose.yml logs -f user-service
-docker compose --env-file .env -f infra/docker-compose.yml logs -f db-migrate
-```
+The script prints service logs on failure and removes only its own test project and volumes on exit, including the state volume used by the `check` profile. It does not load the large CSV dataset. The same command runs in `.github/workflows/local-stack.yml`. Newman creates one additional UMKM account within this disposable database. It uses the development-only verification code in the API response; this does not test email delivery. The test overlay fixes `APP_ENV=development` for auth.
 
-Remove stale seed container:
+Newman writes `tests/postman/reports/newman.xml`, which Git ignores. GitHub Actions uploads it as `api-contract-results`, including on test failure when the report exists. The earlier duplicate Newman workflows have been replaced by this one isolated job. See the [API test guide](../tests/postman/README.md) for the collection and its limitations.
 
-```bash
-docker rm -f umkm_db_seed 2>/dev/null || true
-```
+### Read the test output
 
----
-
-## 16. Troubleshooting
-
-### `db-migrate` does not finish
-
-Check logs:
-
-```bash
-docker compose --env-file .env -f infra/docker-compose.yml logs db-migrate
-```
-
-If there is a SQL error, fix the migration and reset the database volume:
-
-```bash
-docker compose --env-file .env -f infra/docker-compose.yml down -v --remove-orphans
-docker compose --env-file .env -f infra/docker-compose.yml up -d --build
-```
-
----
-
-### `auth-seed-admin` fails with `value too long for varchar(30)`
-
-Check `.env`:
-
-```bash
-grep -n "^ADMIN_ID" .env
-```
-
-Use this value:
-
-```env
-ADMIN_ID=AKUNADMIN001
-```
-
-Do not use UUID format for `ADMIN_ID`.
-
----
-
-### Login returns invalid credentials after registration
-
-Registration accounts are created with status:
+The wrong-database test deliberately attempts to seed the `postgres` database. Its expected rejection is:
 
 ```text
-MENUNGGU
+ERROR:  Fixtures require the isolated umkm_tumbuh_test database
 ```
 
-They cannot login until approved by admin.
-
-Approve through:
-
-```bash
-PATCH /api/v1/admin/registrations/{id}/approve
-```
-
----
-
-### `PUT /profiles/me` returns unauthorized
-
-Make sure you use the correct token:
+`INSERT 0 0` during reseeding means the existing fixture rows were preserved. Migration messages saying `Skipping already applied migration` are also expected. A successful complete run ends with:
 
 ```text
-UMKM profile → use UMKM_TOKEN
-Mitra profile → use MITRA_TOKEN
-Admin routes → use ADMIN_TOKEN
+Stage 1 stack checks passed.
 ```
 
----
+`Exited` is normal for migrations, seeding, and bootstrap after they finish successfully. The final container and volume removals are test cleanup. The development app is not running afterward unless you started it separately. Use the startup commands at the beginning of this guide, then run the frontend in another terminal.
 
-### `db-seed` duplicate key error
+### Test accounts
 
-The dummy CSV may contain duplicate rows for a unique key.
+All fixture passwords are `Stage1Test123!`:
 
-For many-to-many tables, each composite key must be unique:
+| Email | Account ID | State |
+| --- | --- | --- |
+| admin@stage1.test | TEST_ADMIN | Admin |
+| umkm.a@stage1.test | TEST_UMKM_A | Approved UMKM, separate business |
+| umkm.b@stage1.test | TEST_UMKM_B | Approved UMKM, separate business |
+| mitra.a@stage1.test | TEST_MITRA_A | Approved Mitra, separate profile |
+| mitra.b@stage1.test | TEST_MITRA_B | Approved Mitra, separate profile |
+| onboarding@stage1.test | TEST_ONBOARDING | Email verified, no profile or submitted application |
 
-```text
-master_mitrabentukdukungan.csv
-master_mitrabidangkemitraan.csv
-```
+These accounts exist only inside the test project during the run. `tests/stack/fixtures.sql` refuses to run against any database whose name is not `umkm_tumbuh_test`. Rerunning it preserves existing fixture rows rather than truncating tables.
 
-Resetting the database is also required before reseeding:
+## Troubleshooting
 
 ```bash
-docker compose --env-file .env -f infra/docker-compose.yml --profile seed down -v --remove-orphans
+docker compose --env-file .env -f infra/docker-compose.yml logs --tail 80 db-migrate garage garage-bootstrap
+docker compose --env-file .env -f infra/docker-compose.yml logs --tail 80 auth-service user-service partnerships-service document-service training-service
 ```
 
----
+If a port is occupied, change its host port variable and rerun `up`. If an API stays unhealthy, inspect that service's logs before changing data or credentials. An `unknown tag !reset` error means Compose must be updated to at least 2.24.4 for the isolated test overlay.
 
-## 17. Development Rules
+The optional `seed` profile imports the old large CSV dataset and truncates application tables. It is not required to start the application or run Stage 1 checks. Use it only with a disposable development database. See the [database guide](../infra/db/README.md) for commands and the [Postman/Newman guide](../tests/postman/README.md) for the current API contract suite and archived collections.
+
+## CI and checks before pushing
+
+From the repository root:
+
+```bash
+npm --prefix frontend ci
+npm --prefix frontend run check
+bash tests/stack/run.sh
+```
+
+The frontend checks need Node.js 22 and npm. The stack check needs Docker and Compose and builds all five Go services; no host Go installation or host Newman installation is required.
+
+The separate Go CI jobs cover auth-service and user-service. With Go 1.26.3 installed, run their checks locally:
+
+```bash
+(
+  set -e
+  for service in auth-service user-service; do
+    (
+      cd "services/$service"
+      test -z "$(gofmt -l .)"
+      go mod tidy
+      git diff --exit-code -- go.mod go.sum
+      go vet ./...
+      go test ./...
+      go build ./...
+    )
+  done
+)
+```
+
+Commit intentional module changes before running the tidy check, because it compares the files with Git. If the formatting check fails, `gofmt -l .` inside that service lists the files to format. Do not disable a gate to make CI pass.
+
+`ci.yml` checks Go, frontend, and Compose configuration on pull requests to `main`, supported branch pushes, and manual runs. `local-stack.yml` runs the actual stack for changes to services, infrastructure, API tests, workflow files, or `.env.example`, and on manual runs. A green Compose configuration check alone does not confirm the stack starts.
+
+## Development rules
 
 Do not commit:
 
@@ -767,41 +200,3 @@ infra/db/migrations/
 ```
 
 Do not add new service-local migration folders unless the architecture decision changes.
-
----
-
-## 18. Minimum Smoke Test Before Pushing
-
-Before pushing backend/database changes, run:
-
-```bash
-cd ~/dev/umkm-tumbuh
-
-docker compose --env-file .env -f infra/docker-compose.yml down -v --remove-orphans
-docker compose --env-file .env -f infra/docker-compose.yml up -d --build
-docker compose --env-file .env -f infra/docker-compose.yml logs db-migrate
-```
-
-Confirm:
-
-```text
-All migrations applied successfully.
-```
-
-Then test:
-
-```bash
-curl -i http://localhost:8080/api/v1/health
-curl -i http://localhost:8081/api/v1/health
-```
-
-Also test at least one full auth/profile flow:
-
-```text
-admin login
-register UMKM or Mitra
-approve registration
-login as approved user
-PUT /profiles/me
-GET /profiles/me
-```

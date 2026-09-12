@@ -129,7 +129,7 @@ export interface SignPartnershipRequest {
 export interface SuccessResponse {
   status: "success";
   message?: string;
-  data?: any;
+  data?: unknown;
 }
 
 // Error response

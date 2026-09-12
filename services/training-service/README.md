@@ -1,92 +1,81 @@
-# Training Service
+# Training service
 
-Service untuk mengelola program pelatihan UMKM Tumbuh.
+**English** | [Bahasa Indonesia](README.id.md)
 
-## Fitur
+Manages training programs, modules, enrollments, progress, and certificates. The default port is **8084**. The service uses the shared PostgreSQL schema and generates certificate files locally.
 
-- Daftar semua pelatihan aktif
-- Detail pelatihan + modul
-- Pendaftaran user ke pelatihan (enrollment)
-- Tracking progress pelatihan user
-- Update progress dan status selesai
+## Run with Docker
 
-## Endpoints
-
-### Health Check
-- `GET /api/v1/health` - Service health
-- `GET /api/v1/health/db` - Database connectivity
-
-### Training Management
-- `GET /api/v1/trainings` - Daftar semua pelatihan
-- `GET /api/v1/trainings/:id` - Detail pelatihan
-- `GET /api/v1/trainings/:id/detail` - Detail pelatihan + modul
-- `POST /api/v1/trainings/enroll` - Daftar pelatihan
-
-### Enrollment
-- `GET /api/v1/enrollments/user/:umkmID` - Daftar enrollment user
-
-## Setup & Run
-
-### Requirements
-- Go 1.23+
-- PostgreSQL dengan schema `training` dan `ref`
-- Migrations sudah dijalankan (006_training_tables.up.sql)
-
-### Installation
+Use the [local development guide](../../docs/README_LOCAL_DEV.md) to start the complete application. To build and start only this service and its database dependencies, run from the repository root:
 
 ```bash
+docker compose --env-file .env -f infra/docker-compose.yml up -d --build --wait training-service
+```
+
+This command does not start auth-service. Use the full stack when you need to log in and call authenticated endpoints.
+
+Compose sets `CERTIFICATE_DIR=/app/certificates` and mounts the `certificates_data` volume there. Normal container recreation retains these files. Training does not consume Garage credentials.
+
+## Run with Go
+
+Use Go 1.26.3 to match the Docker build. Start PostgreSQL and apply all repository migrations first; see the [database guide](../../infra/db/README.md). Migration 006 alone is not the complete current schema.
+
+If training-service is already running in Docker on port 8084, stop that service before starting a Go process on the same port:
+
+```bash
+docker compose --env-file .env -f infra/docker-compose.yml stop training-service
 cd services/training-service
-
-# Install dependencies
-go mod download
-
-# Copy environment variables
-cp .env.example .env
-
-# Edit .env sesuai kebutuhan
-# TRAINING_SERVICE_PORT=8083
-# DATABASE_URL=postgres://umkm_user:umkm_password@localhost:5432/umkm_tumbuh?sslmode=disable
-
-# Run service
-go run cmd/api/main.go
+[ -f .env ] || cp .env.example .env
 ```
 
-Service akan berjalan di `http://localhost:8083`
-
-### Test Endpoints
+Review `.env` before running: `DATABASE_URL` must reach the host-published PostgreSQL port and `JWT_SECRET` must match auth-service. The configuration loader reads the root `.env` before the service `.env`; values already present in the environment are preserved. The default certificate directory outside Docker is `./certificates`.
 
 ```bash
-# Health check
-curl http://localhost:8083/api/v1/health
-
-# Get all trainings
-curl http://localhost:8083/api/v1/trainings
-
-# Get training detail
-curl http://localhost:8083/api/v1/trainings/{PELATIHAN_ID}/detail
-
-# Enroll user
-curl -X POST http://localhost:8083/api/v1/trainings/enroll \
-  -H "Content-Type: application/json" \
-  -d '{
-    "umkm_id": "UMKM...",
-    "pelatihan_id": "PLT..."
-  }'
-
-# Get user enrollments
-curl http://localhost:8083/api/v1/enrollments/user/{UMKM_ID}
+go mod download
+go run ./cmd/api
 ```
 
-## Database Schema
+## API routes
 
-Service ini menggunakan tabel:
-- `training.master_programpelatihan`
-- `training.master_modulpelatihan`
-- `training.transaksi_pendaftaranpelatihan`
-- `ref.ref_jenispelatihan`
-- `ref.ref_statuspelatihan`
-- `ref.ref_statuspendaftaranpelatihan`
+All paths below start with `/api/v1`. Authenticated routes require `Authorization: Bearer <access_token>`.
 
-## Port
+| Method | Path | Authentication | Purpose |
+| --- | --- | --- | --- |
+| GET | `/health` | Public | Service health |
+| GET | `/health/db` | Public | Database connectivity |
+| GET | `/trainings/` | Public | Training list |
+| GET | `/trainings/{id}` | Public | Training record |
+| GET | `/trainings/{id}/detail` | Public | Training details and modules |
+| POST | `/trainings/enroll` | JWT | Enroll in training |
+| GET | `/enrollments/user/{umkmID}` | JWT | User enrollments |
+| PATCH | `/enrollments/progress` | JWT | Update progress |
+| PATCH | `/enrollments/complete` | JWT | Complete training |
+| GET | `/certificates/list`, `/certificates/stats` | JWT | Certificate lists and statistics |
+| GET | `/certificates/user/{umkmID}` | JWT | User certificates |
+| GET | `/certificates/user/{umkmID}/dashboard` | JWT | User certificate dashboard |
+| GET | `/certificates/{id}`, `/certificates/{id}/download` | JWT | Certificate record or file |
+| POST | `/certificates/request` | JWT | Request a certificate |
+| POST | `/certificates/{id}/approve`, `/certificates/{id}/reject` | JWT | Review a certificate |
+| GET | `/admin/training/`, `/admin/training/stats`, `/admin/training/{id}` | JWT | Training management views |
+| POST | `/admin/training/` | JWT | Create training |
+| PUT / DELETE | `/admin/training/{id}` | JWT | Update or delete training |
+| PATCH | `/admin/training/{id}/status` | JWT | Update training status |
 
-Default: **8083**
+The table reflects routes and JWT middleware in [internal/router/router.go](internal/router/router.go); it is not a verification of every role or ownership rule. Request fields and business validation live in the handlers under `internal/trainings/` and `internal/certificates/`.
+
+## Check the service
+
+```bash
+curl -fsS http://localhost:8084/api/v1/health
+curl -fsS http://localhost:8084/api/v1/health/db
+curl -fsS http://localhost:8084/api/v1/trainings/
+```
+
+For an authenticated request, set `TOKEN` to a valid login access token and `UMKM_ID` to a real business ID in the current database:
+
+```bash
+curl -fsS -H "Authorization: Bearer $TOKEN" \
+  "http://localhost:8084/api/v1/enrollments/user/$UMKM_ID"
+```
+
+Use the actual published host port if it differs from 8084. The Stage 1 stack check verifies training health and database connectivity; it does not exercise enrollment or certificate workflows.

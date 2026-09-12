@@ -66,6 +66,7 @@ export function login(payload: LoginPayload) {
     body: JSON.stringify(payload),
     auth: false,
     service: "auth",
+    timeoutMs: 15_000,
   });
 }
 
@@ -149,11 +150,15 @@ export async function uploadRegistrationDocument(file: File, category: string) {
 
   const text = await response.text();
 
-  let data: any = null;
+  let data: {
+    document?: { id: string };
+    error?: string;
+    message?: string;
+  } | null;
   try {
     data = text ? JSON.parse(text) : null;
   } catch {
-    data = { raw: text };
+    data = null;
   }
 
   if (!response.ok) {
@@ -164,7 +169,10 @@ export async function uploadRegistrationDocument(file: File, category: string) {
     );
   }
 
-  return data;
+  if (!data?.document?.id) {
+    throw new Error("Respons unggahan tidak memuat ID dokumen.");
+  }
+  return { ...data, document: data.document };
 }
 
 export function submitRegistration() {
@@ -293,5 +301,6 @@ export type RegistrationFlowStatus = {
 export function getRegistrationFlowStatus() {
   return http<RegistrationFlowStatus>("/register/status", {
     service: "user",
+    timeoutMs: 15_000,
   });
 }

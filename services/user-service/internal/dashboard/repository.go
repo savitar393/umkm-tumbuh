@@ -76,7 +76,7 @@ func (r *Repository) GetOmzetSummary(ctx context.Context, umkmID string) (omzetH
 
 // GetLabaHarian — data laba per hari dalam rentang tanggal
 func (r *Repository) GetLabaHarian(ctx context.Context, umkmID, dateFrom, dateTo string) ([]LabaHarianItem, error) {
-		log.Printf("[DEBUG] GetLabaHarian umkmID=%s dateFrom=%s dateTo=%s", umkmID, dateFrom, dateTo)
+	log.Printf("[DEBUG] GetLabaHarian umkmID=%s dateFrom=%s dateTo=%s", umkmID, dateFrom, dateTo)
 	rows, err := r.DB.Query(ctx, `
 		SELECT
 			TO_CHAR(created_at::date, 'YYYY-MM-DD')       AS tanggal,

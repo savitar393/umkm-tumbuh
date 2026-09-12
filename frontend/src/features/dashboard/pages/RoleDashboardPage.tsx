@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import {
@@ -12,12 +13,7 @@ import UserLayout from "../components/UserLayout";
 import { getCurrentUser } from "../../../shared/auth/currentUser";
 import {
   getUMKMDashboard,
-  type UMKMDashboardData,
 } from "../api";
-
-type RoleDashboardPageProps = {
-  title: string;
-};
 
 function formatRupiah(value: number) {
   return new Intl.NumberFormat("id-ID", {
@@ -87,6 +83,17 @@ function buildAreaChart(data: ChartTrendItem[]) {
   return { area, line, points };
 }
 
+type IncomingDashboardItem = {
+  umkm_id?: string;
+  pengaju_umkm_id?: string;
+  umkm_nama?: string;
+  nama_umkm?: string;
+  status_pengajuan_id?: string;
+  status?: string;
+  tanggal_pengajuan?: string;
+  created_at?: string;
+};
+
 type MitraDashboardData = {
   totalPartnerships: number;
   activePartnerships: number;
@@ -94,7 +101,7 @@ type MitraDashboardData = {
   incomingPartnerships: { umkm_id: string; umkm_nama?: string; status: string; tanggal: string }[];
 };
 
-export default function RoleDashboardPage(_props: RoleDashboardPageProps) {
+export default function RoleDashboardPage() {
   const user = useMemo(() => getCurrentUser(), []);
   const [dashboardData, setDashboardData] = useState<MitraDashboardData | null>(null);
 
@@ -103,10 +110,9 @@ export default function RoleDashboardPage(_props: RoleDashboardPageProps) {
     async function loadMitraDashboard() {
       try {
         const { http } = await import("../../../shared/api/http");
-        const resp = await http.get<any>("/partnerships/incoming?page=1&limit=5", { service: "partnership" });
-        const rawItems = resp?.data?.data || resp?.data || [];
-        const items = Array.isArray(rawItems) ? rawItems : [];
-        const incoming = items.slice(0, 5).map((p: any) => ({
+        const resp = await http.get<{ data?: IncomingDashboardItem[] | { data?: IncomingDashboardItem[] }; total?: number }>("/partnerships/incoming?page=1&limit=5", { service: "partnership" });
+        const items = Array.isArray(resp.data) ? resp.data : resp.data?.data ?? [];
+        const incoming = items.slice(0, 5).map((p) => ({
           umkm_id: p.umkm_id || p.pengaju_umkm_id || "",
           umkm_nama: p.umkm_nama || p.nama_umkm || "",
           status: p.status_pengajuan_id || p.status || "",
@@ -130,49 +136,31 @@ export default function RoleDashboardPage(_props: RoleDashboardPageProps) {
   const [appliedBulan, setAppliedBulan] = useState(now.getMonth());
   const [appliedTahun, setAppliedTahun] = useState(now.getFullYear());
   const [trendRange, setTrendRange] = useState<TrendRange>(7);
-  const [data, setData] = useState<UMKMDashboardData | null>(null);
   const [page, setPage] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
-  function buildDateRange(targetBulan = appliedBulan, targetTahun = appliedTahun) {
-    const from = `${targetTahun}-${String(targetBulan + 1).padStart(2, "0")}-01`;
-    const lastDay = new Date(targetTahun, targetBulan + 1, 0).getDate();
-    const to = `${targetTahun}-${String(targetBulan + 1).padStart(2, "0")}-${lastDay}`;
-    return { from, to };
-  }
+  const { data, isFetching: loading, error: fetchError, refetch } = useQuery({
+    queryKey: ["dashboard", "umkm", user?.id, appliedBulan, appliedTahun],
+    queryFn: () => {
+      const from = `${appliedTahun}-${String(appliedBulan + 1).padStart(2, "0")}-01`;
+      const lastDay = new Date(appliedTahun, appliedBulan + 1, 0).getDate();
+      const to = `${appliedTahun}-${String(appliedBulan + 1).padStart(2, "0")}-${lastDay}`;
+      return getUMKMDashboard(from, to);
+    },
+    enabled: user?.role === "UMKM",
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+  const error = fetchError?.message || "";
 
   function fetchDashboard() {
-    if (!user || user.role !== "UMKM") return;
-
-    const nextBulan = bulan;
-    const nextTahun = tahun;
-    const { from, to } = buildDateRange(nextBulan, nextTahun);
-
-    setLoading(true);
-    setError("");
     setPage(0);
-
-    getUMKMDashboard(from, to)
-      .then((d) => {
-        setData(d);
-        setAppliedBulan(nextBulan);
-        setAppliedTahun(nextTahun);
-      })
-      .catch((e) => setError(e instanceof Error ? e.message : "Gagal memuat data"))
-      .finally(() => setLoading(false));
+    if (bulan === appliedBulan && tahun === appliedTahun) {
+      void refetch();
+    } else {
+      setAppliedBulan(bulan);
+      setAppliedTahun(tahun);
+    }
   }
-
-  useEffect(() => {
-    if (!user || user.role !== "UMKM") return;
-    setLoading(true);
-    setError("");
-    const { from, to } = buildDateRange(appliedBulan, appliedTahun);
-    getUMKMDashboard(from, to)
-      .then((d) => setData(d))
-      .catch((e) => setError(e instanceof Error ? e.message : "Gagal memuat data"))
-      .finally(() => setLoading(false));
-  }, [user]);
 
   const labaRows = useMemo(() => {
     if (!data?.laba_harian) return [];

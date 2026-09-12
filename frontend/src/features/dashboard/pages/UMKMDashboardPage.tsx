@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { getCurrentUser } from "../../../shared/auth/currentUser";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { BarChart2, CalendarDays, Search, ShoppingCart, SlidersHorizontal, TrendingDown, TrendingUp, AlertCircle } from "lucide-react";
 import UserLayout from "../components/UserLayout";
 import {
   getUMKMDashboard,
   checkProfileExists,
-  type UMKMDashboardData,
   type LabaHarianItem,
 } from "../api";
 import {
@@ -46,57 +47,38 @@ const YEARS = [2026, 2025, 2024, 2023];
 const PAGE_SIZE = 3;
 
 export default function UMKMDashboardPage() {
+  const userId = getCurrentUser()?.id;
   const now = new Date();
   const [bulan, setBulan] = useState(now.getMonth());
   const [tahun, setTahun] = useState(now.getFullYear());
   const [trendRange, setTrendRange] = useState<7 | 14 | 30 | 90>(7);
 
-  const [data, setData] = useState<UMKMDashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [page, setPage] = useState(0);
 
-  function buildDateRange() {
-    const from = `${tahun}-${String(bulan + 1).padStart(2, "0")}-01`;
-    const lastDay = new Date(tahun, bulan + 1, 0).getDate();
-    const to = `${tahun}-${String(bulan + 1).padStart(2, "0")}-${lastDay}`;
-    return { from, to };
-  }
+  const [appliedMonth, setAppliedMonth] = useState({ bulan, tahun });
+  const { data: result, isFetching: loading, error: fetchError, refetch } = useQuery({
+    queryKey: ["dashboard", "umkm-with-profile", userId, appliedMonth],
+    queryFn: () => {
+      const from = `${appliedMonth.tahun}-${String(appliedMonth.bulan + 1).padStart(2, "0")}-01`;
+      const lastDay = new Date(appliedMonth.tahun, appliedMonth.bulan + 1, 0).getDate();
+      const to = `${appliedMonth.tahun}-${String(appliedMonth.bulan + 1).padStart(2, "0")}-${lastDay}`;
+      return Promise.all([getUMKMDashboard(from, to), checkProfileExists()]);
+    },
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+  const data = result?.[0];
+  const profileExists = result?.[1] ?? true;
+  const error = fetchError?.message || "";
 
   function fetchDashboard() {
-    setLoading(true);
-    setError("");
     setPage(0);
-    const { from, to } = buildDateRange();
-    getUMKMDashboard(from, to)
-      .then((d) => setData(d))
-      .catch((e) => setError(e instanceof Error ? e.message : "Gagal memuat data"))
-      .finally(() => setLoading(false));
-  }
-
-  const [profileExists, setProfileExists] = useState(true);
-
-  useEffect(() => {
-    async function loadDashboard() {
-      setLoading(true);
-      setError("");
-      setPage(0);
-      const { from, to } = buildDateRange();
-      try {
-        const [d, hasProfile] = await Promise.all([
-          getUMKMDashboard(from, to),
-          checkProfileExists(),
-        ]);
-        setData(d);
-        setProfileExists(hasProfile);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Gagal memuat data");
-      } finally {
-        setLoading(false);
-      }
+    if (bulan === appliedMonth.bulan && tahun === appliedMonth.tahun) {
+      void refetch();
+    } else {
+      setAppliedMonth({ bulan, tahun });
     }
-    void loadDashboard();
-  }, []);
+  }
 
   const labaHarian: LabaHarianItem[] = data?.laba_harian ?? [];
   const totalPages = Math.ceil(labaHarian.length / PAGE_SIZE);

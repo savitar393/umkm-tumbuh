@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -304,15 +305,25 @@ export default function PartnershipReviewPage() {
 
   const basePath = getBasePath(user?.role, location.pathname);
 
-  const [partnership, setPartnership] = useState<PartnershipDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
   const [rejectionNotes, setRejectionNotes] = useState("");
   const [rejectionError, setRejectionError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  const { data: partnership = null, isFetching: loading, error: fetchError } = useQuery({
+    queryKey: ["partnerships", "review", user?.id, id],
+    queryFn: async () => {
+      if (!id) throw new Error("ID pengajuan tidak ditemukan.");
+      const response = await partnershipsApi.getDetail(id);
+      if (!response.success || !response.data) throw new Error(response.message || "Data pengajuan tidak ditemukan.");
+      return response.data;
+    },
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+  const error = fetchError?.message || "";
 
   const status = getText(partnership, ["status", "statusPengajuan", "status_pengajuan"], "");
   const statusMeta = getStatusMeta(status);
@@ -349,47 +360,6 @@ export default function PartnershipReviewPage() {
       window.alert(err instanceof Error ? err.message : "Gagal membuka dokumen.");
     }
   }
-
-  useEffect(() => {
-    if (!id) {
-      setError("ID pengajuan tidak ditemukan.");
-      setLoading(false);
-      return;
-    }
-
-    const detailId = id;
-    let ignore = false;
-
-    async function fetchPartnership() {
-      setLoading(true);
-      setError("");
-
-      try {
-        const response = await partnershipsApi.getDetail(detailId);
-
-        if (!ignore) {
-          if (response.success === true && response.data) {
-            setPartnership(response.data);
-          } else {
-            setError(response.message || "Data pengajuan tidak ditemukan.");
-          }
-        }
-      } catch (err) {
-        if (!ignore) {
-          setError(err instanceof Error ? err.message : "Gagal memuat data pengajuan.");
-          setPartnership(null);
-        }
-      } finally {
-        if (!ignore) setLoading(false);
-      }
-    }
-
-    fetchPartnership();
-
-    return () => {
-      ignore = true;
-    };
-  }, [id]);
 
   function handleBack() {
     if (location.pathname.includes("/inbox") || isReceiver) {

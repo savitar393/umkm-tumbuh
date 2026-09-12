@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Icon } from "@iconify/react";
 import { useTrainingDetail, useUpdateProgress, useUserEnrollments } from "../hooks";
@@ -14,7 +14,7 @@ export default function TrainingLessonPage() {
   const { data: enrollments } = useUserEnrollments(umkmId);
 
   const enrollment = (enrollments || []).find((e) => e.pelatihan_id === id);
-  const modules = detail?.modules || [];
+  const modules = useMemo(() => detail?.modules || [], [detail]);
   const currentIndex = modules.findIndex((m) => m.modul_id === lessonId);
   const currentModule = modules[currentIndex] || modules[0];
 
@@ -41,7 +41,7 @@ export default function TrainingLessonPage() {
   const markModuleCompleted = useTrainingStore((s) => s.markModuleCompleted);
   const setCompletedModules = useTrainingStore((s) => s.setCompletedModules);
 
-  const trainingModuleIds = modules.map((m) => m.modul_id);
+  const trainingModuleIds = useMemo(() => modules.map((m) => m.modul_id), [modules]);
   const trainingCompleted = completedModules.filter((id) => trainingModuleIds.includes(id));
 
   useEffect(() => {

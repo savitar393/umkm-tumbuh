@@ -98,6 +98,8 @@ Thumbs.db
 *.swp
 *.swo
 *.md
+!README.id.md
+!docs/README_LOCAL_DEV.id.md
 *.githooks/
 format-go.ps1
 
@@ -107,3 +109,6 @@ format-go.ps1
 infra/db/dummy/generated/
 infra/db/dummy/metadata/
 infra/db/dummy/*.csv
+
+# Generated API test results
+tests/postman/reports/

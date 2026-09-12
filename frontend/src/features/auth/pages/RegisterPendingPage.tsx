@@ -13,16 +13,13 @@ export default function RegisterPendingPage() {
   const user = getCurrentUser();
 
   const navigate = useNavigate();
-  const [checkingStatus, setCheckingStatus] = useState(true);
+  const userID = user?.id;
+  const needsStatusCheck = user?.role === "UMKM" || user?.role === "MITRA";
+  const [checkingStatus, setCheckingStatus] = useState(needsStatusCheck);
   const [statusError, setStatusError] = useState("");
 
   useEffect(() => {
-    if (!user) return;
-
-    if (user.role !== "UMKM" && user.role !== "MITRA") {
-      setCheckingStatus(false);
-      return;
-    }
+    if (!userID || !needsStatusCheck) return;
 
     let cancelled = false;
 
@@ -54,7 +51,7 @@ export default function RegisterPendingPage() {
     return () => {
       cancelled = true;
     };
-  }, [navigate, user?.id, user?.role]);
+  }, [navigate, userID, needsStatusCheck]);
 
   if (!user) {
     return <Navigate to="/login" replace />;

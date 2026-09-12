@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import UmkmLayout from "../../umkm/components/UmkmLayout";
 import { useTrainingStore } from "../store";
@@ -77,6 +77,56 @@ const card = {
   border: "1px solid rgba(255,255,255,0.7)",
 };
 
+function Pagination({ page, totalPages, onChange }: { page: number; totalPages: number; onChange: (p: number) => void }) {
+  if (totalPages <= 1) return null;
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 16 }}>
+      <button
+        disabled={page === 1}
+        onClick={() => onChange(page - 1)}
+        style={{
+          padding: "6px 12px", borderRadius: 8, border: "1px solid #e2e8f0",
+          background: page === 1 ? "#f1f5f9" : "#fff", color: page === 1 ? "#cbd5e1" : "#475569",
+          cursor: page === 1 ? "default" : "pointer", fontSize: 12, fontWeight: 600,
+          transition: "all 0.15s",
+        }}
+      >
+        ‹
+      </button>
+      {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+        <button
+          key={p}
+          onClick={() => onChange(p)}
+          style={{
+            minWidth: 32, height: 32, borderRadius: 8, border: "none",
+            background: p === page ? "#1565c0" : "rgba(255,255,255,0.8)",
+            color: p === page ? "#fff" : "#475569",
+            fontWeight: p === page ? 700 : 500, fontSize: 12, cursor: "pointer",
+            transition: "all 0.15s",
+            boxShadow: p === page ? "0 2px 8px rgba(21,101,192,0.3)" : "0 1px 3px rgba(0,0,0,0.06)",
+          }}
+        >
+          {p}
+        </button>
+      ))}
+      <button
+        disabled={page === totalPages}
+        onClick={() => onChange(page + 1)}
+        style={{
+          padding: "6px 12px", borderRadius: 8, border: "1px solid #e2e8f0",
+          background: page === totalPages ? "#f1f5f9" : "#fff",
+          color: page === totalPages ? "#cbd5e1" : "#475569",
+          cursor: page === totalPages ? "default" : "pointer", fontSize: 12, fontWeight: 600,
+          transition: "all 0.15s",
+        }}
+      >
+        ›
+      </button>
+    </div>
+  );
+}
+
+
 export default function TrainingDashboardPage() {
   const navigate = useNavigate();
   const umkmId = useTrainingStore((s) => s.umkmId);
@@ -94,14 +144,14 @@ export default function TrainingDashboardPage() {
   const { data: enrollments, isLoading: enrollLoading } = useUserEnrollments(umkmId);
   const { data: certificates, isLoading: certLoading } = useUserCertificates(umkmId);
 
-  const ongoing = (enrollments || []).filter(
+  const ongoing = useMemo(() => (enrollments || []).filter(
     (e) => e.status_pendaftaran !== "SELESAI" && !e.tanggal_selesai
-  );
-  const completed = (enrollments || []).filter(
+  ), [enrollments]);
+  const completed = useMemo(() => (enrollments || []).filter(
     (e) => e.status_pendaftaran === "SELESAI" || e.tanggal_selesai
-  );
+  ), [enrollments]);
   const certList = certificates || [];
-  const requestCertMutation = useRequestCertificate();
+  const { mutate: requestCertificate } = useRequestCertificate();
   const requestedRef = useRef<Set<string>>(new Set());
 
   const ITEMS_PER_PAGE = 3;
@@ -112,69 +162,24 @@ export default function TrainingDashboardPage() {
   const ongoingTotalPages = Math.max(1, Math.ceil(ongoing.length / ITEMS_PER_PAGE));
   const completedTotalPages = Math.max(1, Math.ceil(completed.length / ITEMS_PER_PAGE));
   const certTotalPages = Math.max(1, Math.ceil(certList.length / CERT_ITEMS_PER_PAGE));
-
-  useEffect(() => { setOngoingPage(1); }, [ongoing.length]);
-  useEffect(() => { setCompletedPage(1); }, [completed.length]);
-  useEffect(() => { setCertPage(1); }, [certList.length]);
-
-  function Pagination({ page, totalPages, onChange }: { page: number; totalPages: number; onChange: (p: number) => void }) {
-    if (totalPages <= 1) return null;
-    return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 16 }}>
-        <button
-          disabled={page === 1}
-          onClick={() => onChange(page - 1)}
-          style={{
-            padding: "6px 12px", borderRadius: 8, border: "1px solid #e2e8f0",
-            background: page === 1 ? "#f1f5f9" : "#fff", color: page === 1 ? "#cbd5e1" : "#475569",
-            cursor: page === 1 ? "default" : "pointer", fontSize: 12, fontWeight: 600,
-            transition: "all 0.15s",
-          }}
-        >
-          ‹
-        </button>
-        {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-          <button
-            key={p}
-            onClick={() => onChange(p)}
-            style={{
-              minWidth: 32, height: 32, borderRadius: 8, border: "none",
-              background: p === page ? "#1565c0" : "rgba(255,255,255,0.8)",
-              color: p === page ? "#fff" : "#475569",
-              fontWeight: p === page ? 700 : 500, fontSize: 12, cursor: "pointer",
-              transition: "all 0.15s",
-              boxShadow: p === page ? "0 2px 8px rgba(21,101,192,0.3)" : "0 1px 3px rgba(0,0,0,0.06)",
-            }}
-          >
-            {p}
-          </button>
-        ))}
-        <button
-          disabled={page === totalPages}
-          onClick={() => onChange(page + 1)}
-          style={{
-            padding: "6px 12px", borderRadius: 8, border: "1px solid #e2e8f0",
-            background: page === totalPages ? "#f1f5f9" : "#fff",
-            color: page === totalPages ? "#cbd5e1" : "#475569",
-            cursor: page === totalPages ? "default" : "pointer", fontSize: 12, fontWeight: 600,
-            transition: "all 0.15s",
-          }}
-        >
-          ›
-        </button>
-      </div>
-    );
+  const [previousCounts, setPreviousCounts] = useState([ongoing.length, completed.length, certList.length]);
+  if (previousCounts[0] !== ongoing.length || previousCounts[1] !== completed.length || previousCounts[2] !== certList.length) {
+    setPreviousCounts([ongoing.length, completed.length, certList.length]);
+    if (previousCounts[0] !== ongoing.length) setOngoingPage(1);
+    if (previousCounts[1] !== completed.length) setCompletedPage(1);
+    if (previousCounts[2] !== certList.length) setCertPage(1);
   }
+
 
   useEffect(() => {
     if (!completed.length) return;
     completed.forEach((enrollment) => {
       if (!requestedRef.current.has(enrollment.pendaftaran_pelatihan_id)) {
         requestedRef.current.add(enrollment.pendaftaran_pelatihan_id);
-        requestCertMutation.mutate(enrollment.pendaftaran_pelatihan_id);
+        requestCertificate(enrollment.pendaftaran_pelatihan_id);
       }
     });
-  }, [completed.length]);
+  }, [completed, requestCertificate]);
 
   return (
     <UmkmLayout>

@@ -5,7 +5,6 @@ import {
   type MouseEvent,
   type SetStateAction,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
@@ -111,6 +110,38 @@ function onlyDigits(value: string, maxLength?: number) {
   return typeof maxLength === "number" ? digits.slice(0, maxLength) : digits;
 }
 
+type UmkmForm = {
+  namaUmkm: string;
+  nikPemilik: string;
+  namaPemilik: string;
+  phone: string;
+  kategoriUsaha: string;
+  deskripsiUsaha: string;
+  alamatUsaha: string;
+  kotaKabupaten: string;
+  provinsi: string;
+  produkUtama: string;
+};
+
+type MitraForm = {
+  namaOrganisasi: string;
+  jenisMitra: string;
+  nib: string;
+  npwp: string;
+  namaPic: string;
+  jabatanPic: string;
+  emailPic: string;
+  phonePic: string;
+  alamatKantor: string;
+  kotaKabupaten: string;
+  provinsi: string;
+  bidangKemitraan: string;
+  wilayahOperasional: string;
+  jenisDukungan: string;
+  skalaKerjaSama: string;
+  deskripsiTujuan: string;
+};
+
 type UploadState = {
   file: File | null;
   documentId: string | null;
@@ -183,23 +214,14 @@ export default function RegisterDetailsPage() {
   const currentUserID = currentUser?.id ?? "";
   const currentUserRole = currentUser?.role ?? "";
 
-  const role = useMemo<RegisterDetailRole>(() => {
-    return params.role === "mitra" ? "mitra" : "umkm";
-  }, [params.role]);
+  const role: RegisterDetailRole = params.role === "mitra" ? "mitra" : "umkm";
+  const draftKey = registrationDraftKey(role, currentUserID);
+  const needsFlowCheck = currentUserRole === "UMKM" || currentUserRole === "MITRA";
 
-  const draftKey = useMemo(() => {
-    return registrationDraftKey(role, currentUserID);
-  }, [role, currentUserID]);
-
-  const [checkingFlowStatus, setCheckingFlowStatus] = useState(true);
+  const [checkingFlowStatus, setCheckingFlowStatus] = useState(needsFlowCheck);
 
   useEffect(() => {
-    if (!currentUser) return;
-
-    if (currentUser.role !== "UMKM" && currentUser.role !== "MITRA") {
-      setCheckingFlowStatus(false);
-      return;
-    }
+    if (!currentUserID || !needsFlowCheck) return;
 
     let cancelled = false;
 
@@ -232,7 +254,7 @@ export default function RegisterDetailsPage() {
     return () => {
       cancelled = true;
     };
-  }, [currentUser?.id, currentUser?.role, navigate]);
+  }, [currentUserID, needsFlowCheck, navigate]);
 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -240,7 +262,7 @@ export default function RegisterDetailsPage() {
 
   const [loadingExistingProfile, setLoadingExistingProfile] = useState(false);
 
-  const [umkmForm, setUmkmForm] = useState({
+  const [umkmForm, setUmkmForm] = useState<UmkmForm>({
     namaUmkm: "",
     nikPemilik: currentUser?.nik ?? "",
     namaPemilik: currentUser?.full_name ?? "",
@@ -253,7 +275,7 @@ export default function RegisterDetailsPage() {
     produkUtama: "",
   });
 
-  const [mitraForm, setMitraForm] = useState({
+  const [mitraForm, setMitraForm] = useState<MitraForm>({
     namaOrganisasi: "",
     jenisMitra: "",
     nib: "",
@@ -501,7 +523,7 @@ export default function RegisterDetailsPage() {
         },
       }));
 
-      throw new Error(uploadError);
+      throw new Error(uploadError, { cause: err });
     }
   }
 
@@ -903,8 +925,8 @@ function UmkmFields({
   selectFile,
   clearUpload,
 }: {
-  form: any;
-  setForm: Dispatch<SetStateAction<any>>;
+  form: UmkmForm;
+  setForm: Dispatch<SetStateAction<UmkmForm>>;
   uploads: Record<string, UploadState>;
   selectFile: (key: UploadKey, event: ChangeEvent<HTMLInputElement>) => void;
   clearUpload: (key: UploadKey) => void;
@@ -919,7 +941,7 @@ function UmkmFields({
             Nama UMKM
             <input
               value={form.namaUmkm}
-              onChange={(e) => setForm((p: any) => ({ ...p, namaUmkm: e.target.value }))}
+              onChange={(e) => setForm((p) => ({ ...p, namaUmkm: e.target.value }))}
               placeholder="Contoh: Kopi Tumbuh Nusantara"
               required
             />
@@ -936,7 +958,7 @@ function UmkmFields({
             <input
               value={form.nikPemilik}
               onChange={(e) =>
-                setForm((p: any) => ({
+                setForm((p) => ({
                   ...p,
                   nikPemilik: onlyDigits(e.target.value, 16),
                 }))
@@ -951,7 +973,7 @@ function UmkmFields({
             Nama Pemilik
             <input
               value={form.namaPemilik}
-              onChange={(e) => setForm((p: any) => ({ ...p, namaPemilik: e.target.value }))}
+              onChange={(e) => setForm((p) => ({ ...p, namaPemilik: e.target.value }))}
               placeholder="Sesuai KTP"
               required
             />
@@ -963,7 +985,7 @@ function UmkmFields({
               <span>+62</span>
               <input
                 value={form.phone}
-                onChange={(e) => setForm((p: any) => ({ ...p, phone: e.target.value.replace(/\D/g, "") }))}
+                onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value.replace(/\D/g, "") }))}
                 placeholder="8123456789"
               />
             </div>
@@ -977,7 +999,7 @@ function UmkmFields({
             <select
               value={form.kategoriUsaha}
               onChange={(e) =>
-                setForm((p: any) => ({
+                setForm((p) => ({
                   ...p,
                   kategoriUsaha: e.target.value,
                 }))
@@ -998,7 +1020,7 @@ function UmkmFields({
         <label>
           <textarea
             value={form.deskripsiUsaha}
-            onChange={(e) => setForm((p: any) => ({ ...p, deskripsiUsaha: e.target.value }))}
+            onChange={(e) => setForm((p) => ({ ...p, deskripsiUsaha: e.target.value }))}
             placeholder="Ceritakan sejarah singkat, keunikan, dan visi usaha Anda..."
             required
           />
@@ -1008,7 +1030,7 @@ function UmkmFields({
         <label>
           <textarea
             value={form.alamatUsaha}
-            onChange={(e) => setForm((p: any) => ({ ...p, alamatUsaha: e.target.value }))}
+            onChange={(e) => setForm((p) => ({ ...p, alamatUsaha: e.target.value }))}
             placeholder="Alamat lengkap (Jalan, No, RT/RW, Kelurahan, Kecamatan, Kota/Kabupaten)"
             required
           />
@@ -1020,7 +1042,7 @@ function UmkmFields({
             <input
               value={form.kotaKabupaten}
               onChange={(e) =>
-                setForm((p: any) => ({ ...p, kotaKabupaten: e.target.value }))
+                setForm((p) => ({ ...p, kotaKabupaten: e.target.value }))
               }
               placeholder="Contoh: Surakarta"
               required
@@ -1032,7 +1054,7 @@ function UmkmFields({
             <input
               value={form.provinsi}
               onChange={(e) =>
-                setForm((p: any) => ({ ...p, provinsi: e.target.value }))
+                setForm((p) => ({ ...p, provinsi: e.target.value }))
               }
               placeholder="Contoh: Jawa Tengah"
               required
@@ -1046,7 +1068,7 @@ function UmkmFields({
             Produk Utama
             <input
               value={form.produkUtama}
-              onChange={(e) => setForm((p: any) => ({ ...p, produkUtama: e.target.value }))}
+              onChange={(e) => setForm((p) => ({ ...p, produkUtama: e.target.value }))}
               placeholder="Nama produk yang paling laku"
             />
           </label>
@@ -1085,8 +1107,8 @@ function MitraFields({
   selectFile,
   clearUpload,
 }: {
-  form: any;
-  setForm: Dispatch<SetStateAction<any>>;
+  form: MitraForm;
+  setForm: Dispatch<SetStateAction<MitraForm>>;
   uploads: Record<UploadKey, UploadState>;
   selectFile: (key: UploadKey, event: ChangeEvent<HTMLInputElement>) => void;
   clearUpload: (key: UploadKey) => void;
@@ -1101,7 +1123,7 @@ function MitraFields({
             Nama perusahaan / institusi
             <input
               value={form.namaOrganisasi}
-              onChange={(e) => setForm((p: any) => ({ ...p, namaOrganisasi: e.target.value }))}
+              onChange={(e) => setForm((p) => ({ ...p, namaOrganisasi: e.target.value }))}
               placeholder="Contoh: PT Global Solusi UMKM"
               required
             />
@@ -1111,7 +1133,7 @@ function MitraFields({
             Jenis mitra
             <select
               value={form.jenisMitra}
-              onChange={(e) => setForm((p: any) => ({ ...p, jenisMitra: e.target.value }))}
+              onChange={(e) => setForm((p) => ({ ...p, jenisMitra: e.target.value }))}
               required
             >
               <option value="">Pilih jenis mitra</option>
@@ -1135,7 +1157,7 @@ function MitraFields({
             <input
               value={form.nib}
               onChange={(e) =>
-                setForm((p: any) => ({
+                setForm((p) => ({
                   ...p,
                   nib: onlyDigits(e.target.value, 13),
                 }))
@@ -1157,7 +1179,7 @@ function MitraFields({
             <input
               value={form.npwp}
               onChange={(e) =>
-                setForm((p: any) => ({
+                setForm((p) => ({
                   ...p,
                   npwp: onlyDigits(e.target.value, 15),
                 }))
@@ -1175,7 +1197,7 @@ function MitraFields({
             Nama PIC
             <input
               value={form.namaPic}
-              onChange={(e) => setForm((p: any) => ({ ...p, namaPic: e.target.value }))}
+              onChange={(e) => setForm((p) => ({ ...p, namaPic: e.target.value }))}
               placeholder="Nama lengkap sesuai identitas"
               required
             />
@@ -1185,7 +1207,7 @@ function MitraFields({
             Jabatan
             <input
               value={form.jabatanPic}
-              onChange={(e) => setForm((p: any) => ({ ...p, jabatanPic: e.target.value }))}
+              onChange={(e) => setForm((p) => ({ ...p, jabatanPic: e.target.value }))}
               placeholder="Contoh: Manager Operasional"
             />
           </label>
@@ -1195,7 +1217,7 @@ function MitraFields({
             <input
               type="email"
               value={form.emailPic}
-              onChange={(e) => setForm((p: any) => ({ ...p, emailPic: e.target.value }))}
+              onChange={(e) => setForm((p) => ({ ...p, emailPic: e.target.value }))}
               placeholder="nama@perusahaan.com"
             />
           </label>
@@ -1206,7 +1228,7 @@ function MitraFields({
               <span>+62</span>
               <input
                 value={form.phonePic}
-                onChange={(e) => setForm((p: any) => ({ ...p, phonePic: e.target.value.replace(/\D/g, "") }))}
+                onChange={(e) => setForm((p) => ({ ...p, phonePic: e.target.value.replace(/\D/g, "") }))}
                 placeholder="812xxxxxx"
               />
             </div>
@@ -1219,7 +1241,7 @@ function MitraFields({
             Alamat kantor
             <textarea
               value={form.alamatKantor}
-              onChange={(e) => setForm((p: any) => ({ ...p, alamatKantor: e.target.value }))}
+              onChange={(e) => setForm((p) => ({ ...p, alamatKantor: e.target.value }))}
               placeholder="Alamat lengkap kantor / institusi"
             />
           </label>
@@ -1228,7 +1250,7 @@ function MitraFields({
             Kota/Kabupaten
             <input
               value={form.kotaKabupaten}
-              onChange={(e) => setForm((p: any) => ({ ...p, kotaKabupaten: e.target.value }))}
+              onChange={(e) => setForm((p) => ({ ...p, kotaKabupaten: e.target.value }))}
               placeholder="Contoh: Surakarta"
             />
           </label>
@@ -1237,7 +1259,7 @@ function MitraFields({
             Provinsi
             <input
               value={form.provinsi}
-              onChange={(e) => setForm((p: any) => ({ ...p, provinsi: e.target.value }))}
+              onChange={(e) => setForm((p) => ({ ...p, provinsi: e.target.value }))}
               placeholder="Contoh: Jawa Tengah"
             />
           </label>
@@ -1249,7 +1271,7 @@ function MitraFields({
             Bidang kemitraan
             <select
               value={form.bidangKemitraan}
-              onChange={(e) => setForm((p: any) => ({ ...p, bidangKemitraan: e.target.value }))}
+              onChange={(e) => setForm((p) => ({ ...p, bidangKemitraan: e.target.value }))}
             >
               <option value="">Pilih bidang</option>
               <option value="Akses Permodalan">Akses Permodalan</option>
@@ -1265,7 +1287,7 @@ function MitraFields({
             Wilayah operasional
             <input
               value={form.wilayahOperasional}
-              onChange={(e) => setForm((p: any) => ({ ...p, wilayahOperasional: e.target.value }))}
+              onChange={(e) => setForm((p) => ({ ...p, wilayahOperasional: e.target.value }))}
               placeholder="Contoh: Seluruh Indonesia"
             />
           </label>
@@ -1274,7 +1296,7 @@ function MitraFields({
             Jenis dukungan
             <input
               value={form.jenisDukungan}
-              onChange={(e) => setForm((p: any) => ({ ...p, jenisDukungan: e.target.value }))}
+              onChange={(e) => setForm((p) => ({ ...p, jenisDukungan: e.target.value }))}
               placeholder="Contoh: Akses Permodalan"
             />
           </label>
@@ -1283,7 +1305,7 @@ function MitraFields({
             Skala kerja sama
             <select
               value={form.skalaKerjaSama}
-              onChange={(e) => setForm((p: any) => ({ ...p, skalaKerjaSama: e.target.value }))}
+              onChange={(e) => setForm((p) => ({ ...p, skalaKerjaSama: e.target.value }))}
             >
               <option value="">Pilih skala</option>
               <option value="Lokal">Lokal</option>
@@ -1298,7 +1320,7 @@ function MitraFields({
           Deskripsi tujuan kemitraan
           <textarea
             value={form.deskripsiTujuan}
-            onChange={(e) => setForm((p: any) => ({ ...p, deskripsiTujuan: e.target.value }))}
+            onChange={(e) => setForm((p) => ({ ...p, deskripsiTujuan: e.target.value }))}
             placeholder="Jelaskan secara singkat visi dan misi dari kemitraan yang akan dijalin..."
           />
         </label>
