@@ -10,7 +10,7 @@ import unittest
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
-from check import AUTH, DOCUMENT, upload
+from check import AUTH, DOCUMENT, PNG, upload
 
 
 PARTNERSHIP = "http://partnerships-service:8082/api/v1"
@@ -61,7 +61,7 @@ class AuthorizationTests(unittest.TestCase):
         cls.documents = {}
         for suffix in ("a", "b"):
             cls.documents[suffix] = upload(DOCUMENT + "/documents/upload", cls.tokens["umkm." + suffix],
-                "file", "authorization.txt", "text/plain", b"Synthetic authorization fixture.\n",
+                "file", "authorization.png", "image/png", PNG,
                 {"category": "PARTNERSHIP_FILE"}, expected=201)["document"]["id"]
         cls.training_id = cls.create_training()
         cls.enrollments = {}

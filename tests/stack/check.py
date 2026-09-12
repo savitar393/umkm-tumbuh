@@ -18,7 +18,7 @@ GARAGE = "http://garage:3903/v2"
 STATE = Path("/state/check.json")
 TEXT = b"Stage 1 document: upload, download, and restart.\n"
 PNG = base64.b64decode(
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jZ1kAAAAASUVORK5CYII="
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII="
 )
 
 
