@@ -112,3 +112,4 @@ infra/db/dummy/*.csv
 
 # Generated API test results
 tests/postman/reports/
+tests/stack/reports/

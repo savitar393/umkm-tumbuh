@@ -87,6 +87,8 @@ The test does not leave the development application running. Start it using the 
 
 The [Postman/Newman guide](tests/postman/README.md) documents the current contract suite, JUnit report, and archived collections. Passing Stage 1 confirms the local infrastructure and tested API flows; it does not validate every feature or authorization rule.
 
+The stack command also runs the Stage 2 authorization regressions. See the [authorization guide](docs/README_AUTHORIZATION.md) for role/ownership rules, test coverage, and current limitations.
+
 ## Frontend and CI checks
 
 ```bash
@@ -119,6 +121,7 @@ The optional large CSV seed replaces application data. It is unnecessary for sta
 | --- | --- | --- |
 | Project overview | [Read](README.md) | [Baca](README.id.md) |
 | Local development and Stage 1 | [Read](docs/README_LOCAL_DEV.md) | [Baca](docs/README_LOCAL_DEV.id.md) |
+| Stage 2 authorization | [Read](docs/README_AUTHORIZATION.md) | [Baca](docs/README_AUTHORIZATION.id.md) |
 | Frontend | [Read](frontend/README.md) | [Baca](frontend/README.id.md) |
 | Database | [Read](infra/db/README.md) | [Baca](infra/db/README.id.md) |
 | Training service | [Read](services/training-service/README.md) | [Baca](services/training-service/README.id.md) |

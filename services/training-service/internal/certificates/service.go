@@ -3,25 +3,29 @@ package certificates
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/savitar393/umkm-tumbuh/services/training-service/internal/access"
 	"github.com/savitar393/umkm-tumbuh/services/training-service/internal/apperror"
 )
 
 type Service struct {
 	Repo    *Repository
+	Access  *access.Authorizer
 	certDir string
 }
 
 func NewService(repo *Repository, certDir string) *Service {
-	return &Service{Repo: repo, certDir: certDir}
+	return &Service{Repo: repo, certDir: certDir, Access: access.New(repo.DB)}
 }
 
 func (s *Service) GetUserDashboard(ctx context.Context, umkmID string) (*CertificateDashboardResponse, error) {
+	if err := s.Access.UMKM(ctx, umkmID, true); err != nil {
+		return nil, err
+	}
 	if umkmID == "" {
 		return nil, apperror.New(http.StatusBadRequest, "UMKM ID harus diisi")
 	}
@@ -39,6 +43,9 @@ func (s *Service) GetUserDashboard(ctx context.Context, umkmID string) (*Certifi
 }
 
 func (s *Service) GetUserCertificates(ctx context.Context, umkmID string) ([]CertificateResponse, error) {
+	if err := s.Access.UMKM(ctx, umkmID, true); err != nil {
+		return nil, err
+	}
 	if umkmID == "" {
 		return nil, apperror.New(http.StatusBadRequest, "UMKM ID harus diisi")
 	}
@@ -56,6 +63,9 @@ func (s *Service) GetUserCertificates(ctx context.Context, umkmID string) ([]Cer
 }
 
 func (s *Service) GetCertificateByID(ctx context.Context, sertifikatID int64) (*CertificateResponse, error) {
+	if err := s.Access.Certificate(ctx, sertifikatID, true); err != nil {
+		return nil, err
+	}
 	cert, err := s.Repo.GetCertificateByID(ctx, sertifikatID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -68,6 +78,9 @@ func (s *Service) GetCertificateByID(ctx context.Context, sertifikatID int64) (*
 }
 
 func (s *Service) RequestCertificate(ctx context.Context, req RequestCertificateRequest) (*RequestCertificateResponse, error) {
+	if err := s.Access.Enrollment(ctx, req.PendaftaranPelatihanID, false); err != nil {
+		return nil, err
+	}
 	if req.PendaftaranPelatihanID == "" {
 		return nil, apperror.New(http.StatusBadRequest, "Pendaftaran Pelatihan ID harus diisi")
 	}
@@ -84,6 +97,9 @@ func (s *Service) RequestCertificate(ctx context.Context, req RequestCertificate
 }
 
 func (s *Service) ApproveCertificate(ctx context.Context, sertifikatID int64) (*CertificateResponse, error) {
+	if err := access.RequireAdmin(ctx); err != nil {
+		return nil, err
+	}
 	cert, err := s.Repo.GetCertificateByID(ctx, sertifikatID)
 	if err != nil {
 		return nil, err
@@ -115,6 +131,9 @@ func (s *Service) ApproveCertificate(ctx context.Context, sertifikatID int64) (*
 }
 
 func (s *Service) ListCertificatesByStatus(ctx context.Context, status, search, sortBy, sortOrder string, page, limit int) (*ListCertificatesResponse, error) {
+	if err := access.RequireAdmin(ctx); err != nil {
+		return nil, err
+	}
 	offset := (page - 1) * limit
 
 	certs, err := s.Repo.ListCertificatesByStatus(ctx, status, search, sortBy, sortOrder, limit, offset)
@@ -139,10 +158,16 @@ func (s *Service) ListCertificatesByStatus(ctx context.Context, status, search, 
 }
 
 func (s *Service) GetCertificateStats(ctx context.Context) (*CertificateStatsResponse, error) {
+	if err := access.RequireAdmin(ctx); err != nil {
+		return nil, err
+	}
 	return s.Repo.GetCertificateStats(ctx)
 }
 
 func (s *Service) RejectCertificate(ctx context.Context, sertifikatID int64, catatan string) (*CertificateResponse, error) {
+	if err := access.RequireAdmin(ctx); err != nil {
+		return nil, err
+	}
 	cert, err := s.Repo.GetCertificateByID(ctx, sertifikatID)
 	if err != nil {
 		return nil, err
@@ -157,7 +182,7 @@ func (s *Service) RejectCertificate(ctx context.Context, sertifikatID int64, cat
 }
 
 func (s *Service) GetCertificatePDFPath(ctx context.Context, sertifikatID int64) (string, error) {
-	cert, err := s.Repo.GetCertificateByID(ctx, sertifikatID)
+	cert, err := s.GetCertificateByID(ctx, sertifikatID)
 	if err != nil {
 		return "", err
 	}
@@ -165,9 +190,7 @@ func (s *Service) GetCertificatePDFPath(ctx context.Context, sertifikatID int64)
 		return "", apperror.New(http.StatusBadRequest, "Sertifikat belum diterbitkan")
 	}
 
-	safeTitle := sanitizeFilename(cert.JudulPelatihan)
-	safeName := sanitizeFilename(cert.PelakuNama)
-	fileName := fmt.Sprintf("sertifikat_%s_%s.pdf", safeTitle, safeName)
+	fileName := certificateFilename(cert.SertifikatID)
 	filePath := filepath.Join(s.certDir, fileName)
 
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {

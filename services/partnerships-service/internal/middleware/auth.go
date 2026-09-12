@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/savitar393/umkm-tumbuh/services/training-service/internal/response"
+	"github.com/savitar393/umkm-tumbuh/services/partnerships-service/internal/response"
 )
 
 type contextKey string

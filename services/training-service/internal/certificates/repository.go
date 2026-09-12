@@ -12,12 +12,12 @@ import (
 )
 
 var allowedSortColumns = map[string]bool{
-	"tanggal_pengajuan": true,
-	"tanggal_terbit":    true,
-	"pelaku_nama":       true,
-	"nama_umkm":         true,
-	"judul_pelatihan":   true,
-	"progress_persen":   true,
+	"tanggal_pengajuan":    true,
+	"tanggal_terbit":       true,
+	"pelaku_nama":          true,
+	"nama_umkm":            true,
+	"judul_pelatihan":      true,
+	"progress_persen":      true,
 	"status_sertifikat_id": true,
 }
 

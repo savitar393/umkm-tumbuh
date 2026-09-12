@@ -173,6 +173,8 @@ Commit intentional module changes before running the tidy check, because it comp
 
 `ci.yml` checks Go, frontend, and Compose configuration on pull requests to `main`, supported branch pushes, and manual runs. `local-stack.yml` runs the actual stack for changes to services, infrastructure, API tests, workflow files, or `.env.example`, and on manual runs. A green Compose configuration check alone does not confirm the stack starts.
 
+The same command now includes [Stage 2 authorization tests](README_AUTHORIZATION.md). It writes the detailed authorization log to `tests/stack/reports/authorization.txt`; CI uploads it alongside the Newman report. Additional Go jobs cover partnership and training formatting, vet, race tests, and builds.
+
 ## Development rules
 
 Do not commit:

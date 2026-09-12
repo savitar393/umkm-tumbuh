@@ -46,22 +46,22 @@ Semua lokasi di bawah diawali `/api/v1`. Rute berautentikasi memerlukan `Authori
 | GET | `/trainings/` | Publik | Daftar pelatihan |
 | GET | `/trainings/{id}` | Publik | Data pelatihan |
 | GET | `/trainings/{id}/detail` | Publik | Detail dan modul pelatihan |
-| POST | `/trainings/enroll` | JWT | Mendaftar pelatihan |
-| GET | `/enrollments/user/{umkmID}` | JWT | Daftar pendaftaran pengguna |
-| PATCH | `/enrollments/progress` | JWT | Memperbarui progres |
-| PATCH | `/enrollments/complete` | JWT | Menyelesaikan pelatihan |
-| GET | `/certificates/list`, `/certificates/stats` | JWT | Daftar dan statistik sertifikat |
-| GET | `/certificates/user/{umkmID}` | JWT | Sertifikat pengguna |
-| GET | `/certificates/user/{umkmID}/dashboard` | JWT | Dasbor sertifikat pengguna |
-| GET | `/certificates/{id}`, `/certificates/{id}/download` | JWT | Data atau berkas sertifikat |
-| POST | `/certificates/request` | JWT | Mengajukan sertifikat |
-| POST | `/certificates/{id}/approve`, `/certificates/{id}/reject` | JWT | Meninjau sertifikat |
-| GET | `/admin/training/`, `/admin/training/stats`, `/admin/training/{id}` | JWT | Tampilan pengelolaan pelatihan |
-| POST | `/admin/training/` | JWT | Membuat pelatihan |
-| PUT / DELETE | `/admin/training/{id}` | JWT | Memperbarui atau menghapus pelatihan |
-| PATCH | `/admin/training/{id}/status` | JWT | Memperbarui status pelatihan |
+| POST | `/trainings/enroll` | Pemilik UMKM | Mendaftar pelatihan |
+| GET | `/enrollments/user/{umkmID}` | Pemilik atau admin | Daftar pendaftaran pengguna |
+| PATCH | `/enrollments/progress` | Pemilik UMKM | Memperbarui progres |
+| PATCH | `/enrollments/complete` | Pemilik UMKM | Menyelesaikan pelatihan |
+| GET | `/certificates/list`, `/certificates/stats` | Admin | Daftar dan statistik sertifikat |
+| GET | `/certificates/user/{umkmID}` | Pemilik atau admin | Sertifikat pengguna |
+| GET | `/certificates/user/{umkmID}/dashboard` | Pemilik atau admin | Dasbor sertifikat pengguna |
+| GET | `/certificates/{id}`, `/certificates/{id}/download` | Pemilik atau admin | Data atau berkas sertifikat |
+| POST | `/certificates/request` | Pemilik UMKM | Mengajukan sertifikat |
+| POST | `/certificates/{id}/approve`, `/certificates/{id}/reject` | Admin | Meninjau sertifikat |
+| GET | `/admin/training/`, `/admin/training/stats`, `/admin/training/{id}` | Admin | Tampilan pengelolaan pelatihan |
+| POST | `/admin/training/` | Admin | Membuat pelatihan |
+| PUT / DELETE | `/admin/training/{id}` | Admin | Memperbarui atau menghapus pelatihan |
+| PATCH | `/admin/training/{id}/status` | Admin | Memperbarui status pelatihan |
 
-Tabel mengikuti rute dan middleware JWT pada [internal/router/router.go](internal/router/router.go); tabel ini bukan hasil verifikasi seluruh aturan peran atau kepemilikan data. Field permintaan dan validasi bisnis berada pada handler di `internal/trainings/` dan `internal/certificates/`.
+Pembatasan peran diterapkan pada router dan service. Kepemilikan diperiksa melalui relasi akun/usaha/pendaftaran di PostgreSQL. Lihat [panduan otorisasi Stage 2](../../docs/README_AUTHORIZATION.id.md) untuk aturan dan batasan lengkap.
 
 ## Memeriksa layanan
 
@@ -78,4 +78,4 @@ curl -fsS -H "Authorization: Bearer $TOKEN" \
   "http://localhost:8084/api/v1/enrollments/user/$UMKM_ID"
 ```
 
-Gunakan port host yang benar jika berbeda dari 8084. Pengujian stack Stage 1 memeriksa kondisi training dan koneksi basis datanya; pengujian tersebut belum menjalankan alur pendaftaran pelatihan atau sertifikat.
+Gunakan port host yang benar jika berbeda dari 8084. Pengujian stack kini juga memeriksa kepemilikan pendaftaran, progres, pengajuan/peninjauan sertifikat, dan akses PDF. Jalankan `bash tests/stack/run.sh` dari direktori utama repositori; lihat [panduan otorisasi](../../docs/README_AUTHORIZATION.id.md).

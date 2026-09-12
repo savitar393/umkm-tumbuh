@@ -3,20 +3,23 @@ package partnerships
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/savitar393/umkm-tumbuh/services/partnerships-service/internal/apperror"
 )
 
 type Repository interface {
+	OwnsDocument(ctx context.Context, actorID, documentID string, legacy bool) (bool, error)
 	Create(ctx context.Context, req *PartnershipRequest) error
 	CountAll(ctx context.Context) (int, error)
 	FindByID(ctx context.Context, id string) (*PartnershipResponse, error)
 	FindByRequesterID(ctx context.Context, requesterID string, status *PartnershipStatus, limit, offset int) ([]PartnershipListResponse, int, error)
 	FindByReceiverID(ctx context.Context, receiverID string, status *PartnershipStatus, limit, offset int) ([]PartnershipListResponse, int, error)
-	UpdateStatus(ctx context.Context, id string, status PartnershipStatus, rejectionReason *string, decidedAt time.Time) error
-	UpdateContract(ctx context.Context, id string, dokumenKontrak string, signedAt time.Time) error
+	UpdateStatus(ctx context.Context, id, actorID string, expectedStatus, status PartnershipStatus, rejectionReason *string, decidedAt time.Time) error
+	UpdateContract(ctx context.Context, id, actorID string, expectedStatus PartnershipStatus, dokumenKontrak string, signedAt time.Time) error
 	GenerateRequestCode(ctx context.Context) (string, error)
 	GetSummary(ctx context.Context, userID string) (map[string]int, error)
 	GetIncomingSummary(ctx context.Context, userID string) (map[string]int, error)
@@ -127,7 +130,7 @@ func (r *repository) FindByID(ctx context.Context, id string) (*PartnershipRespo
 
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return nil, fmt.Errorf("partnership request not found")
+			return nil, apperror.New(http.StatusNotFound, "Pengajuan kemitraan tidak ditemukan")
 		}
 		return nil, fmt.Errorf("failed to find partnership request: %w", err)
 	}
@@ -271,45 +274,65 @@ func (r *repository) FindByReceiverID(ctx context.Context, receiverID string, st
 	return partnerships, totalCount, nil
 }
 
-func (r *repository) UpdateStatus(ctx context.Context, id string, status PartnershipStatus, rejectionReason *string, decidedAt time.Time) error {
-	query := `
+func (r *repository) UpdateStatus(ctx context.Context, id, actorID string, expectedStatus, status PartnershipStatus, rejectionReason *string, decidedAt time.Time) error {
+	const query = `
 		UPDATE partnership.transaksi_pengajuankerjasama
 		SET status_pengajuan_id = $1,
 			catatan_keputusan = $2,
 			tanggal_keputusan = $3,
 			updated_at = NOW()
-		WHERE pengajuan_id = $4
+		WHERE pengajuan_id = $4 AND status_pengajuan_id = $6
+		  AND (($1 IN ('AKTIF', 'DITOLAK') AND penerima_akun_id = $5
+		        AND status_pengajuan_id IN ('DIAJUKAN', 'DITINJAU'))
+		    OR ($1 = 'DIBATALKAN' AND pengaju_akun_id = $5
+		        AND status_pengajuan_id IN ('DRAFT', 'DIAJUKAN', 'DITINJAU')))
 	`
-
-	result, err := r.db.Exec(ctx, query, status, rejectionReason, decidedAt, id)
+	tag, err := r.db.Exec(ctx, query, status, rejectionReason, decidedAt, id, actorID, expectedStatus)
 	if err != nil {
-		return fmt.Errorf("failed to update partnership status: %w", err)
+		return err
 	}
-
-	if result.RowsAffected() == 0 {
-		return fmt.Errorf("partnership request not found")
+	if tag.RowsAffected() == 0 {
+		return apperror.New(http.StatusConflict, "Pengajuan telah berubah. Muat ulang sebelum mencoba lagi")
 	}
-
 	return nil
 }
 
-func (r *repository) UpdateContract(ctx context.Context, id string, dokumenKontrak string, signedAt time.Time) error {
-	query := `
-		UPDATE partnership.transaksi_pengajuankerjasama 
+func (r *repository) UpdateContract(ctx context.Context, id, actorID string, expectedStatus PartnershipStatus, dokumenKontrak string, signedAt time.Time) error {
+	const query = `
+		UPDATE partnership.transaksi_pengajuankerjasama
 		SET dokumen_perjanjian_id = $1, tanggal_upload_dokumen = $2, updated_at = NOW()
-		WHERE pengajuan_id = $3
+		WHERE pengajuan_id = $3 AND pengaju_akun_id = $4 AND status_pengajuan_id = $5
+		  AND status_pengajuan_id IN ('DIAJUKAN', 'DITINJAU', 'MENUNGGU_DOKUMEN_TTD')
+		  AND EXISTS (
+		      SELECT 1 FROM document.transaksi_dokumenterunggah d
+		      WHERE d.dokumen_id = $1 AND d.uploader_akun_id = $4
+		  )
 	`
-
-	result, err := r.db.Exec(ctx, query, dokumenKontrak, signedAt, id)
+	tag, err := r.db.Exec(ctx, query, dokumenKontrak, signedAt, id, actorID, expectedStatus)
 	if err != nil {
-		return fmt.Errorf("failed to update contract document: %w", err)
+		return err
 	}
-
-	if result.RowsAffected() == 0 {
-		return fmt.Errorf("partnership request not found")
+	if tag.RowsAffected() == 0 {
+		return apperror.New(http.StatusConflict, "Pengajuan atau dokumen telah berubah. Muat ulang sebelum mencoba lagi")
 	}
-
 	return nil
+}
+
+// Kontrak masih memakai tabel dokumen lama; lampiran memakai metadata upload saat ini.
+func (r *repository) OwnsDocument(ctx context.Context, actorID, documentID string, legacy bool) (bool, error) {
+	query := `SELECT EXISTS (
+		SELECT 1 FROM documents.master_dokumen
+		WHERE dokumen_id = $1 AND uploader_akun_id = $2 AND status = 'AKTIF'
+	)`
+	if legacy {
+		query = `SELECT EXISTS (
+			SELECT 1 FROM document.transaksi_dokumenterunggah
+			WHERE dokumen_id = $1 AND uploader_akun_id = $2
+		)`
+	}
+	var owned bool
+	err := r.db.QueryRow(ctx, query, documentID, actorID).Scan(&owned)
+	return owned, err
 }
 
 func (r *repository) GetSummary(ctx context.Context, userID string) (map[string]int, error) {

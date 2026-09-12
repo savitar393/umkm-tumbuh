@@ -30,6 +30,7 @@ func main() {
 	appRouter := router.NewRouter(
 		partnershipHandler,
 		cfg.FrontendURL,
+		cfg.JWTSecret,
 	)
 
 	address := fmt.Sprintf("%s:%s", cfg.ServerHost, cfg.ServerPort)

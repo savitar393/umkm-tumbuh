@@ -104,6 +104,16 @@ services:
       - --reporter-junit-export
       - /reports/newman.xml
     networks: [umkm_network]
+  authorization-check:
+    image: python:3.12-alpine
+    profiles: [check]
+    environment:
+      JWT_SECRET: stage1-isolated-test-jwt-secret
+    volumes:
+      - ../tests/stack/authorization.py:/app/authorization.py:ro
+      - ../tests/stack/check.py:/app/check.py:ro
+    entrypoint: ["python", "/app/authorization.py"]
+    networks: [umkm_network]
   stack-check:
     image: python:3.12-alpine
     profiles: [check]

@@ -33,12 +33,14 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v6
-      - name: Check startup, API contracts, uploads, and persistent volumes
+      - name: Check startup, API contracts, authorization, uploads, and persistent volumes
         run: bash tests/stack/run.sh
       - name: Upload API contract results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: api-contract-results
-          path: tests/postman/reports/newman.xml
+          path: |
+            tests/postman/reports/newman.xml
+            tests/stack/reports/authorization.txt
           if-no-files-found: ignore

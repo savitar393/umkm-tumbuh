@@ -46,22 +46,22 @@ All paths below start with `/api/v1`. Authenticated routes require `Authorizatio
 | GET | `/trainings/` | Public | Training list |
 | GET | `/trainings/{id}` | Public | Training record |
 | GET | `/trainings/{id}/detail` | Public | Training details and modules |
-| POST | `/trainings/enroll` | JWT | Enroll in training |
-| GET | `/enrollments/user/{umkmID}` | JWT | User enrollments |
-| PATCH | `/enrollments/progress` | JWT | Update progress |
-| PATCH | `/enrollments/complete` | JWT | Complete training |
-| GET | `/certificates/list`, `/certificates/stats` | JWT | Certificate lists and statistics |
-| GET | `/certificates/user/{umkmID}` | JWT | User certificates |
-| GET | `/certificates/user/{umkmID}/dashboard` | JWT | User certificate dashboard |
-| GET | `/certificates/{id}`, `/certificates/{id}/download` | JWT | Certificate record or file |
-| POST | `/certificates/request` | JWT | Request a certificate |
-| POST | `/certificates/{id}/approve`, `/certificates/{id}/reject` | JWT | Review a certificate |
-| GET | `/admin/training/`, `/admin/training/stats`, `/admin/training/{id}` | JWT | Training management views |
-| POST | `/admin/training/` | JWT | Create training |
-| PUT / DELETE | `/admin/training/{id}` | JWT | Update or delete training |
-| PATCH | `/admin/training/{id}/status` | JWT | Update training status |
+| POST | `/trainings/enroll` | UMKM owner | Enroll in training |
+| GET | `/enrollments/user/{umkmID}` | Owner or admin | User enrollments |
+| PATCH | `/enrollments/progress` | UMKM owner | Update progress |
+| PATCH | `/enrollments/complete` | UMKM owner | Complete training |
+| GET | `/certificates/list`, `/certificates/stats` | Admin | Certificate lists and statistics |
+| GET | `/certificates/user/{umkmID}` | Owner or admin | User certificates |
+| GET | `/certificates/user/{umkmID}/dashboard` | Owner or admin | User certificate dashboard |
+| GET | `/certificates/{id}`, `/certificates/{id}/download` | Owner or admin | Certificate record or file |
+| POST | `/certificates/request` | UMKM owner | Request a certificate |
+| POST | `/certificates/{id}/approve`, `/certificates/{id}/reject` | Admin | Review a certificate |
+| GET | `/admin/training/`, `/admin/training/stats`, `/admin/training/{id}` | Admin | Training management views |
+| POST | `/admin/training/` | Admin | Create training |
+| PUT / DELETE | `/admin/training/{id}` | Admin | Update or delete training |
+| PATCH | `/admin/training/{id}/status` | Admin | Update training status |
 
-The table reflects routes and JWT middleware in [internal/router/router.go](internal/router/router.go); it is not a verification of every role or ownership rule. Request fields and business validation live in the handlers under `internal/trainings/` and `internal/certificates/`.
+Role restrictions are enforced in the router and services. Ownership is checked against the account/business/enrollment relationships in PostgreSQL. See the [Stage 2 authorization guide](../../docs/README_AUTHORIZATION.md) for the full rules and limitations.
 
 ## Check the service
 
@@ -78,4 +78,4 @@ curl -fsS -H "Authorization: Bearer $TOKEN" \
   "http://localhost:8084/api/v1/enrollments/user/$UMKM_ID"
 ```
 
-Use the actual published host port if it differs from 8084. The Stage 1 stack check verifies training health and database connectivity; it does not exercise enrollment or certificate workflows.
+Use the actual published host port if it differs from 8084. The stack check now also tests enrollment ownership, progress, certificate requests/review, and PDF access. Run `bash tests/stack/run.sh` from the repository root; see the [authorization guide](../../docs/README_AUTHORIZATION.md).
