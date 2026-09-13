@@ -12,7 +12,7 @@ import (
 )
 
 type Repository interface {
-	OwnsDocument(ctx context.Context, actorID, documentID string, legacy bool) (bool, error)
+	OwnsDocument(ctx context.Context, actorID, documentID string, requirePartnershipFile bool) (bool, error)
 	Create(ctx context.Context, req *PartnershipRequest) error
 	CountAll(ctx context.Context) (int, error)
 	FindByID(ctx context.Context, id string) (*PartnershipResponse, error)
@@ -66,7 +66,7 @@ func (r *repository) Create(ctx context.Context, req *PartnershipRequest) error 
 	query := `
 		INSERT INTO partnership.transaksi_pengajuankerjasama (
 			pengajuan_id, kode_pengajuan, umkm_id, mitra_id, pengaju_akun_id, penerima_akun_id,
-			status_pengajuan_id, pesan_pengajuan, catatan_keputusan, dokumen_perjanjian_id,
+			status_pengajuan_id, pesan_pengajuan, catatan_keputusan, dokumen_kontrak_id,
 			tanggal_pengajuan, tanggal_keputusan, tanggal_upload_dokumen,
 			tanggal_mulai_kerjasama, tanggal_selesai_kerjasama, created_at, updated_at
 		) VALUES (
@@ -109,7 +109,10 @@ func (r *repository) FindByID(ctx context.Context, id string) (*PartnershipRespo
 			pr.tanggal_keputusan as decided_at,
 			pr.pesan_pengajuan as proposal_description,
 			pr.catatan_keputusan as rejection_reason,
-			pr.dokumen_perjanjian_id as contract_document_id,
+			COALESCE(pr.dokumen_kontrak_id, pr.dokumen_perjanjian_id) as contract_document_id,
+			CASE WHEN pr.dokumen_kontrak_id IS NOT NULL THEN 'CURRENT'
+			     WHEN pr.dokumen_perjanjian_id IS NOT NULL THEN 'LEGACY' END as contract_document_source,
+			pr.tanggal_upload_dokumen as contract_signed_at,
 			u1.nama_lengkap as requester_name,
 			u2.nama_lengkap as receiver_name,
 			pr.created_at,
@@ -125,6 +128,7 @@ func (r *repository) FindByID(ctx context.Context, id string) (*PartnershipRespo
 		&resp.ID, &resp.RequestCode, &resp.RequesterID, &resp.ReceiverID,
 		&resp.Status, &resp.SubmittedAt, &resp.DecidedAt,
 		&resp.ProposalDescription, &resp.RejectionReason, &resp.ContractDocumentID,
+		&resp.ContractDocumentSource, &resp.ContractSignedAt,
 		&resp.RequesterName, &resp.ReceiverName, &resp.CreatedAt, &resp.UpdatedAt,
 	)
 
@@ -298,40 +302,59 @@ func (r *repository) UpdateStatus(ctx context.Context, id, actorID string, expec
 }
 
 func (r *repository) UpdateContract(ctx context.Context, id, actorID string, expectedStatus PartnershipStatus, dokumenKontrak string, signedAt time.Time) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	// Deletion takes the same document lock. Once acquired, recheck availability
+	// before updating the proposal so signing cannot race with deleting the file.
+	const lockQuery = `
+		SELECT dokumen_id FROM documents.master_dokumen
+		WHERE dokumen_id = $1 AND uploader_akun_id = $2
+		  AND status = 'AKTIF' AND kategori_dokumen = 'PARTNERSHIP_FILE'
+		FOR UPDATE
+	`
+	var lockedID string
+	if err := tx.QueryRow(ctx, lockQuery, dokumenKontrak, actorID).Scan(&lockedID); err != nil {
+		if err == pgx.ErrNoRows {
+			return apperror.New(http.StatusConflict, "Dokumen telah berubah. Unggah ulang sebelum mencoba lagi")
+		}
+		return err
+	}
+
 	const query = `
 		UPDATE partnership.transaksi_pengajuankerjasama
-		SET dokumen_perjanjian_id = $1, tanggal_upload_dokumen = $2, updated_at = NOW()
+		SET dokumen_kontrak_id = $1, tanggal_upload_dokumen = $2, updated_at = NOW()
 		WHERE pengajuan_id = $3 AND pengaju_akun_id = $4 AND status_pengajuan_id = $5
 		  AND status_pengajuan_id IN ('DIAJUKAN', 'DITINJAU', 'MENUNGGU_DOKUMEN_TTD')
 		  AND EXISTS (
-		      SELECT 1 FROM document.transaksi_dokumenterunggah d
+		      SELECT 1 FROM documents.master_dokumen d
 		      WHERE d.dokumen_id = $1 AND d.uploader_akun_id = $4
+		        AND d.status = 'AKTIF' AND d.kategori_dokumen = 'PARTNERSHIP_FILE'
 		  )
 	`
-	tag, err := r.db.Exec(ctx, query, dokumenKontrak, signedAt, id, actorID, expectedStatus)
+	tag, err := tx.Exec(ctx, query, dokumenKontrak, signedAt, id, actorID, expectedStatus)
 	if err != nil {
 		return err
 	}
 	if tag.RowsAffected() == 0 {
 		return apperror.New(http.StatusConflict, "Pengajuan atau dokumen telah berubah. Muat ulang sebelum mencoba lagi")
 	}
-	return nil
+	return tx.Commit(ctx)
 }
 
-// Kontrak masih memakai tabel dokumen lama; lampiran memakai metadata upload saat ini.
-func (r *repository) OwnsDocument(ctx context.Context, actorID, documentID string, legacy bool) (bool, error) {
-	query := `SELECT EXISTS (
+// New attachments and contracts both use the current upload metadata. Contracts
+// must use the private partnership category, never a public product image.
+func (r *repository) OwnsDocument(ctx context.Context, actorID, documentID string, requirePartnershipFile bool) (bool, error) {
+	const query = `SELECT EXISTS (
 		SELECT 1 FROM documents.master_dokumen
 		WHERE dokumen_id = $1 AND uploader_akun_id = $2 AND status = 'AKTIF'
+		  AND (NOT $3::boolean OR kategori_dokumen = 'PARTNERSHIP_FILE')
 	)`
-	if legacy {
-		query = `SELECT EXISTS (
-			SELECT 1 FROM document.transaksi_dokumenterunggah
-			WHERE dokumen_id = $1 AND uploader_akun_id = $2
-		)`
-	}
 	var owned bool
-	err := r.db.QueryRow(ctx, query, documentID, actorID).Scan(&owned)
+	err := r.db.QueryRow(ctx, query, documentID, actorID, requirePartnershipFile).Scan(&owned)
 	return owned, err
 }
 

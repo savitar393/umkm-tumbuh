@@ -1,7 +1,7 @@
 // frontend/src/features/partnerships/api.ts
 
 import { httpPartnerships } from "../../shared/api/partnershipHttp";
-import { getAccessToken } from "../../shared/auth/currentUser";
+import { documentHttp } from "../../shared/api/documentHttp";
 import type { CreatePartnershipRequest, PartnershipStatus } from "./types";
 
 interface BackendResponse<T> {
@@ -19,6 +19,13 @@ interface SuccessResponse<T> {
 interface DocumentUrlResponse {
   url: string;
   content_type?: string;
+}
+
+interface ContractDocument {
+  id: string;
+  original_filename: string;
+  content_type: string;
+  source: "CURRENT" | "LEGACY";
 }
 
 export type FeaturedProduct = {
@@ -179,7 +186,7 @@ export const partnershipsApi = {
 
   // GET /api/v1/partnerships/{id}
   getDetail: async (id: string): Promise<SuccessResponse<Record<string, unknown>>> => {
-    const response = await httpPartnerships.get<SuccessResponse<Record<string, unknown>>>(`/partnerships/${id}`);
+    const response = await httpPartnerships.get<SuccessResponse<Record<string, unknown>>>(`/partnerships/${id}`, { timeoutMs: 15_000 });
     const raw = response.data;
     const maybePengajuan = raw?.pengajuan;
 
@@ -203,7 +210,7 @@ export const partnershipsApi = {
   sign: async (id: string, dokumenKontrak: string): Promise<SuccessResponse<void>> => {
     return httpPartnerships.post<SuccessResponse<void>>(`/partnerships/${id}/sign`, {
       dokumen_kontrak: dokumenKontrak,
-    });
+    }, { timeoutMs: 15_000 });
   },
 
   // PATCH /api/v1/partnerships/{id}/read
@@ -213,7 +220,7 @@ export const partnershipsApi = {
 
   // PATCH /api/v1/partnerships/{id}/approve
   approve: async (id: string): Promise<SuccessResponse<void>> => {
-    return httpPartnerships.patch<SuccessResponse<void>>(`/partnerships/${id}/approve`, {});
+    return httpPartnerships.patch<SuccessResponse<void>>(`/partnerships/${id}/approve`, {}, { timeoutMs: 15_000 });
   },
 
   // PATCH /api/v1/partnerships/{id}/reject
@@ -290,29 +297,10 @@ export const partnershipsApi = {
     formData.append("file", file);
     formData.append("category", "PARTNERSHIP_FILE");
 
-    const token = getAccessToken();
-
-    const headers: Record<string, string> = {};
-
-    if (token) headers.Authorization = `Bearer ${token}`;
-
-    const resp = await fetch("/api/v1/documents/upload", {
-      method: "POST",
-      headers,
-      body: formData,
-    });
-
-    const json = await resp.json();
-
-    if (!resp.ok) {
-      throw new Error(json.error || json.message || "Upload gagal");
-    }
-
-    const documentId =
-      json.document?.id ||
-      json.data?.document_id ||
-      json.data?.dokumen_id ||
-      json.data?.DokumenID;
+    const json = await documentHttp.post<{ document?: { id?: string } }>(
+      "/documents/upload", formData, { timeoutMs: 30_000 },
+    );
+    const documentId = json?.document?.id;
 
     if (!documentId) {
       throw new Error("Upload berhasil, tetapi ID dokumen tidak ditemukan.");
@@ -323,32 +311,16 @@ export const partnershipsApi = {
 
   // GET /api/v1/documents/{id}/url - ambil URL dokumen untuk preview
   getDocumentUrl: async (documentId: string): Promise<SuccessResponse<DocumentUrlResponse>> => {
-    const token = getAccessToken();
+    return documentHttp.get<SuccessResponse<DocumentUrlResponse>>(
+      `/documents/${encodeURIComponent(documentId)}/url`, { timeoutMs: 15_000 },
+    );
+  },
 
-    const headers: Record<string, string> = {};
-
-    if (token) headers.Authorization = `Bearer ${token}`;
-
-    const resp = await fetch(`/api/v1/documents/${documentId}/url`, {
-      method: "GET",
-      headers,
-    });
-
-    const json = await resp.json();
-
-    if (!resp.ok) {
-      throw new Error(json.error || json.message || "Gagal mengambil URL dokumen");
-    }
-
-    const data = json.data || json.document || json;
-
-    return {
-      success: json.success ?? true,
-      message: json.message,
-      data: {
-        url: data.url || data.file_url || data.download_url || data.presigned_url || "",
-        content_type: data.content_type || data.mime_type || data.file_type || "application/pdf",
-      },
-    };
+  // Proposal-based lookup keeps current and legacy document IDs unambiguous.
+  downloadContract: async (partnershipId: string): Promise<{ blob: Blob; filename: string }> => {
+    const path = `/partnership-contracts/${encodeURIComponent(partnershipId)}`;
+    const metadata = await documentHttp.get<{ document: ContractDocument }>(path, { timeoutMs: 15_000 });
+    const blob = await documentHttp.get<Blob>(`${path}/download`, { responseType: "blob", timeoutMs: 30_000 });
+    return { blob, filename: metadata.document.original_filename };
   },
 };

@@ -1,7 +1,6 @@
 import {
   CheckCircle2,
   ClipboardList,
-  FileCheck2,
   Handshake,
   Home,
   Inbox,
@@ -28,7 +27,7 @@ export default function PartnershipApprovalSuccessPage() {
   return (
     <UmkmLayout
       title="Kemitraan Disetujui"
-      subtitle="Dokumen persetujuan berhasil diproses dan status kemitraan telah diperbarui."
+      subtitle="Pengajuan telah disetujui dan status kemitraan telah diperbarui."
     >
       <main className="partnership-approval-success-page">
         <section className="partnership-approval-success-card">
@@ -44,8 +43,8 @@ export default function PartnershipApprovalSuccessPage() {
           <h1>Kemitraan Berhasil Disetujui</h1>
 
           <p>
-            Pengajuan kemitraan telah disetujui dan dokumen kontrak sudah diproses.
-            Status kerja sama kini aktif atau menunggu sinkronisasi status terbaru dari backend.
+            Pengajuan kemitraan telah disetujui. Status kerja sama kini aktif.
+            Buka detail pengajuan untuk melihat informasi kemitraan dan kontrak yang tersedia.
           </p>
 
           {pengajuanID ? (
@@ -55,32 +54,12 @@ export default function PartnershipApprovalSuccessPage() {
             </div>
           ) : null}
 
-          <div className="partnership-approval-success-document">
-            <FileCheck2 size={24} />
-            <div>
-              <strong>Dokumen Persetujuan Kemitraan</strong>
-              <span>Dokumen kontrak bertanda tangan telah tersimpan pada proses persetujuan.</span>
-            </div>
-            <em>
-              <CheckCircle2 size={14} />
-              Selesai
-            </em>
-          </div>
-
           <div className="partnership-success-steps">
             <article className="done">
               <CheckCircle2 size={18} />
               <div>
                 <strong>Review selesai</strong>
                 <span>Pengajuan sudah ditinjau oleh pihak penerima.</span>
-              </div>
-            </article>
-
-            <article className="done">
-              <FileCheck2 size={18} />
-              <div>
-                <strong>Dokumen diproses</strong>
-                <span>Kontrak final sudah dikirim ke sistem.</span>
               </div>
             </article>
 
@@ -94,6 +73,11 @@ export default function PartnershipApprovalSuccessPage() {
           </div>
 
           <div className="partnership-success-actions">
+            {pengajuanID ? (
+              <button type="button" onClick={() => navigate(`${partnershipBasePath}/review/${pengajuanID}`)}>
+                Lihat Detail Pengajuan
+              </button>
+            ) : null}
             <button type="button" onClick={() => navigate(inboxPath)}>
               <Inbox size={17} />
               Kembali ke Inbox

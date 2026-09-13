@@ -102,7 +102,7 @@ function getStatusClass(status: string) {
 }
 
 function canReceiverReview(status: string) {
-  return ["DRAFT", "SUBMITTED", "DIAJUKAN", "REVIEWED", "DITINJAU"].includes(status.toUpperCase());
+  return ["SUBMITTED", "DIAJUKAN", "REVIEWED", "DITINJAU"].includes(status.toUpperCase());
 }
 
 function formatDate(value: unknown) {
@@ -191,8 +191,8 @@ function getStatusMeta(status: string) {
     return {
       tone,
       label,
-      description: "Pengajuan telah disetujui awal dan membutuhkan kontrak yang sudah ditandatangani.",
-      nextStep: "Unggah kontrak final untuk mengaktifkan kemitraan.",
+      description: "Pengajuan menunggu kelengkapan dokumen kontrak.",
+      nextStep: "Pengaju dapat menyimpan kontrak bertanda tangan. Penyimpanan tidak mengubah status pengajuan.",
     };
   }
 
@@ -573,6 +573,13 @@ export default function PartnershipReviewPage() {
                   <ClipboardCheck size={17} />
                   <p>{statusMeta.nextStep}</p>
                 </div>
+
+                {isRequester || isReceiver ? (
+                  <button type="button" className="partnership-template-button" onClick={handleContinueApproval}>
+                    <FileText size={17} />
+                    Dokumen Kontrak
+                  </button>
+                ) : null}
 
                 {isReceiver && canReceiverReview(status) ? (
                   <div className="partnership-review-actions">

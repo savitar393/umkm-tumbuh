@@ -13,17 +13,19 @@ import (
 
 type permissionRepository struct {
 	Repository
-	partnership   PartnershipResponse
-	ownedDocument bool
-	changed       bool
-	wantConflict  bool
+	partnership              PartnershipResponse
+	ownedDocument            bool
+	changed                  bool
+	wantConflict             bool
+	requiresContractCategory bool
 }
 
 func (r *permissionRepository) FindByID(context.Context, string) (*PartnershipResponse, error) {
 	return &r.partnership, nil
 }
 
-func (r *permissionRepository) OwnsDocument(context.Context, string, string, bool) (bool, error) {
+func (r *permissionRepository) OwnsDocument(_ context.Context, _ string, _ string, requirePartnershipFile bool) (bool, error) {
+	r.requiresContractCategory = requirePartnershipFile
 	return r.ownedDocument, nil
 }
 
@@ -37,6 +39,9 @@ func (r *permissionRepository) UpdateStatus(_ context.Context, _ string, actor s
 }
 
 func (r *permissionRepository) UpdateContract(_ context.Context, _ string, _ string, _ PartnershipStatus, document string, _ time.Time) error {
+	if r.wantConflict {
+		return apperror.New(http.StatusConflict, "document changed concurrently")
+	}
 	r.changed = true
 	r.partnership.ContractDocumentID = &document
 	return nil
@@ -119,10 +124,13 @@ func TestContractSubmission(t *testing.T) {
 		want        int
 	}{
 		{"requester owns document", "requester", StatusSubmitted, true, 0},
+		{"reviewed proposal accepts contract", "requester", StatusReviewed, true, 0},
+		{"waiting proposal accepts contract", "requester", StatusWaitingDoc, true, 0},
 		{"receiver cannot submit", "receiver", StatusSubmitted, true, 403},
 		{"unrelated account", "stranger", StatusSubmitted, true, 403},
 		{"another accounts document", "requester", StatusSubmitted, false, 403},
 		{"closed partnership", "requester", StatusCompleted, true, 409},
+		{"active partnership", "requester", StatusActive, true, 409},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			repo := &permissionRepository{ownedDocument: tc.owned, partnership: PartnershipResponse{PartnershipRequest: PartnershipRequest{
@@ -133,7 +141,21 @@ func TestContractSubmission(t *testing.T) {
 			if repo.changed != (tc.want == 0) {
 				t.Fatal("denied operation changed the contract")
 			}
+			if repo.changed && !repo.requiresContractCategory {
+				t.Fatal("signing must require a private partnership file")
+			}
 		})
+	}
+}
+
+func TestContractChangeConflictIsPropagated(t *testing.T) {
+	repo := &permissionRepository{ownedDocument: true, wantConflict: true, partnership: PartnershipResponse{PartnershipRequest: PartnershipRequest{
+		ID: "P1", RequesterID: "requester", ReceiverID: "receiver", Status: StatusSubmitted,
+	}}}
+	err := NewService(repo).SignPartnership(actorContext("requester", "UMKM"), "P1", SignPartnershipRequest{DokumenKontrak: "D1"})
+	requireStatus(t, err, http.StatusConflict)
+	if repo.changed {
+		t.Fatal("conflicting submission changed the contract")
 	}
 }
 

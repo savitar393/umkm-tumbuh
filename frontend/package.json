@@ -10,8 +10,9 @@
     "test:login": "node --test tests/login.test.mjs",
     "test:proxy": "node --test tests/proxy.test.mjs",
     "preview": "vite preview",
-    "check": "npm run lint && npm run build && npm run test:login && npm run test:proxy && npm run test:pages",
-    "test:pages": "node --test tests/pages.test.mjs"
+    "check": "npm run lint && npm run build && npm run test:login && npm run test:proxy && npm run test:pages && npm run test:contracts",
+    "test:pages": "node --test tests/pages.test.mjs",
+    "test:contracts": "node --test tests/contracts.test.mjs"
   },
   "dependencies": {
     "@iconify/react": "^6.0.2",

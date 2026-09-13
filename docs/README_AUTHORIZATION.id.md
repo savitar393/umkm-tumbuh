@@ -28,7 +28,7 @@ Lampiran dari endpoint upload saat ini harus aktif dan dimiliki pengaju. Pemerik
 
 Migrasi `031_seed_partnership_statuses` menambahkan referensi status yang diperlukan, yang sebelumnya hanya tersedia dalam dataset dummy opsional. Database baru dapat membuat pengajuan tanpa memuat data dummy. Label yang sudah ada dipertahankan; rollback tetap menyimpan data referensi bersama ini.
 
-Pengiriman kontrak masih merujuk tabel lama `document.transaksi_dokumenterunggah`. Lampiran biasa memakai `documents.master_dokumen`. Pengujian kontrak menggunakan dua data uji metadata lama; menghubungkan endpoint upload saat ini ke pengiriman kontrak masih memerlukan migrasi skema tersendiri. Endpoint penanda dibaca belum menyimpan waktu baca. Persetujuan mempertahankan perilaku sebelumnya dan belum mewajibkan kontrak bertanda tangan.
+Sejak [Stage 3](README_CONTRACT_DOCUMENTS.id.md), kontrak baru memakai unggahan aktif `PARTNERSHIP_FILE` milik pengaju di `documents.master_dokumen`. Referensi kontrak lama tetap dipertahankan dan dapat dibaca melalui ID pengajuan. Endpoint penanda dibaca belum menyimpan waktu baca. Persetujuan mempertahankan perilaku sebelumnya dan belum mewajibkan kontrak bertanda tangan.
 
 ## Aturan pelatihan dan sertifikat
 

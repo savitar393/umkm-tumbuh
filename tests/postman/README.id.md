@@ -62,3 +62,5 @@ Profil baru menggunakan jenis UMKM `UMKM` yang tersedia dari seed. Kategori usah
 Pengujian profil memeriksa HTTP 200 dan kategori usaha yang dikembalikan. Jika statusnya berbeda, assertion menyertakan body respons dalam `newman.xml` agar kesalahan backend terlihat tanpa tertutup kesalahan script tambahan. Build ulang user-service setelah memperbarui kode backend; `bash tests/stack/run.sh` membangun layanan pengujian terisolasi secara otomatis.
 
 Stack terisolasi juga menjalankan [suite otorisasi Stage 2](../../docs/README_AUTHORIZATION.id.md) tersendiri untuk kemitraan dan pelatihan/sertifikat. Hasilnya tercatat di `tests/stack/reports/authorization.txt`, bukan di XML Newman.
+
+Stack terisolasi juga menjalankan [suite kontrak dokumen Stage 3](../../docs/README_CONTRACT_DOCUMENTS.id.md), dengan laporan `tests/stack/reports/contracts.txt`. Pengujian unggahan/unduhan nyata dan kompatibilitas lama tersebut terpisah dari assertion dalam koleksi Newman; periksa ketiga laporan jika CI gagal.

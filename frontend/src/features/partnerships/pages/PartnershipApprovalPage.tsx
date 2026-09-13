@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { type ChangeEvent, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
@@ -101,6 +101,7 @@ function splitProposalDescription(value: string) {
 }
 
 function validateSignedFile(file: File) {
+  if (file.size === 0) return "File kosong tidak dapat diunggah.";
   if (file.size > MAX_FILE_SIZE) return "File terlalu besar. Maksimal 10MB.";
   if (!ALLOWED_FILE_TYPES.includes(file.type)) return "Hanya file PDF, JPG, dan PNG yang diperbolehkan.";
   return "";
@@ -192,17 +193,20 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-export default function PartnershipApprovalPage() {
+function PartnershipApprovalForm() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
   const user = getCurrentUser();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const queryClient = useQueryClient();
 
   const basePath = getBasePath(user?.role, location.pathname);
 
   const [signedFile, setSignedFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [uploadedDocument, setUploadedDocument] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState("");
   const [actionError, setError] = useState("");
 
@@ -212,22 +216,13 @@ export default function PartnershipApprovalPage() {
       if (!id) throw new Error("ID pengajuan tidak ditemukan.");
       const response = await partnershipsApi.getDetail(id);
       if (!response.success || !response.data) throw new Error(response.message || "Data pengajuan tidak ditemukan.");
-      const documentId = response.data.contract_document_id;
-      let documentUrl = "";
-      if (typeof documentId === "string" && documentId) {
-        try {
-          documentUrl = (await partnershipsApi.getDocumentUrl(documentId)).data?.url || "";
-        } catch {
-          // Existing document preview is optional.
-        }
-      }
-      return { partnership: response.data, documentUrl };
+      return response.data;
     },
     retry: false,
     refetchOnWindowFocus: false,
   });
-  const partnership = result?.partnership ?? null;
-  const documentUrl = result?.documentUrl ?? "";
+  const partnership = result ?? null;
+  const hasContract = Boolean(partnership?.contract_document_id);
   const error = actionError || fetchError?.message || "";
 
   const requestCode = getText(partnership, ["request_code", "pengajuanID", "id"], id ?? "-");
@@ -243,11 +238,17 @@ export default function PartnershipApprovalPage() {
   const submittedAt = partnership?.submitted_at ?? partnership?.tanggalPengajuan ?? partnership?.created_at;
   const parsedProposal = useMemo(() => splitProposalDescription(proposalDescription), [proposalDescription]);
 
+  const isRequester = Boolean(user?.id && user.id === partnership?.requester_id);
+  const isReceiver = Boolean(user?.id && user.id === partnership?.receiver_id);
+  const canUpload = isRequester && ["DIAJUKAN", "DITINJAU", "MENUNGGU_DOKUMEN_TTD"].includes(status);
+  const canApprove = isReceiver && ["DIAJUKAN", "DITINJAU"].includes(status);
+
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
 
-    if (!file) return;
+    if (!file || submitting || !canUpload) return;
+    setUploadedDocument(null);
 
     const validationError = validateSignedFile(file);
 
@@ -262,33 +263,62 @@ export default function PartnershipApprovalPage() {
     setUploadError("");
   }
 
-  async function handleApprove() {
-    if (!id) return;
-
-    if (!signedFile && !documentUrl) {
-      setUploadError("Unggah dokumen kontrak yang sudah ditandatangani terlebih dahulu.");
+  async function handleSign() {
+    if (!id || !canUpload || submitting) return;
+    if (!signedFile) {
+      setUploadError("Pilih dokumen kontrak yang sudah ditandatangani terlebih dahulu.");
       return;
     }
-
     setSubmitting(true);
     setUploadError("");
     setError("");
-
     try {
-      if (signedFile) {
-        const documentId = await partnershipsApi.uploadDocument(signedFile);
-        await partnershipsApi.sign(id, documentId);
-      }
+      // Keep a successful upload when linking fails, so retry does not upload twice.
+      const documentId = uploadedDocument ?? await partnershipsApi.uploadDocument(signedFile);
+      setUploadedDocument(documentId);
+      await partnershipsApi.sign(id, documentId);
+      await queryClient.invalidateQueries({ queryKey: ["partnerships"] });
+      navigate(`${basePath}/review/${id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal menyimpan kontrak.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
+  async function handleApprove() {
+    if (!id || !canApprove || submitting) return;
+    setSubmitting(true);
+    setError("");
+    try {
       await partnershipsApi.approve(id);
-
-      navigate(`${basePath}/approve/success?id=${id}`, {
-        state: { pengajuanID: id },
-      });
+      await queryClient.invalidateQueries({ queryKey: ["partnerships"] });
+      navigate(`${basePath}/approve/success?id=${id}`, { state: { pengajuanID: id } });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Gagal menyetujui pengajuan.");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function handleDownload() {
+    if (!id || downloading) return;
+    setDownloading(true);
+    setError("");
+    try {
+      const { blob, filename } = await partnershipsApi.downloadContract(id);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Gagal mengunduh kontrak.");
+    } finally {
+      setDownloading(false);
     }
   }
 
@@ -303,8 +333,8 @@ export default function PartnershipApprovalPage() {
 
   return (
     <UmkmLayout
-      title="Persetujuan Kemitraan"
-      subtitle="Unggah dokumen kontrak yang sudah ditandatangani untuk mengaktifkan kemitraan."
+      title="Kontrak dan Persetujuan Kemitraan"
+      subtitle="Pengaju menyimpan kontrak bertanda tangan. Penerima meninjau dan memutuskan pengajuan."
     >
       <main className="partnership-approval-page">
         <button className="partnership-back-button" type="button" onClick={handleBack}>
@@ -345,7 +375,7 @@ export default function PartnershipApprovalPage() {
               <aside className="partnership-approval-hero-card">
                 <FileCheck2 size={32} />
                 <strong>Finalisasi</strong>
-                <span>Upload kontrak bertanda tangan</span>
+                <span>Kontrak dan keputusan penerima</span>
               </aside>
             </section>
 
@@ -400,7 +430,7 @@ export default function PartnershipApprovalPage() {
                   </h2>
 
                   <p className="partnership-review-note">
-                    Unduh draf kontrak, tandatangani di luar sistem, lalu unggah kembali file yang sudah ditandatangani.
+                    Draf dapat diunduh untuk disepakati dan ditandatangani di luar sistem. Pengaju mengunggah hasilnya sebelum penerima menyetujui kemitraan.
                   </p>
 
                   <button
@@ -423,79 +453,69 @@ export default function PartnershipApprovalPage() {
                   </div>
                 </div>
 
-                <div
-                  className={`partnership-approval-upload ${signedFile || documentUrl ? "has-file" : ""} ${
-                    uploadError ? "has-error" : ""
-                  }`}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => fileInputRef.current?.click()}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") fileInputRef.current?.click();
-                  }}
-                >
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={handleFileChange}
-                  />
-
-                  {signedFile || documentUrl ? <CheckCircle2 size={34} /> : <UploadCloud size={34} />}
-
-                  <strong>
-                    {signedFile?.name || (documentUrl ? "Dokumen kontrak sudah tersedia" : "Upload Kontrak")}
-                  </strong>
-
-                  <p>
-                    {signedFile || documentUrl
-                      ? "Klik untuk mengganti dokumen."
-                      : "PDF, JPG, atau PNG. Maksimal 10MB."}
-                  </p>
-
-                  {signedFile ? (
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        setSignedFile(null);
-                        setUploadError("");
-                        if (fileInputRef.current) fileInputRef.current.value = "";
-                      }}
-                      aria-label="Hapus dokumen"
-                    >
-                      <X size={15} />
+                {hasContract ? (
+                  <div className="partnership-approval-checklist">
+                    <p>Kontrak tersimpan. Kedua pihak dapat mengunduhnya.</p>
+                    <button type="button" className="partnership-template-button" disabled={downloading} onClick={handleDownload}>
+                      <Download size={17} />
+                      {downloading ? "Mengunduh..." : "Unduh Kontrak Tersimpan"}
                     </button>
-                  ) : null}
-                </div>
-
-                {uploadError ? <p className="partnership-upload-error">{uploadError}</p> : null}
-                {error ? <p className="partnership-upload-error">{error}</p> : null}
-
-                <div className="partnership-approval-checklist">
-                  <div className="done">
-                    <CheckCircle2 size={17} />
-                    <span>Draf kontrak dapat diunduh</span>
                   </div>
-                  <div className={signedFile || documentUrl ? "done" : ""}>
-                    <CheckCircle2 size={17} />
-                    <span>Dokumen final dilampirkan</span>
-                  </div>
-                  <div>
-                    <CheckCircle2 size={17} />
-                    <span>Persetujuan akan mengaktifkan kemitraan</span>
-                  </div>
-                </div>
+                ) : <p className="partnership-review-note">Belum ada kontrak yang disimpan untuk pengajuan ini.</p>}
 
-                <button
-                  type="button"
-                  className="partnership-apply-button"
-                  disabled={submitting}
-                  onClick={handleApprove}
-                >
-                  {submitting ? "Memproses..." : "Setujui & Aktifkan"}
-                  <ShieldCheck size={17} />
-                </button>
+                {canUpload ? (
+                  <>
+                    <div
+                      className={`partnership-approval-upload ${signedFile ? "has-file" : ""} ${uploadError ? "has-error" : ""}`}
+                      role="button"
+                      tabIndex={submitting ? -1 : 0}
+                      aria-disabled={submitting}
+                      onClick={() => { if (!submitting) fileInputRef.current?.click(); }}
+                      onKeyDown={(event) => {
+                        if (!submitting && (event.key === "Enter" || event.key === " ")) {
+                          event.preventDefault();
+                          fileInputRef.current?.click();
+                        }
+                      }}
+                    >
+                      <input ref={fileInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png"
+                        aria-label="Dokumen kontrak bertanda tangan" disabled={submitting} onChange={handleFileChange} />
+                      {signedFile ? <CheckCircle2 size={34} /> : <UploadCloud size={34} />}
+                      <strong>{signedFile?.name || "Pilih Kontrak Bertanda Tangan"}</strong>
+                      <p>PDF, JPG, atau PNG. Maksimal 10MB.</p>
+                      {signedFile ? (
+                        <button type="button" disabled={submitting} aria-label="Batalkan pilihan dokumen" onClick={(event) => {
+                          event.stopPropagation();
+                          setSignedFile(null);
+                          setUploadedDocument(null);
+                          setUploadError("");
+                          if (fileInputRef.current) fileInputRef.current.value = "";
+                        }}><X size={15} /></button>
+                      ) : null}
+                    </div>
+                    <p className="partnership-review-note">Menyimpan kontrak tidak mengubah status pengajuan. Keputusan tetap dilakukan oleh penerima.</p>
+                    <button type="button" className="partnership-apply-button" disabled={submitting} onClick={handleSign}>
+                      {submitting ? "Menyimpan..." : "Simpan Kontrak"}
+                      <FileCheck2 size={17} />
+                    </button>
+                  </>
+                ) : <p className="partnership-review-note">Kontrak hanya dapat diunggah oleh pengaju selama pengajuan masih terbuka.</p>}
+
+                {canApprove ? (
+                  <>
+                    <p className="partnership-review-note">
+                      Persetujuan akan mengaktifkan kemitraan dan menutup perubahan kontrak.
+                      {!hasContract ? " Anda dapat menyetujui tanpa kontrak; jika diperlukan, minta pengaju mengunggahnya terlebih dahulu." : " Pastikan Anda sudah memeriksa kontrak sebelum menyetujui."}
+                    </p>
+                    <button type="button" className="partnership-apply-button" disabled={submitting} onClick={handleApprove}>
+                      {submitting ? "Memproses..." : "Setujui & Aktifkan"}
+                      <ShieldCheck size={17} />
+                    </button>
+                  </>
+                ) : null}
+                {uploadError ? <p role="alert" className="partnership-upload-error">{uploadError}</p> : null}
+                {error ? <p role="alert" className="partnership-upload-error">{error}</p> : null}
+
               </aside>
             </section>
           </>
@@ -503,4 +523,10 @@ export default function PartnershipApprovalPage() {
       </main>
     </UmkmLayout>
   );
+}
+
+export default function PartnershipApprovalPage() {
+  const { id } = useParams<{ id: string }>();
+  const user = getCurrentUser();
+  return <PartnershipApprovalForm key={`${user?.id}:${id}`} />;
 }

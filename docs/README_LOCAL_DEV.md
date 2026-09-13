@@ -108,6 +108,8 @@ ERROR:  Fixtures require the isolated umkm_tumbuh_test database
 
 ```text
 Stage 1 stack checks passed.
+Stage 2 authorization checks passed.
+Stage 3 contract document checks passed.
 ```
 
 `Exited` is normal for migrations, seeding, and bootstrap after they finish successfully. The final container and volume removals are test cleanup. The development app is not running afterward unless you started it separately. Use the startup commands at the beginning of this guide, then run the frontend in another terminal.
@@ -202,3 +204,7 @@ infra/db/migrations/
 ```
 
 Do not add new service-local migration folders unless the architecture decision changes.
+
+## Stage 3 contract documents
+
+The same stack command runs [Stage 3 contract tests](README_CONTRACT_DOCUMENTS.md), including real uploads, participant access, legacy ID collisions, and concurrent signing/deletion. Results are saved to `tests/stack/reports/contracts.txt` and uploaded by CI with the other reports. Contract persistence checks also run after migrations and container recreation. Document-service now has a Go job in the CI matrix.

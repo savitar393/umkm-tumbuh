@@ -81,6 +81,8 @@ Pengujian yang berhasil diakhiri dengan:
 
 ```text
 Stage 1 stack checks passed.
+Stage 2 authorization checks passed.
+Stage 3 contract document checks passed.
 ```
 
 Pengujian tidak membiarkan aplikasi pengembangan tetap berjalan. Jalankan aplikasi dengan perintah startup di atas. Seluruh akun uji bersifat sementara; gunakan akun admin bawaan atau lakukan registrasi pada aplikasi biasa. Penjelasan lengkap tersedia pada [panduan data uji dan pengujian](docs/README_LOCAL_DEV.id.md#menjalankan-pengujian-stage-1-terisolasi).
@@ -122,6 +124,7 @@ Seed CSV berukuran besar bersifat opsional dan mengganti data aplikasi. Seed ini
 | Gambaran proyek | [Read](README.md) | [Baca](README.id.md) |
 | Pengembangan lokal dan Stage 1 | [Read](docs/README_LOCAL_DEV.md) | [Baca](docs/README_LOCAL_DEV.id.md) |
 | Otorisasi Stage 2 | [Read](docs/README_AUTHORIZATION.md) | [Baca](docs/README_AUTHORIZATION.id.md) |
+| Dokumen kontrak Stage 3 | [Read](docs/README_CONTRACT_DOCUMENTS.md) | [Baca](docs/README_CONTRACT_DOCUMENTS.id.md) |
 | Frontend | [Read](frontend/README.md) | [Baca](frontend/README.id.md) |
 | Basis data | [Read](infra/db/README.md) | [Baca](infra/db/README.id.md) |
 | Training service | [Read](services/training-service/README.md) | [Baca](services/training-service/README.id.md) |
@@ -133,3 +136,5 @@ Perbarui kedua versi bahasa ketika mengubah perintah, variabel, atau perilaku ap
 ## Berkontribusi
 
 Buat branch fitur, lakukan perubahan yang terfokus, jalankan pemeriksaan yang relevan, lalu ajukan pull request yang menjelaskan perilaku dan hasil validasi. Simpan perubahan skema di `infra/db/migrations/`; jangan menambahkan direktori migrasi per layanan tanpa keputusan arsitektur. Jangan commit berkas `.env` atau kredensial hasil generator.
+
+Alur unggah → simpan kontrak → unduh dan kompatibilitas kontrak lama dijelaskan dalam [panduan Stage 3](docs/README_CONTRACT_DOCUMENTS.id.md). Pengujian stack juga menjalankan regresi kontrak, termasuk pemeriksaan ulang setelah container dibuat ulang.

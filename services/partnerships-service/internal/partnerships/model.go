@@ -84,9 +84,10 @@ type SignPartnershipRequest struct {
 
 type PartnershipResponse struct {
 	PartnershipRequest
-	RequesterName string                  `json:"requester_name"`
-	ReceiverName  string                  `json:"receiver_name"`
-	Attachments   []PartnershipAttachment `json:"attachments"`
+	ContractDocumentSource *string                 `json:"contract_document_source"`
+	RequesterName          string                  `json:"requester_name"`
+	ReceiverName           string                  `json:"receiver_name"`
+	Attachments            []PartnershipAttachment `json:"attachments"`
 }
 
 type PartnershipListResponse struct {

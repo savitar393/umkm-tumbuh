@@ -27,6 +27,7 @@ services:
     environment: *test-environment
     volumes:
       - ../tests/stack/fixtures.sql:/app/fixtures.sql:ro
+      - ../tests/stack/legacy-contract-fixtures.sql:/app/legacy-contract-fixtures.sql:ro
     command: ["sh", "-ec", "psql \"$$DATABASE_URL\" -v ON_ERROR_STOP=1 -f /app/fixtures.sql"]
     depends_on:
       db-migrate:
@@ -113,6 +114,16 @@ services:
       - ../tests/stack/authorization.py:/app/authorization.py:ro
       - ../tests/stack/check.py:/app/check.py:ro
     entrypoint: ["python", "/app/authorization.py"]
+    networks: [umkm_network]
+  contract-check:
+    image: python:3.12-alpine
+    profiles: [check]
+    volumes:
+      - ../tests/stack/contracts.py:/app/contracts.py:ro
+      - ../tests/stack/authorization.py:/app/authorization.py:ro
+      - ../tests/stack/check.py:/app/check.py:ro
+      - stack_check_data:/state
+    entrypoint: ["python", "/app/contracts.py"]
     networks: [umkm_network]
   stack-check:
     image: python:3.12-alpine

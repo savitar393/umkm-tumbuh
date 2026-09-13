@@ -98,3 +98,7 @@ curl -i --max-time 10 http://127.0.0.1:8080/api/v1/health/db
 If this command works in WSL while [direct auth health](http://localhost:8080/api/v1/health/db) keeps loading in Windows, enable the [local API proxy](#local-api-proxy) and use the health link through port 5173. If that succeeds but login still fails, inspect the login request's URL, status, and timing in the browser's Network tab. In proxy mode, the request URL should start with `http://localhost:5173/backend/auth/`. In direct mode, check `VITE_AUTH_API_BASE_URL` against the published auth port; an origin/CORS error requires checking `FRONTEND_URL` against the frontend address.
 
 `npm run test:login` takes about 30 seconds and requires no Docker database or real account. It checks the request code against controlled HTTP responses; it does not validate the user's browser connection or the full dashboard flow.
+
+## Partnership contract documents
+
+Requesters save contracts; receivers approve proposals in a separate action. Downloads use the proposal ID so legacy documents remain accessible. Document requests use the configured API URL and support the Vite proxy. Run `npm run test:contracts`; this suite is also included in `npm run check`. See the [Stage 3 guide](../docs/README_CONTRACT_DOCUMENTS.md) for the workflow and stack tests.

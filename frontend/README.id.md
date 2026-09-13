@@ -98,3 +98,7 @@ curl -i --max-time 10 http://127.0.0.1:8080/api/v1/health/db
 Jika perintah ini berhasil di WSL sementara [alamat auth langsung](http://localhost:8080/api/v1/health/db) terus loading di Windows, aktifkan [proxy API lokal](#proxy-api-lokal) dan gunakan tautan pemeriksaan melalui port 5173. Jika berhasil tetapi login masih gagal, lihat URL, status, dan waktu permintaan login pada tab Network browser. Dalam mode proxy, URL permintaan seharusnya diawali `http://localhost:5173/backend/auth/`. Dalam mode langsung, sesuaikan `VITE_AUTH_API_BASE_URL` dengan port auth yang dipublikasikan; kesalahan origin/CORS memerlukan pemeriksaan `FRONTEND_URL` terhadap alamat frontend.
 
 `npm run test:login` memerlukan sekitar 30 detik tanpa basis data Docker atau akun asli. Pengujian memeriksa kode permintaan menggunakan respons HTTP yang dikendalikan; pengujian ini belum memvalidasi koneksi browser pengguna atau seluruh alur dasbor.
+
+## Dokumen kontrak kemitraan
+
+Pengaju menyimpan kontrak, sedangkan penerima menyetujui pengajuan melalui tindakan terpisah. Unduhan memakai ID pengajuan sehingga dokumen lama tetap dapat diakses. Semua permintaan dokumen memakai URL API yang dikonfigurasi dan mendukung proxy Vite. Jalankan `npm run test:contracts`; suite ini juga termasuk dalam `npm run check`. Lihat [panduan Stage 3](../docs/README_CONTRACT_DOCUMENTS.id.md) untuk alur dan pengujian stack.

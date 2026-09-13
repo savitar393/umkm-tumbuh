@@ -140,6 +140,7 @@ func main() {
 	mux.HandleFunc("/api/v1/public/documents/", app.handlePublicDocumentByID)
 	mux.HandleFunc("/api/v1/documents/upload", app.withAuth(app.handleUploadDocument))
 	mux.HandleFunc("/api/v1/documents/", app.withAuth(app.handleDocumentByID))
+	mux.HandleFunc("/api/v1/partnership-contracts/", app.withAuth(app.handlePartnershipContract))
 	mux.HandleFunc("/", app.handleNotFound)
 
 	server := &http.Server{
@@ -510,6 +511,10 @@ func (a *app) handleStreamDocument(w http.ResponseWriter, r *http.Request, docum
 		return
 	}
 
+	a.streamDocument(w, r, document, inline)
+}
+
+func (a *app) streamDocument(w http.ResponseWriter, r *http.Request, document documentResponse, inline bool) {
 	storageClient, err := newS3Client(r.Context(), document.Bucket)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Gagal membuka koneksi object storage."})
@@ -518,19 +523,25 @@ func (a *app) handleStreamDocument(w http.ResponseWriter, r *http.Request, docum
 
 	object, err := storageClient.getObject(r.Context(), document.ObjectKey)
 	if err != nil {
+		var storageError interface{ ErrorCode() string }
+		if errors.As(err, &storageError) && (storageError.ErrorCode() == "NoSuchKey" || storageError.ErrorCode() == "NotFound") {
+			writeJSON(w, http.StatusNotFound, errorResponse{Error: "Berkas dokumen tidak ditemukan."})
+			return
+		}
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Gagal membaca dokumen dari object storage."})
 		return
 	}
 	defer object.Body.Close()
 
-	fileName := strings.ReplaceAll(document.OriginalFilename, `"`, "")
 	disposition := "attachment"
 	if inline {
 		disposition = "inline"
 	}
 
 	w.Header().Set("Content-Type", document.ContentType)
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`%s; filename="%s"`, disposition, fileName))
+	w.Header().Set("Content-Disposition", mime.FormatMediaType(disposition, map[string]string{"filename": document.OriginalFilename}))
+	w.Header().Set("Cache-Control", "private, no-store")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
 	if document.SizeBytes > 0 {
 		w.Header().Set("Content-Length", fmt.Sprintf("%d", document.SizeBytes))
 	}
@@ -558,7 +569,7 @@ func (a *app) handleDeleteDocument(w http.ResponseWriter, r *http.Request, docum
 		return
 	}
 
-	if !a.canAccessDocument(r.Context(), user, document) {
+	if !canDeleteDocument(user, document) {
 		writeJSON(w, http.StatusForbidden, errorResponse{Error: "Anda tidak memiliki akses ke dokumen ini."})
 		return
 	}
@@ -570,14 +581,21 @@ func (a *app) handleDeleteDocument(w http.ResponseWriter, r *http.Request, docum
 		return
 	}
 
-	storageClient, err := newS3Client(r.Context(), document.Bucket)
-	if err == nil {
-		_ = storageClient.deleteObject(r.Context(), document.ObjectKey)
-	}
-
 	if err := a.markDocumentDeleted(r.Context(), documentID); err != nil {
+		if errors.Is(err, errDocumentInUse) {
+			writeJSON(w, http.StatusConflict, errorResponse{Error: "Dokumen masih digunakan sebagai kontrak kemitraan."})
+			return
+		}
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "Gagal menghapus metadata dokumen."})
 		return
+	}
+
+	// Mark unavailable under the signing lock before removing the stored bytes.
+	storageClient, err := newS3Client(r.Context(), document.Bucket)
+	if err == nil {
+		if err := storageClient.deleteObject(r.Context(), document.ObjectKey); err != nil {
+			log.Printf("failed to remove deleted document %s from storage: %v", document.ID, err)
+		}
 	}
 
 	writeJSON(w, http.StatusOK, map[string]string{
@@ -688,15 +706,44 @@ func (a *app) findDocumentByID(ctx context.Context, documentID string) (document
 }
 
 func (a *app) markDocumentDeleted(ctx context.Context, documentID string) error {
+	tx, err := a.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	const lockQuery = `SELECT dokumen_id FROM documents.master_dokumen WHERE dokumen_id = $1 FOR UPDATE`
+	var lockedID string
+	if err := tx.QueryRow(ctx, lockQuery, documentID).Scan(&lockedID); err != nil {
+		return err
+	}
 	const query = `
 		UPDATE documents.master_dokumen
 		SET status = 'DIHAPUS',
 		    deleted_at = NOW()
 		WHERE dokumen_id = $1
+		  AND NOT EXISTS (
+		      SELECT 1 FROM partnership.transaksi_pengajuankerjasama
+		      WHERE dokumen_kontrak_id = $1
+		  )
 	`
 
-	_, err := a.db.Exec(ctx, query, documentID)
-	return err
+	tag, err := tx.Exec(ctx, query, documentID)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return errDocumentInUse
+	}
+	return tx.Commit(ctx)
+}
+
+var errDocumentInUse = errors.New("document is referenced by a partnership contract")
+
+func canDeleteDocument(user currentUser, document documentResponse) bool {
+	if user.ID == "" {
+		return false
+	}
+	return user.Role == "ADMIN" || user.ID == document.UploaderAccount
 }
 
 type documentRow interface {
@@ -859,7 +906,7 @@ func (a *app) canAccessDocument(ctx context.Context, user currentUser, document 
 		SELECT EXISTS (
 			SELECT 1
 			FROM partnership.transaksi_pengajuankerjasama pk
-			WHERE pk.dokumen_perjanjian_id = $1
+			WHERE pk.dokumen_kontrak_id = $1
 			AND (pk.pengaju_akun_id = $2 OR pk.penerima_akun_id = $2)
 
 			UNION
@@ -945,7 +992,7 @@ func (a *app) authenticate(r *http.Request) (currentUser, error) {
 
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
 		return []byte(a.jwtSecret), nil
-	})
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}), jwt.WithExpirationRequired())
 
 	if err != nil || !token.Valid {
 		return currentUser{}, errors.New("token tidak valid atau sudah kedaluwarsa")
@@ -962,7 +1009,7 @@ func (a *app) authenticate(r *http.Request) (currentUser, error) {
 
 	role = strings.ToUpper(role)
 
-	if userID == "" || role == "" {
+	if strings.TrimSpace(userID) == "" || (role != "ADMIN" && role != "UMKM" && role != "MITRA") {
 		return currentUser{}, errors.New("token tidak valid")
 	}
 

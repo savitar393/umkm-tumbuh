@@ -43,4 +43,5 @@ jobs:
           path: |
             tests/postman/reports/newman.xml
             tests/stack/reports/authorization.txt
+            tests/stack/reports/contracts.txt
           if-no-files-found: ignore

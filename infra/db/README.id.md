@@ -58,3 +58,7 @@ docker compose --env-file .env -f infra/docker-compose.db.yml --profile seed run
 Layanan Compose memasang berkas yang tersimpan dalam repositori dan mengatur direktori kerja sesuai kebutuhan [loaders/load_generated_csv.sql](loaders/load_generated_csv.sql). Jangan menggunakan lokasi lama `data/UMKM_TUMBUH_csv`.
 
 Dataset CSV terpisah dari data uji Stage 1. Pengaturan generator dan manifest lama dapat berbeda dari berkas akun yang tersimpan; impor yang berhasil belum memastikan kredensial login dapat digunakan. Lihat [catatan CSV](dummy/seed-csv/README.id.txt). Jangan commit kredensial plaintext hasil generator.
+
+## Referensi kontrak kemitraan
+
+Migrasi `032_current_partnership_contracts` menambah `dokumen_kontrak_id` sebagai foreign key ke metadata unggahan saat ini. Kolom `dokumen_perjanjian_id` dan referensi lamanya dipertahankan. Migrasi down ditolak jika masih terdapat referensi baru, agar tidak membuang hubungan kontrak secara diam-diam. Lihat [panduan kontrak Stage 3](../../docs/README_CONTRACT_DOCUMENTS.id.md) sebelum memperbarui aplikasi atau merencanakan rollback.

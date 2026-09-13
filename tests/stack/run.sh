@@ -6,7 +6,7 @@ docker compose version >/dev/null
 docker info >/dev/null
 
 mkdir -p tests/postman/reports tests/stack/reports
-rm -f tests/postman/reports/newman.xml tests/stack/reports/authorization.txt
+rm -f tests/postman/reports/newman.xml tests/stack/reports/authorization.txt tests/stack/reports/contracts.txt
 
 # A unique project and no published ports keep this test away from developer data.
 project="umkm-stage1-${RANDOM}-$$"
@@ -34,19 +34,26 @@ if "${compose[@]}" run --rm --no-deps \
   exit 1
 fi
 "${compose[@]}" run --rm --no-deps stack-check prepare
+"${compose[@]}" run --rm --no-deps db-fixtures sh -ec \
+  'psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f /app/legacy-contract-fixtures.sql'
 
 "${compose[@]}" run --build --rm --no-deps newman-check
 
 "${compose[@]}" run --rm --no-deps authorization-check 2>&1 | tee tests/stack/reports/authorization.txt
 
+"${compose[@]}" run --rm --no-deps contract-check 2>&1 | tee tests/stack/reports/contracts.txt
+
 echo "Re-running migrations and Garage bootstrap, then recreating the containers..."
 "${compose[@]}" run --rm --no-deps db-migrate
 "${compose[@]}" run --rm --no-deps garage-bootstrap
 "${compose[@]}" run --rm --no-deps stack-check verify
+"${compose[@]}" run --rm --no-deps contract-check --verify-persistence 2>&1 | tee -a tests/stack/reports/contracts.txt
 
 # Recreate containers while retaining this test project's database and object volumes.
 "${compose[@]}" down
 "${compose[@]}" up -d --wait --wait-timeout 180 "${services[@]}"
 "${compose[@]}" run --rm --no-deps stack-check verify
+"${compose[@]}" run --rm --no-deps contract-check --verify-persistence 2>&1 | tee -a tests/stack/reports/contracts.txt
 echo "Stage 1 stack checks passed."
 echo "Stage 2 authorization checks passed."
+echo "Stage 3 contract document checks passed."

@@ -58,3 +58,7 @@ docker compose --env-file .env -f infra/docker-compose.db.yml --profile seed run
 The Compose service mounts the committed files and sets the working directory expected by [loaders/load_generated_csv.sql](loaders/load_generated_csv.sql). Do not use the old `data/UMKM_TUMBUH_csv` path.
 
 The CSV dataset is separate from the Stage 1 fixtures. Generator settings and older manifests may differ from the committed account file; a successful import does not establish usable login credentials. See the [CSV notes](dummy/seed-csv/README.txt). Do not commit generated plaintext credentials.
+
+## Partnership contract references
+
+Migration `032_current_partnership_contracts` adds `dokumen_kontrak_id` as a foreign key to current upload metadata. It preserves `dokumen_perjanjian_id` and its legacy references. The down migration refuses to run while new references exist so contract links are not silently discarded. See the [Stage 3 contract guide](../../docs/README_CONTRACT_DOCUMENTS.md) before upgrading the application or planning a rollback.

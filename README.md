@@ -81,6 +81,8 @@ A successful run ends with:
 
 ```text
 Stage 1 stack checks passed.
+Stage 2 authorization checks passed.
+Stage 3 contract document checks passed.
 ```
 
 The test does not leave the development application running. Start it using the commands above. All test accounts are temporary; use the admin seed or register accounts in the normal application. Read the [fixture and test guide](docs/README_LOCAL_DEV.md#run-the-isolated-stage-1-check) for details.
@@ -122,6 +124,7 @@ The optional large CSV seed replaces application data. It is unnecessary for sta
 | Project overview | [Read](README.md) | [Baca](README.id.md) |
 | Local development and Stage 1 | [Read](docs/README_LOCAL_DEV.md) | [Baca](docs/README_LOCAL_DEV.id.md) |
 | Stage 2 authorization | [Read](docs/README_AUTHORIZATION.md) | [Baca](docs/README_AUTHORIZATION.id.md) |
+| Stage 3 contract documents | [Read](docs/README_CONTRACT_DOCUMENTS.md) | [Baca](docs/README_CONTRACT_DOCUMENTS.id.md) |
 | Frontend | [Read](frontend/README.md) | [Baca](frontend/README.id.md) |
 | Database | [Read](infra/db/README.md) | [Baca](infra/db/README.id.md) |
 | Training service | [Read](services/training-service/README.md) | [Baca](services/training-service/README.id.md) |
@@ -133,3 +136,5 @@ Keep paired documentation consistent when changing commands, variables, or behav
 ## Contributing
 
 Create a feature branch, make a focused change, run the relevant checks, and open a pull request describing the behavior and validation. Keep schema changes in `infra/db/migrations/`; do not add service-local migration folders without an architecture decision. Do not commit `.env` files or generated credentials.
+
+The [Stage 3 guide](docs/README_CONTRACT_DOCUMENTS.md) covers upload → sign → download and legacy contract compatibility. The stack test also runs contract regressions and rechecks contracts after container recreation.

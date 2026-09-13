@@ -108,6 +108,8 @@ Pesan `INSERT 0 0` saat pengisian ulang berarti baris data uji yang sudah ada di
 
 ```text
 Stage 1 stack checks passed.
+Stage 2 authorization checks passed.
+Stage 3 contract document checks passed.
 ```
 
 Status `Exited` normal untuk migrasi, seed, dan bootstrap yang sudah selesai dengan sukses. Penghapusan container dan volume pada akhir log merupakan pembersihan pengujian. Setelah itu, aplikasi pengembangan tidak berjalan kecuali sebelumnya dijalankan secara terpisah. Gunakan perintah startup pada awal panduan ini, lalu jalankan frontend di terminal lain.
@@ -202,3 +204,7 @@ infra/db/migrations/
 ```
 
 Jangan menambahkan direktori migrasi per layanan kecuali keputusan arsitekturnya berubah.
+
+## Dokumen kontrak Stage 3
+
+Perintah stack yang sama menjalankan [pengujian kontrak Stage 3](README_CONTRACT_DOCUMENTS.id.md), termasuk unggahan nyata, akses kedua pihak, benturan ID lama, dan penyimpanan/penghapusan bersamaan. Laporan tersimpan di `tests/stack/reports/contracts.txt` dan diunggah CI bersama laporan lainnya. Pengujian kontrak juga diulang setelah migrasi dan pembuatan ulang container. Document-service kini memiliki job Go tersendiri dalam matriks CI.

@@ -62,6 +62,7 @@ export type RequestOptions = RequestInit & {
   service?: ServiceName;
   skipJsonContentType?: boolean;
   timeoutMs?: number;
+  responseType?: "json" | "blob";
 };
 
 export type ErrorPayload = {
@@ -255,6 +256,7 @@ async function requestWithBaseURL<T>(
     headers,
     skipJsonContentType = false,
     timeoutMs,
+    responseType = "json",
     ...rest
   } = options;
 
@@ -302,7 +304,9 @@ async function requestWithBaseURL<T>(
 
     let payload: unknown = null;
 
-    if (isJson) {
+    if (response.ok && responseType === "blob") {
+      payload = await response.blob();
+    } else if (isJson) {
       payload = await response.json().catch(() => null);
     } else if (!response.ok) {
       const text = await response.text().catch(() => "");

@@ -62,3 +62,5 @@ A new profile uses the seeded UMKM type `UMKM`. Its business category is stored 
 The profile test checks HTTP 200 and the returned business category. If it receives another status, the assertion includes the response body in `newman.xml` so the backend error is visible without a second script error hiding it. Rebuild user-service after updating backend code; `bash tests/stack/run.sh` builds the isolated test services automatically.
 
 The isolated stack additionally runs a separate [Stage 2 authorization suite](../../docs/README_AUTHORIZATION.md) for partnerships and training/certificates. Those checks are recorded in `tests/stack/reports/authorization.txt`, not in the Newman XML.
+
+The isolated stack also runs the [Stage 3 document contract suite](../../docs/README_CONTRACT_DOCUMENTS.md), reported in `tests/stack/reports/contracts.txt`. Its real upload/download and legacy compatibility checks are separate from Newman collection assertions; inspect all three reports when CI fails.

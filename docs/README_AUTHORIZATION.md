@@ -28,7 +28,7 @@ Current upload attachments must be active and owned by the requester. They are c
 
 Migration `031_seed_partnership_statuses` adds the required reference statuses, which previously existed only in the optional dummy dataset. Fresh databases can create proposals without loading dummy data. Existing labels are preserved; rollback retains these shared reference rows.
 
-Contract submission still references the legacy `document.transaksi_dokumenterunggah` table. Regular attachments use `documents.master_dokumen`. The contract test uses two legacy metadata fixtures; connecting the current upload endpoint to contract submission still needs a separate schema migration. The read acknowledgment endpoint does not yet persist a read timestamp. Approval retains the existing behavior and does not require a signed contract.
+Since [Stage 3](README_CONTRACT_DOCUMENTS.md), new contracts use the requester's active `PARTNERSHIP_FILE` uploads in `documents.master_dokumen`. Legacy references are preserved and readable through the proposal ID. The read acknowledgment endpoint does not yet persist a read timestamp. Approval retains the existing behavior and does not require a signed contract.
 
 ## Training and certificate rules
 

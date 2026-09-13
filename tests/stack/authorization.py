@@ -17,7 +17,7 @@ PARTNERSHIP = "http://partnerships-service:8082/api/v1"
 TRAINING = "http://training-service:8084/api/v1"
 
 
-def request(url, method="GET", data=None, token=None, expected=200, headers=None):
+def request(url, method="GET", data=None, token=None, expected=200, headers=None, raw=False):
     headers = dict(headers or {})
     if token:
         headers["Authorization"] = "Bearer " + token
@@ -32,7 +32,7 @@ def request(url, method="GET", data=None, token=None, expected=200, headers=None
     if status != expected:
         detail = "[login response omitted]" if url.endswith("/auth/login") else body.decode(errors="replace")[:1000]
         raise AssertionError(f"{method} {url}: expected {expected}, got {status}: {detail}")
-    if body.startswith(b"%PDF"):
+    if raw or body.startswith(b"%PDF"):
         return body
     return json.loads(body) if body else None
 
@@ -110,7 +110,8 @@ class AuthorizationTests(unittest.TestCase):
             "missing expiry": signed_token({"sub": "TEST_UMKM_A", "role": "UMKM"}),
             "empty subject": signed_token({**claims, "sub": ""}),
         }
-        for url in (PARTNERSHIP + "/partnerships/summary", TRAINING + "/enrollments/user/TEST_BUSINESS_A"):
+        for url in (PARTNERSHIP + "/partnerships/summary", TRAINING + "/enrollments/user/TEST_BUSINESS_A",
+                    DOCUMENT + "/partnership-contracts/TEST_LEGACY_A/download"):
             for name, token in tokens.items():
                 with self.subTest(url=url, token_kind=name):
                     request(url, token=token, expected=401)
@@ -123,7 +124,7 @@ class AuthorizationTests(unittest.TestCase):
         url = PARTNERSHIP + "/partnerships/" + self.partnership_id
         for role in ("umkm.b", "mitra.b"):
             for method, suffix, body in (
-                ("GET", "", None), ("POST", "/sign", {"dokumen_kontrak": "TEST_CONTRACT_B"}),
+                ("GET", "", None), ("POST", "/sign", {"dokumen_kontrak": self.documents["b"]}),
                 ("PATCH", "/read", {}), ("PATCH", "/approve", {}),
                 ("PATCH", "/reject", {"rejection_reason": "Test"}), ("PATCH", "/cancel", {}),
             ):
@@ -139,14 +140,14 @@ class AuthorizationTests(unittest.TestCase):
         request(url + "/approve", "PATCH", {}, self.tokens["umkm.a"], expected=403)
         request(url + "/cancel", "PATCH", {}, self.tokens["mitra.a"], expected=403)
         request(url + "/read", "PATCH", {}, self.tokens["umkm.a"], expected=403)
-        request(url + "/sign", "POST", {"dokumen_kontrak": "TEST_CONTRACT_A"}, self.tokens["mitra.a"], expected=403)
-        request(url + "/sign", "POST", {"dokumen_kontrak": "TEST_CONTRACT_B"}, self.tokens["umkm.a"], expected=403)
-        request(url + "/sign", "POST", {"dokumen_kontrak": "TEST_CONTRACT_A"}, self.tokens["umkm.a"])
+        request(url + "/sign", "POST", {"dokumen_kontrak": self.documents["a"]}, self.tokens["mitra.a"], expected=403)
+        request(url + "/sign", "POST", {"dokumen_kontrak": self.documents["b"]}, self.tokens["umkm.a"], expected=403)
+        request(url + "/sign", "POST", {"dokumen_kontrak": self.documents["a"]}, self.tokens["umkm.a"])
         request(url + "/read", "PATCH", {}, self.tokens["mitra.a"])
         request(url + "/approve", "PATCH", {}, self.tokens["mitra.a"])
         request(url + "/approve", "PATCH", {}, self.tokens["mitra.a"], expected=409)
         request(url + "/cancel", "PATCH", {}, self.tokens["umkm.a"], expected=409)
-        request(url + "/sign", "POST", {"dokumen_kontrak": "TEST_CONTRACT_A"}, self.tokens["umkm.a"], expected=409)
+        request(url + "/sign", "POST", {"dokumen_kontrak": self.documents["a"]}, self.tokens["umkm.a"], expected=409)
         self.assertEqual(request(url, token=self.tokens["umkm.a"])["data"]["pengajuan"]["status"], "AKTIF")
         for operation, account, payload, expected_status in (
             ("cancel", "umkm.a", {}, "DIBATALKAN"),
