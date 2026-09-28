@@ -84,10 +84,13 @@ func signedReplaySummaryXML(t *testing.T, key *rsa.PrivateKey, cert *x509.Certif
 	if len(references) == 0 {
 		references = []string{"body", "timestamp", "messageID"}
 	}
+	return signSummaryXML(t, key, cert, replaySummaryXML(created, expires, messageID), references...)
+}
+
+func replaySummaryXML(created, expires, messageID string) string {
 	raw := summaryXMLWithTimestamp(created, expires)
 	header := `<soap:Header><wsa:MessageID xmlns:wsa="` + testWSA + `" xmlns:wsu="` + testWSU + `" wsu:Id="message-id-1">` + messageID + `</wsa:MessageID>`
-	raw = strings.Replace(raw, "<soap:Header>", header, 1)
-	return signSummaryXML(t, key, cert, raw, references...)
+	return strings.Replace(raw, "<soap:Header>", header, 1)
 }
 
 func signSummaryXML(t *testing.T, key *rsa.PrivateKey, cert *x509.Certificate, raw string, references ...string) string {
@@ -115,6 +118,8 @@ func signSummaryXML(t *testing.T, key *rsa.PrivateKey, cert *x509.Certificate, r
 			target = security.FindElement("./Other")
 		case "messageID":
 			target = doc.Root().FindElement("./Header/MessageID")
+		case "bst":
+			target = security.FindElement("./BinarySecurityToken")
 		default:
 			t.Fatalf("unknown test reference %q", reference)
 		}
@@ -129,6 +134,17 @@ func signSummaryXML(t *testing.T, key *rsa.PrivateKey, cert *x509.Certificate, r
 		}
 	}
 	security.AddChild(sig)
+	if security.FindElement("./BinarySecurityToken") != nil {
+		keyInfo := sig.FindElement("./KeyInfo")
+		for _, child := range keyInfo.ChildElements() {
+			keyInfo.RemoveChild(child)
+		}
+		str := keyInfo.CreateElement("wsse:SecurityTokenReference")
+		str.CreateAttr("xmlns:wsse", testWSSE)
+		reference := str.CreateElement("wsse:Reference")
+		reference.CreateAttr("URI", "#x509-1")
+		reference.CreateAttr("ValueType", testX509v3ValueType)
+	}
 	signedInfo := sig.FindElement("./SignedInfo")
 	nsContext, err := etreeutils.NSBuildParentContext(signedInfo)
 	if err != nil {

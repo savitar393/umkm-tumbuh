@@ -58,6 +58,7 @@ func main() {
 		WSSEMaxClockSkew:      cfg.WSSEMaxClockSkew,
 		WSSEMaxTimestampTTL:   cfg.WSSEMaxTimestampTTL,
 		ReplayProtection:      cfg.ReplayProtection,
+		X509TokenProfile:      cfg.X509TokenProfile,
 		ReplayCacheMaxEntries: cfg.ReplayCacheMaxEntries,
 	})
 

@@ -67,7 +67,7 @@ type verifiedSignedRequest struct {
 
 // verifySignedBody returns only content proven by XMLDSig, including the
 // MessageID and its acceptance deadline when replay protection is enabled.
-func verifySignedBody(raw []byte, trusted *x509.Certificate, now time.Time, clockSkew, maxTTL time.Duration, requireMessageID bool) (verifiedSignedRequest, error) {
+func verifySignedBody(raw []byte, trusted *x509.Certificate, now time.Time, clockSkew, maxTTL time.Duration, requireMessageID, requireX509Token bool) (verifiedSignedRequest, error) {
 	var result verifiedSignedRequest
 	if trusted == nil {
 		return result, errors.New("trusted signing certificate is not configured")
@@ -120,6 +120,18 @@ func verifySignedBody(raw []byte, trusted *x509.Certificate, now time.Time, cloc
 		len(root.FindElements(".//Signature")) != 1 {
 		return result, errors.New("expected one XMLDSig signature in WS-Security header")
 	}
+	var x509Token trustedX509Token
+	verificationCert := trusted
+	if requireX509Token {
+		x509Token, err = resolveTrustedX509Token(root, security[0], signatures[0], trusted)
+		if err != nil {
+			return result, err
+		}
+		if x509Token.id == bodyID || x509Token.id == timestampID || x509Token.id == messageElementID {
+			return result, errors.New("BinarySecurityToken ID is shared")
+		}
+		verificationCert = x509Token.certificate
+	}
 	signedInfo := signatures[0].FindElements("./SignedInfo")
 	if len(signedInfo) != 1 || signedInfo[0].NamespaceURI() != dsigNamespace ||
 		!signatureMethod(signedInfo[0], "CanonicalizationMethod", exclusiveC14N) ||
@@ -131,6 +143,9 @@ func verifySignedBody(raw []byte, trusted *x509.Certificate, now time.Time, cloc
 	if requireMessageID {
 		wantReferences = 3
 	}
+	if requireX509Token {
+		wantReferences = 4
+	}
 	if len(references) != wantReferences {
 		return result, errors.New("unexpected number of signed references")
 	}
@@ -139,6 +154,10 @@ func verifySignedBody(raw []byte, trusted *x509.Certificate, now time.Time, cloc
 	if requireMessageID {
 		targets["#"+messageElementID] = messageIDElement
 		idCounts[messageElementID] = 0
+	}
+	if requireX509Token {
+		targets["#"+x509Token.id] = x509Token.element
+		idCounts[x509Token.id] = 0
 	}
 	seen := make(map[string]bool, wantReferences)
 	for _, reference := range references {
@@ -181,10 +200,13 @@ func verifySignedBody(raw []byte, trusted *x509.Certificate, now time.Time, cloc
 		return result, err
 	}
 	validator.SetReferenceIDAttribute("Id")
-	validator.Certificates = []x509.Certificate{*trusted} // never trust KeyInfo from the request
+	validator.Certificates = []x509.Certificate{*verificationCert} // the embedded token is pinned before use
 	verified, err := validator.ValidateReferences()
 	if err != nil {
 		return result, err
+	}
+	if requireX509Token && !bytes.Equal(validator.SigningCert().Raw, x509Token.certificate.Raw) {
+		return result, errors.New("XMLDSig used an unexpected signing certificate")
 	}
 	if len(verified) != wantReferences {
 		return result, errors.New("unexpected verified reference count")

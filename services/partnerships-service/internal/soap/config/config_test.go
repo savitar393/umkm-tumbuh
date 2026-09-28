@@ -20,6 +20,9 @@ func TestLoadUsesSecureTransportDefaults(t *testing.T) {
 	if cfg.ReplayProtection || cfg.ReplayCacheMaxEntries != 4096 || cfg.Validate() != nil {
 		t.Fatalf("replay defaults are unsafe: enabled=%t max=%d err=%v", cfg.ReplayProtection, cfg.ReplayCacheMaxEntries, cfg.Validate())
 	}
+	if cfg.X509TokenProfile {
+		t.Fatal("X.509 token mode must be off by default")
+	}
 	assertDuration(t, "RequestTimeout", cfg.RequestTimeout, 10*time.Second)
 	assertDuration(t, "DatabaseTimeout", cfg.DatabaseTimeout, 10*time.Second)
 	assertDuration(t, "ReadHeaderTimeout", cfg.ReadHeaderTimeout, 5*time.Second)
@@ -47,6 +50,7 @@ func TestLoadAcceptsPositiveTransportOverrides(t *testing.T) {
 	t.Setenv("SOAP_WSSE_MAX_TIMESTAMP_TTL", "7m")
 	t.Setenv("SOAP_WSSE_REPLAY_PROTECTION", "true")
 	t.Setenv("SOAP_WSSE_REPLAY_CACHE_MAX_ENTRIES", "16")
+	t.Setenv("SOAP_WSSE_X509_TOKEN", "true")
 
 	cfg := Load()
 
@@ -58,6 +62,9 @@ func TestLoadAcceptsPositiveTransportOverrides(t *testing.T) {
 	}
 	if !cfg.ReplayProtection || cfg.ReplayCacheMaxEntries != 16 || cfg.Validate() != nil {
 		t.Fatalf("replay configuration not loaded: enabled=%t max=%d err=%v", cfg.ReplayProtection, cfg.ReplayCacheMaxEntries, cfg.Validate())
+	}
+	if !cfg.X509TokenProfile {
+		t.Fatal("X.509 token mode was not loaded")
 	}
 	if cfg.MaxRequestBytes != 2048 {
 		t.Fatalf("MaxRequestBytes = %d, want 2048", cfg.MaxRequestBytes)
@@ -113,6 +120,29 @@ func TestReplayProtectionRequiresXMLSignature(t *testing.T) {
 	}
 }
 
+func TestX509TokenProfileRequiresSignedReplay(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		signature string
+		replay    string
+	}{
+		{"neither prerequisite", "false", "false"},
+		{"missing signature", "false", "true"},
+		{"missing replay protection", "true", "false"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			clearTransportEnvironment(t)
+			t.Setenv("DATABASE_URL", "postgres://test:test@localhost/test")
+			t.Setenv("SOAP_REQUIRE_XML_SIGNATURE", tc.signature)
+			t.Setenv("SOAP_WSSE_REPLAY_PROTECTION", tc.replay)
+			t.Setenv("SOAP_WSSE_X509_TOKEN", "true")
+			if err := Load().Validate(); err == nil {
+				t.Fatal("X.509 token profile without signed replay was accepted")
+			}
+		})
+	}
+}
+
 func clearTransportEnvironment(t *testing.T) {
 	t.Helper()
 	for _, key := range []string{
@@ -130,6 +160,7 @@ func clearTransportEnvironment(t *testing.T) {
 		"SOAP_WSSE_MAX_TIMESTAMP_TTL",
 		"SOAP_WSSE_REPLAY_PROTECTION",
 		"SOAP_WSSE_REPLAY_CACHE_MAX_ENTRIES",
+		"SOAP_WSSE_X509_TOKEN",
 	} {
 		t.Setenv(key, "")
 	}

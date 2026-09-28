@@ -30,6 +30,7 @@ type Config struct {
 	WSSEMaxClockSkew      time.Duration
 	WSSEMaxTimestampTTL   time.Duration
 	ReplayProtection      bool
+	X509TokenProfile      bool
 	ReplayCacheMaxEntries int
 }
 
@@ -64,6 +65,14 @@ func Load() *Config {
 	default:
 		log.Fatal("SOAP_WSSE_REPLAY_PROTECTION must be true or false")
 	}
+	x509TokenProfile := false
+	switch strings.TrimSpace(os.Getenv("SOAP_WSSE_X509_TOKEN")) {
+	case "", "false":
+	case "true":
+		x509TokenProfile = true
+	default:
+		log.Fatal("SOAP_WSSE_X509_TOKEN must be true or false")
+	}
 
 	if dbURL == "" {
 		log.Fatal("DATABASE_URL or individual POSTGRES_* variables are required")
@@ -87,6 +96,7 @@ func Load() *Config {
 		WSSEMaxClockSkew:      positiveDurationEnv("SOAP_WSSE_MAX_CLOCK_SKEW", 30*time.Second),
 		WSSEMaxTimestampTTL:   positiveDurationEnv("SOAP_WSSE_MAX_TIMESTAMP_TTL", 5*time.Minute),
 		ReplayProtection:      replayProtection,
+		X509TokenProfile:      x509TokenProfile,
 		ReplayCacheMaxEntries: int(positiveInt64Env("SOAP_WSSE_REPLAY_CACHE_MAX_ENTRIES", 4096)),
 	}
 }
@@ -94,6 +104,9 @@ func Load() *Config {
 func (c *Config) Validate() error {
 	if c.ReplayProtection && !c.RequireXMLSignature {
 		return errors.New("SOAP_WSSE_REPLAY_PROTECTION requires SOAP_REQUIRE_XML_SIGNATURE=true")
+	}
+	if c.X509TokenProfile && (!c.RequireXMLSignature || !c.ReplayProtection) {
+		return errors.New("SOAP_WSSE_X509_TOKEN requires XML signatures and replay protection")
 	}
 	return nil
 }
