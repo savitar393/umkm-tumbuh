@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/beevik/etree"
 )
@@ -22,7 +23,7 @@ type trustedX509Token struct {
 	certificate *x509.Certificate
 }
 
-func resolveTrustedX509Token(root, security, signature *etree.Element, configured *x509.Certificate) (trustedX509Token, error) {
+func resolveTrustedX509Token(root, security, signature *etree.Element, trustVerifier CertificateTrustVerifier, now time.Time) (trustedX509Token, error) {
 	var token trustedX509Token
 	elements := security.FindElements("./BinarySecurityToken")
 	if len(elements) != 1 || elements[0].NamespaceURI() != wsseNamespace || len(root.FindElements(".//BinarySecurityToken")) != 1 {
@@ -71,8 +72,11 @@ func resolveTrustedX509Token(root, security, signature *etree.Element, configure
 	if _, ok := token.certificate.PublicKey.(*rsa.PublicKey); !ok {
 		return token, errors.New("BinarySecurityToken certificate is not RSA")
 	}
-	if configured == nil || !bytes.Equal(token.certificate.Raw, configured.Raw) {
-		return token, errors.New("BinarySecurityToken does not match configured trust")
+	if trustVerifier == nil {
+		return token, errors.New("certificate trust verifier is not configured")
+	}
+	if err := trustVerifier.Verify(token.certificate, now); err != nil {
+		return token, err
 	}
 	if err := validateSecurityTokenReference(signature, token.id); err != nil {
 		return token, err

@@ -1,0 +1,19 @@
+version: "3.8"
+services:
+  soap-partnerships-service:
+    environment:
+      SOAP_REQUIRE_XML_SIGNATURE: "true"
+      SOAP_WSSE_REPLAY_PROTECTION: "true"
+      SOAP_WSSE_X509_TOKEN: "true"
+      SOAP_WSSE_SIGN_RESPONSES: "true"
+      SOAP_WSSE_X509_TRUST_MODE: "ca"
+      SOAP_WSSE_REQUEST_CA_FILE: /certs/client-ca.crt
+      SOAP_WSSE_REQUEST_INTERMEDIATES_FILE: /certs/client-inter.crt
+      SOAP_WSSE_RESPONSE_CA_FILE: /certs/server-ca.crt
+      SOAP_WSSE_RESPONSE_INTERMEDIATES_FILE: ""
+      SOAP_WSSE_RESPONSE_CERT_FILE: /certs/server.crt
+      SOAP_WSSE_RESPONSE_KEY_FILE: /certs/server.key
+    volumes:
+      - ../tests/smoke/ca-trust/certs:/certs:ro
+    ports:
+      - "127.0.0.1:9091:9090"

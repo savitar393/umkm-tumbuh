@@ -24,11 +24,18 @@ func main() {
 		log.Fatal("JWT_SECRET is required")
 	}
 	var trustedCert *x509.Certificate
+	var trustVerifier soap.CertificateTrustVerifier
 	if cfg.RequireXMLSignature {
 		var err error
-		trustedCert, err = soap.LoadTrustedSignatureCertificate(cfg.XMLSignatureCertFile)
+		if cfg.X509TrustMode != "ca" {
+			trustedCert, err = soap.LoadTrustedSignatureCertificate(cfg.XMLSignatureCertFile)
+			if err != nil {
+				log.Fatalf("XML signature configuration: %v", err)
+			}
+		}
+		trustVerifier, err = soap.LoadCertificateTrustVerifier(cfg.X509TrustMode, cfg.XMLSignatureCertFile, cfg.RequestCAFile, cfg.RequestIntermediatesFile)
 		if err != nil {
-			log.Fatalf("XML signature configuration: %v", err)
+			log.Fatalf("Trust verifier configuration: %v", err)
 		}
 	}
 	var responseIdentity *soap.ResponseSigningIdentity
@@ -37,6 +44,11 @@ func main() {
 		responseIdentity, err = soap.LoadResponseSigningIdentity(cfg.ResponseCertFile, cfg.ResponseKeyFile)
 		if err != nil {
 			log.Fatalf("SOAP response signing configuration: %v", err)
+		}
+		if cfg.X509TrustMode == "ca" {
+			if err := soap.ValidateResponseIdentityChain(responseIdentity, cfg.ResponseCAFile, cfg.ResponseIntermediatesFile, time.Now()); err != nil {
+				log.Fatalf("SOAP response identity CA validation failed: %v", err)
+			}
 		}
 	}
 
@@ -57,12 +69,13 @@ func main() {
 	// Wire up layers
 	repo := partnerships.NewRepository(pool)
 	svc := partnerships.NewService(repo)
-	handler := soap.NewHandlerWithConfig(contracts.NewAdapter(svc), wsdlContent, soap.HandlerConfig{
+	handler := soap.NewHandlerWithConfig(contracts.NewAdapter(svc), wsdlContent, soap.HandlerConfig{Logger: log.Default(),
 		JWTSecret:               cfg.JWTSecret,
 		MaxRequestBytes:         cfg.MaxRequestBytes,
 		RequestTimeout:          cfg.RequestTimeout,
 		RequireXMLSignature:     cfg.RequireXMLSignature,
 		TrustedSignatureCert:    trustedCert,
+		TrustVerifier:           trustVerifier,
 		WSSEMaxClockSkew:        cfg.WSSEMaxClockSkew,
 		WSSEMaxTimestampTTL:     cfg.WSSEMaxTimestampTTL,
 		ReplayProtection:        cfg.ReplayProtection,

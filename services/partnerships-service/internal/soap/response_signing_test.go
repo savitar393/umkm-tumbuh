@@ -71,7 +71,7 @@ func verifyTestSignedResponse(raw []byte, expected *x509.Certificate, requestMes
 	if relates[0].Text() != requestMessageID || len(relates[0].ChildElements()) != 0 {
 		return errors.New("wrong RelatesTo")
 	}
-	token, err := resolveTrustedX509Token(root, security[0], signatures[0], expected)
+	token, err := resolveTrustedX509Token(root, security[0], signatures[0], &pinnedCertificateVerifier{pinned: expected}, time.Now())
 	if err != nil {
 		return err
 	}
@@ -250,7 +250,7 @@ func TestSignedResponseTransport(t *testing.T) {
 	svc := &signedSummaryService{}
 	handler := NewHandlerWithConfig(svc, "", HandlerConfig{
 		JWTSecret: testJWTSecret, RequireXMLSignature: true, ReplayProtection: true,
-		X509TokenProfile: true, TrustedSignatureCert: clientCert,
+		X509TokenProfile: true, TrustedSignatureCert: clientCert, TrustVerifier: &pinnedCertificateVerifier{pinned: clientCert},
 		SignResponses: true, ResponseSigningIdentity: serverIdentity,
 		Now: func() time.Time { return now },
 	})
@@ -347,7 +347,7 @@ func TestSignedResponseBusinessFaultAndCompatibility(t *testing.T) {
 	request := signedX509SummaryXML(t, clientKey, clientCert, clientCert,
 		"2026-09-28T14:29:00Z", "2026-09-28T14:33:00Z", responseMessageID)
 	base := HandlerConfig{JWTSecret: testJWTSecret, RequireXMLSignature: true,
-		ReplayProtection: true, X509TokenProfile: true, TrustedSignatureCert: clientCert,
+		ReplayProtection: true, X509TokenProfile: true, TrustedSignatureCert: clientCert, TrustVerifier: &pinnedCertificateVerifier{pinned: clientCert},
 		Now: func() time.Time { return now }}
 	compatible := NewHandlerWithConfig(&signedSummaryService{}, "", base)
 	plain := sendSignedSummary(compatible, jwt, request)

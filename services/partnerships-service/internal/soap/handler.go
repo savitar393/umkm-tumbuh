@@ -45,6 +45,7 @@ type HandlerConfig struct {
 	X509TokenProfile        bool
 	SignResponses           bool
 	ResponseSigningIdentity *ResponseSigningIdentity
+	TrustVerifier           CertificateTrustVerifier
 	ReplayCache             ReplayCache
 	ReplayCacheMaxEntries   int
 	Now                     func() time.Time
@@ -66,6 +67,7 @@ type Handler struct {
 	x509TokenProfile        bool
 	signResponses           bool
 	responseSigningIdentity *ResponseSigningIdentity
+	trustVerifier           CertificateTrustVerifier
 	replayCache             ReplayCache
 	invalidSecurityConfig   bool
 	now                     func() time.Time
@@ -117,6 +119,7 @@ func NewHandlerWithConfig(svc partnershipService, wsdl string, cfg HandlerConfig
 		x509TokenProfile:        cfg.X509TokenProfile,
 		signResponses:           cfg.SignResponses,
 		responseSigningIdentity: cfg.ResponseSigningIdentity,
+		trustVerifier:           cfg.TrustVerifier,
 		replayCache:             cfg.ReplayCache,
 		invalidSecurityConfig: (cfg.ReplayProtection && !cfg.RequireXMLSignature) ||
 			(cfg.X509TokenProfile && (!cfg.RequireXMLSignature || !cfg.ReplayProtection)) ||
@@ -192,13 +195,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var verifiedOperation []byte
 	var verifiedMessageID string
 	if h.requireXMLSignature {
-		if h.trustedSignatureCert == nil {
+		if h.trustedSignatureCert == nil && h.trustVerifier == nil {
 			h.logError("xml signature configuration", errors.New("trusted certificate not configured"))
 			WriteServerFault(w, "Internal server error")
 			return
 		}
 		now := h.now()
-		verified, verifyErr := verifySignedBody(body, h.trustedSignatureCert, now, h.wsseMaxClockSkew, h.wsseMaxTimestampTTL, h.replayProtection, h.x509TokenProfile)
+		verified, verifyErr := verifySignedBody(body, h.trustVerifier, h.trustedSignatureCert, now, h.wsseMaxClockSkew, h.wsseMaxTimestampTTL, h.replayProtection, h.x509TokenProfile)
 		if verifyErr != nil {
 			h.logError("xml signature", verifyErr)
 			WriteClientFault(w, "SOAP message signature is invalid")

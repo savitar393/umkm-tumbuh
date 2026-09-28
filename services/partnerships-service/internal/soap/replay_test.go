@@ -100,7 +100,7 @@ func TestSOAPConcurrentReplayDispatchesOnce(t *testing.T) {
 	}, testJWTSecret, "HS256")
 	svc := &concurrentSummaryService{}
 	handler := NewHandlerWithConfig(svc, "", HandlerConfig{
-		JWTSecret: testJWTSecret, RequireXMLSignature: true, TrustedSignatureCert: cert,
+		JWTSecret: testJWTSecret, RequireXMLSignature: true, TrustedSignatureCert: cert, TrustVerifier: &pinnedCertificateVerifier{pinned: cert},
 		ReplayProtection: true, Now: func() time.Time { return now },
 	})
 	const attempts = 12
@@ -142,7 +142,7 @@ func TestSOAPReplayCacheCapacityFailsClosed(t *testing.T) {
 	}, testJWTSecret, "HS256")
 	svc := &signedSummaryService{}
 	handler := NewHandlerWithConfig(svc, "", HandlerConfig{
-		JWTSecret: testJWTSecret, RequireXMLSignature: true, TrustedSignatureCert: cert,
+		JWTSecret: testJWTSecret, RequireXMLSignature: true, TrustedSignatureCert: cert, TrustVerifier: &pinnedCertificateVerifier{pinned: cert},
 		ReplayProtection: true, ReplayCache: NewInMemoryReplayCache(1), Now: func() time.Time { return now },
 	})
 	first := signedReplaySummaryXML(t, key, cert, "2026-09-28T14:29:00Z", "2026-09-28T14:33:00Z", "urn:uuid:550e8400-e29b-41d4-a716-446655440000")
@@ -167,7 +167,7 @@ func TestSOAPFailedBusinessOperationStillConsumesMessageID(t *testing.T) {
 	xmlText := signedReplaySummaryXML(t, key, cert, "2026-09-28T14:29:00Z", "2026-09-28T14:33:00Z", "urn:uuid:550e8400-e29b-41d4-a716-446655440000")
 	svc := &failingSummaryService{}
 	handler := NewHandlerWithConfig(svc, "", HandlerConfig{
-		JWTSecret: testJWTSecret, RequireXMLSignature: true, TrustedSignatureCert: cert,
+		JWTSecret: testJWTSecret, RequireXMLSignature: true, TrustedSignatureCert: cert, TrustVerifier: &pinnedCertificateVerifier{pinned: cert},
 		ReplayProtection: true, Now: func() time.Time { return now },
 	})
 	if rr := sendSignedSummary(handler, token, xmlText); rr.Code != 500 {

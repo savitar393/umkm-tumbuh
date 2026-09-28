@@ -258,8 +258,13 @@ services:
       SOAP_WSSE_REPLAY_CACHE_MAX_ENTRIES: ${SOAP_WSSE_REPLAY_CACHE_MAX_ENTRIES:-4096}
       SOAP_WSSE_X509_TOKEN: ${SOAP_WSSE_X509_TOKEN:-false}
       SOAP_WSSE_SIGN_RESPONSES: ${SOAP_WSSE_SIGN_RESPONSES:-false}
+      SOAP_WSSE_X509_TRUST_MODE: ${SOAP_WSSE_X509_TRUST_MODE:-pin}
+      SOAP_WSSE_REQUEST_CA_FILE: ${SOAP_WSSE_REQUEST_CA_FILE:-/run/secrets/soap-request-ca.pem}
+      SOAP_WSSE_REQUEST_INTERMEDIATES_FILE: ${SOAP_WSSE_REQUEST_INTERMEDIATES_FILE:-/run/secrets/soap-request-intermediates.pem}
       SOAP_WSSE_RESPONSE_CERT_FILE: ${SOAP_WSSE_RESPONSE_CERT_FILE:-/run/secrets/soap-response-cert.pem}
       SOAP_WSSE_RESPONSE_KEY_FILE: ${SOAP_WSSE_RESPONSE_KEY_FILE:-/run/secrets/soap-response-key.pem}
+      SOAP_WSSE_RESPONSE_CA_FILE: ${SOAP_WSSE_RESPONSE_CA_FILE:-/run/secrets/soap-response-ca.pem}
+      SOAP_WSSE_RESPONSE_INTERMEDIATES_FILE: ${SOAP_WSSE_RESPONSE_INTERMEDIATES_FILE:-/run/secrets/soap-response-intermediates.pem}
       DATABASE_URL: postgres://${POSTGRES_USER:-umkm_user}:${POSTGRES_PASSWORD:-umkm_password}@postgres:5432/${POSTGRES_DB:-umkm_tumbuh}?sslmode=disable
       JWT_SECRET: ${JWT_SECRET}
     healthcheck:
@@ -281,6 +286,30 @@ services:
       - type: bind
         source: ${SOAP_WSSE_RESPONSE_KEY_SOURCE:-/dev/null}
         target: ${SOAP_WSSE_RESPONSE_KEY_FILE:-/run/secrets/soap-response-key.pem}
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SOAP_WSSE_REQUEST_CA_SOURCE:-/dev/null}
+        target: ${SOAP_WSSE_REQUEST_CA_FILE:-/run/secrets/soap-request-ca.pem}
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SOAP_WSSE_REQUEST_INTERMEDIATES_SOURCE:-/dev/null}
+        target: ${SOAP_WSSE_REQUEST_INTERMEDIATES_FILE:-/run/secrets/soap-request-intermediates.pem}
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SOAP_WSSE_RESPONSE_CA_SOURCE:-/dev/null}
+        target: ${SOAP_WSSE_RESPONSE_CA_FILE:-/run/secrets/soap-response-ca.pem}
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SOAP_WSSE_RESPONSE_INTERMEDIATES_SOURCE:-/dev/null}
+        target: ${SOAP_WSSE_RESPONSE_INTERMEDIATES_FILE:-/run/secrets/soap-response-intermediates.pem}
         read_only: true
         bind:
           create_host_path: false

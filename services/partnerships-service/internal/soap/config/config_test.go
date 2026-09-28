@@ -168,6 +168,36 @@ func TestResponseSigningRequiresCompleteRequestSecurity(t *testing.T) {
 	}
 }
 
+func TestCATrustModeValidation(t *testing.T) {
+	clearTransportEnvironment(t)
+	t.Setenv("DATABASE_URL", "postgres://test:test@localhost/test")
+	t.Setenv("SOAP_REQUIRE_XML_SIGNATURE", "true")
+	t.Setenv("SOAP_WSSE_REPLAY_PROTECTION", "true")
+	t.Setenv("SOAP_WSSE_X509_TOKEN", "true")
+	t.Setenv("SOAP_WSSE_X509_TRUST_MODE", "ca")
+
+	if err := Load().Validate(); err == nil {
+		t.Fatal("CA trust mode without request CA file was accepted")
+	}
+
+	t.Setenv("SOAP_WSSE_REQUEST_CA_FILE", "/ca.pem")
+	if err := Load().Validate(); err != nil {
+		t.Fatalf("valid CA configuration rejected: %v", err)
+	}
+
+	t.Setenv("SOAP_WSSE_SIGN_RESPONSES", "true")
+	t.Setenv("SOAP_WSSE_RESPONSE_CERT_FILE", "/cert.pem")
+	t.Setenv("SOAP_WSSE_RESPONSE_KEY_FILE", "/key.pem")
+	if err := Load().Validate(); err == nil {
+		t.Fatal("CA trust mode with response signing without response CA file was accepted")
+	}
+
+	t.Setenv("SOAP_WSSE_RESPONSE_CA_FILE", "/resp-ca.pem")
+	if err := Load().Validate(); err != nil {
+		t.Fatalf("valid CA configuration with response signing rejected: %v", err)
+	}
+}
+
 func clearTransportEnvironment(t *testing.T) {
 	t.Helper()
 	for _, key := range []string{
@@ -186,9 +216,14 @@ func clearTransportEnvironment(t *testing.T) {
 		"SOAP_WSSE_REPLAY_PROTECTION",
 		"SOAP_WSSE_REPLAY_CACHE_MAX_ENTRIES",
 		"SOAP_WSSE_X509_TOKEN",
+		"SOAP_WSSE_X509_TRUST_MODE",
+		"SOAP_WSSE_REQUEST_CA_FILE",
+		"SOAP_WSSE_REQUEST_INTERMEDIATES_FILE",
 		"SOAP_WSSE_SIGN_RESPONSES",
 		"SOAP_WSSE_RESPONSE_CERT_FILE",
 		"SOAP_WSSE_RESPONSE_KEY_FILE",
+		"SOAP_WSSE_RESPONSE_CA_FILE",
+		"SOAP_WSSE_RESPONSE_INTERMEDIATES_FILE",
 	} {
 		t.Setenv(key, "")
 	}

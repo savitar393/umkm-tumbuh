@@ -43,7 +43,7 @@ func x509TestHandler(t *testing.T, cert *x509.Certificate, now time.Time) (*Hand
 	svc := &signedSummaryService{}
 	handler := NewHandlerWithConfig(svc, "", HandlerConfig{
 		JWTSecret: testJWTSecret, RequireXMLSignature: true, ReplayProtection: true,
-		X509TokenProfile: true, TrustedSignatureCert: cert, Now: func() time.Time { return now },
+		X509TokenProfile: true, TrustedSignatureCert: cert, TrustVerifier: &pinnedCertificateVerifier{pinned: cert}, Now: func() time.Time { return now },
 	})
 	return handler, token, svc
 }
@@ -232,7 +232,7 @@ func TestSOAPX509TokenFreshnessJWTAndCompatibility(t *testing.T) {
 	legacySvc := &signedSummaryService{}
 	legacyHandler := NewHandlerWithConfig(legacySvc, "", HandlerConfig{
 		JWTSecret: testJWTSecret, RequireXMLSignature: true, ReplayProtection: true,
-		TrustedSignatureCert: cert, Now: func() time.Time { return now },
+		TrustedSignatureCert: cert, TrustVerifier: &pinnedCertificateVerifier{pinned: cert}, Now: func() time.Time { return now },
 	})
 	if rr := sendSignedSummary(legacyHandler, token, legacy); rr.Code != 200 || legacySvc.calls != 1 {
 		t.Fatalf("three-reference compatibility: status=%d calls=%d", rr.Code, legacySvc.calls)

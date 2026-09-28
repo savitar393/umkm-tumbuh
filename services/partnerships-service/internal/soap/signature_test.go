@@ -184,7 +184,7 @@ func TestSOAPReplayProtectionFirstAndRepeat(t *testing.T) {
 	xmlText := signedReplaySummaryXML(t, key, cert, "2026-09-28T14:29:00Z", "2026-09-28T14:33:00Z", "urn:uuid:550e8400-e29b-41d4-a716-446655440000")
 	svc := &signedSummaryService{}
 	handler := NewHandlerWithConfig(svc, "", HandlerConfig{
-		JWTSecret: testJWTSecret, RequireXMLSignature: true, TrustedSignatureCert: cert,
+		JWTSecret: testJWTSecret, RequireXMLSignature: true, TrustedSignatureCert: cert, TrustVerifier: &pinnedCertificateVerifier{pinned: cert},
 		ReplayProtection: true, Now: func() time.Time { return now },
 	})
 	for i, want := range []int{200, 400} {
@@ -238,7 +238,7 @@ func TestSOAPReplaySecurityProfile(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := &signedSummaryService{}
 			handler := NewHandlerWithConfig(svc, "", HandlerConfig{
-				JWTSecret: testJWTSecret, RequireXMLSignature: true, TrustedSignatureCert: cert,
+				JWTSecret: testJWTSecret, RequireXMLSignature: true, TrustedSignatureCert: cert, TrustVerifier: &pinnedCertificateVerifier{pinned: cert},
 				ReplayProtection: true, Now: func() time.Time { return now },
 			})
 			rr := sendSignedSummary(handler, token, tc.xml)
@@ -250,7 +250,7 @@ func TestSOAPReplaySecurityProfile(t *testing.T) {
 
 	svc := &signedSummaryService{}
 	handler := NewHandlerWithConfig(svc, "", HandlerConfig{
-		JWTSecret: testJWTSecret, RequireXMLSignature: true, TrustedSignatureCert: cert,
+		JWTSecret: testJWTSecret, RequireXMLSignature: true, TrustedSignatureCert: cert, TrustVerifier: &pinnedCertificateVerifier{pinned: cert},
 		ReplayProtection: true, Now: func() time.Time { return now },
 	})
 	if rr := sendSignedSummary(handler, "", valid); rr.Code != 401 {
@@ -338,7 +338,7 @@ func TestSOAPXMLSignatureProfile(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := &signedSummaryService{}
 			handler := NewHandlerWithConfig(svc, "", HandlerConfig{
-				JWTSecret: testJWTSecret, RequireXMLSignature: tc.require, TrustedSignatureCert: trustedCert,
+				JWTSecret: testJWTSecret, RequireXMLSignature: tc.require, TrustedSignatureCert: trustedCert, TrustVerifier: &pinnedCertificateVerifier{pinned: trustedCert},
 				Now: func() time.Time { return now },
 			})
 			req := httptest.NewRequest(http.MethodPost, "/partnership", strings.NewReader(tc.xml))

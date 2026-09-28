@@ -68,10 +68,10 @@ type verifiedSignedRequest struct {
 
 // verifySignedBody returns only content proven by XMLDSig, including the
 // MessageID and its acceptance deadline when replay protection is enabled.
-func verifySignedBody(raw []byte, trusted *x509.Certificate, now time.Time, clockSkew, maxTTL time.Duration, requireMessageID, requireX509Token bool) (verifiedSignedRequest, error) {
+func verifySignedBody(raw []byte, trustVerifier CertificateTrustVerifier, fallbackCert *x509.Certificate, now time.Time, clockSkew, maxTTL time.Duration, requireMessageID, requireX509Token bool) (verifiedSignedRequest, error) {
 	var result verifiedSignedRequest
-	if trusted == nil {
-		return result, errors.New("trusted signing certificate is not configured")
+	if trustVerifier == nil {
+		return result, errors.New("certificate trust verifier is not configured")
 	}
 	doc := etree.NewDocument()
 	if err := doc.ReadFromBytes(raw); err != nil {
@@ -122,9 +122,9 @@ func verifySignedBody(raw []byte, trusted *x509.Certificate, now time.Time, cloc
 		return result, errors.New("expected one XMLDSig signature in WS-Security header")
 	}
 	var x509Token trustedX509Token
-	verificationCert := trusted
+	var verificationCert *x509.Certificate
 	if requireX509Token {
-		x509Token, err = resolveTrustedX509Token(root, security[0], signatures[0], trusted)
+		x509Token, err = resolveTrustedX509Token(root, security[0], signatures[0], trustVerifier, now)
 		if err != nil {
 			return result, err
 		}
@@ -132,6 +132,11 @@ func verifySignedBody(raw []byte, trusted *x509.Certificate, now time.Time, cloc
 			return result, errors.New("BinarySecurityToken ID is shared")
 		}
 		verificationCert = x509Token.certificate
+	} else {
+		if fallbackCert == nil {
+			return result, errors.New("fallback certificate required when X.509 token profile is disabled")
+		}
+		verificationCert = fallbackCert
 	}
 	signedInfo := signatures[0].FindElements("./SignedInfo")
 	if len(signedInfo) != 1 || signedInfo[0].NamespaceURI() != dsigNamespace ||

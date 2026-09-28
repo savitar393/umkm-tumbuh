@@ -250,3 +250,35 @@ func (h *Handler) writeSignedResponse(w http.ResponseWriter, response *bufferedS
 	_, err = w.Write(signed)
 	return err
 }
+
+// ValidateResponseIdentityChain verifies the loaded ResponseSigningIdentity against
+// a configured CA root and optional intermediate chain.
+func ValidateResponseIdentityChain(identity *ResponseSigningIdentity, caFile, intermediatesFile string, now time.Time) error {
+	if caFile == "" {
+		return errors.New("caFile is required for response CA validation")
+	}
+	roots, err := loadCertPool(caFile)
+	if err != nil {
+		return err
+	}
+	var intermediates *x509.CertPool
+	if intermediatesFile != "" {
+		intermediates, err = loadCertPool(intermediatesFile)
+		if err != nil {
+			return err
+		}
+	} else {
+		intermediates = x509.NewCertPool()
+	}
+
+	opts := x509.VerifyOptions{
+		Roots:         roots,
+		Intermediates: intermediates,
+		CurrentTime:   now,
+		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+	}
+	if _, err := identity.certificate.Verify(opts); err != nil {
+		return err
+	}
+	return nil
+}
