@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strings"
+	"time"
 
 	"github.com/beevik/etree"
 	"github.com/moov-io/signedxml"
@@ -25,6 +27,11 @@ const (
 )
 
 var signatureID = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_.-]{0,127}$`)
+
+const (
+	DefaultWSSEMaxClockSkew    = 30 * time.Second
+	DefaultWSSEMaxTimestampTTL = 5 * time.Minute
+)
 
 // LoadTrustedSignatureCertificate pins one RSA public certificate at startup.
 // It does not build or validate a certificate chain.
@@ -52,7 +59,7 @@ func LoadTrustedSignatureCertificate(path string) (*x509.Certificate, error) {
 
 // verifySignedBody returns only the SOAP Body content proven by XMLDSig.
 // Its narrow profile avoids ambiguous references and signature wrapping.
-func verifySignedBody(raw []byte, trusted *x509.Certificate) ([]byte, error) {
+func verifySignedBody(raw []byte, trusted *x509.Certificate, now time.Time, clockSkew, maxTTL time.Duration) ([]byte, error) {
 	if trusted == nil {
 		return nil, errors.New("trusted signing certificate is not configured")
 	}
@@ -69,22 +76,22 @@ func verifySignedBody(raw []byte, trusted *x509.Certificate) ([]byte, error) {
 		return nil, errors.New("expected one SOAP Header and Body")
 	}
 	body := bodies[0]
-	var bodyID string
-	for i := range body.Attr {
-		attr := &body.Attr[i]
-		if attr.Key == "Id" && attr.NamespaceURI() == wsuNamespace {
-			if bodyID != "" {
-				return nil, errors.New("duplicate Body ID")
-			}
-			bodyID = attr.Value
-		}
-	}
-	if !signatureID.MatchString(bodyID) {
-		return nil, errors.New("invalid Body ID")
+	bodyID, err := signedElementID(body)
+	if err != nil {
+		return nil, fmt.Errorf("SOAP Body: %w", err)
 	}
 	security := headers[0].FindElements("./Security")
-	if len(security) != 1 || security[0].NamespaceURI() != wsseNamespace {
+	if len(security) != 1 || security[0].NamespaceURI() != wsseNamespace || len(root.FindElements(".//Security")) != 1 {
 		return nil, errors.New("missing WS-Security header")
+	}
+	timestamps := security[0].FindElements("./Timestamp")
+	if len(timestamps) != 1 || timestamps[0].NamespaceURI() != wsuNamespace || len(root.FindElements(".//Timestamp")) != 1 {
+		return nil, errors.New("expected one WS-Security Timestamp")
+	}
+	timestamp := timestamps[0]
+	timestampID, err := signedElementID(timestamp)
+	if err != nil || timestampID == bodyID {
+		return nil, errors.New("invalid Timestamp ID")
 	}
 	signatures := security[0].FindElements("./Signature")
 	if len(signatures) != 1 || signatures[0].NamespaceURI() != dsigNamespace ||
@@ -98,24 +105,34 @@ func verifySignedBody(raw []byte, trusted *x509.Certificate) ([]byte, error) {
 		return nil, errors.New("unsupported signature profile")
 	}
 	references := signedInfo[0].FindElements("./Reference")
-	if len(references) != 1 || references[0].NamespaceURI() != dsigNamespace ||
-		references[0].SelectAttrValue("URI", "") != "#"+bodyID ||
-		!signatureMethod(references[0], "DigestMethod", digestSHA256) {
-		return nil, errors.New("signature does not reference SOAP Body")
+	if len(references) != 2 {
+		return nil, errors.New("expected Body and Timestamp references")
 	}
-	transforms := references[0].FindElements("./Transforms")
-	if len(transforms) != 1 || transforms[0].NamespaceURI() != dsigNamespace ||
-		len(transforms[0].ChildElements()) != 1 ||
-		!signatureMethod(transforms[0], "Transform", exclusiveC14N) {
-		return nil, errors.New("unsupported Body transform")
+	targets := map[string]*etree.Element{"#" + bodyID: body, "#" + timestampID: timestamp}
+	seen := make(map[string]bool, 2)
+	for _, reference := range references {
+		uri := reference.SelectAttrValue("URI", "")
+		if reference.NamespaceURI() != dsigNamespace || targets[uri] == nil || seen[uri] ||
+			!signatureMethod(reference, "DigestMethod", digestSHA256) {
+			return nil, errors.New("invalid signed reference")
+		}
+		seen[uri] = true
+		transforms := reference.FindElements("./Transforms")
+		if len(transforms) != 1 || transforms[0].NamespaceURI() != dsigNamespace ||
+			len(transforms[0].ChildElements()) != 1 ||
+			!signatureMethod(transforms[0], "Transform", exclusiveC14N) {
+			return nil, errors.New("unsupported reference transform")
+		}
 	}
-	var idCount int
+	idCounts := map[string]int{bodyID: 0, timestampID: 0}
 	var visit func(*etree.Element)
 	visit = func(el *etree.Element) {
 		for _, attr := range el.Attr {
 			// signedxml resolves an Id by local name, so reject every duplicate.
-			if attr.Key == "Id" && attr.Value == bodyID {
-				idCount++
+			if attr.Key == "Id" {
+				if _, ok := idCounts[attr.Value]; ok {
+					idCounts[attr.Value]++
+				}
 			}
 		}
 		for _, child := range el.ChildElements() {
@@ -123,8 +140,8 @@ func verifySignedBody(raw []byte, trusted *x509.Certificate) ([]byte, error) {
 		}
 	}
 	visit(root)
-	if idCount != 1 {
-		return nil, errors.New("ambiguous Body reference")
+	if idCounts[bodyID] != 1 || idCounts[timestampID] != 1 {
+		return nil, errors.New("ambiguous signed reference")
 	}
 
 	validator, err := signedxml.NewValidator(string(raw))
@@ -137,12 +154,20 @@ func verifySignedBody(raw []byte, trusted *x509.Certificate) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	actualBody, err := serializeElement(body)
-	if err != nil {
-		return nil, err
+	if len(verified) != 2 {
+		return nil, errors.New("expected two verified references")
 	}
-	if len(verified) != 1 || verified[0] != string(actualBody) {
-		return nil, errors.New("verified reference differs from actual SOAP Body")
+	for i, reference := range references {
+		actual, err := serializeElement(targets[reference.SelectAttrValue("URI", "")])
+		if err != nil {
+			return nil, err
+		}
+		if verified[i] != string(actual) {
+			return nil, errors.New("verified reference differs from SOAP element")
+		}
+	}
+	if err := validateSignedTimestamp(timestamp, now.UTC(), clockSkew, maxTTL); err != nil {
+		return nil, err
 	}
 	// Restore the original in-scope namespaces on the verified operation for
 	// the existing XML dispatcher. No request XML outside this Body is used.
@@ -159,6 +184,57 @@ func verifySignedBody(raw []byte, trusted *x509.Certificate) ([]byte, error) {
 		return nil, err
 	}
 	return serializeElement(detached)
+}
+
+func signedElementID(element *etree.Element) (string, error) {
+	var id string
+	found := false
+	for i := range element.Attr {
+		attr := &element.Attr[i]
+		if attr.Key == "Id" && attr.NamespaceURI() == wsuNamespace {
+			if found {
+				return "", errors.New("duplicate wsu:Id")
+			}
+			found = true
+			id = attr.Value
+		}
+	}
+	if !signatureID.MatchString(id) {
+		return "", errors.New("missing or invalid wsu:Id")
+	}
+	return id, nil
+}
+
+func validateSignedTimestamp(timestamp *etree.Element, now time.Time, clockSkew, maxTTL time.Duration) error {
+	children := timestamp.ChildElements()
+	if len(children) != 2 || children[0].Tag != "Created" || children[1].Tag != "Expires" ||
+		children[0].NamespaceURI() != wsuNamespace || children[1].NamespaceURI() != wsuNamespace ||
+		len(children[0].ChildElements()) != 0 || len(children[1].ChildElements()) != 0 {
+		return errors.New("invalid Timestamp structure")
+	}
+	parseUTC := func(value string) (time.Time, error) {
+		if !strings.HasSuffix(value, "Z") || strings.ContainsAny(value, " ,\t\r\n") {
+			return time.Time{}, errors.New("Timestamp must use UTC")
+		}
+		parsed, err := time.Parse(time.RFC3339Nano, value)
+		if err != nil {
+			return time.Time{}, err
+		}
+		return parsed.UTC(), nil
+	}
+	created, err := parseUTC(children[0].Text())
+	if err != nil {
+		return err
+	}
+	expires, err := parseUTC(children[1].Text())
+	if err != nil {
+		return err
+	}
+	if created.After(now.Add(clockSkew)) || expires.Before(now.Add(-clockSkew)) ||
+		!expires.After(created) || expires.Sub(created) > maxTTL {
+		return errors.New("Timestamp is outside the allowed validity window")
+	}
+	return nil
 }
 
 func signatureMethod(parent *etree.Element, name, algorithm string) bool {

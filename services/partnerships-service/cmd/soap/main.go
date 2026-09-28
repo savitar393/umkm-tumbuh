@@ -52,6 +52,8 @@ func main() {
 		RequestTimeout:       cfg.RequestTimeout,
 		RequireXMLSignature:  cfg.RequireXMLSignature,
 		TrustedSignatureCert: trustedCert,
+		WSSEMaxClockSkew:     cfg.WSSEMaxClockSkew,
+		WSSEMaxTimestampTTL:  cfg.WSSEMaxTimestampTTL,
 	})
 
 	// Register route

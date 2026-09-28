@@ -2,10 +2,13 @@ package soap
 
 import (
 	"context"
+	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/base64"
 	"encoding/pem"
 	"math/big"
 	"net/http"
@@ -17,7 +20,9 @@ import (
 	"time"
 
 	"github.com/beevik/etree"
+	"github.com/moov-io/signedxml"
 	dsig "github.com/russellhaering/goxmldsig"
+	"github.com/russellhaering/goxmldsig/etreeutils"
 	contracts "github.com/savitar393/umkm-tumbuh/services/partnerships-service/internal/soap/contracts"
 )
 
@@ -60,27 +65,70 @@ func summaryXML() string {
 	return `<soap:Envelope xmlns:soap="` + NSEnvelope + `" xmlns:wsse="` + testWSSE + `" xmlns:wsu="` + testWSU + `" xmlns:p="` + NSPartner + `"><soap:Header><wsse:Security><x:Other xmlns:x="urn:other" xmlns:wsu="` + testWSU + `" wsu:Id="other-1">unrelated</x:Other></wsse:Security></soap:Header><soap:Body xmlns:soap="` + NSEnvelope + `" xmlns:wsu="` + testWSU + `" xmlns:p="` + NSPartner + `" wsu:Id="body-1"><p:GetPartnershipSummary><userId>AKUN-001</userId><userRole>UMKM</userRole></p:GetPartnershipSummary></soap:Body></soap:Envelope>`
 }
 
-func signedSummaryXML(t *testing.T, key *rsa.PrivateKey, cert *x509.Certificate, other bool) string {
+func summaryXMLWithTimestamp(created, expires string) string {
+	timestamp := `<wsu:Timestamp xmlns:wsu="` + testWSU + `" wsu:Id="timestamp-1"><wsu:Created>` + created + `</wsu:Created><wsu:Expires>` + expires + `</wsu:Expires></wsu:Timestamp>`
+	return strings.Replace(summaryXML(), "<wsse:Security>", "<wsse:Security>"+timestamp, 1)
+}
+
+func signedSummaryXML(t *testing.T, key *rsa.PrivateKey, cert *x509.Certificate, created, expires string, references ...string) string {
 	t.Helper()
+	if len(references) == 0 {
+		references = []string{"body", "timestamp"}
+	}
 	doc := etree.NewDocument()
-	if err := doc.ReadFromString(summaryXML()); err != nil {
+	if err := doc.ReadFromString(summaryXMLWithTimestamp(created, expires)); err != nil {
 		t.Fatal(err)
 	}
-	target := doc.Root().FindElement("./Body")
-	if other {
-		target = doc.Root().FindElement("./Header/Security/Other")
-	}
+	security := doc.Root().FindElement("./Header/Security")
 	signer, err := dsig.NewSigningContext(key, [][]byte{cert.Raw})
 	if err != nil {
 		t.Fatal(err)
 	}
 	signer.IdAttribute = "wsu:Id"
 	signer.Canonicalizer = dsig.MakeC14N10ExclusiveCanonicalizerWithPrefixList("")
-	sig, err := signer.ConstructSignature(target, false)
+	var sig *etree.Element
+	for _, reference := range references {
+		var target *etree.Element
+		switch reference {
+		case "body":
+			target = doc.Root().FindElement("./Body")
+		case "timestamp":
+			target = security.FindElement("./Timestamp")
+		case "other":
+			target = security.FindElement("./Other")
+		default:
+			t.Fatalf("unknown test reference %q", reference)
+		}
+		next, signErr := signer.ConstructSignature(target, false)
+		if signErr != nil {
+			t.Fatal(signErr)
+		}
+		if sig == nil {
+			sig = next
+		} else {
+			sig.FindElement("./SignedInfo").AddChild(next.FindElement("./SignedInfo/Reference").Copy())
+		}
+	}
+	security.AddChild(sig)
+	signedInfo := sig.FindElement("./SignedInfo")
+	nsContext, err := etreeutils.NSBuildParentContext(signedInfo)
 	if err != nil {
 		t.Fatal(err)
 	}
-	doc.Root().FindElement("./Header/Security").AddChild(sig)
+	detached, err := etreeutils.NSDetatch(nsContext, signedInfo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	canonical, err := signer.Canonicalizer.Canonicalize(detached)
+	if err != nil {
+		t.Fatal(err)
+	}
+	digest := sha256.Sum256(canonical)
+	value, err := key.Sign(rand.Reader, digest[:], crypto.SHA256)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sig.FindElement("./SignatureValue").SetText(base64.StdEncoding.EncodeToString(value))
 	xmlText, err := doc.WriteToString()
 	if err != nil {
 		t.Fatal(err)
@@ -93,9 +141,21 @@ func signedSummaryXML(t *testing.T, key *rsa.PrivateKey, cert *x509.Certificate,
 }
 
 func TestSOAPXMLSignatureProfile(t *testing.T) {
+	now := time.Date(2026, 9, 28, 14, 30, 0, 0, time.UTC)
+	created, expires := "2026-09-28T14:29:00Z", "2026-09-28T14:33:00Z"
 	trustedKey, trustedCert := testSigningIdentity(t)
 	otherKey, otherCert := testSigningIdentity(t)
-	valid := signedSummaryXML(t, trustedKey, trustedCert, false)
+	valid := signedSummaryXML(t, trustedKey, trustedCert, created, expires)
+	expired := signedSummaryXML(t, trustedKey, trustedCert, "2026-09-28T14:20:00Z", "2026-09-28T14:24:00Z")
+	validator, err := signedxml.NewValidator(expired)
+	if err != nil {
+		t.Fatal(err)
+	}
+	validator.SetReferenceIDAttribute("Id")
+	validator.Certificates = []x509.Certificate{*trustedCert}
+	if verified, err := validator.ValidateReferences(); err != nil || len(verified) != 2 {
+		t.Fatalf("expired fixture must have two valid signed references: count=%d err=%v", len(verified), err)
+	}
 	token := signedTestJWT(t, map[string]any{
 		"sub": "AKUN-001", "role": "UMKM", "exp": time.Now().Add(time.Hour).Unix(),
 	}, testJWTSecret, "HS256")
@@ -108,19 +168,34 @@ func TestSOAPXMLSignatureProfile(t *testing.T) {
 		calls   int
 	}{
 		{"compatibility unsigned", summaryXML(), false, token, 200, 1},
-		{"valid signed Body", valid, true, token, 200, 1},
-		{"missing signature", summaryXML(), true, token, 400, 0},
+		{"valid signed Body and Timestamp", valid, true, token, 200, 1},
+		{"missing signature", summaryXMLWithTimestamp(created, expires), true, token, 400, 0},
 		{"tampered Body", strings.Replace(valid, "AKUN-001</userId>", "AKUN-002</userId>", 1), true, token, 400, 0},
-		{"wrong key", signedSummaryXML(t, otherKey, otherCert, false), true, token, 400, 0},
+		{"tampered Timestamp", strings.Replace(valid, expires, "2026-09-28T14:34:00Z", 1), true, token, 400, 0},
+		{"Timestamp unsigned", signedSummaryXML(t, trustedKey, trustedCert, created, expires, "body"), true, token, 400, 0},
+		{"Body unsigned", signedSummaryXML(t, trustedKey, trustedCert, created, expires, "timestamp", "other"), true, token, 400, 0},
+		{"two Body references", signedSummaryXML(t, trustedKey, trustedCert, created, expires, "body", "body"), true, token, 400, 0},
+		{"expired signed Timestamp", expired, true, token, 400, 0},
+		{"future Timestamp", signedSummaryXML(t, trustedKey, trustedCert, "2026-09-28T14:31:00Z", "2026-09-28T14:34:00Z"), true, token, 400, 0},
+		{"small clock skew", signedSummaryXML(t, trustedKey, trustedCert, "2026-09-28T14:30:20Z", "2026-09-28T14:34:20Z"), true, token, 200, 1},
+		{"excessive TTL", signedSummaryXML(t, trustedKey, trustedCert, "2026-09-28T14:30:00Z", "2026-09-28T15:30:00Z"), true, token, 400, 0},
+		{"malformed UTC time", signedSummaryXML(t, trustedKey, trustedCert, "2026-09-28T14:29:00+00:00", expires), true, token, 400, 0},
+		{"Expires not after Created", signedSummaryXML(t, trustedKey, trustedCert, created, created), true, token, 400, 0},
+		{"wrong key", signedSummaryXML(t, otherKey, otherCert, created, expires), true, token, 400, 0},
 		{"JWT still mandatory", valid, true, "", 401, 0},
-		{"wrong reference", signedSummaryXML(t, trustedKey, trustedCert, true), true, token, 400, 0},
+		{"wrong reference", signedSummaryXML(t, trustedKey, trustedCert, created, expires, "other", "timestamp"), true, token, 400, 0},
 		{"duplicate reference ID", strings.Replace(valid, `<soap:Header>`, `<soap:Header><x:Duplicate xmlns:x="urn:other" xmlns:wsu="`+testWSU+`" wsu:Id="body-1"/>`, 1), true, token, 400, 0},
+		{"duplicate Timestamp ID", strings.Replace(valid, `<ds:Signature`, `<x:Duplicate xmlns:x="urn:other" xmlns:wsu="`+testWSU+`" wsu:Id="timestamp-1"/><ds:Signature`, 1), true, token, 400, 0},
+		{"duplicate Timestamp element", strings.Replace(valid, `<ds:Signature`, `<wsu:Timestamp wsu:Id="timestamp-2"><wsu:Created>`+created+`</wsu:Created><wsu:Expires>`+expires+`</wsu:Expires></wsu:Timestamp><ds:Signature`, 1), true, token, 400, 0},
+		{"shared Body and Timestamp ID", strings.Replace(valid, `wsu:Id="timestamp-1"`, `wsu:Id="body-1"`, 1), true, token, 400, 0},
+		{"extra third reference", signedSummaryXML(t, trustedKey, trustedCert, created, expires, "body", "timestamp", "other"), true, token, 400, 0},
 		{"SHA1 downgrade", strings.Replace(valid, rsaSHA256, "http://www.w3.org/2000/09/xmldsig#rsa-sha1", 1), true, token, 400, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			svc := &signedSummaryService{}
 			handler := NewHandlerWithConfig(svc, "", HandlerConfig{
 				JWTSecret: testJWTSecret, RequireXMLSignature: tc.require, TrustedSignatureCert: trustedCert,
+				Now: func() time.Time { return now },
 			})
 			req := httptest.NewRequest(http.MethodPost, "/partnership", strings.NewReader(tc.xml))
 			if tc.token != "" {
@@ -138,6 +213,17 @@ func TestSOAPXMLSignatureProfile(t *testing.T) {
 	}
 }
 
+func TestSignedElementIDRejectsDuplicateWSUAttributes(t *testing.T) {
+	element := etree.NewElement("Body")
+	element.CreateAttr("xmlns:wsu", testWSU)
+	element.CreateAttr("xmlns:alias", testWSU)
+	element.CreateAttr("wsu:Id", "")
+	element.CreateAttr("alias:Id", "body-1")
+	if _, err := signedElementID(element); err == nil {
+		t.Fatal("two wsu:Id attributes were accepted")
+	}
+}
+
 func TestSOAPXMLSignatureRequiresTrustedCertificate(t *testing.T) {
 	key, cert := testSigningIdentity(t)
 	token := signedTestJWT(t, map[string]any{
@@ -145,7 +231,7 @@ func TestSOAPXMLSignatureRequiresTrustedCertificate(t *testing.T) {
 	}, testJWTSecret, "HS256")
 	svc := &signedSummaryService{}
 	handler := NewHandlerWithConfig(svc, "", HandlerConfig{JWTSecret: testJWTSecret, RequireXMLSignature: true})
-	req := httptest.NewRequest(http.MethodPost, "/partnership", strings.NewReader(signedSummaryXML(t, key, cert, false)))
+	req := httptest.NewRequest(http.MethodPost, "/partnership", strings.NewReader(signedSummaryXML(t, key, cert, "2026-09-28T14:29:00Z", "2026-09-28T14:33:00Z")))
 	req.Header.Set("Authorization", "Bearer "+token)
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)

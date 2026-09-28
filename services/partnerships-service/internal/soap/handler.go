@@ -41,6 +41,9 @@ type HandlerConfig struct {
 	Logger               *log.Logger
 	RequireXMLSignature  bool
 	TrustedSignatureCert *x509.Certificate
+	Now                  func() time.Time
+	WSSEMaxClockSkew     time.Duration
+	WSSEMaxTimestampTTL  time.Duration
 }
 
 // Handler is the SOAP HTTP handler that routes all 9 partnership operations.
@@ -53,6 +56,9 @@ type Handler struct {
 	logger               *log.Logger
 	requireXMLSignature  bool
 	trustedSignatureCert *x509.Certificate
+	now                  func() time.Time
+	wsseMaxClockSkew     time.Duration
+	wsseMaxTimestampTTL  time.Duration
 }
 
 // NewHandler creates a new SOAP handler.
@@ -71,6 +77,15 @@ func NewHandlerWithConfig(svc partnershipService, wsdl string, cfg HandlerConfig
 	if cfg.Logger == nil {
 		cfg.Logger = log.Default()
 	}
+	if cfg.Now == nil {
+		cfg.Now = time.Now
+	}
+	if cfg.WSSEMaxClockSkew <= 0 {
+		cfg.WSSEMaxClockSkew = DefaultWSSEMaxClockSkew
+	}
+	if cfg.WSSEMaxTimestampTTL <= 0 {
+		cfg.WSSEMaxTimestampTTL = DefaultWSSEMaxTimestampTTL
+	}
 	return &Handler{
 		svc:                  svc,
 		wsdl:                 wsdl,
@@ -80,6 +95,9 @@ func NewHandlerWithConfig(svc partnershipService, wsdl string, cfg HandlerConfig
 		logger:               cfg.Logger,
 		requireXMLSignature:  cfg.RequireXMLSignature,
 		trustedSignatureCert: cfg.TrustedSignatureCert,
+		now:                  cfg.Now,
+		wsseMaxClockSkew:     cfg.WSSEMaxClockSkew,
+		wsseMaxTimestampTTL:  cfg.WSSEMaxTimestampTTL,
 	}
 }
 
@@ -147,7 +165,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			WriteServerFault(w, "Internal server error")
 			return
 		}
-		verifiedOperation, err = verifySignedBody(body, h.trustedSignatureCert)
+		verifiedOperation, err = verifySignedBody(body, h.trustedSignatureCert, h.now(), h.wsseMaxClockSkew, h.wsseMaxTimestampTTL)
 		if err != nil {
 			h.logError("xml signature", err)
 			WriteClientFault(w, "SOAP message signature is invalid")

@@ -23,6 +23,8 @@ func TestLoadUsesSecureTransportDefaults(t *testing.T) {
 	assertDuration(t, "ReadTimeout", cfg.ReadTimeout, 15*time.Second)
 	assertDuration(t, "WriteTimeout", cfg.WriteTimeout, 30*time.Second)
 	assertDuration(t, "IdleTimeout", cfg.IdleTimeout, 60*time.Second)
+	assertDuration(t, "WSSEMaxClockSkew", cfg.WSSEMaxClockSkew, 30*time.Second)
+	assertDuration(t, "WSSEMaxTimestampTTL", cfg.WSSEMaxTimestampTTL, 5*time.Minute)
 }
 
 func TestLoadAcceptsPositiveTransportOverrides(t *testing.T) {
@@ -38,6 +40,8 @@ func TestLoadAcceptsPositiveTransportOverrides(t *testing.T) {
 	t.Setenv("SOAP_IDLE_TIMEOUT", "45s")
 	t.Setenv("SOAP_REQUIRE_XML_SIGNATURE", "true")
 	t.Setenv("SOAP_XML_SIGNATURE_CERT_FILE", "/run/secrets/signing-cert.pem")
+	t.Setenv("SOAP_WSSE_MAX_CLOCK_SKEW", "45s")
+	t.Setenv("SOAP_WSSE_MAX_TIMESTAMP_TTL", "7m")
 
 	cfg := Load()
 
@@ -56,6 +60,8 @@ func TestLoadAcceptsPositiveTransportOverrides(t *testing.T) {
 	assertDuration(t, "ReadTimeout", cfg.ReadTimeout, 5*time.Second)
 	assertDuration(t, "WriteTimeout", cfg.WriteTimeout, 8*time.Second)
 	assertDuration(t, "IdleTimeout", cfg.IdleTimeout, 45*time.Second)
+	assertDuration(t, "WSSEMaxClockSkew", cfg.WSSEMaxClockSkew, 45*time.Second)
+	assertDuration(t, "WSSEMaxTimestampTTL", cfg.WSSEMaxTimestampTTL, 7*time.Minute)
 }
 
 func TestLoadRejectsUnsafeTransportOverrides(t *testing.T) {
@@ -68,6 +74,8 @@ func TestLoadRejectsUnsafeTransportOverrides(t *testing.T) {
 	t.Setenv("SOAP_READ_TIMEOUT", "0s")
 	t.Setenv("SOAP_WRITE_TIMEOUT", "invalid")
 	t.Setenv("SOAP_IDLE_TIMEOUT", "-1s")
+	t.Setenv("SOAP_WSSE_MAX_CLOCK_SKEW", "-1s")
+	t.Setenv("SOAP_WSSE_MAX_TIMESTAMP_TTL", "invalid")
 
 	cfg := Load()
 
@@ -80,6 +88,8 @@ func TestLoadRejectsUnsafeTransportOverrides(t *testing.T) {
 	assertDuration(t, "ReadTimeout", cfg.ReadTimeout, 15*time.Second)
 	assertDuration(t, "WriteTimeout", cfg.WriteTimeout, 30*time.Second)
 	assertDuration(t, "IdleTimeout", cfg.IdleTimeout, 60*time.Second)
+	assertDuration(t, "WSSEMaxClockSkew", cfg.WSSEMaxClockSkew, 30*time.Second)
+	assertDuration(t, "WSSEMaxTimestampTTL", cfg.WSSEMaxTimestampTTL, 5*time.Minute)
 }
 
 func clearTransportEnvironment(t *testing.T) {
@@ -95,6 +105,8 @@ func clearTransportEnvironment(t *testing.T) {
 		"SOAP_IDLE_TIMEOUT",
 		"SOAP_REQUIRE_XML_SIGNATURE",
 		"SOAP_XML_SIGNATURE_CERT_FILE",
+		"SOAP_WSSE_MAX_CLOCK_SKEW",
+		"SOAP_WSSE_MAX_TIMESTAMP_TTL",
 	} {
 		t.Setenv(key, "")
 	}

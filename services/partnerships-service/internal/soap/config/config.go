@@ -26,6 +26,8 @@ type Config struct {
 	IdleTimeout          time.Duration
 	RequireXMLSignature  bool
 	XMLSignatureCertFile string
+	WSSEMaxClockSkew     time.Duration
+	WSSEMaxTimestampTTL  time.Duration
 }
 
 // Load reads configuration from .env files and environment variables.
@@ -71,6 +73,8 @@ func Load() *Config {
 		IdleTimeout:          positiveDurationEnv("SOAP_IDLE_TIMEOUT", 60*time.Second),
 		RequireXMLSignature:  requireSignature,
 		XMLSignatureCertFile: strings.TrimSpace(os.Getenv("SOAP_XML_SIGNATURE_CERT_FILE")),
+		WSSEMaxClockSkew:     positiveDurationEnv("SOAP_WSSE_MAX_CLOCK_SKEW", 30*time.Second),
+		WSSEMaxTimestampTTL:  positiveDurationEnv("SOAP_WSSE_MAX_TIMESTAMP_TTL", 5*time.Minute),
 	}
 }
 
