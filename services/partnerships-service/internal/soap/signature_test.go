@@ -28,6 +28,7 @@ import (
 
 const testWSSE = "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd"
 const testWSU = "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd"
+const testWSA = "http://www.w3.org/2005/08/addressing"
 
 type signedSummaryService struct {
 	partnershipService
@@ -75,8 +76,24 @@ func signedSummaryXML(t *testing.T, key *rsa.PrivateKey, cert *x509.Certificate,
 	if len(references) == 0 {
 		references = []string{"body", "timestamp"}
 	}
+	return signSummaryXML(t, key, cert, summaryXMLWithTimestamp(created, expires), references...)
+}
+
+func signedReplaySummaryXML(t *testing.T, key *rsa.PrivateKey, cert *x509.Certificate, created, expires, messageID string, references ...string) string {
+	t.Helper()
+	if len(references) == 0 {
+		references = []string{"body", "timestamp", "messageID"}
+	}
+	raw := summaryXMLWithTimestamp(created, expires)
+	header := `<soap:Header><wsa:MessageID xmlns:wsa="` + testWSA + `" xmlns:wsu="` + testWSU + `" wsu:Id="message-id-1">` + messageID + `</wsa:MessageID>`
+	raw = strings.Replace(raw, "<soap:Header>", header, 1)
+	return signSummaryXML(t, key, cert, raw, references...)
+}
+
+func signSummaryXML(t *testing.T, key *rsa.PrivateKey, cert *x509.Certificate, raw string, references ...string) string {
+	t.Helper()
 	doc := etree.NewDocument()
-	if err := doc.ReadFromString(summaryXMLWithTimestamp(created, expires)); err != nil {
+	if err := doc.ReadFromString(raw); err != nil {
 		t.Fatal(err)
 	}
 	security := doc.Root().FindElement("./Header/Security")
@@ -96,6 +113,8 @@ func signedSummaryXML(t *testing.T, key *rsa.PrivateKey, cert *x509.Certificate,
 			target = security.FindElement("./Timestamp")
 		case "other":
 			target = security.FindElement("./Other")
+		case "messageID":
+			target = doc.Root().FindElement("./Header/MessageID")
 		default:
 			t.Fatalf("unknown test reference %q", reference)
 		}
@@ -138,6 +157,115 @@ func signedSummaryXML(t *testing.T, key *rsa.PrivateKey, cert *x509.Certificate,
 		`<soap:Body xmlns:soap="`+NSEnvelope+`" xmlns:wsu="`+testWSU+`" xmlns:p="`+NSPartner+`" wsu:Id=`,
 		`<soap:Body wsu:Id=`, 1)
 	return xmlText
+}
+
+func TestSOAPReplayProtectionFirstAndRepeat(t *testing.T) {
+	now := time.Date(2026, 9, 28, 14, 30, 0, 0, time.UTC)
+	key, cert := testSigningIdentity(t)
+	token := signedTestJWT(t, map[string]any{
+		"sub": "AKUN-001", "role": "UMKM", "exp": time.Now().Add(time.Hour).Unix(),
+	}, testJWTSecret, "HS256")
+	xmlText := signedReplaySummaryXML(t, key, cert, "2026-09-28T14:29:00Z", "2026-09-28T14:33:00Z", "urn:uuid:550e8400-e29b-41d4-a716-446655440000")
+	svc := &signedSummaryService{}
+	handler := NewHandlerWithConfig(svc, "", HandlerConfig{
+		JWTSecret: testJWTSecret, RequireXMLSignature: true, TrustedSignatureCert: cert,
+		ReplayProtection: true, Now: func() time.Time { return now },
+	})
+	for i, want := range []int{200, 400} {
+		req := httptest.NewRequest(http.MethodPost, "/partnership", strings.NewReader(xmlText))
+		req.Header.Set("Authorization", "Bearer "+token)
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, req)
+		if rr.Code != want {
+			t.Fatalf("attempt %d: status=%d, want %d; body=%s", i+1, rr.Code, want, rr.Body.String())
+		}
+	}
+	otherToken := signedTestJWT(t, map[string]any{
+		"sub": "AKUN-002", "role": "UMKM", "exp": time.Now().Add(time.Hour).Unix(),
+	}, testJWTSecret, "HS256")
+	if rr := sendSignedSummary(handler, otherToken, xmlText); rr.Code != 400 {
+		t.Fatalf("same MessageID under another JWT: status=%d", rr.Code)
+	}
+	if svc.calls != 1 {
+		t.Fatalf("business calls=%d, want 1", svc.calls)
+	}
+}
+
+func TestSOAPReplaySecurityProfile(t *testing.T) {
+	now := time.Date(2026, 9, 28, 14, 30, 0, 0, time.UTC)
+	created, expires := "2026-09-28T14:29:00Z", "2026-09-28T14:33:00Z"
+	firstID := "urn:uuid:550e8400-e29b-41d4-a716-446655440000"
+	secondID := "urn:uuid:550e8400-e29b-41d4-a716-446655440001"
+	key, cert := testSigningIdentity(t)
+	valid := signedReplaySummaryXML(t, key, cert, created, expires, firstID)
+	token := signedTestJWT(t, map[string]any{
+		"sub": "AKUN-001", "role": "UMKM", "exp": time.Now().Add(time.Hour).Unix(),
+	}, testJWTSecret, "HS256")
+	for _, tc := range []struct {
+		name string
+		xml  string
+	}{
+		{"changed signed MessageID", strings.Replace(valid, firstID, secondID, 1)},
+		{"unsigned MessageID", signedReplaySummaryXML(t, key, cert, created, expires, firstID, "body", "timestamp")},
+		{"duplicate MessageID element", strings.Replace(valid, "<wsse:Security>", `<wsa:MessageID xmlns:wsa="`+testWSA+`" xmlns:wsu="`+testWSU+`" wsu:Id="message-id-2">`+secondID+`</wsa:MessageID><wsse:Security>`, 1)},
+		{"duplicate MessageID ID", strings.Replace(valid, "<wsse:Security>", `<x:Other xmlns:x="urn:other" xmlns:wsu="`+testWSU+`" wsu:Id="message-id-1"/><wsse:Security>`, 1)},
+		{"MessageID shares Body ID", strings.Replace(valid, `wsu:Id="message-id-1"`, `wsu:Id="body-1"`, 1)},
+		{"MessageID shares Timestamp ID", strings.Replace(valid, `wsu:Id="message-id-1"`, `wsu:Id="timestamp-1"`, 1)},
+		{"unrelated fourth reference", signedReplaySummaryXML(t, key, cert, created, expires, firstID, "body", "timestamp", "messageID", "other")},
+		{"two MessageID references", signedReplaySummaryXML(t, key, cert, created, expires, firstID, "body", "messageID", "messageID")},
+		{"unsigned Body", signedReplaySummaryXML(t, key, cert, created, expires, firstID, "timestamp", "messageID", "other")},
+		{"unsigned Timestamp", signedReplaySummaryXML(t, key, cert, created, expires, firstID, "body", "messageID", "other")},
+		{"malformed MessageID", signedReplaySummaryXML(t, key, cert, created, expires, "not-a-uri")},
+		{"empty MessageID", signedReplaySummaryXML(t, key, cert, created, expires, " ")},
+		{"expired signed Timestamp", signedReplaySummaryXML(t, key, cert, "2026-09-28T14:20:00Z", "2026-09-28T14:24:00Z", firstID)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc := &signedSummaryService{}
+			handler := NewHandlerWithConfig(svc, "", HandlerConfig{
+				JWTSecret: testJWTSecret, RequireXMLSignature: true, TrustedSignatureCert: cert,
+				ReplayProtection: true, Now: func() time.Time { return now },
+			})
+			rr := sendSignedSummary(handler, token, tc.xml)
+			if rr.Code != 400 || svc.calls != 0 || !strings.Contains(rr.Body.String(), "SOAP message signature is invalid") {
+				t.Fatalf("status=%d calls=%d body=%s", rr.Code, svc.calls, rr.Body.String())
+			}
+		})
+	}
+
+	svc := &signedSummaryService{}
+	handler := NewHandlerWithConfig(svc, "", HandlerConfig{
+		JWTSecret: testJWTSecret, RequireXMLSignature: true, TrustedSignatureCert: cert,
+		ReplayProtection: true, Now: func() time.Time { return now },
+	})
+	if rr := sendSignedSummary(handler, "", valid); rr.Code != 401 {
+		t.Fatalf("missing JWT: status=%d", rr.Code)
+	}
+	if rr := sendSignedSummary(handler, token, valid); rr.Code != 200 {
+		t.Fatalf("JWT failure consumed MessageID: status=%d body=%s", rr.Code, rr.Body.String())
+	}
+	newID := signedReplaySummaryXML(t, key, cert, created, expires, secondID)
+	if rr := sendSignedSummary(handler, token, newID); rr.Code != 200 || svc.calls != 2 {
+		t.Fatalf("new signed MessageID: status=%d calls=%d body=%s", rr.Code, svc.calls, rr.Body.String())
+	}
+
+	previouslyExpired := signedReplaySummaryXML(t, key, cert, "2026-09-28T14:20:00Z", "2026-09-28T14:24:00Z", "urn:uuid:550e8400-e29b-41d4-a716-446655440002")
+	freshSameID := signedReplaySummaryXML(t, key, cert, created, expires, "urn:uuid:550e8400-e29b-41d4-a716-446655440002")
+	if rr := sendSignedSummary(handler, token, previouslyExpired); rr.Code != 400 {
+		t.Fatalf("expired request: status=%d", rr.Code)
+	}
+	if rr := sendSignedSummary(handler, token, freshSameID); rr.Code != 200 || svc.calls != 3 {
+		t.Fatalf("expired request consumed MessageID: status=%d calls=%d", rr.Code, svc.calls)
+	}
+}
+
+func sendSignedSummary(handler *Handler, token, xmlText string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(http.MethodPost, "/partnership", strings.NewReader(xmlText))
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	return rr
 }
 
 func TestSOAPXMLSignatureProfile(t *testing.T) {

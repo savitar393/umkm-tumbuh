@@ -20,6 +20,7 @@ import (
 const (
 	wsseNamespace = "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd"
 	wsuNamespace  = "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd"
+	wsaNamespace  = "http://www.w3.org/2005/08/addressing"
 	dsigNamespace = "http://www.w3.org/2000/09/xmldsig#"
 	exclusiveC14N = "http://www.w3.org/2001/10/xml-exc-c14n#"
 	rsaSHA256     = "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256"
@@ -27,6 +28,7 @@ const (
 )
 
 var signatureID = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_.-]{0,127}$`)
+var messageUUID = regexp.MustCompile(`(?i)^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 
 const (
 	DefaultWSSEMaxClockSkew    = 30 * time.Second
@@ -57,74 +59,102 @@ func LoadTrustedSignatureCertificate(path string) (*x509.Certificate, error) {
 	return cert, nil
 }
 
-// verifySignedBody returns only the SOAP Body content proven by XMLDSig.
-// Its narrow profile avoids ambiguous references and signature wrapping.
-func verifySignedBody(raw []byte, trusted *x509.Certificate, now time.Time, clockSkew, maxTTL time.Duration) ([]byte, error) {
+type verifiedSignedRequest struct {
+	operation       []byte
+	messageID       string
+	replayExpiresAt time.Time
+}
+
+// verifySignedBody returns only content proven by XMLDSig, including the
+// MessageID and its acceptance deadline when replay protection is enabled.
+func verifySignedBody(raw []byte, trusted *x509.Certificate, now time.Time, clockSkew, maxTTL time.Duration, requireMessageID bool) (verifiedSignedRequest, error) {
+	var result verifiedSignedRequest
 	if trusted == nil {
-		return nil, errors.New("trusted signing certificate is not configured")
+		return result, errors.New("trusted signing certificate is not configured")
 	}
 	doc := etree.NewDocument()
 	if err := doc.ReadFromBytes(raw); err != nil {
-		return nil, err
+		return result, err
 	}
 	root := doc.Root()
 	if root == nil || root.Tag != "Envelope" || root.NamespaceURI() != NSEnvelope {
-		return nil, errors.New("invalid SOAP Envelope")
+		return result, errors.New("invalid SOAP Envelope")
 	}
 	bodies, headers := root.FindElements("./Body"), root.FindElements("./Header")
 	if len(bodies) != 1 || len(headers) != 1 || bodies[0].NamespaceURI() != NSEnvelope || headers[0].NamespaceURI() != NSEnvelope {
-		return nil, errors.New("expected one SOAP Header and Body")
+		return result, errors.New("expected one SOAP Header and Body")
 	}
 	body := bodies[0]
 	bodyID, err := signedElementID(body)
 	if err != nil {
-		return nil, fmt.Errorf("SOAP Body: %w", err)
+		return result, fmt.Errorf("SOAP Body: %w", err)
 	}
 	security := headers[0].FindElements("./Security")
 	if len(security) != 1 || security[0].NamespaceURI() != wsseNamespace || len(root.FindElements(".//Security")) != 1 {
-		return nil, errors.New("missing WS-Security header")
+		return result, errors.New("missing WS-Security header")
 	}
 	timestamps := security[0].FindElements("./Timestamp")
 	if len(timestamps) != 1 || timestamps[0].NamespaceURI() != wsuNamespace || len(root.FindElements(".//Timestamp")) != 1 {
-		return nil, errors.New("expected one WS-Security Timestamp")
+		return result, errors.New("expected one WS-Security Timestamp")
 	}
 	timestamp := timestamps[0]
 	timestampID, err := signedElementID(timestamp)
 	if err != nil || timestampID == bodyID {
-		return nil, errors.New("invalid Timestamp ID")
+		return result, errors.New("invalid Timestamp ID")
+	}
+	var messageIDElement *etree.Element
+	var messageElementID string
+	if requireMessageID {
+		messages := headers[0].FindElements("./MessageID")
+		if len(messages) != 1 || messages[0].NamespaceURI() != wsaNamespace || len(root.FindElements(".//MessageID")) != 1 {
+			return result, errors.New("expected one WS-Addressing MessageID")
+		}
+		messageIDElement = messages[0]
+		messageElementID, err = signedElementID(messageIDElement)
+		if err != nil || messageElementID == bodyID || messageElementID == timestampID {
+			return result, errors.New("invalid MessageID reference ID")
+		}
 	}
 	signatures := security[0].FindElements("./Signature")
 	if len(signatures) != 1 || signatures[0].NamespaceURI() != dsigNamespace ||
 		len(root.FindElements(".//Signature")) != 1 {
-		return nil, errors.New("expected one XMLDSig signature in WS-Security header")
+		return result, errors.New("expected one XMLDSig signature in WS-Security header")
 	}
 	signedInfo := signatures[0].FindElements("./SignedInfo")
 	if len(signedInfo) != 1 || signedInfo[0].NamespaceURI() != dsigNamespace ||
 		!signatureMethod(signedInfo[0], "CanonicalizationMethod", exclusiveC14N) ||
 		!signatureMethod(signedInfo[0], "SignatureMethod", rsaSHA256) {
-		return nil, errors.New("unsupported signature profile")
+		return result, errors.New("unsupported signature profile")
 	}
 	references := signedInfo[0].FindElements("./Reference")
-	if len(references) != 2 {
-		return nil, errors.New("expected Body and Timestamp references")
+	wantReferences := 2
+	if requireMessageID {
+		wantReferences = 3
+	}
+	if len(references) != wantReferences {
+		return result, errors.New("unexpected number of signed references")
 	}
 	targets := map[string]*etree.Element{"#" + bodyID: body, "#" + timestampID: timestamp}
-	seen := make(map[string]bool, 2)
+	idCounts := map[string]int{bodyID: 0, timestampID: 0}
+	if requireMessageID {
+		targets["#"+messageElementID] = messageIDElement
+		idCounts[messageElementID] = 0
+	}
+	seen := make(map[string]bool, wantReferences)
 	for _, reference := range references {
 		uri := reference.SelectAttrValue("URI", "")
 		if reference.NamespaceURI() != dsigNamespace || targets[uri] == nil || seen[uri] ||
 			!signatureMethod(reference, "DigestMethod", digestSHA256) {
-			return nil, errors.New("invalid signed reference")
+			return result, errors.New("invalid signed reference")
 		}
 		seen[uri] = true
 		transforms := reference.FindElements("./Transforms")
 		if len(transforms) != 1 || transforms[0].NamespaceURI() != dsigNamespace ||
 			len(transforms[0].ChildElements()) != 1 ||
 			!signatureMethod(transforms[0], "Transform", exclusiveC14N) {
-			return nil, errors.New("unsupported reference transform")
+			return result, errors.New("unsupported reference transform")
 		}
 	}
-	idCounts := map[string]int{bodyID: 0, timestampID: 0}
 	var visit func(*etree.Element)
 	visit = func(el *etree.Element) {
 		for _, attr := range el.Attr {
@@ -140,50 +170,65 @@ func verifySignedBody(raw []byte, trusted *x509.Certificate, now time.Time, cloc
 		}
 	}
 	visit(root)
-	if idCounts[bodyID] != 1 || idCounts[timestampID] != 1 {
-		return nil, errors.New("ambiguous signed reference")
+	for _, count := range idCounts {
+		if count != 1 {
+			return result, errors.New("ambiguous signed reference")
+		}
 	}
 
 	validator, err := signedxml.NewValidator(string(raw))
 	if err != nil {
-		return nil, err
+		return result, err
 	}
 	validator.SetReferenceIDAttribute("Id")
 	validator.Certificates = []x509.Certificate{*trusted} // never trust KeyInfo from the request
 	verified, err := validator.ValidateReferences()
 	if err != nil {
-		return nil, err
+		return result, err
 	}
-	if len(verified) != 2 {
-		return nil, errors.New("expected two verified references")
+	if len(verified) != wantReferences {
+		return result, errors.New("unexpected verified reference count")
 	}
 	for i, reference := range references {
 		actual, err := serializeElement(targets[reference.SelectAttrValue("URI", "")])
 		if err != nil {
-			return nil, err
+			return result, err
 		}
 		if verified[i] != string(actual) {
-			return nil, errors.New("verified reference differs from SOAP element")
+			return result, errors.New("verified reference differs from SOAP element")
 		}
 	}
-	if err := validateSignedTimestamp(timestamp, now.UTC(), clockSkew, maxTTL); err != nil {
-		return nil, err
+	expires, err := validateSignedTimestamp(timestamp, now.UTC(), clockSkew, maxTTL)
+	if err != nil {
+		return result, err
+	}
+	if requireMessageID {
+		if len(messageIDElement.ChildElements()) != 0 {
+			return result, errors.New("invalid MessageID content")
+		}
+		messageID := strings.TrimSpace(messageIDElement.Text())
+		if len(messageID) > 45 || !messageUUID.MatchString(messageID) {
+			return result, errors.New("malformed WS-Addressing MessageID")
+		}
+		result.messageID = strings.ToLower(messageID)
+		result.replayExpiresAt = expires.Add(clockSkew)
 	}
 	// Restore the original in-scope namespaces on the verified operation for
 	// the existing XML dispatcher. No request XML outside this Body is used.
 	operations := body.ChildElements()
 	if len(operations) != 1 || operations[0].NamespaceURI() != NSPartner {
-		return nil, errors.New("invalid signed SOAP operation")
+		return result, errors.New("invalid signed SOAP operation")
 	}
 	ctx, err := etreeutils.NSBuildParentContext(operations[0])
 	if err != nil {
-		return nil, err
+		return result, err
 	}
 	detached, err := etreeutils.NSDetatch(ctx, operations[0])
 	if err != nil {
-		return nil, err
+		return result, err
 	}
-	return serializeElement(detached)
+	result.operation, err = serializeElement(detached)
+	return result, err
 }
 
 func signedElementID(element *etree.Element) (string, error) {
@@ -205,12 +250,12 @@ func signedElementID(element *etree.Element) (string, error) {
 	return id, nil
 }
 
-func validateSignedTimestamp(timestamp *etree.Element, now time.Time, clockSkew, maxTTL time.Duration) error {
+func validateSignedTimestamp(timestamp *etree.Element, now time.Time, clockSkew, maxTTL time.Duration) (time.Time, error) {
 	children := timestamp.ChildElements()
 	if len(children) != 2 || children[0].Tag != "Created" || children[1].Tag != "Expires" ||
 		children[0].NamespaceURI() != wsuNamespace || children[1].NamespaceURI() != wsuNamespace ||
 		len(children[0].ChildElements()) != 0 || len(children[1].ChildElements()) != 0 {
-		return errors.New("invalid Timestamp structure")
+		return time.Time{}, errors.New("invalid Timestamp structure")
 	}
 	parseUTC := func(value string) (time.Time, error) {
 		if !strings.HasSuffix(value, "Z") || strings.ContainsAny(value, " ,\t\r\n") {
@@ -224,17 +269,17 @@ func validateSignedTimestamp(timestamp *etree.Element, now time.Time, clockSkew,
 	}
 	created, err := parseUTC(children[0].Text())
 	if err != nil {
-		return err
+		return time.Time{}, err
 	}
 	expires, err := parseUTC(children[1].Text())
 	if err != nil {
-		return err
+		return time.Time{}, err
 	}
 	if created.After(now.Add(clockSkew)) || expires.Before(now.Add(-clockSkew)) ||
 		!expires.After(created) || expires.Sub(created) > maxTTL {
-		return errors.New("Timestamp is outside the allowed validity window")
+		return time.Time{}, errors.New("Timestamp is outside the allowed validity window")
 	}
-	return nil
+	return expires, nil
 }
 
 func signatureMethod(parent *etree.Element, name, algorithm string) bool {

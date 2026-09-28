@@ -35,15 +35,18 @@ type partnershipService interface {
 
 // HandlerConfig controls transport-level security limits.
 type HandlerConfig struct {
-	JWTSecret            string
-	MaxRequestBytes      int64
-	RequestTimeout       time.Duration
-	Logger               *log.Logger
-	RequireXMLSignature  bool
-	TrustedSignatureCert *x509.Certificate
-	Now                  func() time.Time
-	WSSEMaxClockSkew     time.Duration
-	WSSEMaxTimestampTTL  time.Duration
+	JWTSecret             string
+	MaxRequestBytes       int64
+	RequestTimeout        time.Duration
+	Logger                *log.Logger
+	RequireXMLSignature   bool
+	TrustedSignatureCert  *x509.Certificate
+	ReplayProtection      bool
+	ReplayCache           ReplayCache
+	ReplayCacheMaxEntries int
+	Now                   func() time.Time
+	WSSEMaxClockSkew      time.Duration
+	WSSEMaxTimestampTTL   time.Duration
 }
 
 // Handler is the SOAP HTTP handler that routes all 9 partnership operations.
@@ -56,6 +59,9 @@ type Handler struct {
 	logger               *log.Logger
 	requireXMLSignature  bool
 	trustedSignatureCert *x509.Certificate
+	replayProtection     bool
+	replayCache          ReplayCache
+	invalidReplayConfig  bool
 	now                  func() time.Time
 	wsseMaxClockSkew     time.Duration
 	wsseMaxTimestampTTL  time.Duration
@@ -86,6 +92,12 @@ func NewHandlerWithConfig(svc partnershipService, wsdl string, cfg HandlerConfig
 	if cfg.WSSEMaxTimestampTTL <= 0 {
 		cfg.WSSEMaxTimestampTTL = DefaultWSSEMaxTimestampTTL
 	}
+	if cfg.ReplayCacheMaxEntries <= 0 {
+		cfg.ReplayCacheMaxEntries = DefaultReplayCacheMaxEntries
+	}
+	if cfg.ReplayProtection && cfg.ReplayCache == nil {
+		cfg.ReplayCache = NewInMemoryReplayCache(cfg.ReplayCacheMaxEntries)
+	}
 	return &Handler{
 		svc:                  svc,
 		wsdl:                 wsdl,
@@ -95,6 +107,9 @@ func NewHandlerWithConfig(svc partnershipService, wsdl string, cfg HandlerConfig
 		logger:               cfg.Logger,
 		requireXMLSignature:  cfg.RequireXMLSignature,
 		trustedSignatureCert: cfg.TrustedSignatureCert,
+		replayProtection:     cfg.ReplayProtection,
+		replayCache:          cfg.ReplayCache,
+		invalidReplayConfig:  cfg.ReplayProtection && !cfg.RequireXMLSignature,
 		now:                  cfg.Now,
 		wsseMaxClockSkew:     cfg.WSSEMaxClockSkew,
 		wsseMaxTimestampTTL:  cfg.WSSEMaxTimestampTTL,
@@ -135,6 +150,11 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		WriteForbiddenFault(w, "Role tidak diizinkan untuk operasi kemitraan")
 		return
 	}
+	if h.invalidReplayConfig {
+		h.logError("replay configuration", errors.New("replay protection requires XML signatures"))
+		WriteServerFault(w, "Internal server error")
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(auth.WithActor(r.Context(), actor), h.requestTimeout)
 	defer cancel()
@@ -165,12 +185,21 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			WriteServerFault(w, "Internal server error")
 			return
 		}
-		verifiedOperation, err = verifySignedBody(body, h.trustedSignatureCert, h.now(), h.wsseMaxClockSkew, h.wsseMaxTimestampTTL)
-		if err != nil {
-			h.logError("xml signature", err)
+		now := h.now()
+		verified, verifyErr := verifySignedBody(body, h.trustedSignatureCert, now, h.wsseMaxClockSkew, h.wsseMaxTimestampTTL, h.replayProtection)
+		if verifyErr != nil {
+			h.logError("xml signature", verifyErr)
 			WriteClientFault(w, "SOAP message signature is invalid")
 			return
 		}
+		if h.replayProtection {
+			if err := h.replayCache.CheckAndStore(verified.messageID, verified.replayExpiresAt, now); err != nil {
+				h.logError("xml replay", err)
+				WriteClientFault(w, "SOAP message signature is invalid")
+				return
+			}
+		}
+		verifiedOperation = verified.operation
 	}
 
 	var env Envelope

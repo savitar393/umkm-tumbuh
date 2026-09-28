@@ -17,6 +17,9 @@ func TestLoadUsesSecureTransportDefaults(t *testing.T) {
 	if cfg.RequireXMLSignature || cfg.XMLSignatureCertFile != "" {
 		t.Fatal("XML signatures must be off without configuration")
 	}
+	if cfg.ReplayProtection || cfg.ReplayCacheMaxEntries != 4096 || cfg.Validate() != nil {
+		t.Fatalf("replay defaults are unsafe: enabled=%t max=%d err=%v", cfg.ReplayProtection, cfg.ReplayCacheMaxEntries, cfg.Validate())
+	}
 	assertDuration(t, "RequestTimeout", cfg.RequestTimeout, 10*time.Second)
 	assertDuration(t, "DatabaseTimeout", cfg.DatabaseTimeout, 10*time.Second)
 	assertDuration(t, "ReadHeaderTimeout", cfg.ReadHeaderTimeout, 5*time.Second)
@@ -42,6 +45,8 @@ func TestLoadAcceptsPositiveTransportOverrides(t *testing.T) {
 	t.Setenv("SOAP_XML_SIGNATURE_CERT_FILE", "/run/secrets/signing-cert.pem")
 	t.Setenv("SOAP_WSSE_MAX_CLOCK_SKEW", "45s")
 	t.Setenv("SOAP_WSSE_MAX_TIMESTAMP_TTL", "7m")
+	t.Setenv("SOAP_WSSE_REPLAY_PROTECTION", "true")
+	t.Setenv("SOAP_WSSE_REPLAY_CACHE_MAX_ENTRIES", "16")
 
 	cfg := Load()
 
@@ -50,6 +55,9 @@ func TestLoadAcceptsPositiveTransportOverrides(t *testing.T) {
 	}
 	if !cfg.RequireXMLSignature || cfg.XMLSignatureCertFile != "/run/secrets/signing-cert.pem" {
 		t.Fatal("XML signature configuration not loaded")
+	}
+	if !cfg.ReplayProtection || cfg.ReplayCacheMaxEntries != 16 || cfg.Validate() != nil {
+		t.Fatalf("replay configuration not loaded: enabled=%t max=%d err=%v", cfg.ReplayProtection, cfg.ReplayCacheMaxEntries, cfg.Validate())
 	}
 	if cfg.MaxRequestBytes != 2048 {
 		t.Fatalf("MaxRequestBytes = %d, want 2048", cfg.MaxRequestBytes)
@@ -76,6 +84,7 @@ func TestLoadRejectsUnsafeTransportOverrides(t *testing.T) {
 	t.Setenv("SOAP_IDLE_TIMEOUT", "-1s")
 	t.Setenv("SOAP_WSSE_MAX_CLOCK_SKEW", "-1s")
 	t.Setenv("SOAP_WSSE_MAX_TIMESTAMP_TTL", "invalid")
+	t.Setenv("SOAP_WSSE_REPLAY_CACHE_MAX_ENTRIES", "-1")
 
 	cfg := Load()
 
@@ -90,6 +99,18 @@ func TestLoadRejectsUnsafeTransportOverrides(t *testing.T) {
 	assertDuration(t, "IdleTimeout", cfg.IdleTimeout, 60*time.Second)
 	assertDuration(t, "WSSEMaxClockSkew", cfg.WSSEMaxClockSkew, 30*time.Second)
 	assertDuration(t, "WSSEMaxTimestampTTL", cfg.WSSEMaxTimestampTTL, 5*time.Minute)
+	if cfg.ReplayCacheMaxEntries != 4096 {
+		t.Fatalf("ReplayCacheMaxEntries=%d, want 4096", cfg.ReplayCacheMaxEntries)
+	}
+}
+
+func TestReplayProtectionRequiresXMLSignature(t *testing.T) {
+	clearTransportEnvironment(t)
+	t.Setenv("DATABASE_URL", "postgres://test:test@localhost/test")
+	t.Setenv("SOAP_WSSE_REPLAY_PROTECTION", "true")
+	if err := Load().Validate(); err == nil {
+		t.Fatal("replay protection without XML signatures was accepted")
+	}
 }
 
 func clearTransportEnvironment(t *testing.T) {
@@ -107,6 +128,8 @@ func clearTransportEnvironment(t *testing.T) {
 		"SOAP_XML_SIGNATURE_CERT_FILE",
 		"SOAP_WSSE_MAX_CLOCK_SKEW",
 		"SOAP_WSSE_MAX_TIMESTAMP_TTL",
+		"SOAP_WSSE_REPLAY_PROTECTION",
+		"SOAP_WSSE_REPLAY_CACHE_MAX_ENTRIES",
 	} {
 		t.Setenv(key, "")
 	}

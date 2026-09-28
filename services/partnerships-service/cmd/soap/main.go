@@ -17,6 +17,9 @@ import (
 
 func main() {
 	cfg := config.Load()
+	if err := cfg.Validate(); err != nil {
+		log.Fatal(err)
+	}
 	if cfg.JWTSecret == "" {
 		log.Fatal("JWT_SECRET is required")
 	}
@@ -47,13 +50,15 @@ func main() {
 	repo := partnerships.NewRepository(pool)
 	svc := partnerships.NewService(repo)
 	handler := soap.NewHandlerWithConfig(contracts.NewAdapter(svc), wsdlContent, soap.HandlerConfig{
-		JWTSecret:            cfg.JWTSecret,
-		MaxRequestBytes:      cfg.MaxRequestBytes,
-		RequestTimeout:       cfg.RequestTimeout,
-		RequireXMLSignature:  cfg.RequireXMLSignature,
-		TrustedSignatureCert: trustedCert,
-		WSSEMaxClockSkew:     cfg.WSSEMaxClockSkew,
-		WSSEMaxTimestampTTL:  cfg.WSSEMaxTimestampTTL,
+		JWTSecret:             cfg.JWTSecret,
+		MaxRequestBytes:       cfg.MaxRequestBytes,
+		RequestTimeout:        cfg.RequestTimeout,
+		RequireXMLSignature:   cfg.RequireXMLSignature,
+		TrustedSignatureCert:  trustedCert,
+		WSSEMaxClockSkew:      cfg.WSSEMaxClockSkew,
+		WSSEMaxTimestampTTL:   cfg.WSSEMaxTimestampTTL,
+		ReplayProtection:      cfg.ReplayProtection,
+		ReplayCacheMaxEntries: cfg.ReplayCacheMaxEntries,
 	})
 
 	// Register route

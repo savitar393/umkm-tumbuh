@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"log"
 	"os"
 	"strconv"
@@ -12,22 +13,24 @@ import (
 
 // Config holds all configuration values for the SOAP service.
 type Config struct {
-	DatabaseURL          string
-	Host                 string
-	EndpointURL          string
-	Port                 string
-	JWTSecret            string
-	MaxRequestBytes      int64
-	RequestTimeout       time.Duration
-	DatabaseTimeout      time.Duration
-	ReadHeaderTimeout    time.Duration
-	ReadTimeout          time.Duration
-	WriteTimeout         time.Duration
-	IdleTimeout          time.Duration
-	RequireXMLSignature  bool
-	XMLSignatureCertFile string
-	WSSEMaxClockSkew     time.Duration
-	WSSEMaxTimestampTTL  time.Duration
+	DatabaseURL           string
+	Host                  string
+	EndpointURL           string
+	Port                  string
+	JWTSecret             string
+	MaxRequestBytes       int64
+	RequestTimeout        time.Duration
+	DatabaseTimeout       time.Duration
+	ReadHeaderTimeout     time.Duration
+	ReadTimeout           time.Duration
+	WriteTimeout          time.Duration
+	IdleTimeout           time.Duration
+	RequireXMLSignature   bool
+	XMLSignatureCertFile  string
+	WSSEMaxClockSkew      time.Duration
+	WSSEMaxTimestampTTL   time.Duration
+	ReplayProtection      bool
+	ReplayCacheMaxEntries int
 }
 
 // Load reads configuration from .env files and environment variables.
@@ -53,29 +56,46 @@ func Load() *Config {
 	default:
 		log.Fatal("SOAP_REQUIRE_XML_SIGNATURE must be true or false")
 	}
+	replayProtection := false
+	switch strings.TrimSpace(os.Getenv("SOAP_WSSE_REPLAY_PROTECTION")) {
+	case "", "false":
+	case "true":
+		replayProtection = true
+	default:
+		log.Fatal("SOAP_WSSE_REPLAY_PROTECTION must be true or false")
+	}
 
 	if dbURL == "" {
 		log.Fatal("DATABASE_URL or individual POSTGRES_* variables are required")
 	}
 
 	return &Config{
-		DatabaseURL:          dbURL,
-		Host:                 getEnv("SOAP_HOST", "127.0.0.1"),
-		EndpointURL:          getEnv("SOAP_ENDPOINT_URL", "http://localhost:9090/partnership"),
-		Port:                 getEnv("SOAP_PORT", "9090"),
-		JWTSecret:            os.Getenv("JWT_SECRET"),
-		MaxRequestBytes:      positiveInt64Env("SOAP_MAX_REQUEST_BYTES", 1<<20),
-		RequestTimeout:       positiveDurationEnv("SOAP_REQUEST_TIMEOUT", 10*time.Second),
-		DatabaseTimeout:      positiveDurationEnv("SOAP_DATABASE_TIMEOUT", 10*time.Second),
-		ReadHeaderTimeout:    positiveDurationEnv("SOAP_READ_HEADER_TIMEOUT", 5*time.Second),
-		ReadTimeout:          positiveDurationEnv("SOAP_READ_TIMEOUT", 15*time.Second),
-		WriteTimeout:         positiveDurationEnv("SOAP_WRITE_TIMEOUT", 30*time.Second),
-		IdleTimeout:          positiveDurationEnv("SOAP_IDLE_TIMEOUT", 60*time.Second),
-		RequireXMLSignature:  requireSignature,
-		XMLSignatureCertFile: strings.TrimSpace(os.Getenv("SOAP_XML_SIGNATURE_CERT_FILE")),
-		WSSEMaxClockSkew:     positiveDurationEnv("SOAP_WSSE_MAX_CLOCK_SKEW", 30*time.Second),
-		WSSEMaxTimestampTTL:  positiveDurationEnv("SOAP_WSSE_MAX_TIMESTAMP_TTL", 5*time.Minute),
+		DatabaseURL:           dbURL,
+		Host:                  getEnv("SOAP_HOST", "127.0.0.1"),
+		EndpointURL:           getEnv("SOAP_ENDPOINT_URL", "http://localhost:9090/partnership"),
+		Port:                  getEnv("SOAP_PORT", "9090"),
+		JWTSecret:             os.Getenv("JWT_SECRET"),
+		MaxRequestBytes:       positiveInt64Env("SOAP_MAX_REQUEST_BYTES", 1<<20),
+		RequestTimeout:        positiveDurationEnv("SOAP_REQUEST_TIMEOUT", 10*time.Second),
+		DatabaseTimeout:       positiveDurationEnv("SOAP_DATABASE_TIMEOUT", 10*time.Second),
+		ReadHeaderTimeout:     positiveDurationEnv("SOAP_READ_HEADER_TIMEOUT", 5*time.Second),
+		ReadTimeout:           positiveDurationEnv("SOAP_READ_TIMEOUT", 15*time.Second),
+		WriteTimeout:          positiveDurationEnv("SOAP_WRITE_TIMEOUT", 30*time.Second),
+		IdleTimeout:           positiveDurationEnv("SOAP_IDLE_TIMEOUT", 60*time.Second),
+		RequireXMLSignature:   requireSignature,
+		XMLSignatureCertFile:  strings.TrimSpace(os.Getenv("SOAP_XML_SIGNATURE_CERT_FILE")),
+		WSSEMaxClockSkew:      positiveDurationEnv("SOAP_WSSE_MAX_CLOCK_SKEW", 30*time.Second),
+		WSSEMaxTimestampTTL:   positiveDurationEnv("SOAP_WSSE_MAX_TIMESTAMP_TTL", 5*time.Minute),
+		ReplayProtection:      replayProtection,
+		ReplayCacheMaxEntries: int(positiveInt64Env("SOAP_WSSE_REPLAY_CACHE_MAX_ENTRIES", 4096)),
 	}
+}
+
+func (c *Config) Validate() error {
+	if c.ReplayProtection && !c.RequireXMLSignature {
+		return errors.New("SOAP_WSSE_REPLAY_PROTECTION requires SOAP_REQUIRE_XML_SIGNATURE=true")
+	}
+	return nil
 }
 
 func getEnv(key, fallback string) string {
