@@ -27,6 +27,11 @@ services:
     environment: *test-environment
     volumes:
       - ../tests/stack/fixtures.sql:/app/fixtures.sql:ro
+      - ../tests/stack/allocator.sh:/app/allocator.sh:ro
+      - ../tests/stack/partnership-import.csv:/app/partnership-import.csv:ro
+      - ./db/loaders:/app/loaders:ro
+      - ./db/migrations/033_partnership_application_numbers.up.sql:/app/033.up.sql:ro
+      - ./db/migrations/033_partnership_application_numbers.down.sql:/app/033.down.sql:ro
       - ../tests/stack/legacy-contract-fixtures.sql:/app/legacy-contract-fixtures.sql:ro
     command: ["sh", "-ec", "psql \"$$DATABASE_URL\" -v ON_ERROR_STOP=1 -f /app/fixtures.sql"]
     depends_on:
@@ -66,6 +71,11 @@ services:
     ports: !reset []
   partnerships-service:
     environment: *test-environment
+    ports: !reset []
+  soap-partnerships-service:
+    environment:
+      <<: *test-environment
+      SOAP_ENDPOINT_URL: http://soap-partnerships-service:9090/partnership
     ports: !reset []
   document-service:
     environment:
@@ -124,6 +134,16 @@ services:
       - ../tests/stack/check.py:/app/check.py:ro
       - stack_check_data:/state
     entrypoint: ["python", "/app/contracts.py"]
+    networks: [umkm_network]
+  soap-check:
+    image: python:3.12-alpine
+    profiles: [check]
+    volumes:
+      - ../tests/stack/soap.py:/app/soap.py:ro
+      - ../tests/stack/contracts.py:/app/contracts.py:ro
+      - ../tests/stack/authorization.py:/app/authorization.py:ro
+      - ../tests/stack/check.py:/app/check.py:ro
+    entrypoint: ["python", "/app/soap.py"]
     networks: [umkm_network]
   stack-check:
     image: python:3.12-alpine

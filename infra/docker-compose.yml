@@ -238,6 +238,31 @@ services:
     networks:
       - umkm_network
 
+  soap-partnerships-service:
+    build:
+      context: ../services/partnerships-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: ["/app/soap-partnerships-api"]
+    environment:
+      SOAP_HOST: 0.0.0.0
+      SOAP_PORT: 9090
+      SOAP_ENDPOINT_URL: ${SOAP_ENDPOINT_URL:-http://localhost:9090/partnership}
+      SOAP_MAX_REQUEST_BYTES: ${SOAP_MAX_REQUEST_BYTES:-1048576}
+      SOAP_REQUEST_TIMEOUT: ${SOAP_REQUEST_TIMEOUT:-10s}
+      DATABASE_URL: postgres://${POSTGRES_USER:-umkm_user}:${POSTGRES_PASSWORD:-umkm_password}@postgres:5432/${POSTGRES_DB:-umkm_tumbuh}?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET}
+    healthcheck:
+      <<: *api-healthcheck
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9090/health"]
+    ports:
+      - "${HOST_BIND_ADDRESS:-127.0.0.1}:${SOAP_PORT:-9090}:9090"
+    depends_on:
+      db-migrate:
+        condition: service_completed_successfully
+    networks:
+      - umkm_network
+
   garage-bootstrap:
     build:
       context: ./garage

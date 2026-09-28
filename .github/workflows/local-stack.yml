@@ -2,7 +2,7 @@ name: Local stack integration
 
 on:
   push:
-    branches: [main, "feat/**", "fix/**", "chore/**"]
+    branches: [main, "feat/**", "fix/**", "chore/**", "integration/**"]
     paths:
       - "infra/**"
       - "services/**"
@@ -44,4 +44,5 @@ jobs:
             tests/postman/reports/newman.xml
             tests/stack/reports/authorization.txt
             tests/stack/reports/contracts.txt
+            tests/stack/reports/soap.txt
           if-no-files-found: ignore

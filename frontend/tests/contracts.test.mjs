@@ -120,7 +120,12 @@ async function mount(id = "requester", role = "UMKM", Page = Approval) {
     { path: path.replace(/\/P1$/, "/:id"), element: h(Page) }, { path: "*", element: h("p", null, "Halaman tujuan") },
   ], { initialEntries: [path] });
   await act(async () => { renderer = create(h(QueryClientProvider, { client: queryClient }, h(RouterProvider, { router }))); });
-  await waitFor(() => { assert.equal(queryClient.isFetching(), 0); assert.ok(requests.length); });
+  await waitFor(() => {
+    assert.equal(queryClient.isFetching(), 0);
+    assert.ok(requests.length);
+    // Notifikasi React Query dijadwalkan setelah status cache berubah.
+    assert.doesNotMatch(text(renderer.root), /Memuat (data persetujuan|detail pengajuan)/);
+  });
 }
 
 async function selectFile(file = new File([bytes], "contract.png", { type: "image/png" })) {

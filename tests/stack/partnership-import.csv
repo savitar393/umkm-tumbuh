@@ -1,0 +1,3 @@
+pengajuan_id,kode_pengajuan,umkm_id,mitra_id,pengaju_akun_id,penerima_akun_id,status_pengajuan_id,pesan_pengajuan,catatan_keputusan,dokumen_perjanjian_id,tanggal_pengajuan,tanggal_keputusan,tanggal_upload_dokumen,tanggal_mulai_kerjasama,tanggal_selesai_kerjasama,created_at,updated_at
+PGJ900000,PKS-2025-910000,TEST_BUSINESS_A,TEST_PARTNER_A,TEST_UMKM_A,TEST_MITRA_A,DIAJUKAN,Imported proposal sentinel A,,,2026-01-01,,,,,2026-01-01,2026-01-01
+PGJ900002,PKS-2025-900002,TEST_BUSINESS_A,TEST_PARTNER_A,TEST_UMKM_A,TEST_MITRA_A,DIAJUKAN,Imported proposal sentinel B,,,2026-01-01,,,,,2026-01-01,2026-01-01

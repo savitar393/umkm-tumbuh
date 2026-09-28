@@ -12,7 +12,7 @@ rm -f tests/postman/reports/newman.xml tests/stack/reports/authorization.txt tes
 project="umkm-stage1-${RANDOM}-$$"
 compose=(docker compose --project-name "$project" --env-file .env.example
   -f infra/docker-compose.yml -f infra/docker-compose.test.yml)
-services=(auth-service user-service partnerships-service document-service training-service)
+services=(auth-service user-service partnerships-service document-service training-service soap-partnerships-service)
 
 cleanup() {
   status=$?
@@ -26,6 +26,9 @@ cleanup() {
 trap cleanup EXIT
 
 "${compose[@]}" config --quiet
+# Uji impor dilakukan offline: hanya database, migrasi, dan fixture yang aktif.
+"${compose[@]}" run --build --rm db-fixtures
+"${compose[@]}" run --rm --no-deps db-fixtures sh /app/allocator.sh
 "${compose[@]}" up -d --build --wait --wait-timeout 180 "${services[@]}"
 "${compose[@]}" run --rm --no-deps db-fixtures
 if "${compose[@]}" run --rm --no-deps \
@@ -43,6 +46,18 @@ fi
 
 "${compose[@]}" run --rm --no-deps contract-check 2>&1 | tee tests/stack/reports/contracts.txt
 
+"${compose[@]}" run --rm --no-deps soap-check 2>&1 | tee tests/stack/reports/soap.txt
+
+# Sinkronisasi tanpa impor boleh bersamaan dengan penulis aplikasi.
+"${compose[@]}" run --rm --no-deps db-fixtures sh -ec '
+  for attempt in 1 2 3 4 5 6 7 8; do
+    psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f /app/loaders/sync_partnership_numbers.sql
+  done
+' &
+sync_pid=$!
+"${compose[@]}" run --rm --no-deps soap-check SOAPTests.test_small_concurrent_rest_and_soap_creation
+wait "$sync_pid"
+
 echo "Re-running migrations and Garage bootstrap, then recreating the containers..."
 "${compose[@]}" run --rm --no-deps db-migrate
 "${compose[@]}" run --rm --no-deps garage-bootstrap
@@ -57,3 +72,4 @@ echo "Re-running migrations and Garage bootstrap, then recreating the containers
 echo "Stage 1 stack checks passed."
 echo "Stage 2 authorization checks passed."
 echo "Stage 3 contract document checks passed."
+echo "SOAP/WSDL integration checks passed."

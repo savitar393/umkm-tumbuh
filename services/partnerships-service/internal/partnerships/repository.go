@@ -2,14 +2,17 @@ package partnerships
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/savitar393/umkm-tumbuh/services/partnerships-service/internal/apperror"
 )
+
+var ErrBusinessNotFound = errors.New("business not found")
 
 type Repository interface {
 	OwnsDocument(ctx context.Context, actorID, documentID string, requirePartnershipFile bool) (bool, error)
@@ -35,11 +38,16 @@ type Repository interface {
 	FindAttachmentsByPartnershipID(ctx context.Context, partnershipID string) ([]PartnershipAttachment, error)
 }
 
-type repository struct {
-	db *pgxpool.Pool
+type database interface {
+	Query(context.Context, string, ...any) (pgx.Rows, error)
+	QueryRow(context.Context, string, ...any) pgx.Row
+	Exec(context.Context, string, ...any) (pgconn.CommandTag, error)
+	Begin(context.Context) (pgx.Tx, error)
 }
 
-func NewRepository(db *pgxpool.Pool) Repository {
+type repository struct{ db database }
+
+func NewRepository(db database) Repository {
 	return &repository{db: db}
 }
 
@@ -212,6 +220,9 @@ func (r *repository) FindByRequesterID(ctx context.Context, requesterID string, 
 		partnerships = append(partnerships, p)
 	}
 
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("partnership rows: %w", err)
+	}
 	return partnerships, totalCount, nil
 }
 
@@ -275,6 +286,9 @@ func (r *repository) FindByReceiverID(ctx context.Context, receiverID string, st
 		partnerships = append(partnerships, p)
 	}
 
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("partnership rows: %w", err)
+	}
 	return partnerships, totalCount, nil
 }
 
@@ -382,6 +396,9 @@ func (r *repository) GetSummary(ctx context.Context, userID string) (map[string]
 		summary[status] = count
 	}
 
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("summary rows: %w", err)
+	}
 	return summary, nil
 }
 
@@ -409,20 +426,35 @@ func (r *repository) GetIncomingSummary(ctx context.Context, userID string) (map
 		summary[status] = count
 	}
 
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("summary rows: %w", err)
+	}
 	return summary, nil
 }
 
 func (r *repository) GenerateRequestCode(ctx context.Context) (string, error) {
-	// Generate request code with format: PKS-YYYY-XXXXXX
-	var count int
-	query := `SELECT COUNT(*) FROM partnership.transaksi_pengajuankerjasama WHERE kode_pengajuan LIKE $1`
-	err := r.db.QueryRow(ctx, query, "PKS-"+time.Now().Format("2006")+"-%").Scan(&count)
+	// Alokasi bersama untuk proses REST dan SOAP; tidak memakai hitungan baris.
+	// Kunci sama dengan loaders/sync_partnership_numbers.sql. Seluruh alokasi
+	// dan pembacaan state sequence oleh sinkronisasi harus diserialkan.
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return "", err
+	}
+	defer tx.Rollback(ctx)
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(74103, 33)`); err != nil {
+		return "", err
+	}
+	var count int64
+	err = tx.QueryRow(ctx, `SELECT nextval('partnership.application_number_seq')`).Scan(&count)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate request code: %w", err)
 	}
 
+	if err := tx.Commit(ctx); err != nil {
+		return "", err
+	}
 	// Format: PKS-2024-000001
-	requestCode := fmt.Sprintf("PKS-%s-%06d", time.Now().Format("2006"), count+1)
+	requestCode := fmt.Sprintf("PKS-%s-%06d", time.Now().Format("2006"), count)
 	return requestCode, nil
 }
 
@@ -592,7 +624,7 @@ func (r *repository) FindAkunIDByBusinessID(ctx context.Context, businessID stri
 	err := r.db.QueryRow(ctx, query, businessID).Scan(&akunID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return "", fmt.Errorf("business ID not found: %s", businessID)
+			return "", ErrBusinessNotFound
 		}
 		return "", fmt.Errorf("failed to find akun_id for business ID %s: %w", businessID, err)
 	}
@@ -616,7 +648,7 @@ func (r *repository) FindBusinessIDByAkunID(ctx context.Context, akunID string, 
 	err := r.db.QueryRow(ctx, query, akunID).Scan(&businessID)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return "", fmt.Errorf("business ID not found for akun_id: %s", akunID)
+			return "", ErrBusinessNotFound
 		}
 		return "", fmt.Errorf("failed to find business ID for akun_id %s: %w", akunID, err)
 	}
@@ -870,5 +902,8 @@ func (r *repository) FindAttachmentsByPartnershipID(ctx context.Context, partner
 		attachments = append(attachments, item)
 	}
 
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("attachment rows: %w", err)
+	}
 	return attachments, nil
 }

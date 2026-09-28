@@ -67,6 +67,9 @@ type PartnershipAttachment struct {
 }
 
 type CreatePartnershipRequest struct {
+	// Representasi teks dari transport tepercaya; tidak dapat diisi lewat JSON REST.
+	// Nil mempertahankan penyimpanan deskripsi REST yang sudah ada.
+	ProposalText        *string  `json:"-"`
 	ReceiverID          string   `json:"receiver_id" validate:"required"`
 	ProposalTitle       string   `json:"proposal_title" validate:"required,min=10,max=200"`
 	ProposalDescription string   `json:"proposal_description" validate:"required,min=30,max=1000"`
