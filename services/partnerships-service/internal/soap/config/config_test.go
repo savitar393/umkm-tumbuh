@@ -14,6 +14,9 @@ func TestLoadUsesSecureTransportDefaults(t *testing.T) {
 	if cfg.MaxRequestBytes != 1<<20 {
 		t.Fatalf("MaxRequestBytes = %d, want %d", cfg.MaxRequestBytes, int64(1<<20))
 	}
+	if cfg.RequireXMLSignature || cfg.XMLSignatureCertFile != "" {
+		t.Fatal("XML signatures must be off without configuration")
+	}
 	assertDuration(t, "RequestTimeout", cfg.RequestTimeout, 10*time.Second)
 	assertDuration(t, "DatabaseTimeout", cfg.DatabaseTimeout, 10*time.Second)
 	assertDuration(t, "ReadHeaderTimeout", cfg.ReadHeaderTimeout, 5*time.Second)
@@ -33,11 +36,16 @@ func TestLoadAcceptsPositiveTransportOverrides(t *testing.T) {
 	t.Setenv("SOAP_READ_TIMEOUT", "5s")
 	t.Setenv("SOAP_WRITE_TIMEOUT", "8s")
 	t.Setenv("SOAP_IDLE_TIMEOUT", "45s")
+	t.Setenv("SOAP_REQUIRE_XML_SIGNATURE", "true")
+	t.Setenv("SOAP_XML_SIGNATURE_CERT_FILE", "/run/secrets/signing-cert.pem")
 
 	cfg := Load()
 
 	if cfg.JWTSecret != "configured-secret" {
 		t.Fatalf("JWTSecret = %q, want configured value", cfg.JWTSecret)
+	}
+	if !cfg.RequireXMLSignature || cfg.XMLSignatureCertFile != "/run/secrets/signing-cert.pem" {
+		t.Fatal("XML signature configuration not loaded")
 	}
 	if cfg.MaxRequestBytes != 2048 {
 		t.Fatalf("MaxRequestBytes = %d, want 2048", cfg.MaxRequestBytes)
@@ -85,6 +93,8 @@ func clearTransportEnvironment(t *testing.T) {
 		"SOAP_READ_TIMEOUT",
 		"SOAP_WRITE_TIMEOUT",
 		"SOAP_IDLE_TIMEOUT",
+		"SOAP_REQUIRE_XML_SIGNATURE",
+		"SOAP_XML_SIGNATURE_CERT_FILE",
 	} {
 		t.Setenv(key, "")
 	}

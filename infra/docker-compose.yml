@@ -250,11 +250,20 @@ services:
       SOAP_ENDPOINT_URL: ${SOAP_ENDPOINT_URL:-http://localhost:9090/partnership}
       SOAP_MAX_REQUEST_BYTES: ${SOAP_MAX_REQUEST_BYTES:-1048576}
       SOAP_REQUEST_TIMEOUT: ${SOAP_REQUEST_TIMEOUT:-10s}
+      SOAP_REQUIRE_XML_SIGNATURE: ${SOAP_REQUIRE_XML_SIGNATURE:-false}
+      SOAP_XML_SIGNATURE_CERT_FILE: ${SOAP_XML_SIGNATURE_CERT_FILE:-/run/secrets/soap-signature-cert.pem}
       DATABASE_URL: postgres://${POSTGRES_USER:-umkm_user}:${POSTGRES_PASSWORD:-umkm_password}@postgres:5432/${POSTGRES_DB:-umkm_tumbuh}?sslmode=disable
       JWT_SECRET: ${JWT_SECRET}
     healthcheck:
       <<: *api-healthcheck
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9090/health"]
+    volumes:
+      - type: bind
+        source: ${SOAP_XML_SIGNATURE_CERT_SOURCE:-/dev/null}
+        target: ${SOAP_XML_SIGNATURE_CERT_FILE:-/run/secrets/soap-signature-cert.pem}
+        read_only: true
+        bind:
+          create_host_path: false
     ports:
       - "${HOST_BIND_ADDRESS:-127.0.0.1}:${SOAP_PORT:-9090}:9090"
     depends_on:

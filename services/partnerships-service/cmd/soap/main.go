@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/x509"
 	"errors"
 	"log"
 	"net/http"
@@ -18,6 +19,14 @@ func main() {
 	cfg := config.Load()
 	if cfg.JWTSecret == "" {
 		log.Fatal("JWT_SECRET is required")
+	}
+	var trustedCert *x509.Certificate
+	if cfg.RequireXMLSignature {
+		var err error
+		trustedCert, err = soap.LoadTrustedSignatureCertificate(cfg.XMLSignatureCertFile)
+		if err != nil {
+			log.Fatalf("XML signature configuration: %v", err)
+		}
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.DatabaseTimeout)
@@ -38,9 +47,11 @@ func main() {
 	repo := partnerships.NewRepository(pool)
 	svc := partnerships.NewService(repo)
 	handler := soap.NewHandlerWithConfig(contracts.NewAdapter(svc), wsdlContent, soap.HandlerConfig{
-		JWTSecret:       cfg.JWTSecret,
-		MaxRequestBytes: cfg.MaxRequestBytes,
-		RequestTimeout:  cfg.RequestTimeout,
+		JWTSecret:            cfg.JWTSecret,
+		MaxRequestBytes:      cfg.MaxRequestBytes,
+		RequestTimeout:       cfg.RequestTimeout,
+		RequireXMLSignature:  cfg.RequireXMLSignature,
+		TrustedSignatureCert: trustedCert,
 	})
 
 	// Register route

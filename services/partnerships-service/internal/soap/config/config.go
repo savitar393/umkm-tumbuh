@@ -12,18 +12,20 @@ import (
 
 // Config holds all configuration values for the SOAP service.
 type Config struct {
-	DatabaseURL       string
-	Host              string
-	EndpointURL       string
-	Port              string
-	JWTSecret         string
-	MaxRequestBytes   int64
-	RequestTimeout    time.Duration
-	DatabaseTimeout   time.Duration
-	ReadHeaderTimeout time.Duration
-	ReadTimeout       time.Duration
-	WriteTimeout      time.Duration
-	IdleTimeout       time.Duration
+	DatabaseURL          string
+	Host                 string
+	EndpointURL          string
+	Port                 string
+	JWTSecret            string
+	MaxRequestBytes      int64
+	RequestTimeout       time.Duration
+	DatabaseTimeout      time.Duration
+	ReadHeaderTimeout    time.Duration
+	ReadTimeout          time.Duration
+	WriteTimeout         time.Duration
+	IdleTimeout          time.Duration
+	RequireXMLSignature  bool
+	XMLSignatureCertFile string
 }
 
 // Load reads configuration from .env files and environment variables.
@@ -41,24 +43,34 @@ func Load() *Config {
 		db := getEnv("POSTGRES_DB", "umkm_tumbuh")
 		dbURL = "postgres://" + user + ":" + pass + "@" + host + ":" + port + "/" + db + "?sslmode=disable"
 	}
+	requireSignature := false
+	switch strings.TrimSpace(os.Getenv("SOAP_REQUIRE_XML_SIGNATURE")) {
+	case "", "false":
+	case "true":
+		requireSignature = true
+	default:
+		log.Fatal("SOAP_REQUIRE_XML_SIGNATURE must be true or false")
+	}
 
 	if dbURL == "" {
 		log.Fatal("DATABASE_URL or individual POSTGRES_* variables are required")
 	}
 
 	return &Config{
-		DatabaseURL:       dbURL,
-		Host:              getEnv("SOAP_HOST", "127.0.0.1"),
-		EndpointURL:       getEnv("SOAP_ENDPOINT_URL", "http://localhost:9090/partnership"),
-		Port:              getEnv("SOAP_PORT", "9090"),
-		JWTSecret:         os.Getenv("JWT_SECRET"),
-		MaxRequestBytes:   positiveInt64Env("SOAP_MAX_REQUEST_BYTES", 1<<20),
-		RequestTimeout:    positiveDurationEnv("SOAP_REQUEST_TIMEOUT", 10*time.Second),
-		DatabaseTimeout:   positiveDurationEnv("SOAP_DATABASE_TIMEOUT", 10*time.Second),
-		ReadHeaderTimeout: positiveDurationEnv("SOAP_READ_HEADER_TIMEOUT", 5*time.Second),
-		ReadTimeout:       positiveDurationEnv("SOAP_READ_TIMEOUT", 15*time.Second),
-		WriteTimeout:      positiveDurationEnv("SOAP_WRITE_TIMEOUT", 30*time.Second),
-		IdleTimeout:       positiveDurationEnv("SOAP_IDLE_TIMEOUT", 60*time.Second),
+		DatabaseURL:          dbURL,
+		Host:                 getEnv("SOAP_HOST", "127.0.0.1"),
+		EndpointURL:          getEnv("SOAP_ENDPOINT_URL", "http://localhost:9090/partnership"),
+		Port:                 getEnv("SOAP_PORT", "9090"),
+		JWTSecret:            os.Getenv("JWT_SECRET"),
+		MaxRequestBytes:      positiveInt64Env("SOAP_MAX_REQUEST_BYTES", 1<<20),
+		RequestTimeout:       positiveDurationEnv("SOAP_REQUEST_TIMEOUT", 10*time.Second),
+		DatabaseTimeout:      positiveDurationEnv("SOAP_DATABASE_TIMEOUT", 10*time.Second),
+		ReadHeaderTimeout:    positiveDurationEnv("SOAP_READ_HEADER_TIMEOUT", 5*time.Second),
+		ReadTimeout:          positiveDurationEnv("SOAP_READ_TIMEOUT", 15*time.Second),
+		WriteTimeout:         positiveDurationEnv("SOAP_WRITE_TIMEOUT", 30*time.Second),
+		IdleTimeout:          positiveDurationEnv("SOAP_IDLE_TIMEOUT", 60*time.Second),
+		RequireXMLSignature:  requireSignature,
+		XMLSignatureCertFile: strings.TrimSpace(os.Getenv("SOAP_XML_SIGNATURE_CERT_FILE")),
 	}
 }
 

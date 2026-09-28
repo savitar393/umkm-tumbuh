@@ -2,6 +2,7 @@ package soap
 
 import (
 	"context"
+	"crypto/x509"
 	"encoding/xml"
 	"errors"
 	"github.com/savitar393/umkm-tumbuh/services/partnerships-service/internal/auth"
@@ -34,20 +35,24 @@ type partnershipService interface {
 
 // HandlerConfig controls transport-level security limits.
 type HandlerConfig struct {
-	JWTSecret       string
-	MaxRequestBytes int64
-	RequestTimeout  time.Duration
-	Logger          *log.Logger
+	JWTSecret            string
+	MaxRequestBytes      int64
+	RequestTimeout       time.Duration
+	Logger               *log.Logger
+	RequireXMLSignature  bool
+	TrustedSignatureCert *x509.Certificate
 }
 
 // Handler is the SOAP HTTP handler that routes all 9 partnership operations.
 type Handler struct {
-	svc             partnershipService
-	wsdl            string
-	jwtSecret       string
-	maxRequestBytes int64
-	requestTimeout  time.Duration
-	logger          *log.Logger
+	svc                  partnershipService
+	wsdl                 string
+	jwtSecret            string
+	maxRequestBytes      int64
+	requestTimeout       time.Duration
+	logger               *log.Logger
+	requireXMLSignature  bool
+	trustedSignatureCert *x509.Certificate
 }
 
 // NewHandler creates a new SOAP handler.
@@ -67,12 +72,14 @@ func NewHandlerWithConfig(svc partnershipService, wsdl string, cfg HandlerConfig
 		cfg.Logger = log.Default()
 	}
 	return &Handler{
-		svc:             svc,
-		wsdl:            wsdl,
-		jwtSecret:       cfg.JWTSecret,
-		maxRequestBytes: cfg.MaxRequestBytes,
-		requestTimeout:  cfg.RequestTimeout,
-		logger:          cfg.Logger,
+		svc:                  svc,
+		wsdl:                 wsdl,
+		jwtSecret:            cfg.JWTSecret,
+		maxRequestBytes:      cfg.MaxRequestBytes,
+		requestTimeout:       cfg.RequestTimeout,
+		logger:               cfg.Logger,
+		requireXMLSignature:  cfg.RequireXMLSignature,
+		trustedSignatureCert: cfg.TrustedSignatureCert,
 	}
 }
 
@@ -133,12 +140,29 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.writeInvalidRequest(w, "Envelope", err)
 		return
 	}
+	var verifiedOperation []byte
+	if h.requireXMLSignature {
+		if h.trustedSignatureCert == nil {
+			h.logError("xml signature configuration", errors.New("trusted certificate not configured"))
+			WriteServerFault(w, "Internal server error")
+			return
+		}
+		verifiedOperation, err = verifySignedBody(body, h.trustedSignatureCert)
+		if err != nil {
+			h.logError("xml signature", err)
+			WriteClientFault(w, "SOAP message signature is invalid")
+			return
+		}
+	}
 
 	var env Envelope
 	if err := xml.Unmarshal(body, &env); err != nil {
 		h.logError("decode SOAP envelope", err)
 		WriteClientFault(w, "SOAP Envelope tidak valid")
 		return
+	}
+	if h.requireXMLSignature {
+		env.Body.Content = verifiedOperation
 	}
 
 	operation := h.detectOperation(r, env.Body.Content)
