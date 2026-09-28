@@ -35,38 +35,42 @@ type partnershipService interface {
 
 // HandlerConfig controls transport-level security limits.
 type HandlerConfig struct {
-	JWTSecret             string
-	MaxRequestBytes       int64
-	RequestTimeout        time.Duration
-	Logger                *log.Logger
-	RequireXMLSignature   bool
-	TrustedSignatureCert  *x509.Certificate
-	ReplayProtection      bool
-	X509TokenProfile      bool
-	ReplayCache           ReplayCache
-	ReplayCacheMaxEntries int
-	Now                   func() time.Time
-	WSSEMaxClockSkew      time.Duration
-	WSSEMaxTimestampTTL   time.Duration
+	JWTSecret               string
+	MaxRequestBytes         int64
+	RequestTimeout          time.Duration
+	Logger                  *log.Logger
+	RequireXMLSignature     bool
+	TrustedSignatureCert    *x509.Certificate
+	ReplayProtection        bool
+	X509TokenProfile        bool
+	SignResponses           bool
+	ResponseSigningIdentity *ResponseSigningIdentity
+	ReplayCache             ReplayCache
+	ReplayCacheMaxEntries   int
+	Now                     func() time.Time
+	WSSEMaxClockSkew        time.Duration
+	WSSEMaxTimestampTTL     time.Duration
 }
 
 // Handler is the SOAP HTTP handler that routes all 9 partnership operations.
 type Handler struct {
-	svc                   partnershipService
-	wsdl                  string
-	jwtSecret             string
-	maxRequestBytes       int64
-	requestTimeout        time.Duration
-	logger                *log.Logger
-	requireXMLSignature   bool
-	trustedSignatureCert  *x509.Certificate
-	replayProtection      bool
-	x509TokenProfile      bool
-	replayCache           ReplayCache
-	invalidSecurityConfig bool
-	now                   func() time.Time
-	wsseMaxClockSkew      time.Duration
-	wsseMaxTimestampTTL   time.Duration
+	svc                     partnershipService
+	wsdl                    string
+	jwtSecret               string
+	maxRequestBytes         int64
+	requestTimeout          time.Duration
+	logger                  *log.Logger
+	requireXMLSignature     bool
+	trustedSignatureCert    *x509.Certificate
+	replayProtection        bool
+	x509TokenProfile        bool
+	signResponses           bool
+	responseSigningIdentity *ResponseSigningIdentity
+	replayCache             ReplayCache
+	invalidSecurityConfig   bool
+	now                     func() time.Time
+	wsseMaxClockSkew        time.Duration
+	wsseMaxTimestampTTL     time.Duration
 }
 
 // NewHandler creates a new SOAP handler.
@@ -101,19 +105,22 @@ func NewHandlerWithConfig(svc partnershipService, wsdl string, cfg HandlerConfig
 		cfg.ReplayCache = NewInMemoryReplayCache(cfg.ReplayCacheMaxEntries)
 	}
 	return &Handler{
-		svc:                  svc,
-		wsdl:                 wsdl,
-		jwtSecret:            cfg.JWTSecret,
-		maxRequestBytes:      cfg.MaxRequestBytes,
-		requestTimeout:       cfg.RequestTimeout,
-		logger:               cfg.Logger,
-		requireXMLSignature:  cfg.RequireXMLSignature,
-		trustedSignatureCert: cfg.TrustedSignatureCert,
-		replayProtection:     cfg.ReplayProtection,
-		x509TokenProfile:     cfg.X509TokenProfile,
-		replayCache:          cfg.ReplayCache,
+		svc:                     svc,
+		wsdl:                    wsdl,
+		jwtSecret:               cfg.JWTSecret,
+		maxRequestBytes:         cfg.MaxRequestBytes,
+		requestTimeout:          cfg.RequestTimeout,
+		logger:                  cfg.Logger,
+		requireXMLSignature:     cfg.RequireXMLSignature,
+		trustedSignatureCert:    cfg.TrustedSignatureCert,
+		replayProtection:        cfg.ReplayProtection,
+		x509TokenProfile:        cfg.X509TokenProfile,
+		signResponses:           cfg.SignResponses,
+		responseSigningIdentity: cfg.ResponseSigningIdentity,
+		replayCache:             cfg.ReplayCache,
 		invalidSecurityConfig: (cfg.ReplayProtection && !cfg.RequireXMLSignature) ||
-			(cfg.X509TokenProfile && (!cfg.RequireXMLSignature || !cfg.ReplayProtection)),
+			(cfg.X509TokenProfile && (!cfg.RequireXMLSignature || !cfg.ReplayProtection)) ||
+			(cfg.SignResponses && (!cfg.RequireXMLSignature || !cfg.ReplayProtection || !cfg.X509TokenProfile || cfg.ResponseSigningIdentity == nil)),
 		now:                 cfg.Now,
 		wsseMaxClockSkew:    cfg.WSSEMaxClockSkew,
 		wsseMaxTimestampTTL: cfg.WSSEMaxTimestampTTL,
@@ -183,6 +190,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var verifiedOperation []byte
+	var verifiedMessageID string
 	if h.requireXMLSignature {
 		if h.trustedSignatureCert == nil {
 			h.logError("xml signature configuration", errors.New("trusted certificate not configured"))
@@ -204,6 +212,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		verifiedOperation = verified.operation
+		verifiedMessageID = verified.originalMessageID
 	}
 
 	var env Envelope
@@ -217,13 +226,24 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	operation := h.detectOperation(r, env.Body.Content)
-	if operation == "" {
-		WriteClientFault(w, "Operasi tidak dikenali. Tambahkan SOAPAction header atau pastikan tag XML sesuai WSDL.")
-		return
+	responseWriter := w
+	var buffered *bufferedSOAPResponse
+	if h.signResponses {
+		buffered = newBufferedSOAPResponse()
+		responseWriter = buffered
 	}
-
-	h.logger.Printf("[SOAP] operation=%q remote=%q", operation, r.RemoteAddr)
-	h.dispatch(w, r, operation, env.Body.Content, actor)
+	if operation == "" {
+		WriteClientFault(responseWriter, "Operasi tidak dikenali. Tambahkan SOAPAction header atau pastikan tag XML sesuai WSDL.")
+	} else {
+		h.logger.Printf("[SOAP] operation=%q remote=%q", operation, r.RemoteAddr)
+		h.dispatch(responseWriter, r, operation, env.Body.Content, actor)
+	}
+	if buffered != nil {
+		if err := h.writeSignedResponse(w, buffered, verifiedMessageID); err != nil {
+			h.logError("sign SOAP response", err)
+			WriteServerFault(w, "Internal server error")
+		}
+	}
 }
 
 // detectOperation determines which SOAP operation is being invoked.

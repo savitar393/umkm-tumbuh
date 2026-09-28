@@ -23,6 +23,9 @@ func TestLoadUsesSecureTransportDefaults(t *testing.T) {
 	if cfg.X509TokenProfile {
 		t.Fatal("X.509 token mode must be off by default")
 	}
+	if cfg.SignResponses || cfg.ResponseCertFile != "" || cfg.ResponseKeyFile != "" {
+		t.Fatal("response signing must be off without configuration")
+	}
 	assertDuration(t, "RequestTimeout", cfg.RequestTimeout, 10*time.Second)
 	assertDuration(t, "DatabaseTimeout", cfg.DatabaseTimeout, 10*time.Second)
 	assertDuration(t, "ReadHeaderTimeout", cfg.ReadHeaderTimeout, 5*time.Second)
@@ -51,6 +54,9 @@ func TestLoadAcceptsPositiveTransportOverrides(t *testing.T) {
 	t.Setenv("SOAP_WSSE_REPLAY_PROTECTION", "true")
 	t.Setenv("SOAP_WSSE_REPLAY_CACHE_MAX_ENTRIES", "16")
 	t.Setenv("SOAP_WSSE_X509_TOKEN", "true")
+	t.Setenv("SOAP_WSSE_SIGN_RESPONSES", "true")
+	t.Setenv("SOAP_WSSE_RESPONSE_CERT_FILE", "/run/secrets/response-cert.pem")
+	t.Setenv("SOAP_WSSE_RESPONSE_KEY_FILE", "/run/secrets/response-key.pem")
 
 	cfg := Load()
 
@@ -65,6 +71,9 @@ func TestLoadAcceptsPositiveTransportOverrides(t *testing.T) {
 	}
 	if !cfg.X509TokenProfile {
 		t.Fatal("X.509 token mode was not loaded")
+	}
+	if !cfg.SignResponses || cfg.ResponseCertFile != "/run/secrets/response-cert.pem" || cfg.ResponseKeyFile != "/run/secrets/response-key.pem" {
+		t.Fatal("response signing configuration not loaded")
 	}
 	if cfg.MaxRequestBytes != 2048 {
 		t.Fatalf("MaxRequestBytes = %d, want 2048", cfg.MaxRequestBytes)
@@ -143,6 +152,22 @@ func TestX509TokenProfileRequiresSignedReplay(t *testing.T) {
 	}
 }
 
+func TestResponseSigningRequiresCompleteRequestSecurity(t *testing.T) {
+	for _, tc := range []struct{ signature, replay, token string }{
+		{"false", "true", "true"}, {"true", "false", "true"}, {"true", "true", "false"},
+	} {
+		clearTransportEnvironment(t)
+		t.Setenv("DATABASE_URL", "postgres://test:test@localhost/test")
+		t.Setenv("SOAP_REQUIRE_XML_SIGNATURE", tc.signature)
+		t.Setenv("SOAP_WSSE_REPLAY_PROTECTION", tc.replay)
+		t.Setenv("SOAP_WSSE_X509_TOKEN", tc.token)
+		t.Setenv("SOAP_WSSE_SIGN_RESPONSES", "true")
+		if Load().Validate() == nil {
+			t.Fatal("response signing without the full request profile was accepted")
+		}
+	}
+}
+
 func clearTransportEnvironment(t *testing.T) {
 	t.Helper()
 	for _, key := range []string{
@@ -161,6 +186,9 @@ func clearTransportEnvironment(t *testing.T) {
 		"SOAP_WSSE_REPLAY_PROTECTION",
 		"SOAP_WSSE_REPLAY_CACHE_MAX_ENTRIES",
 		"SOAP_WSSE_X509_TOKEN",
+		"SOAP_WSSE_SIGN_RESPONSES",
+		"SOAP_WSSE_RESPONSE_CERT_FILE",
+		"SOAP_WSSE_RESPONSE_KEY_FILE",
 	} {
 		t.Setenv(key, "")
 	}

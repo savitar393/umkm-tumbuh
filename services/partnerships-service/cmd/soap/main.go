@@ -31,6 +31,14 @@ func main() {
 			log.Fatalf("XML signature configuration: %v", err)
 		}
 	}
+	var responseIdentity *soap.ResponseSigningIdentity
+	if cfg.SignResponses {
+		var err error
+		responseIdentity, err = soap.LoadResponseSigningIdentity(cfg.ResponseCertFile, cfg.ResponseKeyFile)
+		if err != nil {
+			log.Fatalf("SOAP response signing configuration: %v", err)
+		}
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.DatabaseTimeout)
 	pool, err := database.NewPostgresPool(ctx, cfg.DatabaseURL)
@@ -50,16 +58,18 @@ func main() {
 	repo := partnerships.NewRepository(pool)
 	svc := partnerships.NewService(repo)
 	handler := soap.NewHandlerWithConfig(contracts.NewAdapter(svc), wsdlContent, soap.HandlerConfig{
-		JWTSecret:             cfg.JWTSecret,
-		MaxRequestBytes:       cfg.MaxRequestBytes,
-		RequestTimeout:        cfg.RequestTimeout,
-		RequireXMLSignature:   cfg.RequireXMLSignature,
-		TrustedSignatureCert:  trustedCert,
-		WSSEMaxClockSkew:      cfg.WSSEMaxClockSkew,
-		WSSEMaxTimestampTTL:   cfg.WSSEMaxTimestampTTL,
-		ReplayProtection:      cfg.ReplayProtection,
-		X509TokenProfile:      cfg.X509TokenProfile,
-		ReplayCacheMaxEntries: cfg.ReplayCacheMaxEntries,
+		JWTSecret:               cfg.JWTSecret,
+		MaxRequestBytes:         cfg.MaxRequestBytes,
+		RequestTimeout:          cfg.RequestTimeout,
+		RequireXMLSignature:     cfg.RequireXMLSignature,
+		TrustedSignatureCert:    trustedCert,
+		WSSEMaxClockSkew:        cfg.WSSEMaxClockSkew,
+		WSSEMaxTimestampTTL:     cfg.WSSEMaxTimestampTTL,
+		ReplayProtection:        cfg.ReplayProtection,
+		X509TokenProfile:        cfg.X509TokenProfile,
+		SignResponses:           cfg.SignResponses,
+		ResponseSigningIdentity: responseIdentity,
+		ReplayCacheMaxEntries:   cfg.ReplayCacheMaxEntries,
 	})
 
 	// Register route

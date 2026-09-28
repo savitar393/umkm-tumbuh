@@ -60,9 +60,10 @@ func LoadTrustedSignatureCertificate(path string) (*x509.Certificate, error) {
 }
 
 type verifiedSignedRequest struct {
-	operation       []byte
-	messageID       string
-	replayExpiresAt time.Time
+	operation         []byte
+	messageID         string
+	originalMessageID string
+	replayExpiresAt   time.Time
 }
 
 // verifySignedBody returns only content proven by XMLDSig, including the
@@ -233,6 +234,7 @@ func verifySignedBody(raw []byte, trusted *x509.Certificate, now time.Time, cloc
 			return result, errors.New("malformed WS-Addressing MessageID")
 		}
 		result.messageID = strings.ToLower(messageID)
+		result.originalMessageID = messageID
 		result.replayExpiresAt = expires.Add(clockSkew)
 	}
 	// Restore the original in-scope namespaces on the verified operation for

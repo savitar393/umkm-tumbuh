@@ -257,6 +257,9 @@ services:
       SOAP_WSSE_REPLAY_PROTECTION: ${SOAP_WSSE_REPLAY_PROTECTION:-false}
       SOAP_WSSE_REPLAY_CACHE_MAX_ENTRIES: ${SOAP_WSSE_REPLAY_CACHE_MAX_ENTRIES:-4096}
       SOAP_WSSE_X509_TOKEN: ${SOAP_WSSE_X509_TOKEN:-false}
+      SOAP_WSSE_SIGN_RESPONSES: ${SOAP_WSSE_SIGN_RESPONSES:-false}
+      SOAP_WSSE_RESPONSE_CERT_FILE: ${SOAP_WSSE_RESPONSE_CERT_FILE:-/run/secrets/soap-response-cert.pem}
+      SOAP_WSSE_RESPONSE_KEY_FILE: ${SOAP_WSSE_RESPONSE_KEY_FILE:-/run/secrets/soap-response-key.pem}
       DATABASE_URL: postgres://${POSTGRES_USER:-umkm_user}:${POSTGRES_PASSWORD:-umkm_password}@postgres:5432/${POSTGRES_DB:-umkm_tumbuh}?sslmode=disable
       JWT_SECRET: ${JWT_SECRET}
     healthcheck:
@@ -266,6 +269,18 @@ services:
       - type: bind
         source: ${SOAP_XML_SIGNATURE_CERT_SOURCE:-/dev/null}
         target: ${SOAP_XML_SIGNATURE_CERT_FILE:-/run/secrets/soap-signature-cert.pem}
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SOAP_WSSE_RESPONSE_CERT_SOURCE:-/dev/null}
+        target: ${SOAP_WSSE_RESPONSE_CERT_FILE:-/run/secrets/soap-response-cert.pem}
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${SOAP_WSSE_RESPONSE_KEY_SOURCE:-/dev/null}
+        target: ${SOAP_WSSE_RESPONSE_KEY_FILE:-/run/secrets/soap-response-key.pem}
         read_only: true
         bind:
           create_host_path: false
