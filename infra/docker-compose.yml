@@ -321,6 +321,27 @@ services:
     networks:
       - umkm_network
 
+  soap-gateway:
+    build:
+      context: ../services/partnership-soap-gateway
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      SOAP_GATEWAY_PORT: 9092
+      SOAP_UPSTREAM_URL: http://soap-partnerships-service:9090/partnership
+      SOAP_CLIENT_CERT_FILE: /certs/leaf-a.crt
+      SOAP_CLIENT_KEY_FILE: /certs/leaf-a.key
+      SOAP_SERVER_CA_FILE: /certs/server-ca.crt
+      # SOAP_SERVER_INTERMEDIATES_FILE: /certs/client-inter.crt
+    volumes:
+      - ../tests/smoke/ca-trust/certs:/certs:ro
+    ports:
+      - "${HOST_BIND_ADDRESS:-127.0.0.1}:${SOAP_GATEWAY_PORT:-9092}:9092"
+    depends_on:
+      - soap-partnerships-service
+    networks:
+      - umkm_network
+
   garage-bootstrap:
     build:
       context: ./garage

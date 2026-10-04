@@ -113,3 +113,8 @@ infra/db/dummy/*.csv
 # Generated API test results
 tests/postman/reports/
 tests/stack/reports/
+
+# Generated artifacts
+services/partnership-soap-gateway/main
+tests/interop/cxf/target/
+tests/smoke/ca-trust/certs/

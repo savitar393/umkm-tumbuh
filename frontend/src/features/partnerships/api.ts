@@ -2,7 +2,10 @@
 
 import { httpPartnerships } from "../../shared/api/partnershipHttp";
 import { documentHttp } from "../../shared/api/documentHttp";
+import { partnershipSoap } from "../../shared/api/partnershipSoap";
 import type { CreatePartnershipRequest, PartnershipStatus } from "./types";
+
+const useSoap = import.meta.env.VITE_PARTNERSHIP_TRANSPORT === "soap";
 
 interface BackendResponse<T> {
   success: boolean;
@@ -142,6 +145,7 @@ export interface MitraDetail {
 export const partnershipsApi = {
   // POST /api/v1/partnerships
   create: async (data: CreatePartnershipRequest): Promise<BackendResponse<{ pengajuanID: string }>> => {
+    if (useSoap) return partnershipSoap.create(data);
     console.log("[partnershipsApi.create] Request data:", JSON.stringify(data));
     const resp = await httpPartnerships.post<BackendResponse<{ pengajuanID: string }>>("/partnerships", data);
     console.log("[partnershipsApi.create] Raw response:", JSON.stringify(resp));
@@ -154,12 +158,13 @@ export const partnershipsApi = {
     limit?: number;
     status?: string;
   }): Promise<SuccessResponse<PartnershipStatusResponse>> => {
+    if (useSoap) return partnershipSoap.getStatus(params);
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append("page", params.page.toString());
     if (params?.limit) queryParams.append("limit", params.limit.toString());
     if (params?.status) queryParams.append("status", params.status);
     
-    const url = `/partnerships/status${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
+    const url = `/partnerships/status${queryParams.toString() ? '?' + queryParams.toString() : ""}`;
     return httpPartnerships.get<SuccessResponse<PartnershipStatusResponse>>(url);
   },
 
@@ -169,16 +174,18 @@ export const partnershipsApi = {
     limit?: number;
     status?: string;
   }): Promise<SuccessResponse<IncomingPartnershipsResponse>> => {
+    if (useSoap) return partnershipSoap.getIncoming(params);
     const queryParams = new URLSearchParams();
     if (params?.page) queryParams.append("page", params.page.toString());
     if (params?.limit) queryParams.append("limit", params.limit.toString());
     if (params?.status) queryParams.append("status", params.status);
     
-    const url = `/partnerships/incoming${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
+    const url = `/partnerships/incoming${queryParams.toString() ? '?' + queryParams.toString() : ""}`;
     return httpPartnerships.get<SuccessResponse<IncomingPartnershipsResponse>>(url);
   },
 
   getIncomingSummary: async (): Promise<SuccessResponse<IncomingPartnershipSummaryResponse>> => {
+    if (useSoap) return partnershipSoap.getIncomingSummary();
     return httpPartnerships.get<SuccessResponse<IncomingPartnershipSummaryResponse>>(
       "/partnerships/incoming/summary",
     );
@@ -186,6 +193,7 @@ export const partnershipsApi = {
 
   // GET /api/v1/partnerships/{id}
   getDetail: async (id: string): Promise<SuccessResponse<Record<string, unknown>>> => {
+    if (useSoap) return partnershipSoap.getDetail(id);
     const response = await httpPartnerships.get<SuccessResponse<Record<string, unknown>>>(`/partnerships/${id}`, { timeoutMs: 15_000 });
     const raw = response.data;
     const maybePengajuan = raw?.pengajuan;
@@ -203,11 +211,13 @@ export const partnershipsApi = {
 
   // GET /api/v1/partnerships/summary
   getSummary: async (): Promise<SuccessResponse<{ summary: { bermitra: number; menunggu: number; ditolak: number } }>> => {
+    if (useSoap) return partnershipSoap.getSummary();
     return httpPartnerships.get<SuccessResponse<{ summary: { bermitra: number; menunggu: number; ditolak: number } }>>("/partnerships/summary");
   },
 
   // POST /api/v1/partnerships/{id}/sign
   sign: async (id: string, dokumenKontrak: string): Promise<SuccessResponse<void>> => {
+    if (useSoap) return partnershipSoap.sign(id, dokumenKontrak);
     return httpPartnerships.post<SuccessResponse<void>>(`/partnerships/${id}/sign`, {
       dokumen_kontrak: dokumenKontrak,
     }, { timeoutMs: 15_000 });
@@ -215,16 +225,19 @@ export const partnershipsApi = {
 
   // PATCH /api/v1/partnerships/{id}/read
   markAsRead: async (id: string): Promise<SuccessResponse<void>> => {
+    if (useSoap) return partnershipSoap.markAsRead(id);
     return httpPartnerships.patch<SuccessResponse<void>>(`/partnerships/${id}/read`, {});
   },
 
   // PATCH /api/v1/partnerships/{id}/approve
   approve: async (id: string): Promise<SuccessResponse<void>> => {
+    if (useSoap) return partnershipSoap.approve(id);
     return httpPartnerships.patch<SuccessResponse<void>>(`/partnerships/${id}/approve`, {}, { timeoutMs: 15_000 });
   },
 
   // PATCH /api/v1/partnerships/{id}/reject
   reject: async (id: string, rejection_reason: string): Promise<SuccessResponse<void>> => {
+    if (useSoap) return partnershipSoap.reject(id, rejection_reason);
     return httpPartnerships.patch<SuccessResponse<void>>(`/partnerships/${id}/reject`, {
       rejection_reason: rejection_reason,
     });
@@ -232,6 +245,7 @@ export const partnershipsApi = {
 
   // PATCH /api/v1/partnerships/{id}/cancel
   cancel: async (id: string): Promise<SuccessResponse<void>> => {
+    if (useSoap) return partnershipSoap.cancel(id);
     return httpPartnerships.patch<SuccessResponse<void>>(`/partnerships/${id}/cancel`, {});
   },
 
@@ -258,7 +272,7 @@ export const partnershipsApi = {
     if (params?.page) queryParams.append("page", params.page.toString());
     if (params?.limit) queryParams.append("limit", params.limit.toString());
     
-    const url = `/mitra${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
+    const url = `/mitra${queryParams.toString() ? '?' + queryParams.toString() : ""}`;
     interface PaginationInfo { page: number; limit: number; total: number; totalPages: number; }
     const response = await httpPartnerships.get<BackendResponse<{ mitra: PartnerListItem[]; pagination: PaginationInfo }>>(url);
     
@@ -281,7 +295,7 @@ export const partnershipsApi = {
     if (params?.page) queryParams.append("page", params.page.toString());
     if (params?.limit) queryParams.append("limit", params.limit.toString());
     
-    const url = `/umkm${queryParams.toString() ? `?${queryParams.toString()}` : ""}`;
+    const url = `/umkm${queryParams.toString() ? '?' + queryParams.toString() : ""}`;
     interface PaginationInfo { page: number; limit: number; total: number; totalPages: number; }
     const response = await httpPartnerships.get<BackendResponse<{ umkm: PartnerListItem[]; pagination: PaginationInfo }>>(url);
     

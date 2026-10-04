@@ -11,6 +11,8 @@ export default defineConfig(({ command, mode, isPreview }) => {
     "PARTNERSHIP_SERVICE_PORT",
     "DOCUMENT_SERVICE_PORT",
     "TRAINING_SERVICE_PORT",
+    "SOAP_GATEWAY_URL",
+    "SOAP_GATEWAY_PORT",
   ]);
   const useDevProxy = command === "serve" && !isPreview &&
     frontendEnv.VITE_USE_DEV_PROXY === "true";
@@ -43,6 +45,14 @@ export default defineConfig(({ command, mode, isPreview }) => {
       rewrite: (requestPath) => requestPath.slice(prefix.length),
     };
   }
+
+  // SOAP Gateway Proxy
+  const soapTarget = backendEnv.SOAP_GATEWAY_URL || `http://127.0.0.1:${backendEnv.SOAP_GATEWAY_PORT || "9092"}`;
+  proxy["/backend/soap/partnership"] = {
+    target: soapTarget,
+    changeOrigin: true,
+    rewrite: (requestPath) => requestPath.replace(/^\/backend\/soap\/partnership/, "/partnership"),
+  };
 
   // Pertahankan rute relatif lama yang masih dipakai unggah/unduh dokumen.
   const legacyRoutes = {

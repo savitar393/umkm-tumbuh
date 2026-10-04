@@ -67,6 +67,7 @@ before(async () => {
   vite = await createViteServer({ configFile: false, server: { middlewareMode: true, hmr: false }, define: {
     "import.meta.env.VITE_PARTNERSHIP_API_BASE_URL": JSON.stringify(baseUrl + "/partner"),
     "import.meta.env.VITE_DOCUMENT_API_BASE_URL": JSON.stringify(baseUrl + "/document"),
+    "import.meta.env.VITE_PARTNERSHIP_TRANSPORT": JSON.stringify("rest"),
   } });
   Approval = (await vite.ssrLoadModule("/src/features/partnerships/pages/PartnershipApprovalPage.tsx")).default;
   Review = (await vite.ssrLoadModule("/src/features/partnerships/pages/PartnershipReviewPage.tsx")).default;

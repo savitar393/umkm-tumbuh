@@ -10,7 +10,8 @@
     "test:login": "node --test tests/login.test.mjs",
     "test:proxy": "node --test tests/proxy.test.mjs",
     "preview": "vite preview",
-    "check": "npm run lint && npm run build && npm run test:login && npm run test:proxy && npm run test:pages && npm run test:contracts",
+    "test:soap": "vitest run src/shared/api/partnershipSoap.test.ts",
+    "check": "npm run lint && npm run build && npm run test:login && npm run test:proxy && npm run test:pages && npm run test:contracts && npm run test:soap",
     "test:pages": "node --test tests/pages.test.mjs",
     "test:contracts": "node --test tests/contracts.test.mjs"
   },
@@ -34,6 +35,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@testing-library/jest-dom": "^7.0.1",
     "@types/d3-scale-chromatic": "^3.1.0",
     "@types/node": "^24.12.3",
     "@types/react": "18.3.31",
@@ -44,9 +46,11 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.6.0",
+    "jsdom": "^30.1.2",
     "react-test-renderer": "18.3.1",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.59.2",
-    "vite": "^8.0.12"
+    "vite": "^8.0.12",
+    "vitest": "^5.0.3"
   }
 }

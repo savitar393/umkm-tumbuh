@@ -184,6 +184,9 @@ jobs:
       - name: Run contract workflow and download regressions
         run: npm run test:contracts
 
+      - name: Run SOAP frontend adapter tests
+        run: npm run test:soap
+
   infra:
     name: Infrastructure / Docker Compose
     runs-on: ubuntu-latest
